@@ -162,7 +162,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
             if (!active.current || readId !== suggestionReadId.current) return false;
             if (isAxiosError(error) && error.response?.status === 401) session.invalidate();
             setSuggestions([]);
-            setSuggestionError("Advisory monitoring suggestions could not be loaded. Current monitoring state remains authoritative.");
+            setSuggestionError("Monitoring suggestions could not be loaded. Refresh resources to try again.");
             return false;
         }
     }, [provider.id, session]);
@@ -297,12 +297,12 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
     return (
         <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg shadow-slate-950/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><SectionHeader title="Resources and monitoring" description="Observed provider facts, identity assurance, and monitoring policy are shown separately." /><p className="mt-2 text-xs text-slate-500">Last successful inventory refresh: {refreshedAt}</p></div>
+                <div><SectionHeader title="Resources and monitoring" description="Compare reported resource states with the monitoring settings you expect." /><p className="mt-2 text-xs text-slate-500">Last successful inventory refresh: {refreshedAt}</p></div>
                 <button type="button" onClick={() => { if (active.current && !saveInFlight.current && uncertainSave.current === null) void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()]); }} disabled={uncertainCoordinate !== null || checkingMonitoring || updatingCoordinate !== null || inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">
                 {inventoryError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{inventoryError}</p>}
-                {managementError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Monitoring unavailable — {managementError} Observed inventory remains visible.</p>}
+                {managementError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Monitoring unavailable — {managementError} Reported resource details remain visible.</p>}
                 {operatorLoading && operator !== null && <p role="status" className="text-sm text-blue-200">Checking editing permissions. Your draft is kept; saving is paused.</p>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
@@ -312,7 +312,7 @@ function SessionResourcePanel({ provider, session, operatorEpoch, inventory, man
                 </div>}
                 {recoveryNotice && <p role="status" className="text-sm text-blue-200">{recoveryNotice}</p>}
                 {updatingCoordinate !== null && <p role="status" className="text-sm text-blue-200">Monitoring update in progress. Other saves are temporarily paused.</p>}
-                {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Resource coordinates could not be composed safely. Monitoring and editing are unavailable.</p>}
+                {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Resource details do not match. Refresh resources before editing monitoring settings.</p>}
             </div>
             {composition.resources.length === 0 ? (
                 <p role="status" className="mt-6 text-sm text-slate-400">

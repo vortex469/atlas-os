@@ -121,7 +121,7 @@ function ProviderIntentEditorForm({
                             }}
                             className="mt-1 block max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
                         >
-                            {(!configured || requireExplicitSelection) && <option value="">Choose explicitly</option>}
+                            {(!configured || requireExplicitSelection) && <option value="">Choose a state</option>}
                             {Object.entries(labels).map(([value, label]) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
@@ -138,7 +138,7 @@ function ProviderIntentEditorForm({
                                 disabled={saving || blocked}
                                 onChange={(event) => setAcknowledged(event.target.checked)}
                             />
-                            I understand monitoring findings for this expectation will be suppressed.
+                            I understand that Ignored hides monitoring findings about this resource’s expected state.
                         </label>
                     )}
                     <button

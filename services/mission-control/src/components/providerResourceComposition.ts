@@ -136,10 +136,10 @@ export function monitoringPresentation(
         };
     }
     const statuses: Record<string, string> = {
-        no_active_intent: "Needs Review — monitoring expectation not configured",
-        legacy_unbound_evidence: "Needs Review — historical expectation available for review",
-        incarnation_mismatch: "Needs Review — resource identity changed",
-        identity_unavailable: "Needs Review — resource identity could not be verified",
+        no_active_intent: "No monitoring setting has been chosen.",
+        legacy_unbound_evidence: "A previous monitoring setting is available to review.",
+        incarnation_mismatch: "The resource identity changed. Review the monitoring setting.",
+        identity_unavailable: "Atlas could not verify this resource’s identity.",
         authority_store_unavailable: "Monitoring unavailable — monitoring settings could not be loaded",
         resource_missing: "Resource missing — the saved setting is kept for reference",
         resource_type_unsupported: "Monitoring settings are not supported for this resource type",
