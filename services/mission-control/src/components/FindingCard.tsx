@@ -52,11 +52,14 @@ function getUnavailableEntities(
         return [];
     }
 
-    return value.filter(
-        (entity): entity is UnavailableEntity =>
-            typeof entity === "object" &&
-            entity !== null,
-    );
+    return value
+        .filter((entity): entity is Record<string, unknown> =>
+            typeof entity === "object" && entity !== null && !Array.isArray(entity))
+        .map(entity => ({
+            entity_id: typeof entity.entity_id === "string" ? entity.entity_id : undefined,
+            name: typeof entity.name === "string" ? entity.name : undefined,
+            state: typeof entity.state === "string" ? entity.state : undefined,
+        }));
 }
 
 export function FindingCard({ finding }: FindingCardProps) {

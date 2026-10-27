@@ -170,3 +170,16 @@ collection history remain independently available, and threshold comparisons
 remain paused until a valid settings response returns. The Proxmox `ignored`
 guest setting is supported as legacy evidence, matching Core's public model.
 No setting is written, and no monitoring authority is inferred from this data.
+
+Provider advisory summaries are validated as complete public `AceSummary`
+snapshots before any part of the shared refresh is published. Invalid findings,
+recommendations, assessments or collection timing data preserve the prior
+coherent snapshot and its last-successful-refresh time, using the existing
+unavailable/last-reported presentation until Refresh succeeds. Native public
+model fixtures cover defaults, all timing outcomes, open severity/priority
+strings, unconstrained native score/confidence ranges and free-form details.
+Only finite browser-safe numbers are accepted where the public model requires
+integers; no additional native enum or range restrictions are invented.
+Entity-detail renderers read only string labels from the open details dictionary,
+ignore non-object rows and use existing unknown labels for unreadable fields.
+Neither this advisory evidence nor its recovery authorizes any mutation.
