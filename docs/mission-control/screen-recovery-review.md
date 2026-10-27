@@ -159,3 +159,14 @@ current-branch integration acceptance; neither service was restarted or changed.
 Mission Control completion remains open while these applicable journey and
 operator acceptance requirements are unverified. Deferred execution capabilities
 and the successor control plane are not made available by this work.
+
+Provider settings responses are validated before replacing the last readable
+snapshot. The reader follows the complete serialized Core `Policies` model,
+including all nine sections and native defaults captured by a golden fixture.
+Unknown extensions are discarded; malformed sections, invalid enums, non-finite
+metrics, invalid counts and invalid native collection/workflow lists use the
+existing unavailable/last-reported settings path. Provider health and readable
+collection history remain independently available, and threshold comparisons
+remain paused until a valid settings response returns. The Proxmox `ignored`
+guest setting is supported as legacy evidence, matching Core's public model.
+No setting is written, and no monitoring authority is inferred from this data.

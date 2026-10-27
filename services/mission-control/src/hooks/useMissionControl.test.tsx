@@ -302,6 +302,33 @@ describe("useMissionControl", () => {
         expect(result.current.telemetryHistory).toEqual([]);
     });
 
+    it.each([
+        { name: "missing sections", value: { proxmox: { guests: {} } } },
+        { name: "invalid nested policy", value: { ...policies, proxmox: { guests: { "110": null } } } },
+        { name: "invalid threshold", value: { ...policies, intelligence: { providers: { proxmox: { maximum_collection_duration_ms: null, severity: "warning" } } } } },
+    ])("isolates $name in a successful settings response and recovers through reads", async ({ value }) => {
+        let body: unknown = policies;
+        vi.spyOn(atlas, "get").mockImplementation(async url => ({ data: ({
+            "/ace/summary": summary, "/health": health,
+            "/providers": [provider("proxmox", "Proxmox", "critical", "operations")],
+            "/policies": body, "/policies/status": policyHealth,
+            "/intelligence/telemetry/history": telemetryHistory,
+            "/intelligence/telemetry/history/retention": telemetryRetention,
+        } as Record<string, unknown>)[url!] }));
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        body = value;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.policiesUnavailable).toBe(true);
+        expect(result.current.policies).toEqual(policies);
+        expect(result.current.providers).toHaveLength(1);
+        expect(result.current.error).toBeNull();
+        body = policies;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.policiesUnavailable).toBe(false);
+        expect(result.current.policies).toEqual(policies);
+    });
+
     it("normalizes malformed health API data before publishing dashboard state", async () => {
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             const data: Record<string, unknown> = {

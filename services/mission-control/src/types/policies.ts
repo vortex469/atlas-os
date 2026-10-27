@@ -4,7 +4,7 @@ export type AtlasPolicies = {
     proxmox: {
         guests: Record<
             string,
-            { expected: "running" | "stopped" }
+            { expected: "running" | "stopped" | "ignored" }
         >;
     };
     docker: {
