@@ -1003,6 +1003,74 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(screen.queryByText("Expected stopped")).not.toBeInTheDocument();
     });
 
+    it.each(["success", "failure"] as const)("ignores an older inventory %s after a newer successful read", async outcome => {
+        let finishOld!: (value: ProviderResourceCollection) => void;
+        let failOld!: (error: Error) => void;
+        vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise((resolve, reject) => { finishOld = resolve; failOld = reject; })).mockResolvedValue(inventory);
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({ intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1 }));
+        render(<StrictMode><ProviderResources provider={provider} /></StrictMode>);
+        await screen.findByText("Configured — matches observed state");
+        await act(async () => {
+            if (outcome === "success") finishOld({ ...inventory, refreshed_at: "2026-08-15T00:00:00Z", resources: [{ ...inventory.resources[0], current_state: "stopped" }] });
+            else failOld(new Error("old read failed"));
+        });
+        expect(screen.getByText("Configured — matches observed state")).toBeInTheDocument();
+        expect(screen.getByText("Running", { selector: "p.font-semibold", exact: true })).toBeInTheDocument();
+        expect(screen.getByText(/Last successful inventory refresh:/)).toHaveTextContent(new Date(inventory.refreshed_at).toLocaleString());
+        expect(screen.queryByText(/could not load observed resources/)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh resources" })).toBeEnabled();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it.each(["success", "failure"] as const)("does not let an older inventory %s finish a newer pending read", async outcome => {
+        let finishOld!: (value: ProviderResourceCollection) => void;
+        let failOld!: (error: Error) => void;
+        let finishLatest!: (value: ProviderResourceCollection) => void;
+        vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise((resolve, reject) => { finishOld = resolve; failOld = reject; }))
+            .mockImplementationOnce(() => new Promise(resolve => { finishLatest = resolve; }));
+        render(<StrictMode><ProviderResources provider={provider} /></StrictMode>);
+        await waitFor(() => expect(getProviderResources).toHaveBeenCalledTimes(2));
+        await act(async () => {
+            if (outcome === "success") finishOld({ ...inventory, resources: [{ ...inventory.resources[0], current_state: "stopped" }] });
+            else failOld(new Error("old read failed"));
+        });
+        expect(screen.getByRole("button", { name: "Refreshing..." })).toBeDisabled();
+        expect(screen.queryByText("Stopped", { selector: "p.font-semibold", exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText(/could not load observed resources/)).not.toBeInTheDocument();
+        await act(async () => finishLatest(inventory));
+        expect(screen.getByText("Running", { selector: "p.font-semibold", exact: true })).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("keeps a newer inventory failure unresolved when an older success arrives", async () => {
+        let finishOld!: (value: ProviderResourceCollection) => void;
+        vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; })).mockRejectedValueOnce(new Error("latest unavailable"));
+        render(<StrictMode><ProviderResources provider={provider} /></StrictMode>);
+        await screen.findByText(/could not load observed resources/);
+        await act(async () => finishOld(inventory));
+        expect(screen.getByText(/could not load observed resources/)).toBeInTheDocument();
+        expect(screen.queryByText("Running", { selector: "p.font-semibold", exact: true })).not.toBeInTheDocument();
+        expect(screen.getByText(/Last successful inventory refresh:/)).toHaveTextContent("Not refreshed yet");
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("does not replace a successful manual inventory refresh with an older initial read", async () => {
+        let finishOld!: (value: ProviderResourceCollection) => void;
+        vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; })).mockResolvedValue(inventory);
+        const refreshed = { ...inventory, refreshed_at: "2026-08-17T00:00:00Z", resources: [{ ...inventory.resources[0], current_state: "stopped" }] };
+        vi.mocked(refreshProviderResources).mockResolvedValueOnce(refreshed);
+        const user = userEvent.setup();
+        render(<StrictMode><ProviderResources provider={provider} /></StrictMode>);
+        await waitFor(() => expect(screen.getByRole("button", { name: "Refresh resources" })).toBeEnabled());
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        await screen.findByText("Stopped", { selector: "p.font-semibold", exact: true });
+        await act(async () => finishOld(inventory));
+        expect(screen.getByText("Stopped", { selector: "p.font-semibold", exact: true })).toBeInTheDocument();
+        expect(screen.getByText(/Last successful inventory refresh:/)).toHaveTextContent(new Date(refreshed.refreshed_at).toLocaleString());
+        expect(refreshProviderResources).toHaveBeenCalledTimes(1);
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
     it("keeps retained observations distinct from a current monitoring comparison after failed refresh", async () => {
         const user = userEvent.setup();
         vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({

@@ -279,3 +279,11 @@ permissions remove editing and reset suppression acknowledgement on recovery.
 Browser coverage includes pending, ready, failed and revoked rechecks, plus
 session expiry before a late private reply; these fixtures never submit a policy
 write and allow only their exact synthetic discovery-refresh requests.
+
+Resource inventory reads now publish only the latest request's result. A late
+older success cannot replace newer observations, their refresh timestamp or a
+newer failed read. A late older error cannot hide a successful snapshot or end
+a newer loading state. The same ordering applies to initial reads and manual
+inventory refreshes. Browser coverage overlaps reads through a provider catalog
+refresh and verifies both reply orders at phone and desktop widths using GETs
+only; monitoring permission and save contracts remain unchanged.
