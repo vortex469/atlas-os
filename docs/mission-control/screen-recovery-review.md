@@ -237,3 +237,14 @@ parameter descriptions, duplicate IDs and transport errors at three widths;
 reloading restores the required-input and confirmation gates. Dismissing the
 confirmation sends no action request. No execution behavior or backend authority
 is added or relaxed.
+
+Resource cards label retained inventory values as last reported while an inventory
+refresh is pending or has failed. Missing observations and Core's native unknown
+status fallback do not produce a match/mismatch claim. Configured expectations
+and verified identity remain separate facts; the comparison resumes only with a
+usable observation. The inventory timestamp is explicitly the last successful
+refresh. Browser recovery cases cover initially unavailable and retained running
+observations against running/stopped expectations at three widths, two exact
+mocked discovery-refresh POSTs, and no monitoring writes or provider actions.
+Editing permissions, fingerprints, save approvals and uncertain-save recovery
+continue through their existing independent contracts.

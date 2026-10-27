@@ -891,6 +891,37 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     });
 
+    it("keeps retained observations distinct from a current monitoring comparison after failed refresh", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({
+            intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1,
+        }));
+        vi.mocked(refreshProviderResources).mockRejectedValueOnce(new Error("offline"))
+            .mockResolvedValueOnce({ ...inventory, resources: [{ ...inventory.resources[0], current_state: "stopped" }] });
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText("Configured — matches observed state")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        expect(await screen.findByText("Last reported: Running")).toBeInTheDocument();
+        expect(screen.getByText("Configured — observed state unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Configured — matches observed state")).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+        expect(await screen.findByText("Configured — does not match observed state")).toBeInTheDocument();
+        expect(screen.getByText("Stopped", { exact: true, selector: "p" })).toBeInTheDocument();
+        expect(screen.queryByText(/Last reported:/)).not.toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("does not present the native unknown observation as a mismatch", async () => {
+        vi.mocked(getProviderResources).mockResolvedValue({ ...inventory, resources: [{ ...inventory.resources[0], current_state: "unknown" }] });
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({
+            intent_status: "configured", intent_reason: "matching_active_intent", expectation: "running", record_version: 1,
+        }));
+        render(<ProviderResources provider={provider} />);
+        expect(await screen.findByText("Configured — observed state unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Unknown", { exact: true, selector: "p.font-semibold" })).toBeInTheDocument();
+        expect(screen.queryByText("Configured — does not match observed state")).not.toBeInTheDocument();
+    });
+
     it("does not present management current_state as observed when inventory fails", async () => {
         vi.mocked(getProviderResources).mockRejectedValue(new Error("offline"));
         vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({
@@ -903,7 +934,7 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
         const row = screen.getByTestId("resource-row-qemu-110");
         expect(row).toHaveTextContent("Observed stateUnavailable");
-        expect(row).toHaveTextContent("Configured — does not match observed state");
+        expect(row).toHaveTextContent("Configured — observed state unavailable");
     });
 
     it("keeps an unauthorized v3 overlay read-only without changing public state", async () => {
@@ -970,6 +1001,10 @@ describe("ProviderResources bounded monitoring presentation", () => {
         ["running", "stopped", "Configured — does not match observed state"],
         ["stopped", "running", "Configured — does not match observed state"],
         ["ignored", "running", "Configured — monitoring ignored"],
+        ["running", null, "Configured — observed state unavailable"],
+        ["stopped", null, "Configured — observed state unavailable"],
+        ["running", "unknown", "Configured — observed state unavailable"],
+        ["stopped", "unknown", "Configured — observed state unavailable"],
     ] as const)("derives configured %s against observed %s", (expectation, observed, status) => {
         const resource = publicManagement({
             intent_status: "configured",
