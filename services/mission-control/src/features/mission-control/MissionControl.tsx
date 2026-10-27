@@ -130,10 +130,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             </div>
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
-            <Card title="Atlas overall state" evidence={evidence.health}>
+            <Card title="System status" evidence={evidence.health}>
                 <SystemHealthSummary evidence={evidence} />
-                <p>Atlas-reported state from Core health.</p>
-                <p>Core aggregate update time is not supplied.</p>
                 <Link to="/operations">Open operations →</Link>
             </Card>
             <Card title="Service health" evidence={evidence.health}>

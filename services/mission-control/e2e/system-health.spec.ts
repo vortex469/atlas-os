@@ -7,7 +7,7 @@ for (const width of [390, 1440]) {
             status: {}, checked_at: "2026-02-30T00:00:00Z", error: { invalid: true },
         } }));
         await page.goto("/");
-        const policy = page.getByRole("article", { name: "Policy reload" });
+        const policy = page.getByRole("article", { name: "Policy status" });
         await expect(policy.getByText("Unknown", { exact: true })).toBeVisible();
         await expect(policy.getByText(/Update time unknown/)).toBeVisible();
         await expect(policy.getByText(/Current evidence/)).toHaveCount(0);
@@ -26,7 +26,7 @@ for (const width of [390, 1440]) {
         } }));
         await page.goto("/");
         const summary = page.getByRole("region", { name: "System health", exact: true });
-        await expect(summary.getByRole("article", { name: "Atlas Core health aggregate" }).getByText("Unknown", { exact: true })).toBeVisible();
+        await expect(summary.getByRole("article", { name: "Atlas health" }).getByText("Unknown", { exact: true })).toBeVisible();
         const core = page.getByRole("region", { name: "Service health", exact: true });
         for (const state of ["Degraded", "Unavailable", "Blocked", "Unknown"]) {
             await expect(core.getByText(state, { exact: true })).toBeVisible();
@@ -37,10 +37,22 @@ for (const width of [390, 1440]) {
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
         await expect(core.getByText(/Last-known status: Unavailable/)).toBeVisible();
         await expect(core.getByText("Unavailable", { exact: true })).toHaveCount(0);
-        await expect(summary.getByRole("article", { name: "ACE assessment" }).getByText("Healthy", { exact: true })).toBeVisible();
+        await expect(summary.getByRole("article", { name: "System assessment" }).getByText("Healthy", { exact: true })).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ json: { atlas: "healthy", services: {} } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
-        await expect(summary.getByRole("article", { name: "Atlas Core health aggregate" }).getByText("Healthy", { exact: true })).toBeVisible();
+        await expect(summary.getByRole("article", { name: "Atlas health" }).getByText("Healthy", { exact: true })).toBeVisible();
+        const help = summary.getByText("How to read health", { exact: true });
+        const note = summary.getByText("Core aggregate update time is not supplied.", { exact: true });
+        await expect(note).not.toBeVisible();
+        for (const name of ["Atlas health", "System assessment", "Policy status"]) await expect(summary.getByRole("heading", { name, exact: true, level: 3 })).toBeVisible();
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: `/tmp/atlas-plain-main-health-${width}.png`, fullPage: true });
+        await help.focus();
+        await page.keyboard.press("Enter");
+        await expect(note).toBeVisible();
+        await expect(summary.getByText(/Policy status reports whether the policy rules loaded successfully/)).toBeVisible();
+        await page.keyboard.press("Enter");
+        await expect(note).not.toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 }

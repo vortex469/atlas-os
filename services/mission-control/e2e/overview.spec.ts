@@ -33,7 +33,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     const attention = page.getByRole('region', { name: 'Operator Attention' });
     await expect(attention.getByText('Endpoint offline')).toBeVisible();
     await expect(attention.getByText('Capacity limited')).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Atlas overall state' }).getByText('Unknown', { exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'System status' }).getByText('Unknown', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await attention.getByRole('link', { name: 'API', exact: true }).click();
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
