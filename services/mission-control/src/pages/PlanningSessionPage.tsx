@@ -225,10 +225,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                             Change planning
                         </p>
                         <h1 className="mt-3 break-words text-3xl font-bold text-white">
-                            {existingWorkflow ? "Review existing workflow" : "Plan this change"}
+                            {existingWorkflow ? "Review existing workflow" : hasPlan ? "Review saved plan" : "Plan this change"}
                         </h1>
                         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                            {existingWorkflow ? "This proposal already has a workflow. Review its progress; any remaining changes still need separate approvals." : "Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals."}
+                            {existingWorkflow ? "This proposal already has a workflow. Review its progress; any remaining changes still need separate approvals." : hasPlan ? "This session has a saved plan. Review its details below; any later changes still need separate approvals." : "Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals."}
                         </p>
                     </div>
                     <button type="button" onClick={refreshPlanning} disabled={isGenerating || isCreatingWorkflow} className="mc-control mc-focusable rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">Refresh planning</button>
@@ -280,9 +280,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             </section>}
 
             {(!existingWorkflow || hasPlan) && <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
+                <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">{hasPlan ? "Saved plan" : "Plan"}</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    {existingWorkflow ? "Planning has already led to a workflow. Any saved plan below is for review." : "Generate a plan to review. This does not apply changes or grant approval."}
+                    {existingWorkflow ? "Planning has already led to a workflow. Any saved plan below is for review." : hasPlan ? "Review the saved plan below. Later changes still need separate approvals." : "Generate a plan to review. This does not apply changes or grant approval."}
                 </p>
                 {!existingWorkflow && session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -309,9 +309,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
 
             {hasPlan && !existingWorkflow && (
                 <section aria-labelledby="workflow-shell-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">Create a workflow</h2>
+                    <h2 id="workflow-shell-heading" className="text-lg font-semibold text-white">{workflow ? "Workflow result" : session.status === "plan_ready" && session.planning_allowed === true ? "Create a workflow" : "Workflow creation unavailable"}</h2>
                     <p className="mt-2 text-sm text-slate-400">
-                        Create a workflow from this plan. You will approve any later changes separately.
+                        {workflow ? "Review the returned workflow details below. Later changes still need separate approvals." : session.status === "plan_ready" && session.planning_allowed === true ? "Create a workflow from this plan. You will approve any later changes separately." : "Creating a workflow is not available for this session. You can review this plan and refresh planning to check the latest status."}
                     </p>
                     {session.status === "plan_ready" && session.planning_allowed === true && !workflow && (
                         <div className="mt-4 flex flex-wrap items-center gap-3">

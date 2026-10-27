@@ -66,6 +66,13 @@ for (const width of [320, 390, 1280]) for (const mode of ['read', 'plan', 'workf
         finishRead();
         if (mode === 'workflow') await expect(page.getByRole('link', { name: 'Open existing workflow', exact: true })).toHaveAttribute('href', '/workflows/saved-workflow');
         else await expect(page.getByRole('heading', { name: 'Saved fixture plan', exact: true })).toBeVisible();
+        if (mode !== 'workflow') {
+            await expect(page.getByRole('heading', { name: 'Review saved plan', exact: true })).toBeVisible();
+            await expect(page.getByRole('heading', { name: 'Saved plan', exact: true, level: 2 })).toBeVisible();
+            await expect(page.getByRole('heading', { name: 'Workflow creation unavailable', exact: true })).toBeVisible();
+            await expect(page.getByText('Creating a workflow is not available for this session. You can review this plan and refresh planning to check the latest status.', { exact: true })).toBeVisible();
+            await expect(page.getByRole('button', { name: 'Create Workflow', exact: true })).toHaveCount(0);
+        }
         await expect(page.getByRole('button', { name: 'Refresh planning', exact: true })).toBeEnabled();
         await expect(page.getByRole('alert')).toHaveCount(0);
         expect(reads).toBe(baseURL!.includes(':4173') ? 2 : 3);
