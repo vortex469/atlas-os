@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
 import { existingWorkflowPath, hasExistingWorkflow } from "../utils/existingWorkflow";
@@ -33,7 +33,23 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(null);
     const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
     const [workflowError, setWorkflowError] = useState<string | null>(null);
+    const [readRevision, setReadRevision] = useState(0);
+    const readPending = useRef(true);
     const hasPlan = Boolean(plan || operationalPlan);
+
+    function refreshPlanning() {
+        if (readPending.current || isGenerating || isCreatingWorkflow) return;
+        readPending.current = true;
+        setIsLoading(true);
+        setError(null);
+        setSession(null);
+        setPlan(null);
+        setOperationalPlan(null);
+        setWorkflow(null);
+        setGenerateError(null);
+        setWorkflowError(null);
+        setReadRevision(revision => revision + 1);
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -85,6 +101,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             })
             .finally(() => {
                 if (!cancelled) {
+                    readPending.current = false;
                     setIsLoading(false);
                 }
             });
@@ -92,12 +109,12 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         return () => {
             cancelled = true;
         };
-    }, [sessionId]);
+    }, [sessionId, readRevision]);
 
     const sessionState = useMemo(() => describeSessionState(session, error), [session, error]);
 
     async function generatePlan() {
-        if (!session || session.planning_allowed !== true || session.status !== "ready_for_planning" || isGenerating) {
+        if (readPending.current || !session || session.planning_allowed !== true || session.status !== "ready_for_planning" || isGenerating) {
             return;
         }
 
@@ -145,7 +162,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     }
 
     async function createWorkflow() {
-        if (!session || session.planning_allowed !== true || session.status !== "plan_ready" || isCreatingWorkflow) {
+        if (readPending.current || !session || session.planning_allowed !== true || session.status !== "plan_ready" || isCreatingWorkflow) {
             return;
         }
 
@@ -174,8 +191,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-6xl p-8">
-                <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
+            <main className="mx-auto max-w-6xl space-y-6 p-8">
+                <Link to="/execution-candidates" className="text-sm text-blue-300">← Change proposals</Link>
+                <p role="status" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                     Loading planning session…
                 </p>
             </main>
@@ -189,7 +207,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-xl font-semibold text-red-100">{error ? "Planning unavailable" : "Planning session not found"}</h1>
                     <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>
-                    <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
+                    <button type="button" onClick={refreshPlanning} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             </main>
         );
@@ -201,16 +219,19 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
-                <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Change planning
-                    </p>
-                    <h1 className="mt-3 break-words text-3xl font-bold text-white">
-                        {existingWorkflow ? "Review existing workflow" : "Plan this change"}
-                    </h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        {existingWorkflow ? "This proposal already has a workflow. Review its progress; any remaining changes still need separate approvals." : "Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals."}
-                    </p>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 basis-80">
+                        <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
+                            Change planning
+                        </p>
+                        <h1 className="mt-3 break-words text-3xl font-bold text-white">
+                            {existingWorkflow ? "Review existing workflow" : "Plan this change"}
+                        </h1>
+                        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                            {existingWorkflow ? "This proposal already has a workflow. Review its progress; any remaining changes still need separate approvals." : "Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals."}
+                        </p>
+                    </div>
+                    <button type="button" onClick={refreshPlanning} disabled={isGenerating || isCreatingWorkflow} className="mc-control mc-focusable rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">Refresh planning</button>
                 </div>
                 <PlanningProgress current={workflow || existingWorkflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
             </header>
@@ -276,9 +297,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 )}
                 {generateError && (
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                        <p className="font-semibold text-red-300">Plan generation failed</p>
+                        <p className="font-semibold text-red-300">Plan result unavailable</p>
                         <p className="mt-1 text-sm text-red-200/80">{generateError}</p>
-                        <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload page</button>
+                        <p className="mt-2 text-sm text-slate-300">Check saved planning before trying again. This only reloads saved information.</p>
+                        <button type="button" onClick={refreshPlanning} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check saved planning</button>
                     </div>
                 )}
                 {plan && <PlanViewer plan={plan} />}
@@ -301,8 +323,10 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     )}
                     {workflowError && (
                         <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                            <p className="font-semibold text-red-300">Workflow creation failed</p>
+                            <p className="font-semibold text-red-300">Workflow result unavailable</p>
                             <p className="mt-1 text-sm text-red-200/80">{workflowError}</p>
+                            <p className="mt-2 text-sm text-slate-300">Check saved planning before trying again. This only reloads saved information.</p>
+                            <button type="button" onClick={refreshPlanning} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check saved planning</button>
                         </div>
                     )}
                     {workflow && <WorkflowCreationResult workflow={workflow} />}
@@ -398,13 +422,13 @@ function MaintenancePlanViewer({ plan }: { plan: OperationalCandidatePlanApiResp
 
 function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
     return (
-        <article className="mt-5 space-y-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+        <article className="mt-5 min-w-0 space-y-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 [overflow-wrap:anywhere]">
             <div>
                 <p className="text-sm font-semibold text-emerald-200">Plan details</p>
                 <h3 className="mt-2 text-xl font-bold text-white">{plan.title}</h3>
                 <p className="mt-2 text-sm text-slate-300">Objective: {plan.objective}</p>
             </div>
-            <section className="grid gap-4 lg:grid-cols-2">
+            <section className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
                 <ListPanel title="Planning assumptions" values={plan.assumptions} empty="No assumptions listed." />
                 <ListPanel title="Constraints" values={plan.constraints} empty="No constraints listed." />
                 <ListPanel title="Proposed steps" values={plan.proposed_steps} empty="No proposed steps listed." ordered />

@@ -114,6 +114,55 @@ describe("PlanningSessionPage", () => {
         expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
     });
 
+    it.each(["missing", "unavailable"])("retries a %s planning read without submitting an action", async state => {
+        if (state === "missing") mockedGetCandidatePlanningSession.mockResolvedValueOnce(null);
+        else mockedGetCandidatePlanningSession.mockRejectedValueOnce(new Error("Read unavailable"));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Try again" }));
+        await screen.findByRole("button", { name: "Generate Plan" });
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
+    it("hides old planning actions during refresh and applies the latest read", async () => {
+        let finish!: (value: CandidatePlanningResponse) => void;
+        mockedGetCandidatePlanningSession.mockResolvedValueOnce(session()).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: "Refresh planning" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Loading planning session");
+        expect(screen.getByRole("link", { name: "← Change proposals" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Refresh planning" })).not.toBeInTheDocument();
+        await act(async () => finish(session({ status: "workflow_created", planning_allowed: false, workflow_session_id: "workflow-1" })));
+        expect(await screen.findByRole("link", { name: "Open existing workflow" })).toHaveAttribute("href", "/workflows/workflow-1");
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
+    it.each(["plan", "workflow"])("checks a saved %s after a lost reply without repeating the action", async action => {
+        const ready = action === "workflow";
+        mockedGetCandidatePlanningSession.mockResolvedValueOnce(session(ready ? { status: "plan_ready", plan: plan() } : {}))
+            .mockResolvedValueOnce(session({ status: ready ? "workflow_created" : "plan_ready", planning_allowed: false, plan: plan(), workflow_session_id: ready ? "workflow-1" : null }));
+        if (ready) mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Reply lost"));
+        else mockedGenerateCandidatePlan.mockRejectedValueOnce(new Error("Reply lost"));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("button", { name: ready ? "Create Workflow" : "Generate Plan" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(ready ? "Workflow result unavailable" : "Plan result unavailable");
+        await user.click(screen.getByRole("button", { name: "Check saved planning" }));
+        if (ready) await screen.findByRole("link", { name: "Open existing workflow" });
+        else await screen.findByText("Plan details");
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(ready ? 0 : 1);
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(ready ? 1 : 0);
+        expect(mockedGetCandidatePlan).not.toHaveBeenCalled();
+    });
+
     it("keeps a converted maintenance plan available for review without offering another workflow", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan(), workflow_session_id: "workflow-1" }));
         renderPage();
@@ -291,6 +340,7 @@ describe("PlanningSessionPage", () => {
 
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
         expect(screen.getAllByText("Generating plan...").length).toBeGreaterThan(0);
+        expect(screen.getByRole("button", { name: "Refresh planning" })).toBeDisabled();
         resolveRequest(session({ status: "plan_ready", plan: plan() }));
         expect(await screen.findByText("Plan details")).toBeInTheDocument();
     });
@@ -373,6 +423,7 @@ describe("PlanningSessionPage", () => {
 
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
         expect(screen.getAllByText("Creating workflow...").length).toBeGreaterThan(0);
+        expect(screen.getByRole("button", { name: "Refresh planning" })).toBeDisabled();
         resolveRequest(workflow());
         expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
     });
@@ -493,7 +544,7 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlan.mockResolvedValue(null);
         renderPage();
         expect(await screen.findByRole("alert")).toHaveTextContent("The saved plan could not be loaded");
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
     });
 
@@ -505,7 +556,7 @@ describe("PlanningSessionPage", () => {
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
         await screen.findByRole("alert");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Check saved planning" })).toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
     });
 
