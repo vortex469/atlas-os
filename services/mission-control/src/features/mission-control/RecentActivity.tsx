@@ -22,8 +22,13 @@ export function RecentActivity({ evidence }: { evidence?: Evidence }) {
     // outcome by merging fields or treating unknown outcomes as successful.
     const unique = new Map<unknown, Record<string, unknown>>();
     for (const event of inspectable) if (!unique.has(event.id)) unique.set(event.id, event);
-    const activity = [...unique.values()].sort((a, b) =>
-        (timestamp(b.completed_at)?.getTime() ?? 0) - (timestamp(a.completed_at)?.getTime() ?? 0));
+    const activity = [...unique.values()].sort((a, b) => {
+        const first = timestamp(a.completed_at);
+        const second = timestamp(b.completed_at);
+        if (!first) return second ? 1 : 0;
+        if (!second) return -1;
+        return second.getTime() - first.getTime();
+    });
     return <>
         <p>Recent persisted provider action outcomes. Historical results do not establish current subsystem health or a current alert.</p>
         {activity.length === 0 && <p>{Array.isArray(page.items)

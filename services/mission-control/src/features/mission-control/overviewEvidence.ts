@@ -1,3 +1,4 @@
+import { evidenceTimestamp } from "../../utils/healthPresentation";
 import { mapServiceStatusToHealthState } from "../../components/health/healthPresentation";
 
 export const record = (value: unknown): Record<string, unknown> =>
@@ -12,10 +13,9 @@ export function safeText(value: unknown): string {
     if (/(?:bearer\s|token|secret|password|api[_ -]?key|authorization|cookie|https?:\/\/|sk-[a-z0-9])/i.test(value)) return "[Sensitive text withheld]";
     return value.slice(0, 240);
 }
-export function timestamp(value: unknown): Date | null {
-    if (typeof value !== "string" || !/^\d{4}-\d\d-\d\dT/.test(value)) return null;
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : null;
+export function timestamp(value: unknown, now = Date.now()): Date | null {
+    const parsed = evidenceTimestamp(value);
+    return parsed !== null && parsed <= now ? new Date(parsed) : null;
 }
 export const status = (value: unknown) => mapServiceStatusToHealthState(value);
 export function detailPath(prefix: string, id: unknown): string | null {

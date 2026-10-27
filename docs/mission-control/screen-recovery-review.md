@@ -498,3 +498,11 @@ page data keeps an existing disclosure open while updating the count and rows.
 Keyboard and phone fixtures cover added conditions, failed refresh, collapse and
 reopen, and direct navigation to a workflow that was initially below the cutoff.
 This is local presentation only and submits no mutations or extra reads.
+
+Recent Activity validates completion times with the shared strict calendar and
+timezone parser and does not present future timestamps as known completions.
+Unverifiable dates display Completion time unknown, remain inspectable, and sort
+after records with known completion times. Recorded action outcomes remain
+unchanged. Valid leap days, fractional seconds and timezone offsets preserve the
+source instant. Browser fixtures cover impossible, timezone-free, future and
+valid offset dates with read-only navigation at phone and desktop widths.
