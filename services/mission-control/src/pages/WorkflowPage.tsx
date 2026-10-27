@@ -346,141 +346,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         }
     }
 
-    return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
-            {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and resume controls are unavailable until this check finishes.</p>}
-            <header className="space-y-4">
-                <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
-                    <h1 className={`mt-3 text-3xl font-bold text-white ${needsPreparation ? "break-words" : "break-all"}`}>{needsPreparation ? "Continue preparing this change" : `Workflow ${workflow.workflow_id}`}</h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        {needsPreparation ? "Review the saved workflow before preparing an exact request for approval." : workflow.effect_kind === "operational_action"
-                            ? "Review the maintenance request, its approval and current result. Use Resume to advance an approved stage."
-                            : "Review this workflow and its exact approval requests. Use Resume to advance an approved stage. Implementation, verification and commit each need their own approval."}
-                    </p>
-                </div>
-                {!needsPreparation && <WorkflowRail workflow={workflow} />}
-            </header>
-
-            {needsPreparation && <section aria-labelledby="continue-preparation-heading" className="rounded-xl border border-blue-400/30 bg-blue-400/5 p-5">
-                <h2 id="continue-preparation-heading" className="text-lg font-semibold text-white">{preparationPath ? "Finish preparing this change" : "Preparation details unavailable"}</h2>
-                <p className="mt-2 text-sm text-slate-300">{preparationPath
-                    ? "This workflow is saved, but its exact request is not ready for approval. Review preparation to continue. You will approve and run the change separately."
-                    : "This workflow does not report a usable planning session. Check its status again or return to change proposals."}</p>
-                {preparationPath && !controlsBusy && <Link to={preparationPath} className="mt-3 inline-flex text-sm font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Review preparation</Link>}
-                {!preparationPath && <button type="button" disabled={controlsBusy} onClick={() => { if (!controlsBusy && !readPending.current) void loadWorkflow("refresh"); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold disabled:opacity-50">{isRefreshing ? "Checking workflow status…" : "Check workflow status"}</button>}
-            </section>}
-
-            <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
-                        <p className="mt-1 text-sm text-slate-400">{needsPreparation ? "Request preparation is pending." : `Implementation approval status: ${formatLabel(workflow.implementation_approval_status)}`}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{needsPreparation ? "Preparation" : formatLabel(workflow.workflow_state)}</span>
-                </div>
-                {needsPreparation ? <details className="mt-4 rounded-lg border border-slate-800 p-3">
-                    <summary className="cursor-pointer text-sm text-slate-300">Workflow details</summary>
-                    <WorkflowFacts workflow={workflow} />
-                </details> : <WorkflowFacts workflow={workflow} />}
-            </section>
-
-
-
-            {isRepository && !needsPreparation && <ImplementationRequestSection request={implementationRequest} onRefresh={refreshWorkflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} />}
-
-            {isOperational && (
-                <>
-                    {!needsPreparation && <OperationalActionRequestSection request={actionRequest} />}
-                    <OperationalLifecyclePanel
-                        lifecycle={operationalLifecycle}
-                        isLoading={isRefreshing && operationalLifecycle === null && lifecycleError === null}
-                        isRefreshing={isRefreshing}
-                        refreshDisabled={controlsBusy}
-                        error={lifecycleError}
-                        onRefresh={refreshWorkflow}
-                    />
-                    <OperationalRecoverySummary
-                        diagnostic={recoveryDiagnostic}
-                        isLoading={isRefreshing && recoveryDiagnostic === null && diagnosticError === null}
-                        error={diagnosticError}
-                        supportEvidenceAvailable={operationalLifecycle !== null}
-                    />
-                    <section aria-labelledby="support-evidence-heading" className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
-                        <h2 id="support-evidence-heading" className="text-lg font-semibold text-white">Support evidence</h2>
-                        <p className="mt-2 text-sm text-slate-300">Download one bounded, sanitized JSON projection. Nothing is uploaded or persisted by Mission Control.</p>
-                        <button type="button" onClick={() => void prepareSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
-                            {isDownloadingSupport ? "Preparing support evidence..." : "Prepare support evidence"}
-                        </button>
-                        {supportBundle && <><dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div><div><dt className="text-slate-400">Partial or truncated</dt><dd className="text-slate-100">{supportBundle.lifecycle.availability !== "complete" || supportBundle.truncation.transitions_truncated || supportBundle.truncation.audit_references_truncated || supportBundle.truncation.text_fields_truncated.length > 0 ? "Yes" : "No"}</dd></div></dl><p className="mt-3 text-sm text-slate-300">The digest supports integrity and correlation only; it is not a signature. The bundle is sanitized and no upload occurs automatically.</p><button type="button" onClick={downloadSupportEvidence} className="mt-3 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Download support evidence</button></>}
-                        {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
-                    </section>
-                </>
-            )}
-
-            {needsPreparation ? <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <summary className="cursor-pointer text-sm text-slate-300">Workflow progress</summary>
-                <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />
-            </details> : <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />}
-
-            {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
-                <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
-                    <h2 id="output-capture-heading" className="font-semibold text-white">Worker output was shortened</h2>
-                    <p className="mt-2 text-sm text-slate-300">The worker retained a bounded portion of its output. Verification and commit still require their own approvals.</p>
-                    {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
-                        <p key={item.stream} className="mt-2 text-sm text-slate-400">{item.stream}: {item.retained_bytes} bytes retained; {item.observed_bytes ?? "unknown"} bytes observed.</p>
-                    ))}
-                </section>
-            )}
-
-            {isRepository && workflow.worker_reconciliation?.outcome === "unknown" && (
-                <section aria-labelledby="worker-outcome-heading" className="rounded-xl border border-amber-500/50 bg-slate-900/70 p-5">
-                    <h2 id="worker-outcome-heading" className="text-lg font-semibold text-white">Worker outcome unknown</h2>
-                    <p className="mt-2 text-sm text-slate-300">The worker may have completed the change. Check its original result before taking further action. Do not submit another execution request.</p>
-                    <p className="mt-2 break-all text-sm text-slate-400">Original request: {workflow.worker_reconciliation.request_id}</p>
-                </section>
-            )}
-
-            {isRepository && workflow.worker_reconciliation?.request_digest && (
-                <details className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
-                    <summary className="cursor-pointer text-sm text-slate-300">Worker request record</summary>
-                    <p className="mt-2 break-all text-sm text-slate-400">Request: {workflow.worker_reconciliation.request_id}</p>
-                    <p className="mt-2 break-all text-sm text-slate-400">Digest: {workflow.worker_reconciliation.request_digest}</p>
-                    <p className="mt-2 text-sm text-slate-400">This identifies the submitted request. It does not grant approval for another action.</p>
-                </details>
-            )}
-
-            {isRepository && !needsPreparation && (
-                <>
-                    <VerificationReviewSection
-                        workflow={workflow}
-                        plan={verificationPlan}
-                        onRefresh={refreshWorkflow}
-                        isRefreshing={isRefreshing}
-                        canDecideVerification={canDecideVerification}
-                        isSubmittingVerification={isSubmittingVerification}
-                        actionsDisabled={controlsBusy}
-                        verificationApprovalResult={verificationApprovalResult}
-                        verificationApprovalError={verificationApprovalError}
-                        onVerificationDecision={submitVerificationDecision}
-                    />
-
-                    <CommitSection
-                        workflow={workflow}
-                        request={commitRequest}
-                        onRefresh={refreshWorkflow}
-                        isRefreshing={isRefreshing}
-                        canDecideCommit={canDecideCommit}
-                        isSubmittingCommit={isSubmittingCommit}
-                        actionsDisabled={controlsBusy}
-                        commitApprovalResult={commitApprovalResult}
-                        commitApprovalError={commitApprovalError}
-                        onCommitDecision={submitCommitDecision}
-                    />
-                </>
-            )}
-
-            {!needsPreparation && <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+    const laterImplementation = ["awaiting_verification_approval", "verifying", "awaiting_commit_approval", "committing", "completed"].includes(workflow.workflow_state);
+    const showVerification = ["awaiting_verification_approval", "verifying", "blocked"].includes(workflow.workflow_state);
+    const showCommit = ["awaiting_commit_approval", "committing", "completed", "blocked"].includes(workflow.workflow_state);
+    const implementationApproval = !needsPreparation && <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">
                     {workflow.effect_kind === "operational_action" ? "Operational action approval" : "Implementation approval"}
                 </h2>
@@ -515,9 +384,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <p role="status" className="mt-3 text-sm text-red-100">Approval rejected.</p>
                 )}
                 {approvalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(approvalError)}</p>}
-            </section>}
-
-            {canResume && (
+            </section>;
+    const resumeControls = canResume && (
                 <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                     <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{canReconcileWorker ? "Check original worker result" : isOperational ? "Run approved maintenance" : "Resume approved stage"}</h2>
                     <p className="mt-2 text-sm text-slate-400">{canReconcileWorker ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals." : isOperational ? "Submit the approved maintenance request. Atlas checks its execution permissions before acting." : "Use this to advance execution after an approval decision."}</p>
@@ -534,10 +402,172 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting the approved action..." : "Resuming workflow..."}</p>}
                     {resumeError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(resumeError)}</p>}
                 </section>
+            );
+
+    const verificationReview = (
+                    <VerificationReviewSection
+                        workflow={workflow}
+                        plan={verificationPlan}
+                        onRefresh={refreshWorkflow}
+                        isRefreshing={isRefreshing}
+                        canDecideVerification={canDecideVerification}
+                        isSubmittingVerification={isSubmittingVerification}
+                        actionsDisabled={controlsBusy}
+                        verificationApprovalResult={verificationApprovalResult}
+                        verificationApprovalError={verificationApprovalError}
+                        onVerificationDecision={submitVerificationDecision}
+                    />
+    );
+    const commitReview = (
+                    <CommitSection
+                        workflow={workflow}
+                        request={commitRequest}
+                        onRefresh={refreshWorkflow}
+                        isRefreshing={isRefreshing}
+                        canDecideCommit={canDecideCommit}
+                        isSubmittingCommit={isSubmittingCommit}
+                        actionsDisabled={controlsBusy}
+                        commitApprovalResult={commitApprovalResult}
+                        commitApprovalError={commitApprovalError}
+                        onCommitDecision={submitCommitDecision}
+                    />
+    );
+    const implementationReview = <>
+                <ImplementationRequestSection request={implementationRequest} onRefresh={refreshWorkflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} />
+                {implementationApproval}
+                {canResumeImplementation && resumeControls}
+    </>;
+
+    return (
+        <main className="mx-auto max-w-6xl space-y-8 p-8">
+            {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and resume controls are unavailable until this check finishes.</p>}
+            <header className="space-y-4">
+                <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
+                    <h1 className="mt-3 break-words text-3xl font-bold text-white">{needsPreparation ? "Continue preparing this change" : isOperational ? "Review maintenance" : "Review repository change"}</h1>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                        {needsPreparation ? "Review the saved workflow before preparing an exact request for approval." : workflow.effect_kind === "operational_action"
+                            ? "Review the maintenance request and its current result."
+                            : "Review the current request and choose its next step."}
+                    </p>
+                </div>
+            </header>
+
+            {needsPreparation && <section aria-labelledby="continue-preparation-heading" className="rounded-xl border border-blue-400/30 bg-blue-400/5 p-5">
+                <h2 id="continue-preparation-heading" className="text-lg font-semibold text-white">{preparationPath ? "Finish preparing this change" : "Preparation details unavailable"}</h2>
+                <p className="mt-2 text-sm text-slate-300">{preparationPath
+                    ? "This workflow is saved, but its exact request is not ready for approval. Review preparation to continue. You will approve and run the change separately."
+                    : "This workflow does not report a usable planning session. Check its status again or return to change proposals."}</p>
+                {preparationPath && !controlsBusy && <Link to={preparationPath} className="mt-3 inline-flex text-sm font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Review preparation</Link>}
+                {!preparationPath && <button type="button" disabled={controlsBusy} onClick={() => { if (!controlsBusy && !readPending.current) void loadWorkflow("refresh"); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold disabled:opacity-50">{isRefreshing ? "Checking workflow status…" : "Check workflow status"}</button>}
+            </section>}
+
+            <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
+                        <p className="mt-1 text-sm text-slate-400">{needsPreparation ? "Request preparation is pending." : `Implementation approval status: ${formatLabel(workflow.implementation_approval_status)}`}</p>
+                    </div>
+                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{needsPreparation ? "Preparation" : formatLabel(workflow.workflow_state)}</span>
+                </div>
+                <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                    <summary className="cursor-pointer text-sm text-slate-300">Workflow details</summary>
+                    <WorkflowFacts workflow={workflow} />
+                </details>
+            </section>
+
+
+
+            {isRepository && !needsPreparation && (laterImplementation ? <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <summary className="cursor-pointer text-sm text-slate-300">Implementation review</summary>
+                {implementationReview}
+            </details> : implementationReview)}
+
+            {isOperational && (
+                <>
+                    {!needsPreparation && <OperationalActionRequestSection request={actionRequest} />}
+                    {implementationApproval}
+                    {canResumeImplementation && resumeControls}
+                    <OperationalLifecyclePanel
+                        lifecycle={operationalLifecycle}
+                        isLoading={isRefreshing && operationalLifecycle === null && lifecycleError === null}
+                        isRefreshing={isRefreshing}
+                        refreshDisabled={controlsBusy}
+                        error={lifecycleError}
+                        onRefresh={refreshWorkflow}
+                    />
+                    <OperationalRecoverySummary
+                        diagnostic={recoveryDiagnostic}
+                        isLoading={isRefreshing && recoveryDiagnostic === null && diagnosticError === null}
+                        error={diagnosticError}
+                        supportEvidenceAvailable={operationalLifecycle !== null}
+                    />
+                    <section aria-labelledby="support-evidence-heading" className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+                        <h2 id="support-evidence-heading" className="text-lg font-semibold text-white">Support evidence</h2>
+                        <p className="mt-2 text-sm text-slate-300">Download one bounded, sanitized JSON projection. Nothing is uploaded or persisted by Mission Control.</p>
+                        <button type="button" onClick={() => void prepareSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
+                            {isDownloadingSupport ? "Preparing support evidence..." : "Prepare support evidence"}
+                        </button>
+                        {supportBundle && <><dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div><div><dt className="text-slate-400">Partial or truncated</dt><dd className="text-slate-100">{supportBundle.lifecycle.availability !== "complete" || supportBundle.truncation.transitions_truncated || supportBundle.truncation.audit_references_truncated || supportBundle.truncation.text_fields_truncated.length > 0 ? "Yes" : "No"}</dd></div></dl><p className="mt-3 text-sm text-slate-300">The digest supports integrity and correlation only; it is not a signature. The bundle is sanitized and no upload occurs automatically.</p><button type="button" onClick={downloadSupportEvidence} className="mt-3 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Download support evidence</button></>}
+                        {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
+                    </section>
+                </>
             )}
 
+            {!needsPreparation && <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} compact />}
+
+            {needsPreparation && <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <summary className="cursor-pointer text-sm text-slate-300">Workflow progress</summary>
+                <ExecutionTimeline workflow={workflow} isRefreshing={isRefreshing} refreshDisabled={controlsBusy} onRefresh={refreshWorkflow} />
+            </details>}
+
+            {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
+                <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
+                    <h2 id="output-capture-heading" className="font-semibold text-white">Worker output was shortened</h2>
+                    <p className="mt-2 text-sm text-slate-300">The worker retained a bounded portion of its output. Verification and commit still require their own approvals.</p>
+                    {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
+                        <p key={item.stream} className="mt-2 text-sm text-slate-400">{item.stream}: {item.retained_bytes} bytes retained; {item.observed_bytes ?? "unknown"} bytes observed.</p>
+                    ))}
+                </section>
+            )}
+
+            {isRepository && workflow.worker_reconciliation?.outcome === "unknown" && (
+                <section aria-labelledby="worker-outcome-heading" className="rounded-xl border border-amber-500/50 bg-slate-900/70 p-5">
+                    <h2 id="worker-outcome-heading" className="text-lg font-semibold text-white">Worker outcome unknown</h2>
+                    <p className="mt-2 text-sm text-slate-300">The worker may have completed the change. Check its original result before taking further action. Do not submit another execution request.</p>
+                    <p className="mt-2 break-all text-sm text-slate-400">Original request: {workflow.worker_reconciliation.request_id}</p>
+                </section>
+            )}
+
+            {isRepository && workflow.worker_reconciliation?.request_digest && (
+                <details className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+                    <summary className="cursor-pointer text-sm text-slate-300">Worker request record</summary>
+                    <p className="mt-2 break-all text-sm text-slate-400">Request: {workflow.worker_reconciliation.request_id}</p>
+                    <p className="mt-2 break-all text-sm text-slate-400">Digest: {workflow.worker_reconciliation.request_digest}</p>
+                    <p className="mt-2 text-sm text-slate-400">This identifies the submitted request. It does not grant approval for another action.</p>
+                </details>
+            )}
+
+            {isRepository && !needsPreparation && (
+                <>
+                    {showVerification ? verificationReview : <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <summary className="cursor-pointer text-sm text-slate-300">Verification details</summary>
+                        {verificationReview}
+                    </details>}
+
+                    {showCommit ? commitReview : <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <summary className="cursor-pointer text-sm text-slate-300">Commit details</summary>
+                        {commitReview}
+                    </details>}
+                </>
+            )}
+
+
+
+            {!canResumeImplementation && resumeControls}
+
             <Link to="/execution-candidates" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                Back to execution candidates
+                Back to change proposals
             </Link>
             <Link
                 to={`/workflows/${workflow.workflow_id}/audit`}
@@ -591,14 +621,21 @@ function ImplementationRequestSection({ request, onRefresh, isRefreshing, refres
             <h2 id="implementation-request-heading" className="text-lg font-semibold text-white">Implementation request</h2>
             <p className="mt-2 text-sm text-slate-400">Review the exact request before approving it. Approval and running the change are separate steps.</p>
             {request ? (
+                <>
                 <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Tool" value={request.tool} />
                     <Detail label="Working directory" value={request.working_directory} />
                     <Detail label="Affected files" value={request.affected_files.length > 0 ? request.affected_files.join(", ") : "None reported"} />
                     <Detail label="Repository" value={request.repository} />
-                    <Detail label="Translator version" value={request.translator_version ?? "Not exposed"} />
-                    <Detail label="Request ID" value={request.immutable_request_id} />
                 </dl>
+                <details className="mt-4 rounded-lg border border-slate-800 p-3">
+                    <summary className="cursor-pointer text-sm text-slate-300">Request details</summary>
+                    <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2">
+                        <Detail label="Translator version" value={request.translator_version ?? "Not exposed"} />
+                        <Detail label="Request ID" value={request.immutable_request_id} />
+                    </dl>
+                </details>
+                </>
             ) : (
                 <div role="alert" className="mt-4 text-sm text-amber-100">
                     <p>The exact request is unavailable. Check it again before approving or running this change.</p>
