@@ -360,6 +360,34 @@ describe("useMissionControl", () => {
         expect(result.current.providers[0].health.status).toBe("offline");
     });
 
+    it.each([
+        { name: "invalid capabilities", value: [{ ...provider("proxmox", "Proxmox", "critical", "operations"), capabilities: null }] },
+        { name: "invalid name", value: [{ ...provider("proxmox", "Proxmox", "critical", "operations"), name: { private: "PRIVATE-CATALOG-CANARY" } }] },
+        { name: "duplicate identities", value: [provider("proxmox", "Proxmox", "critical", "operations"), provider("proxmox", "Duplicate", "critical", "operations")] },
+    ])("rejects $name before replacing the coherent provider snapshot", async ({ value }) => {
+        const valid = [provider("proxmox", "Proxmox", "critical", "operations")];
+        let body: unknown = valid;
+        vi.spyOn(console, "error").mockImplementation(() => undefined);
+        vi.spyOn(atlas, "get").mockImplementation(async url => ({ data: ({
+            "/ace/summary": summary, "/health": health, "/providers": body,
+            "/policies": policies, "/policies/status": policyHealth,
+            "/intelligence/telemetry/history": telemetryHistory,
+            "/intelligence/telemetry/history/retention": telemetryRetention,
+        } as Record<string, unknown>)[url!] }));
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+        const lastUpdated = result.current.lastUpdated;
+        body = value;
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.error).not.toBeNull();
+        expect(result.current.providers).toEqual(valid);
+        expect(result.current.lastUpdated).toEqual(lastUpdated);
+        body = [];
+        await act(async () => { await result.current.refresh(); });
+        expect(result.current.error).toBeNull();
+        expect(result.current.providers).toEqual([]);
+    });
+
     it("normalizes malformed health API data before publishing dashboard state", async () => {
         vi.spyOn(atlas, "get").mockImplementation(async (url) => {
             const data: Record<string, unknown> = {

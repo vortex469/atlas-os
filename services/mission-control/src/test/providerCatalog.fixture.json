@@ -1,0 +1,44 @@
+[
+  {
+    "id": "proxmox",
+    "name": "Proxmox",
+    "workspace": "infrastructure",
+    "priority": "critical",
+    "version": "1",
+    "description": "Provider evidence",
+    "icon": "server",
+    "capabilities": [],
+    "health": {
+      "status": "healthy",
+      "latency_ms": null,
+      "http_status": null,
+      "message": null,
+      "details": {}
+    }
+  },
+  {
+    "id": "docker",
+    "name": "Docker",
+    "workspace": "future_workspace",
+    "priority": "future_priority",
+    "version": "future_version",
+    "description": "More provider evidence",
+    "icon": "future_icon",
+    "capabilities": [
+      "resources",
+      "future_capability"
+    ],
+    "health": {
+      "status": "future_status",
+      "latency_ms": 3.5,
+      "http_status": 200,
+      "message": "Reported provider condition",
+      "details": {
+        "url": "https://example.invalid/provider",
+        "custom": {
+          "nested": []
+        }
+      }
+    }
+  }
+]
