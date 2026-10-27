@@ -1,5 +1,6 @@
 import { atlas } from "./atlas";
 import { parseDiscoveryMetadata } from "./discoveryMetadataResponse";
+import { parseDiscoveryCatalogPage } from "./discoveryCatalogResponse";
 import { parseDiscoveryRelationships } from "./discoveryRelationshipsResponse";
 import type {
     DiscoveryCatalogEntry,
@@ -45,21 +46,21 @@ export async function getDiscoveryProposal(
 export async function listDiscoveryItems(
     query: DiscoveryListQuery = {},
 ): Promise<DiscoveryCatalogPage> {
-    const response = await atlas.get<DiscoveryCatalogPage>("/discovery/items", {
+    const response = await atlas.get<unknown>("/discovery/items", {
         params: discoveryParams(query),
     });
 
-    return response.data;
+    return parseDiscoveryCatalogPage(response.data, false);
 }
 
 export async function searchDiscoveryItems(
     query: DiscoverySearchQuery,
 ): Promise<DiscoverySearchPage> {
-    const response = await atlas.get<DiscoverySearchPage>("/discovery/search", {
+    const response = await atlas.get<unknown>("/discovery/search", {
         params: discoveryParams(query),
     });
 
-    return response.data;
+    return parseDiscoveryCatalogPage(response.data, true);
 }
 
 export async function getDiscoveryItem(

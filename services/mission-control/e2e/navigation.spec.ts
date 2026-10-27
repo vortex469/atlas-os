@@ -34,7 +34,7 @@ const routes = [
         label: "Discovery",
         path: "/discovery",
         assertion: async (page) => {
-            await expect(page.getByRole("heading", { name: "Provider-neutral catalog" })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Browse the catalog" })).toBeVisible();
             await expect(page.getByText("Fixture Application")).toBeVisible();
         },
     },
