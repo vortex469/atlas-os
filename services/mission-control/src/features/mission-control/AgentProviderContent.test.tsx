@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Overview } from "./MissionControl";
@@ -16,6 +16,15 @@ describe("integrated agent/provider evidence", () => {
         const agent = within(screen.getByRole("region", { name: "Agent state" }));
         expect(agent.getByText("Unknown")).toBeInTheDocument();
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
+        expect(agent.getByRole("link", { name: "Open Forge →" })).toBeVisible();
+        expect(agent.getByText("Development Agent")).not.toBeVisible();
+        expect(agent.getByText(/Identity does not establish availability or execution readiness/)).not.toBeVisible();
+        fireEvent.click(agent.getByText("Agent details"));
+        expect(agent.getByText("Development Agent")).toBeVisible();
+        expect(agent.getByText(/Identity does not establish availability or execution readiness/)).toBeVisible();
+        expect(agent.getByText("Unknown")).toBeVisible();
+        fireEvent.click(agent.getByText("Agent details"));
+        expect(agent.getByText("Development Agent")).not.toBeVisible();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
         expect(registry().getByText("Source status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
