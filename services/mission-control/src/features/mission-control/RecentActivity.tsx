@@ -30,7 +30,7 @@ export function RecentActivity({ evidence }: { evidence?: Evidence }) {
         return second.getTime() - first.getTime();
     });
     return <>
-        <p>Recent persisted provider action outcomes. Historical results do not establish current subsystem health or a current alert.</p>
+        <p>Recorded provider actions. Past results do not show current health.</p>
         {activity.length === 0 && <p>{Array.isArray(page.items)
             ? (returned.length === 0 && (page.total === undefined || page.total === 0) && (page.has_more === undefined || page.has_more === false) ? "No recent actions recorded." : "Activity evidence malformed or incomplete.")
             : "Activity evidence unknown."}</p>}
@@ -38,7 +38,7 @@ export function RecentActivity({ evidence }: { evidence?: Evidence }) {
         <ol className="space-y-3">{activity.slice(0, 5).map(event => {
             const date = timestamp(event.completed_at);
             return <li key={String(event.id)}>
-                <p>{event.status === "failed" ? "Error" : event.status === "succeeded" ? "Informational" : "Unknown outcome"} · {safeText(event.action_label)}</p>
+                <p>{event.status === "failed" ? "Failed" : event.status === "succeeded" ? "Succeeded" : "Unknown outcome"} · {safeText(event.action_label)}</p>
                 <p>{safeText(event.provider_name) || "Provider unknown."}</p>
                 <p>{safeText(event.message)}</p>
                 <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>

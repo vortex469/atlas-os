@@ -16,7 +16,7 @@ describe('recorded activity completion times', () => {
         expect(document.querySelector('time')).toBeNull();
         expect(screen.getByRole('link', {name: 'Inspect action →'})).toHaveAttribute('href', '/operations/actions/inspect%2Fme');
         expect(screen.getByText('Some activity records are malformed or incomplete.')).toBeVisible();
-        expect(screen.getByText('Error · inspect/me')).toBeVisible();
+        expect(screen.getByText('Failed · inspect/me')).toBeVisible();
         expect(timestamp(completed_at)).toBeNull();
     });
     it.each(['2024-02-29T12:00:00.123456Z', '2026-10-27T14:00:00+02:00', '2026-10-27T07:00:00-05:00'])('retains valid source instant %s', completed_at => {
@@ -27,9 +27,9 @@ describe('recorded activity completion times', () => {
     it.each(['1969-12-31T12:00:00Z', '1970-01-01T00:00:00Z', '2026-10-27T11:59:00Z'])('sorts known time %s before unverified future records', known => {
         render(<MemoryRouter><RecentActivity evidence={{data: {items: [event('future', '2099-01-01T00:00:00Z'), event('older', '1960-01-01T12:00:00Z'), event('newer', known)]}}} /></MemoryRouter>);
         const items = screen.getAllByRole('listitem');
-        expect(within(items[0]).getByText('Error · newer')).toBeVisible();
-        expect(within(items[1]).getByText('Error · older')).toBeVisible();
-        expect(within(items[2]).getByText('Error · future')).toBeVisible();
+        expect(within(items[0]).getByText('Failed · newer')).toBeVisible();
+        expect(within(items[1]).getByText('Failed · older')).toBeVisible();
+        expect(within(items[2]).getByText('Failed · future')).toBeVisible();
         expect(within(items[2]).getByText('Completion time unknown.')).toBeVisible();
     });
 });

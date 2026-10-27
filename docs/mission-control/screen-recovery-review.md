@@ -512,3 +512,8 @@ than Release available. This endpoint supplies a version string, not an update
 check. Missing or failed version reads show Version unknown and Version not
 reported with neutral styling, independently of subsystem health. The version
 value, existing read request and navigation behavior are unchanged.
+
+Recent Activity uses Failed and Succeeded for recorded action results and keeps
+Unknown outcome for unsupported statuses. The introduction explains plainly that
+past results do not show current health. Outcome classification, timestamp
+validation, deduplication, retained history and read-only links are unchanged.
