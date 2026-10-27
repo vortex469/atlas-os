@@ -212,3 +212,37 @@ for (const width of [320, 390, 1280]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+for (const width of [320, 390, 1280]) {
+    for (const malformed of ["unknown status", "unsupported grounded claim"]) {
+        test(`unreadable image evidence (${malformed}) keeps the Discovery item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+            await page.setViewportSize({ width, height: 900 });
+            const entry = discoveryItemsPage.entries[0];
+            let reads = 0;
+            let recovered = false;
+            const errors: string[] = [];
+            page.on("pageerror", error => errors.push(error.message));
+            await page.route("**/api/v1/discovery/items/fixture-app", route => route.fulfill({ json: entry }));
+            await page.route("**/api/v1/discovery/items/fixture-app/image-grounding", route => {
+                reads += 1;
+                expect(route.request().method()).toBe("GET");
+                return route.fulfill({ json: { schema_version: "discovery-image-grounding-projection-v1", catalog_item_id: "fixture-app",
+                    status: recovered ? "no_deployment_binding" : malformed === "unknown status" ? "future" : "grounded",
+                    release_version: null, deployment_binding: null, observed_image: null, accepted_evidence: [] } });
+            });
+            await page.goto("/discovery/items/fixture-app");
+            await expect(page.getByText("The image evidence could not be read. Reload the page to try again.", { exact: true })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+            await expect(page.getByText("Grounded", { exact: true })).toHaveCount(0);
+            const initialReads = reads;
+            expect(initialReads).toBeGreaterThan(0);
+            recovered = true;
+            await page.reload();
+            await expect(page.locator("p").filter({ hasText: /^No deployment binding$/ })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Fixture Application", exact: true })).toBeVisible();
+            expect(reads).toBe(initialReads * 2);
+            expect(errors).toEqual([]);
+            expect(rejectedMutationRequests).toEqual([]);
+        });
+    }
+}

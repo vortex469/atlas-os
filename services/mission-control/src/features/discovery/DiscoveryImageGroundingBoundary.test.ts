@@ -16,7 +16,7 @@ describe("image-grounding presentation boundary", () => {
     it("keeps the focused client operation GET-only", () => {
         const functionSource = apiSource.slice(apiSource.indexOf("export async function getDiscoveryImageGrounding"));
         const focusedFunction = functionSource.slice(0, functionSource.indexOf("\n}\n") + 3);
-        expect(focusedFunction).toContain("atlas.get<DiscoveryImageGroundingProjection>");
+        expect(focusedFunction).toMatch(/atlas\.get(?:<[^>]+>)?\(/);
         expect(focusedFunction).not.toMatch(/atlas\.(post|put|patch|delete)/);
     });
 
