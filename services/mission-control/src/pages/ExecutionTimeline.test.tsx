@@ -171,7 +171,7 @@ describe("ExecutionTimeline", () => {
             },
         }));
 
-        expect(screen.getByText("Execution failed.")).toBeInTheDocument();
+        expect(screen.getAllByText("Execution failed.")).toHaveLength(2);
         expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
     });
 
@@ -198,4 +198,38 @@ describe("ExecutionTimeline", () => {
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
+    it.each([
+        { status: "failed", message: "Execution failed." },
+        { status: "timed_out", message: "Execution timed out." },
+        { status: "launch_failed", message: "Execution could not start." },
+        { status: "unknown", message: "Worker outcome unknown. Check the original result; do not resubmit." },
+        { status: "future_status", message: "Execution status is not recognized. Refresh to check its status." },
+    ])("keeps the $status outcome consistent without a green completion message", ({ status, message }) => {
+        const current = workflow();
+        renderTimeline(workflow({ workflow_state: "blocked", implementation_approval_status: "approved", execution: { ...current.execution, execution_status: status, result: status } }));
+        expect(screen.getAllByText(message)).toHaveLength(2);
+        expect(screen.queryByText("Execution complete.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Execution running...")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Execution" }).parentElement!.querySelector('.text-emerald-200')).toBeNull();
+    });
+
+    it("shows only the reported terminal outcome when workflow state still says executing", () => {
+        const current = workflow();
+        renderTimeline(workflow({ workflow_state: "executing", implementation_approval_status: "approved", execution: { ...current.execution, execution_status: "succeeded", result: "succeeded" } }));
+        expect(screen.getAllByText("Execution complete.")).toHaveLength(2);
+        expect(screen.queryByText("Execution running...")).not.toBeInTheDocument();
+    });
+
+    it.each([
+        { state: "awaiting_implementation_approval", approval: "approved", message: "Implementation approved. Waiting for a separate resume." },
+        { state: "blocked", approval: "rejected", message: "Implementation approval was rejected." },
+        { state: "blocked", approval: "approved", message: "Workflow is blocked. No execution result is reported." },
+        { state: "completed", approval: "pending", message: "No execution result is reported." },
+    ])("does not mistake missing execution evidence for approval waiting in $state/$approval", ({ state, approval, message }) => {
+        renderTimeline(workflow({ workflow_state: state, implementation_approval_status: approval }));
+        expect(screen.getAllByText(message)).toHaveLength(2);
+        expect(screen.queryByText("Execution complete.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Execution unavailable.")).not.toBeInTheDocument();
+    });
+
 });
