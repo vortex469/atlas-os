@@ -159,7 +159,7 @@ describe("installation approval evidence", () => {
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Approval evidence record is unavailable.")).toBeInTheDocument();
-        expect(screen.getByText("Immutable approval evidence")).toBeInTheDocument();
+        expect(screen.getByText("Recorded approval evidence")).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Retry evidence review" }));
         expect(await screen.findByRole("heading", { name: "Historical approval evidence" })).toBeInTheDocument();

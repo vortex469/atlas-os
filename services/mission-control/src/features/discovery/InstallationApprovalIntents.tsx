@@ -151,7 +151,7 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
         </ul>}
         {!loading && !listError && intents.length > 0 && <ul aria-label="Installation approval evidence records" className="mt-4 space-y-3">
             {intents.map((intent) => <li key={intent.approval_intent_id} className="rounded-md border border-slate-700 p-3">
-                <p className="font-semibold text-slate-200">Immutable approval evidence</p>
+                <p className="font-semibold text-slate-200">Recorded approval evidence</p>
                 <p className="mt-1 break-all text-xs text-slate-400">Candidate record ID: {intent.approved_subject.candidate_record_id}</p>
                 <button type="button" disabled={reviewingId !== null || recording} onClick={() => void review(intent.approval_intent_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 disabled:opacity-50">Review approval evidence</button>
                 {reviewingId === intent.approval_intent_id && <p role="status" className="mt-3 text-sm text-slate-400">Loading approval evidence details…</p>}
