@@ -42,26 +42,31 @@ export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, 
                 <p className="mt-1 text-sm text-cyan-200"><strong>Safe next step:</strong> {outcome.guidance}</p>
                 {outcome.retryProhibited && <p className="mt-2 text-sm font-semibold text-amber-200">Mutation retry is prohibited. This view provides no retry or run-again control.</p>}
             </section>
-            <LifecycleGroup title="Identity" values={[
-                ["Workflow ID", lifecycle.workflow_id], ["Candidate ID", lifecycle.candidate_id], ["Planning Session ID", lifecycle.planning_session_id], ["Operation Intent", lifecycle.execution_intent], ["Provider / Resource", lifecycle.target_label],
-            ]} />
-            <LifecycleGroup title="Provenance" values={[
-                ["Source Subsystem", lifecycle.candidate_source_subsystem], ["Operator Intent Record", lifecycle.operator_intent_record_id], ["Candidate Fingerprint", lifecycle.candidate_fingerprint], ["Plan Fingerprint", lifecycle.plan_fingerprint],
-            ]} />
-            <LifecycleGroup title="Approvals" values={[
-                ["Preparation Approval", lifecycle.preparation_approval ? `${label(lifecycle.preparation_approval.presentation_state)} (${label(lifecycle.preparation_approval.decision_status)})` : null],
-                ["Action Approval", lifecycle.action_approval ? `${label(lifecycle.action_approval.presentation_state)} (${label(lifecycle.action_approval.decision_status)})` : null],
-                ["Action Approval Expiry", lifecycle.action_approval ? timestamp(lifecycle.action_approval.expires_at) : null],
-            ]} />
-            <LifecycleGroup title="Execution and exactly-once evidence" values={[
-                ["Action Request ID", lifecycle.action_request_id], ["Disruption Scope", lifecycle.disruption_scope], ["Agent Execution Stage", label(lifecycle.agent_execution_stage)], ["Core Ledger State", label(lifecycle.core_record_state)], ["Dispatch Status", label(lifecycle.dispatch_status)],
-                ["Barrier Crossed", lifecycle.barrier_crossed ? "Yes" : "No"], ["Barrier Crossing Count", String(lifecycle.barrier_crossing_count)], ["Provider Operation Captured", lifecycle.provider_operation_captured ? "Yes" : "No"], ["Provider Operation Capture Count", String(lifecycle.provider_operation_capture_count)],
-            ]} />
-            {lifecycle.terminal && lifecycle.barrier_crossing_count === 1 && lifecycle.provider_operation_capture_count <= 1 && <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">Exactly-once evidence shows one dispatch barrier crossing and no replay in the recorded lifecycle.</p>}
-            <LifecycleGroup title="Verification" values={[
-                ["Verification Status", label(lifecycle.verification_status)], ["Observed Service State", lifecycle.observed_state], ["Observed Health", lifecycle.observed_health], ["Provider Operation Reference", lifecycle.provider_operation_reference], ["Dispatch Started", timestamp(lifecycle.dispatch_started_at)], ["Dispatch Completed", timestamp(lifecycle.dispatch_completed_at)], ["Verification Started", timestamp(lifecycle.verification_started_at)], ["Verification Completed", timestamp(lifecycle.verification_completed_at)], ["Terminal", lifecycle.terminal ? "Yes" : "No"],
-            ]} />
-            <div><h3 className="font-semibold text-white">Durable transitions</h3>{lifecycle.transitions.length === 0 ? <p className="mt-2 text-sm text-slate-400">No Core transitions are available.</p> : <ol className="mt-3 space-y-2">{lifecycle.transitions.map((transition) => <li key={transition.sequence} className="text-sm text-slate-300"><span className="font-mono text-cyan-200">{transition.sequence}</span> · {label(transition.state)} · {timestamp(transition.occurred_at)}</li>)}</ol>}</div>
+            {lifecycle.terminal && lifecycle.barrier_crossing_count === 1 && lifecycle.provider_operation_capture_count <= 1 && <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">Atlas recorded one dispatch and no replay for this request.</p>}
+            <details className="rounded-lg border border-slate-800 p-3">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-200">Technical details</summary>
+                <div className="mt-4 space-y-5">
+                    <LifecycleGroup title="Identity" values={[
+                        ["Workflow ID", lifecycle.workflow_id], ["Candidate ID", lifecycle.candidate_id], ["Planning Session ID", lifecycle.planning_session_id], ["Operation Intent", lifecycle.execution_intent], ["Provider / Resource", lifecycle.target_label],
+                    ]} />
+                    <LifecycleGroup title="Provenance" values={[
+                        ["Source Subsystem", lifecycle.candidate_source_subsystem], ["Operator Intent Record", lifecycle.operator_intent_record_id], ["Candidate Fingerprint", lifecycle.candidate_fingerprint], ["Plan Fingerprint", lifecycle.plan_fingerprint],
+                    ]} />
+                    <LifecycleGroup title="Approvals" values={[
+                        ["Preparation Approval", lifecycle.preparation_approval ? `${label(lifecycle.preparation_approval.presentation_state)} (${label(lifecycle.preparation_approval.decision_status)})` : null],
+                        ["Action Approval", lifecycle.action_approval ? `${label(lifecycle.action_approval.presentation_state)} (${label(lifecycle.action_approval.decision_status)})` : null],
+                        ["Action Approval Expiry", lifecycle.action_approval ? timestamp(lifecycle.action_approval.expires_at) : null],
+                    ]} />
+                    <LifecycleGroup title="Execution and exactly-once evidence" values={[
+                        ["Action Request ID", lifecycle.action_request_id], ["Disruption Scope", lifecycle.disruption_scope], ["Agent Execution Stage", label(lifecycle.agent_execution_stage)], ["Core Ledger State", label(lifecycle.core_record_state)], ["Dispatch Status", label(lifecycle.dispatch_status)],
+                        ["Barrier Crossed", lifecycle.barrier_crossed ? "Yes" : "No"], ["Barrier Crossing Count", String(lifecycle.barrier_crossing_count)], ["Provider Operation Captured", lifecycle.provider_operation_captured ? "Yes" : "No"], ["Provider Operation Capture Count", String(lifecycle.provider_operation_capture_count)],
+                    ]} />
+                    <LifecycleGroup title="Verification" values={[
+                        ["Verification Status", label(lifecycle.verification_status)], ["Observed Service State", lifecycle.observed_state], ["Observed Health", lifecycle.observed_health], ["Provider Operation Reference", lifecycle.provider_operation_reference], ["Dispatch Started", timestamp(lifecycle.dispatch_started_at)], ["Dispatch Completed", timestamp(lifecycle.dispatch_completed_at)], ["Verification Started", timestamp(lifecycle.verification_started_at)], ["Verification Completed", timestamp(lifecycle.verification_completed_at)], ["Terminal", lifecycle.terminal ? "Yes" : "No"],
+                    ]} />
+                    <div><h3 className="font-semibold text-white">Durable transitions</h3>{lifecycle.transitions.length === 0 ? <p className="mt-2 text-sm text-slate-400">No Core transitions are available.</p> : <ol className="mt-3 space-y-2">{lifecycle.transitions.map((transition) => <li key={transition.sequence} className="text-sm text-slate-300"><span className="font-mono text-cyan-200">{transition.sequence}</span> · {label(transition.state)} · {timestamp(transition.occurred_at)}</li>)}</ol>}</div>
+                </div>
+            </details>
         </section>
     );
 }

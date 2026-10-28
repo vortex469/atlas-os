@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { operationalLifecycle } from "../test/operationalLifecycle";
@@ -13,10 +13,16 @@ describe("OperationalLifecyclePanel", () => {
         renderLifecycle();
 
         expect(screen.getByRole("heading", { name: "Verified" })).toBeInTheDocument();
-        expect(screen.getByText("proxmox/qemu/110")).toBeInTheDocument();
-        expect(screen.getByText(/one dispatch barrier crossing and no replay/i)).toBeInTheDocument();
-        expect(screen.getByText("UPID:sanitized")).toBeInTheDocument();
+        expect(screen.getByText("Atlas recorded one dispatch and no replay for this request.")).toBeVisible();
+        const technicalDetails = screen.getByText("Technical details", { exact: true });
+        expect(technicalDetails.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText("proxmox/qemu/110")).not.toBeVisible();
+        expect(screen.getByText("UPID:sanitized")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
+
+        fireEvent.click(technicalDetails);
+        expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
+        expect(screen.getByText("UPID:sanitized")).toBeVisible();
     });
 
     it.each([
