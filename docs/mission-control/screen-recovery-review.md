@@ -1080,3 +1080,11 @@ unavailable state.
 Action records now load independently from retention details and provider
 filter options. A failure in either optional read leaves the action list
 available and identifies only the affected information as unavailable.
+
+## Planning request recovery — 2026-10-28
+
+An uncertain planning-request result now explains that a session may have been
+created and that selecting Start planning again reopens or reuses a matching
+session. Raw server details stay collapsed. A response for another proposal is
+refused, with guidance to refresh the current proposal before trying again.
+Neither state approves or applies an infrastructure change.

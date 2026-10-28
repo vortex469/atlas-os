@@ -14,6 +14,12 @@ import { evidenceTimestamp } from "../utils/healthPresentation";
 import { compatibilityStatusLabel, executionConstraintLabel } from "../utils/operatorLanguage";
 import { PlanningProgress } from "../components/PlanningProgress";
 
+type PlanningError = {
+    title: string;
+    message: string;
+    details: string;
+};
+
 export function ExecutionCandidateDetailPage() {
     const { candidateId = "" } = useParams<{ candidateId: string }>();
     return <CandidateDetail key={candidateId} candidateId={candidateId} />;
@@ -26,7 +32,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
     const [planningResponse, setPlanningResponse] = useState<CandidatePlanningResponse | null>(null);
-    const [planningError, setPlanningError] = useState<string | null>(null);
+    const [planningError, setPlanningError] = useState<PlanningError | null>(null);
     const [isPlanningPending, setIsPlanningPending] = useState(false);
 
     useEffect(() => {
@@ -90,18 +96,24 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 candidate_id: candidate.id,
             });
             if (!response || response.candidate_id !== candidate.id) {
-                setPlanningError("The planning response did not match this proposal. No planning result was opened.");
+                setPlanningError({
+                    title: "Planning result not opened",
+                    message: "Atlas returned a result for a different proposal. Mission Control refused to open it. Refresh this proposal before trying again. No approval or infrastructure change was made.",
+                    details: "The planning response did not match this proposal.",
+                });
                 return;
             }
             setPlanningResponse(response);
         } catch (requestError) {
             console.error("Unable to create candidate planning session:", requestError);
-            setPlanningError(
-                getAtlasAgentErrorMessage(
+            setPlanningError({
+                title: "Planning request result is unknown",
+                message: "The request may have created a planning session, but Mission Control did not receive confirmation. Select Start planning again to reopen or reuse the matching session. No approval or infrastructure change was made.",
+                details: getAtlasAgentErrorMessage(
                     requestError,
                     "Atlas Agent could not create or reuse a planning session.",
                 ),
-            );
+            });
         } finally {
             setIsPlanningPending(false);
         }
@@ -173,7 +185,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     {(!actionState.enabled || isPlanningPending) && <p className="text-sm text-slate-400">{isPlanningPending ? "Planning request is already pending." : actionState.reason}</p>}
                 </div>
                 {planningResponse && <PlanningResult response={planningResponse} onRefreshCandidate={retryCandidateRead} />}
-                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
+                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">{planningError.title}</p><p className="mt-1 text-sm text-red-200/80">{planningError.message}</p><details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{planningError.details}</p></details></div>}
             </section>
 
             <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">

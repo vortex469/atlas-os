@@ -253,7 +253,16 @@ describe("ExecutionCandidateDetailPage", () => {
 
         mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("Agent unavailable")).toBeInTheDocument();
+        const planningAlert = await screen.findByRole("alert");
+        expect(planningAlert).toHaveTextContent("Planning request result is unknown");
+        expect(planningAlert).toHaveTextContent("The request may have created a planning session, but Mission Control did not receive confirmation.");
+        expect(planningAlert).toHaveTextContent("Select Start planning again to reopen or reuse the matching session.");
+        expect(planningAlert).toHaveTextContent("No approval or infrastructure change was made.");
+        const technicalDetails = within(planningAlert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).toBeVisible();
     });
     it("does not show a previous proposal or its planning action while the next loads", async () => {
         let resolveNext!: (value: ExecutionCandidate) => void;
@@ -322,7 +331,14 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage();
         await screen.findByRole("heading", { name: "Update Compose Stack" });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("The planning response did not match this proposal.");
+        const planningAlert = await screen.findByRole("alert");
+        expect(planningAlert).toHaveTextContent("Planning result not opened");
+        expect(planningAlert).toHaveTextContent("Atlas returned a result for a different proposal. Mission Control refused to open it.");
+        expect(planningAlert).toHaveTextContent("Refresh this proposal before trying again.");
+        expect(planningAlert).toHaveTextContent("No approval or infrastructure change was made.");
+        const technicalDetails = within(planningAlert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("The planning response did not match this proposal.")).not.toBeVisible();
         expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
     });
 
