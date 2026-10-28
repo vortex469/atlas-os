@@ -85,6 +85,16 @@ describe("authoritative health presentation", () => {
         expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
     });
 
+    it("omits missing-time placeholders from system summaries when sources do not report check times", () => {
+        render(<SystemHealthSummary evidence={{
+            health: { data: { atlas: "healthy" } },
+            summary: { data: { status: "healthy", summary: "No findings." } },
+            policyHealth: { data: { status: "healthy" } },
+        }} />);
+        expect(screen.getAllByText("Healthy")).toHaveLength(3);
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+
     it("marks retained dashboard evidence stale until refresh recovers", () => {
         const { rerender } = render(<HealthEvidenceContext.Provider value={{ stale: true }}><HealthEvidence status="online" /></HealthEvidenceContext.Provider>);
         expect(screen.getByText(/Last known status/)).toBeInTheDocument();

@@ -26,6 +26,7 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
                     {source.evidence?.unavailable && <p>Evidence unavailable.{source.evidence.stale ? " Last-known observations only." : ""}</p>}
                     <HealthEvidenceContext.Provider value={{ stale: source.evidence?.stale === true }}>
                         <HealthEvidence
+                            compact
                             status={source.evidence?.unavailable && !source.evidence.stale ? undefined : safeText(source.status)}
                             reason={safeText(source.reason)}
                             checkedAt={source.checkedAt}
