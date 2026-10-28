@@ -137,6 +137,9 @@ export function ServiceDetailsDrawer({
                                 {healthCheckAddress ?? "Not reported"}
                             </dd>
                         </dl>
+                        <p className="mt-2 text-sm text-slate-400">
+                            Atlas Core checks this address from its own machine. A service can open in your browser and still be unreachable from Atlas Core.
+                        </p>
                     </section>
 
                     {provider ? (

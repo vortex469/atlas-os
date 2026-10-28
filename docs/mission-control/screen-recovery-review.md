@@ -2282,6 +2282,8 @@ fixtures do not establish live backend connectivity or operator acceptance.
 
 The service detail drawer now shows the host and path Atlas checked in a
 readable field. URL credentials are omitted, and query strings appear only as
-`?…`; other technical details are collapsed. The focused service-health suite
-passes (4 tests), as do Mission Control lint and production build. No endpoint,
-health result, or network request behavior changed.
+`?…`; other technical details are collapsed. The drawer explains that Atlas
+Core performs the check from its own machine, so browser reachability does not
+guarantee Core reachability. The focused service-health suite passes (4 tests),
+as do Mission Control lint and production build. No endpoint, health result, or
+network request behavior changed.

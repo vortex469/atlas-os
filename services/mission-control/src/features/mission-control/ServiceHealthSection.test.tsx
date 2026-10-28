@@ -104,6 +104,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
         expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Core checks this address from its own machine. A service can open in your browser and still be unreachable from Atlas Core.")).toBeInTheDocument();
         expect(screen.getByText(/"version"/)).not.toBeVisible();
         await user.click(screen.getByText("Technical details"));
         expect(screen.getByText(/"version"/)).toBeVisible();
