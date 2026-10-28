@@ -59,15 +59,28 @@ function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unk
 }
 
 function ServiceCheckLocation({ service }: { service: unknown }) {
-    const url = record(record(service).details).url;
+    const evidence = record(service);
+    const url = record(evidence.details).url;
     const address = formatHealthCheckAddress(url);
+    const httpStatus = formatHttpStatus(evidence.http_status);
+    const response = httpStatus ?? (status(evidence.status) === "unavailable" ? "No response received" : "Not reported");
+    const responseTime = typeof evidence.latency_ms === "number"
+        && Number.isFinite(evidence.latency_ms) && evidence.latency_ms >= 0
+        ? `${Math.round(evidence.latency_ms)} ms` : null;
     return <details className="mt-2 text-xs text-mc-text-muted">
         <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Where Atlas checked</summary>
         <div className="mt-2 space-y-1">
             <p>Atlas Core checks from its own machine. A service can open in your browser and still be unreachable from Atlas Core.</p>
             <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
+            <p>HTTP response: {response}</p>
+            {responseTime !== null && <p>Response time: {responseTime}</p>}
         </div>
     </details>;
+}
+
+function formatHttpStatus(value: unknown): string | null {
+    return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 599
+        ? String(value) : null;
 }
 
 function formatHealthCheckAddress(value: unknown): string | null {

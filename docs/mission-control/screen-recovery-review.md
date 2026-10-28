@@ -2284,7 +2284,9 @@ The active Overview service-check list now has a closed â€œWhere Atlas checkedâ€
 disclosure for each reported service. It shows the configured address without
 URL credentials or query values and explains that Atlas Core checks from its
 own machine, so browser reachability alone does not establish Core reachability.
-The Overview component suite passes (64 tests), all Overview browser checks
-pass (21 tests, including 320px and 1280px layouts), and lint and production
-build pass. The UI displays reported configuration only; it does not change
-probe behavior or establish live network reachability.
+The disclosure also shows a reported HTTP response or explains that no response
+was received, plus response time when Core reports one. The Overview component
+suite passes (65 tests), all Overview browser checks pass (21 tests, including
+320px and 1280px layouts), and lint and production build pass. The UI displays
+reported configuration only; it does not change probe behavior or establish
+live network reachability.

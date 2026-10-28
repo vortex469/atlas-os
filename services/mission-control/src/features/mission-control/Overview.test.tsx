@@ -160,7 +160,24 @@ describe("MC overview evidence", () => {
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
         expect(disclosure).toHaveTextContent("Atlas Core checks from its own machine.");
+        expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).not.toHaveTextContent(/password|private/);
+    });
+
+    it("shows the reported HTTP response and response time in service check details", () => {
+        show({ health: { data: { services: { iFileshare: {
+            status: "degraded",
+            http_status: 503,
+            latency_ms: 42.4,
+            details: { url: "http://10.10.60.30:8080/" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        const location = checks.getByText("Where Atlas checked");
+        const disclosure = location.closest("details");
+        fireEvent.click(location);
+
+        expect(disclosure).toHaveTextContent("HTTP response: 503");
+        expect(disclosure).toHaveTextContent("Response time: 42 ms");
     });
 
     it('keeps the workflow action and approval stage on separate lines without repeating the result', () => {

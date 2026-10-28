@@ -229,6 +229,7 @@ for (const width of [320, 1280]) {
         await location.click();
         await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         await expect(checks.getByText(/Atlas Core checks from its own machine/)).toBeVisible();
+        await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
