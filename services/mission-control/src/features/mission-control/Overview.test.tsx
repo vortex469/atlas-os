@@ -30,7 +30,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['Atlas overall state','Core health','Work activity','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['Atlas overall state','Core health','Work activity','Agent state','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
@@ -50,9 +50,9 @@ describe("MC overview evidence", () => {
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
         show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: value } } } });
-        const card = screen.getByRole('region', { name: 'Local AI / Runtime' });
+        const card = screen.getByRole('region', { name: 'AI provider' });
         expect(within(card).getAllByText(value[0].toUpperCase() + value.slice(1)).length).toBeGreaterThan(0);
-        expect(within(card).getByText(/Locality and dedicated/)).toBeInTheDocument();
+        expect(within(card).getByText(/Atlas does not report where this provider runs/)).toBeInTheDocument();
     });
     it("marks failed refresh evidence stale and never displays cached health as current", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
@@ -81,7 +81,7 @@ describe('operational activity and runtime evidence', () => {
         expect(screen.getByText('Error · Inspect resource')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Inspect action →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
         expect(screen.getByText('Completion time unknown.')).toBeInTheDocument();
-        expect(screen.getByText('Reported running models: model-a')).toBeInTheDocument();
+        expect(screen.getByText('Running models: model-a')).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
     });
     it('deduplicates an identical finding and provider condition', () => {
@@ -114,9 +114,9 @@ describe('overview fail-closed regressions', () => {
     });
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
-        const runtime = within(screen.getByRole('region', { name: 'Local AI / Runtime' }));
-        expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
-        expect(runtime.getByText('Configured provider health')).toBeInTheDocument();
+        const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
+        expect(runtime.getByText('Atlas does not report where this provider runs or which model is selected or ready to use.')).toBeVisible();
+        expect(runtime.getByText('Configured provider: Unknown')).toBeInTheDocument();
     });
 });
 
@@ -143,7 +143,7 @@ it('includes configured AI failures in attention without asserting local availab
     expect(attention.getByText('Unavailable')).toBeInTheDocument();
     expect(attention.getByRole('link', { name: 'Runtime' })).toHaveAttribute('href', '/providers/runtime');
     expect(attention.getByText('Endpoint unavailable')).toBeInTheDocument();
-    expect(screen.getByText(/Local AI availability is unknown/)).toBeInTheDocument();
+    expect(screen.getByText(/Atlas does not report where this provider runs/)).toBeInTheDocument();
 });
 
 it('deduplicates configured AI and provider evidence and preserves freshness', () => {

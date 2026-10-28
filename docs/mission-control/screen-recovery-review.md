@@ -302,6 +302,15 @@ explicitly. Last-known status and the existing freshness cutoff remain
 unchanged. Focused health and Agent/provider tests, lint, build and responsive
 system-health browser checks cover current, old, invalid and missing timestamps.
 
+## AI provider overview wording — 2026-10-28
+
+The home card is now labeled “AI provider” and describes configured provider
+health and model inventory without implying that the provider runs locally or
+that a model is selected or ready. Version, response time and inventory remain
+under collapsed “Technical details.” Focused overview tests, lint, build and
+responsive browser checks cover the wording and keyboard access; provider
+evidence and action boundaries are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

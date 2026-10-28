@@ -128,7 +128,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Agent state" evidence={evidence.agent}>
                 <AgentOverviewContent evidence={evidence.agent} />
             </Card>
-            <Card title="Local AI / Runtime" evidence={evidence.ai}>
+            <Card title="AI provider" evidence={evidence.ai}>
                 <LocalAiContent evidence={evidence.ai} />
             </Card>
             <Card title="Providers" evidence={evidence.providers}>
