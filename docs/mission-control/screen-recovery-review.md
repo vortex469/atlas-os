@@ -396,6 +396,14 @@ controls. The focused page suite passes (8 tests), lint/build pass, and the
 built responsive browser checks pass at 390px and 1280px (2 tests). Query
 semantics and audit operations are unchanged.
 
+## Action history details — 2026-10-28
+
+The detail screen leads with the outcome, action message, provider name and
+start/completion times. Status labels are human-readable. IDs, duration and
+parameter names are grouped under a collapsed “Technical details” disclosure.
+The focused detail suite passes (6 tests); lint and build pass. Audit reads and
+copy-link behavior are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

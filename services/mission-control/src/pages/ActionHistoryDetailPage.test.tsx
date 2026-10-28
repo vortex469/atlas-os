@@ -100,7 +100,8 @@ describe("ActionHistoryDetailPage", () => {
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
     });
 
-    it("loads a directly linked audit entry", async () => {
+    it("shows the action outcome first and keeps technical fields collapsed", async () => {
+        const user = userEvent.setup();
         renderPage();
 
         expect(
@@ -111,10 +112,17 @@ describe("ActionHistoryDetailPage", () => {
         expect(
             mockedGetProviderActionHistoryEntry,
         ).toHaveBeenCalledWith("audit-1");
+        expect(screen.getByText("Succeeded")).toBeInTheDocument();
+        expect(screen.getByText("Model unloaded.")).toBeInTheDocument();
+        expect(screen.getByText("Ollama")).toBeInTheDocument();
+        expect(screen.getByText(/^Completed /)).toBeInTheDocument();
+        expect(screen.getByText("Started")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await user.click(screen.getByText("Technical details"));
+        expect(technicalDetails).toHaveAttribute("open");
         expect(screen.getByText("audit-1")).toBeInTheDocument();
-        expect(
-            screen.getByText("request-123"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("request-123")).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
                 name: "← Back to action history",
