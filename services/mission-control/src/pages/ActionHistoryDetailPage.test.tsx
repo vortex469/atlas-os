@@ -119,6 +119,8 @@ describe("ActionHistoryDetailPage", () => {
                 name: "Unload Model",
             }),
         ).toBeInTheDocument();
+        expect(screen.getByText("Succeeded", { exact: true })).toBeVisible();
+        expect(screen.queryByText("succeeded", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText("Request confirmed")).toBeVisible();
         expect(
             mockedGetProviderActionHistoryEntry,
@@ -132,6 +134,17 @@ describe("ActionHistoryDetailPage", () => {
                 name: "← Back to action history",
             }),
         ).toHaveAttribute("href", "/operations");
+    });
+
+    it("labels a failed action result in plain language", async () => {
+        mockedGetProviderActionHistoryEntry.mockResolvedValue({
+            ...auditEntry(), status: "failed", success: false,
+            message: "The provider did not complete this action.",
+        });
+        renderPage();
+
+        expect(await screen.findByText("Failed", { exact: true })).toBeVisible();
+        expect(screen.queryByText("failed", { exact: true })).not.toBeInTheDocument();
     });
 
     it("copies the current deep link", async () => {

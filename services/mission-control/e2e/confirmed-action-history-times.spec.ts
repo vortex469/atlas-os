@@ -26,7 +26,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/operations");
         await expect(page.getByText("Unknown time", { exact: true })).toBeVisible();
         await expect(page.getByText(entry.message, { exact: true })).toBeVisible();
-        await expect(page.getByRole("article").getByText("succeeded", { exact: true })).toBeVisible();
+        await expect(page.getByRole("article").getByText("Succeeded", { exact: true })).toBeVisible();
         if (reportedEntry.confirmed) await expect(page.getByRole("article").getByText("Request confirmed", { exact: true })).toBeVisible();
         else await expect(page.getByRole("article").getByText("Request confirmed", { exact: true })).toHaveCount(0);
         await expect.poll(() => reads.length).toBe(3);
@@ -34,6 +34,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Audit details", exact: true })).toBeVisible();
         await expect(page.locator("time").getByText("Unknown time", { exact: true })).toBeVisible();
         await expect(page.getByText(entry.message, { exact: true })).toBeVisible();
+        await expect(page.getByText("Succeeded", { exact: true })).toBeVisible();
         if (reportedEntry.confirmed) await expect(page.getByText("Request confirmed", { exact: true })).toBeVisible();
         else await expect(page.getByText("Request confirmed", { exact: true })).toHaveCount(0);
         const details = page.getByText("Technical details", { exact: true });

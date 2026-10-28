@@ -25,6 +25,7 @@ import type {
     ProviderActionHistorySummary,
     ProviderActionHistoryProvider,
 } from "../types/actionHistory";
+import { actionHistoryStatusLabel } from "../utils/actionHistoryPresentation";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
 const PAGE_SIZE = 25;
@@ -512,7 +513,7 @@ export function OperationsPage() {
                                                 entry.status,
                                             )}`}
                                         >
-                                            {entry.status}
+                                            {actionHistoryStatusLabel(entry.status)}
                                         </span>
                                         {entry.confirmed && (
                                             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
