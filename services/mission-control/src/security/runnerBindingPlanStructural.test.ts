@@ -31,13 +31,15 @@ describe("v0.37 runner binding plan presentation boundary", () => {
         for (const marker of ["provider_payload", "credential_value", "bearer_token", "command_argv", "stdout", "stderr", "internal_path", "endpoint_url", "host_address", "mount_source"]) expect(component).not.toContain(marker);
         for (const label of ["bind runner", "run now", "start execution", "execute now", "install now", "deploy now", "dispatch now", "retry now", "resend now", "send to agent", "start workflow", "roll back now"]) expect(component.toLowerCase()).not.toContain(label);
     });
-    it("locks evidence-only copy, blockers, limits, and Home Assistant closure", () => {
-        expect(component).toMatch(/records a runner binding plan only/i);
-        expect(component).toMatch(/does not bind or contact a runner and does not authorize or start installation or execution/i);
+    it("locks the plain plan status, safety limits, and Home Assistant closure", () => {
+        expect(component).toMatch(/a saved plan lists limits a future runner would have to follow/i);
+        expect(component).toMatch(/does not select or contact a runner, authorize installation, or start work/i);
         expect(component).toContain("runner_not_bound");
         expect(component).toContain("execution_start_boundary_not_defined");
+        expect(component).toMatch(/No network access/i);
+        expect(component).toMatch(/No access to host, repository, or guest files/i);
         expect(client).toContain("atlas-installation-confined-v1");
-        expect(component).toMatch(/Home Assistant remains blocked, non-installable, non-executable/i);
+        expect(component).toMatch(/Atlas cannot install Home Assistant, so it cannot be prepared for a runner/i);
     });
     it("has no consumer outside the exact client, admission context, types, and presentation", () => {
         const consumers = Object.entries(productionModules).filter(([, source]) => /runner-binding-plans|RunnerBindingPlan/.test(source)).map(([path]) => path).sort();
