@@ -21,10 +21,10 @@ import type {
 } from "../types/operatorIntent";
 
 function errorMessage(status: number | undefined): string {
-    if (status === 403) return "Your operator session lacks maintenance permission.";
-    if (status === 409) return "The resource changed. Refresh and select it again.";
-    if (status === 429) return "Maintenance requests are rate limited. Wait before trying again.";
-    if (status === 503) return "The Proxmox resource selector is temporarily unavailable.";
+    if (status === 403) return "Your account does not have permission to request maintenance.";
+    if (status === 409) return "This VM changed. Refresh the list and choose it again.";
+    if (status === 429) return "Too many maintenance requests. Wait before trying again.";
+    if (status === 503) return "The VM list is temporarily unavailable. Try again shortly.";
     return "The maintenance request could not be completed.";
 }
 
@@ -91,7 +91,7 @@ export function MaintenanceRequestPage() {
             if (!selectedCapability) {
                 setCapability(null);
                 setResources([]);
-                setError("No consistent production maintenance capability is currently available.");
+                setError("Restart requests are not available right now.");
                 return;
             }
             const response = await getCapabilityResources(selectedCapability.selector_id);
@@ -130,8 +130,8 @@ export function MaintenanceRequestPage() {
                     if (cancelled) return;
                     const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
                     setProposalError(status === 404
-                        ? "The advisory proposal was not found. Select only from the current authoritative resource list."
-                        : "Advisory proposal context is temporarily unavailable. The authoritative selector remains independent.");
+                        ? "This suggestion is no longer available. Choose a VM from the list below."
+                        : "Suggestion details could not be loaded. You can still choose a VM from the list below.");
                 })
                 .finally(() => { if (!cancelled) setProposalLoading(false); });
         });
@@ -191,29 +191,29 @@ export function MaintenanceRequestPage() {
     return (
         <main className="mx-auto max-w-6xl space-y-6 p-8">
             <header>
-                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Bounded maintenance</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Maintenance request</p>
                 <h1 className="mt-2 text-3xl font-bold text-white">Request service restart</h1>
-                <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a candidate only; it does not restart anything.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
+                <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a proposal for separate review and approval; it does not restart the VM.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
             </header>
             {(proposalId !== null || proposalLoading || proposalError || proposal) && (
-                <section aria-label="Advisory proposal context" className="space-y-3">
-                    <h2 className="text-xl font-semibold text-white">Advisory proposal context</h2>
-                    <p className="text-sm text-slate-400">This context cannot select a resource or alter the authoritative maintenance request.</p>
-                    {proposalLoading && <p className="text-sm text-slate-400">Refreshing proposal status…</p>}
+                <section aria-label="Suggestion details" className="space-y-3">
+                    <h2 className="text-xl font-semibold text-white">Suggestion details</h2>
+                    <p className="text-sm text-slate-400">This suggestion cannot select a VM for you. Choose one from the VM list below.</p>
+                    {proposalLoading && <p className="text-sm text-slate-400">Loading suggestion details…</p>}
                     {proposalError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{proposalError}</p>}
                     {proposal && <DiscoveryProposalCard proposal={proposal} showNavigation={false} />}
                 </section>
             )}
-            <section className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 sm:grid-cols-3">
-                <FixedField label="Action" value={capability?.label ?? "Loading capability"} />
-                <FixedField label="Provider" value={descriptorLabel(capability?.provider_id)} />
-                <FixedField label="Resource type" value={descriptorLabel(capability?.resource_type)} />
-            </section>
-            {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your operator session lacks maintenance permission.</p>}
+            {capability && <section className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 sm:grid-cols-3">
+                <FixedField label="Action" value={capability.label} />
+                <FixedField label="Provider" value={descriptorLabel(capability.provider_id)} />
+                <FixedField label="Resource type" value={descriptorLabel(capability.resource_type)} />
+            </section>}
+            {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your account does not have permission to request maintenance.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
             <section className="space-y-3" aria-label="Available virtual machines">
-                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the selected VM again when you send the request.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
-                {loading && <p className="text-sm text-slate-400">Refreshing authoritative resources…</p>}
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
+                {loading && <p className="text-sm text-slate-400">Loading available VMs…</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">

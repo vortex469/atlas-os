@@ -134,6 +134,7 @@ describe("MaintenanceRequestPage", () => {
     it("renders fixed semantics and disables non-requestable resources", async () => {
         renderPage();
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
+        expect(screen.getByText(/creates a proposal for separate review and approval/i)).toBeInTheDocument();
         expect(screen.getByText("Restart service")).toBeInTheDocument();
         expect(screen.getByText("Proxmox")).toBeInTheDocument();
         expect(screen.getByText("QEMU")).toBeInTheDocument();
@@ -141,6 +142,16 @@ describe("MaintenanceRequestPage", () => {
         expect(screen.getByText("This VM is stopped. Select a running VM to request a restart.")).toBeInTheDocument();
         expect(screen.getByRole("radio", { name: /Stopped VM/i })).toBeDisabled();
         expect(screen.queryByText(/vmgenid|identity token|provider action/i)).not.toBeInTheDocument();
+    });
+
+    it("does not leave a loading placeholder when no restart capability is available", async () => {
+        vi.mocked(getOperationalCapabilities).mockResolvedValue({ capabilities: [] });
+        renderPage();
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Restart requests are not available right now.");
+        expect(screen.queryByText("Loading capability")).not.toBeInTheDocument();
+        expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
     });
 
     it.each([
@@ -212,7 +223,8 @@ describe("MaintenanceRequestPage", () => {
 
         renderPage({ proposalId, provider: "attacker", fingerprint: "tampered" });
 
-        expect(await screen.findByRole("heading", { name: "Advisory proposal context" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Suggestion details" })).toBeInTheDocument();
+        expect(screen.getByText("This suggestion cannot select a VM for you. Choose one from the VM list below.")).toBeInTheDocument();
         expect(await screen.findByText("999 / attacker / lxc")).toBeInTheDocument();
         expect(screen.getByRole("radio", { name: /Frigate/i })).not.toBeChecked();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();
@@ -296,7 +308,7 @@ describe("MaintenanceRequestPage", () => {
         const proposalId = `discovery-operator-proposal-${"d".repeat(64)}`;
         vi.mocked(getDiscoveryProposal).mockRejectedValue({ isAxiosError: true, response: { status: 404 } });
         renderPage({ proposalId });
-        expect(await screen.findByRole("alert")).toHaveTextContent("advisory proposal was not found");
+        expect(await screen.findByRole("alert")).toHaveTextContent("This suggestion is no longer available.");
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();
     });
@@ -322,9 +334,9 @@ describe("MaintenanceRequestPage", () => {
     });
 
     it.each([
-        [403, "lacks maintenance permission"],
-        [429, "rate limited"],
-        [503, "temporarily unavailable"],
+        [403, "does not have permission"],
+        [429, "Too many maintenance requests"],
+        [503, "VM list is temporarily unavailable"],
     ])("renders controlled status %i without automatic retry", async (status, message) => {
         vi.mocked(requestRestartServiceIntent).mockRejectedValue({ isAxiosError: true, response: { status } });
         const user = userEvent.setup();
@@ -342,7 +354,7 @@ describe("MaintenanceRequestPage", () => {
         const radio = await screen.findByRole("radio", { name: /Frigate/i });
         await user.click(radio);
         await user.click(screen.getByRole("button", { name: "Request restart proposal" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("resource changed");
+        expect(await screen.findByRole("alert")).toHaveTextContent("This VM changed.");
         expect(getCapabilityResources).toHaveBeenCalledTimes(2);
         expect(await screen.findByRole("radio", { name: /Frigate/i })).not.toBeChecked();
     });

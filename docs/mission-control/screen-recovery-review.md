@@ -695,3 +695,15 @@ status, filtering, pagination, and read-only behavior are unchanged. The focused
 history suite passes (10 tests), the responsive maintenance-history browser
 checks pass at 390px and 1280px (2 tests), and lint, production build, and
 `git diff --check` pass.
+
+## Maintenance request guidance — 2026-10-28
+
+The request screen now says that it creates a proposal for separate review and
+approval, and that it does not restart the VM. A missing restart capability no
+longer leaves the action summary stuck on “Loading capability.” Suggestion,
+permission, and resource-loading messages use direct language while the
+Discovery suggestion remains unable to select a VM or submit a request. The
+focused request-page suite passes (28 tests), the sign-in and full maintenance
+journeys pass at 390px and 1280px (4 browser tests), and lint and production
+build pass. Approval, CSRF, target-fingerprint, and separate run behavior are
+unchanged.
