@@ -249,7 +249,11 @@ describe("ExecutionCandidateDetailPage", () => {
             .mockResolvedValueOnce(candidate({ id: "candidate-2" }));
         const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/missing"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "Execution candidate not found" });
+        await screen.findByRole("heading", { name: "Change proposal not found" });
+        expect(screen.getByText("This proposal is no longer available. Return to Change proposals and open a current proposal.")).toBeVisible();
+        expect(screen.getByText("Proposal ID: missing")).not.toBeVisible();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(screen.getByText("Proposal ID: missing")).toBeVisible();
         await act(() => router.navigate("/execution-candidates/candidate-2"));
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         await userEvent.setup().click(screen.getByText("Technical references"));
@@ -316,7 +320,7 @@ describe("ExecutionCandidateDetailPage", () => {
         }));
         renderPage();
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Execution candidate not found" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Change proposal not found" })).not.toBeInTheDocument();
     });
 
 });

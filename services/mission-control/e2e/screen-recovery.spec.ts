@@ -342,12 +342,21 @@ test("a proposal with the wrong response identity cannot offer planning", async 
     await expect(page.getByRole("heading", { name: "other-proposal" })).toHaveCount(0);
 });
 
-test("a missing proposal is distinct from a service outage", async ({ page }) => {
-    await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({
-        status: 404, json: { detail: "PRIVATE_BACKEND_DETAIL" },
-    }));
-    await page.goto("/execution-candidates/missing-proposal");
-    await expect(page.getByRole("heading", { name: "Execution candidate not found" })).toBeVisible();
-    await expect(page.getByText("PRIVATE_BACKEND_DETAIL")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
-});
+for (const width of [390, 1280]) {
+    test(`a missing proposal is distinct from a service outage at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({
+            status: 404, json: { detail: "PRIVATE_BACKEND_DETAIL" },
+        }));
+        await page.goto("/execution-candidates/missing-proposal");
+        await expect(page.getByRole("heading", { name: "Change proposal not found" })).toBeVisible();
+        await expect(page.getByText("This proposal is no longer available. Return to Change proposals and open a current proposal.")).toBeVisible();
+        await expect(page.getByText("PRIVATE_BACKEND_DETAIL")).toHaveCount(0);
+        const proposalId = page.getByText("Proposal ID: missing-proposal");
+        await expect(proposalId).toBeHidden();
+        await page.getByText("Technical details").click();
+        await expect(proposalId).toBeVisible();
+        await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}

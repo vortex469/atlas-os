@@ -100,7 +100,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     if (notFound) {
-        return <PageFrame><section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6"><h1 className="text-2xl font-bold text-white">Execution candidate not found</h1><p className="mt-2 text-sm text-slate-400">Atlas Core could not find a current candidate for {candidateId}.</p></section></PageFrame>;
+        return <PageFrame><section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6"><h1 className="text-2xl font-bold text-white">Change proposal not found</h1><p className="mt-2 text-sm text-slate-400">This proposal is no longer available. Return to Change proposals and open a current proposal.</p><details className="mt-4"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-all text-sm text-slate-400">Proposal ID: {candidateId}</p></details></section></PageFrame>;
     }
 
     if (error || candidate === null) {

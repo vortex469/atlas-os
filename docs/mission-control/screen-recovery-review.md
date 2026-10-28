@@ -785,3 +785,12 @@ details remain redacted by the API error handler. The focused page suite passes
 (8 tests), responsive proposal-list browser checks pass (4 tests at 390px and
 1280px), and lint, production build, and `git diff --check` pass. The browser
 fixture rejects unexpected mutations.
+
+## Missing change proposal recovery — 2026-10-28
+
+The 404 screen now says that the proposal is no longer available and directs
+the operator back to the proposal list. Its raw proposal ID is under collapsed
+Technical details; server response details remain hidden. A missing proposal is
+still distinguished from a service outage. The detail-page suite passes (18
+tests), responsive recovery checks pass (2 tests at 390px and 1280px), and lint,
+production build, and `git diff --check` pass.
