@@ -223,6 +223,11 @@ dashboard and structural assertions were aligned with the current collapsed
 source details, plain-language blocker label, and local-only list expansion.
 The repository journey and overview browser suites also pass (21 tests across
 320px–1440px viewports); their API calls use synthetic fixtures.
+An initial full browser run against an already-running dev server reported five
+failures: four assertions still expected visible details or a single-choice
+filter, and provider switching timed out. The provider-switch case passed against
+a fresh Vite server; after updating the stale assertions, all 133 development
+browser tests passed against a fresh isolated server.
 
 ## Provider detail information hierarchy — 2026-10-28
 

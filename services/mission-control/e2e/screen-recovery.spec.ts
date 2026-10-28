@@ -481,8 +481,9 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("combobox", { name: "Latest result", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
-        await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeVisible();
-        await page.getByRole("combobox", { name: "Requested action", exact: true }).selectOption("restart-service");
+        await expect(page.getByRole("combobox", { name: "Completion", exact: true })).toBeVisible();
+        await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toHaveCount(0);
+        await page.getByRole("combobox", { name: "Completion", exact: true }).selectOption("terminal");
         await expect(page.getByText("Additional filters are applied")).toBeVisible();
         await page.getByRole("combobox", { name: "Latest result", exact: true }).selectOption("unavailable");
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
@@ -807,7 +808,10 @@ for (const width of [390, 1280]) {
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow unavailable");
         await expect(alert).toContainText("Mission Control could not read this workflow response. Refresh to try again.");
-        await expect(alert).not.toContainText("Malformed workflow detail payload.");
+        const technicalDetails = alert.locator("details");
+        await expect(technicalDetails).not.toHaveAttribute("open");
+        await expect(technicalDetails).toContainText("Malformed workflow detail payload.");
+        await expect(technicalDetails.getByText("Malformed workflow detail payload.", { exact: true })).toBeHidden();
         await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Resume Approved Implementation" })).toHaveCount(0);
 
