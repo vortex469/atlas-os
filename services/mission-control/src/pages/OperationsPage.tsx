@@ -125,19 +125,6 @@ export function OperationsPage() {
             ]);
 
             if (requestSequence.current !== requestId) return;
-            if (historyResult.status === "rejected") {
-                console.error("Unable to load provider action history:", historyResult.reason);
-                setHistoryError(getAtlasErrorMessage(
-                    historyResult.reason,
-                    "Mission Control could not load action history.",
-                ));
-                return;
-            }
-
-            setEntries(historyResult.value.items);
-            setTotal(historyResult.value.total);
-            setHasMore(historyResult.value.has_more);
-
             if (summaryResult.status === "fulfilled") {
                 setSummary(summaryResult.value);
             } else {
@@ -151,6 +138,19 @@ export function OperationsPage() {
                 console.error("Unable to load provider action history filters:", providersResult.reason);
                 setProviderOptionsUnavailable(true);
             }
+
+            if (historyResult.status === "rejected") {
+                console.error("Unable to load provider action history:", historyResult.reason);
+                setHistoryError(getAtlasErrorMessage(
+                    historyResult.reason,
+                    "Mission Control could not load action history.",
+                ));
+                return;
+            }
+
+            setEntries(historyResult.value.items);
+            setTotal(historyResult.value.total);
+            setHasMore(historyResult.value.has_more);
         } catch (requestError) {
             if (requestSequence.current !== requestId) {
                 return;

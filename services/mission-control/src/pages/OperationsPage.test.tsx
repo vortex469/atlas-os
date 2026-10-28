@@ -191,7 +191,7 @@ describe("OperationsPage", () => {
         );
     });
 
-    it("hides previous results and retention policy while a filtered read fails", async () => {
+    it("keeps retention policy and provider filters when a filtered history read fails", async () => {
         const user = userEvent.setup();
         renderPage();
         await screen.findByText("Unload Model");
@@ -205,7 +205,10 @@ describe("OperationsPage", () => {
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         expect(await screen.findByRole("alert")).toHaveTextContent("Filtered history unavailable");
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
-        expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        expect(within(screen.getByLabelText("Provider")).getByRole("option", { name: "Ollama" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled();
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {
