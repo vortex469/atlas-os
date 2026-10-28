@@ -514,14 +514,19 @@ function TestResult({
                 </p>
             )}
             {Object.keys(result.diagnostics).length > 0 && (
-                <dl className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
-                    {Object.entries(result.diagnostics).map(([key, value]) => (
-                        <div key={key}>
-                            <dt className="font-semibold text-slate-400">{sanitizeText(key, redactedValues)}</dt>
-                            <dd>{formatDiagnosticValue(value, redactedValues)}</dd>
-                        </div>
-                    ))}
-                </dl>
+                <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-400 hover:text-slate-200">
+                        Technical details
+                    </summary>
+                    <dl className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                        {Object.entries(result.diagnostics).map(([key, value]) => (
+                            <div key={key}>
+                                <dt className="font-semibold text-slate-400">{sanitizeText(key, redactedValues)}</dt>
+                                <dd>{formatDiagnosticValue(value, redactedValues)}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </details>
             )}
         </div>
     );

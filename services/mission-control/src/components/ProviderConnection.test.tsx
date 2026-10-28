@@ -326,6 +326,9 @@ describe("ProviderConnection", () => {
         expect(await screen.findByText(/Test failure/)).toBeInTheDocument();
         expect(screen.getByText(/Bad token \[redacted\]/)).toBeInTheDocument();
         expect(screen.getByText(/\[redacted\] rejected/)).toBeInTheDocument();
+        expect(screen.getByText(/\[redacted\] rejected/)).not.toBeVisible();
+        await user.click(screen.getByText("Technical details"));
+        expect(screen.getByText(/\[redacted\] rejected/)).toBeVisible();
         expect(screen.getAllByText("[redacted]", { exact: true })).toHaveLength(2);
         expect(document.body.textContent).not.toContain("candidate-secret");
         expect(screen.queryByText("candidate-secret")).not.toBeInTheDocument();
