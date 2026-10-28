@@ -87,13 +87,11 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await attention.getByText('Technical details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'AI provider' });
-    await expect(runtime.getByText('Atlas does not report where this provider runs or which model is selected or ready to use.')).toBeVisible();
-    await expect(runtime.getByText('Version', { exact: true })).toBeHidden();
+    await expect(runtime.getByText('AI provider information could not be loaded. Use Refresh to try again.')).toBeVisible();
+    await expect(runtime.getByText('Current information could not be loaded.', { exact: true })).toHaveCount(0);
+    await expect(runtime.getByText('Unknown', { exact: true })).toHaveCount(0);
+    await expect(runtime.locator('summary', { hasText: 'Technical details' })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
-    const runtimeToggle = runtime.locator('summary', { hasText: 'Technical details' });
-    await runtimeToggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(runtime.getByText('Version', { exact: true })).toBeVisible();
     const providers = page.getByRole('region', { name: 'Providers' });
     await expect(providers.getByText('Saved providers and their reported status. A saved provider may still be unavailable.')).toBeVisible();
     await expect(providers.getByText(/permission to run actions/)).toBeHidden();

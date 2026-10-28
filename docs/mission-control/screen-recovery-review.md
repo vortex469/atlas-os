@@ -584,6 +584,16 @@ workflow status, which its source does not provide. The focused component
 suites pass (60 tests), all 16 built app-shell and overview browser checks pass,
 and lint/build pass.
 
+## AI provider unavailable state — 2026-10-28
+
+During the first read, the AI provider card now shows a loading message instead
+of an unknown provider and status badge. If the read fails without prior data,
+the card gives one refresh instruction instead of repeating the same failure
+as an unknown health state and missing technical details. Last-known evidence
+continues to be labeled separately. Focused evidence/dashboard suites pass
+(85 tests), all 16 built app-shell and overview browser checks pass, and
+lint/build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

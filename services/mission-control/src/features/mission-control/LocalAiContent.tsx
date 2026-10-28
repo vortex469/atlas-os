@@ -21,7 +21,16 @@ function inventory(data: Record<string, unknown>, key: "installed" | "running"):
     return `${valid.slice(0, 3).join(", ")}${valid.length > 3 ? ` (first 3 of ${valid.length})` : ""}${valid.length !== names.length ? " · Some names unavailable" : ""}`;
 }
 
-export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
+export function LocalAiContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
+    if (evidence?.data === undefined) {
+        const message = evidence?.unavailable
+            ? "AI provider information could not be loaded. Use Refresh to try again."
+            : loading
+                ? "Loading AI provider information…"
+                : "AI provider information is not available.";
+        return <p role="status">{message}</p>;
+    }
+
     const data = record(evidence?.data);
     const provider = record(data.provider);
     const health = record(data.health);
@@ -34,7 +43,6 @@ export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
         <HealthEvidence compact status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
         <p>Atlas does not report where this provider runs or which model is selected or ready to use.</p>
         {lastKnown && <p>Details below are from the last available report. Current version, response time, and model list are unknown.</p>}
-        {evidence?.unavailable && !lastKnown && <p>Provider status could not be checked. Local runtime availability is unknown.</p>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">Technical details</summary>
             <div className="mt-3 space-y-3">
