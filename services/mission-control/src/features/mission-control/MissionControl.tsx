@@ -25,6 +25,7 @@ type AttentionItem = {
     actionRequired?: boolean;
     workflowId?: string;
     workflowState?: string;
+    workflowEffectKind?: string;
 };
 
 function isWorkflowAttention(item: AttentionItem): item is AttentionItem & { workflowId: string; workflowState: string } {
@@ -67,27 +68,31 @@ function attentionPriority(value: unknown, actionRequired = false) {
     return 4;
 }
 
-function workflowAttentionStage(state: string): string {
+function workflowAttentionStage(state: string, effectKind?: string): string {
     switch (state) {
         case "awaiting_approval": return "Waiting for approval";
-        case "awaiting_implementation_approval": return "Waiting for implementation approval";
+        case "awaiting_implementation_approval": return effectKind === "operational_action"
+            ? "Waiting for maintenance request approval"
+            : "Waiting for implementation approval";
         case "awaiting_verification_approval": return "Waiting for verification approval";
         case "awaiting_commit_approval": return "Waiting for commit approval";
         default: return formatWorkflowLabel(state);
     }
 }
 
-function workflowReasonRepeatsStage(reason: string, state: string): boolean {
+function workflowReasonRepeatsStage(reason: string, state: string, effectKind?: string): boolean {
     const normalizedReason = reason.trim().replace(/[.!?]+$/, "").toLowerCase();
-    return normalizedReason === workflowAttentionStage(state).toLowerCase();
+    return normalizedReason === workflowAttentionStage(state, effectKind).toLowerCase()
+        || (effectKind === "operational_action" && state === "awaiting_implementation_approval"
+            && normalizedReason === workflowAttentionStage(state).toLowerCase());
 }
 
-function workflowAttentionLabel(intent: unknown, state: string, stale: boolean): string {
+function workflowAttentionLabel(intent: unknown, state: string, stale: boolean, effectKind?: string): string {
     const safeIntent = safeText(intent);
     const action = safeIntent && safeIntent !== "[Sensitive text withheld]"
         ? formatWorkflowLabel(safeIntent)
         : "Workflow";
-    const stage = workflowActionRequired(state) ? "" : ` · ${workflowAttentionStage(state)}`;
+    const stage = workflowActionRequired(state) ? "" : ` · ${workflowAttentionStage(state, effectKind)}`;
     return `${stale ? "Last known · " : ""}${action}${stage}`;
 }
 
@@ -105,12 +110,12 @@ function AttentionListItem({ item }: { item: AttentionItem }) {
         <Link to={item.to}>{item.label || "Inspect condition"}</Link>
         {item.actionRequired === true && <p>{isWorkflowAttention(item)
             ? item.stale
-                ? `Last-known status: ${workflowAttentionStage(item.workflowState)}. Current status unknown.`
-                : `Action needed: ${workflowAttentionStage(item.workflowState)}`
+                ? `Last-known status: ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}. Current status unknown.`
+                : `Action needed: ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}`
             : item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
         {isWorkflowAttention(item) ? <>
             {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
-            {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState) && <p>{item.reason}</p>}
+            {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState, item.workflowEffectKind) && <p>{item.reason}</p>}
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Technical details</summary>
                 <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
                 <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
@@ -170,10 +175,21 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         ...findings.filter(f => typeof f.severity === "string" && ["warning", "critical", "blocked"].includes(f.severity)).map(f => ({
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
         })),
-        ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
-            actionRequired: workflowActionRequired(String(w.workflow_state)), workflowId: safeText(w.workflow_id), key: `workflow:${String(w.workflow_id)}`, label: workflowAttentionLabel(w.execution_intent, String(w.workflow_state), evidence.workflows?.stale === true), reason: safeText(w.last_result_summary), state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
-            workflowState: String(w.workflow_state),
-        })),
+        ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => {
+            const workflowEffectKind = typeof w.effect_kind === "string" ? w.effect_kind : undefined;
+            return {
+                actionRequired: workflowActionRequired(String(w.workflow_state)),
+                workflowId: safeText(w.workflow_id),
+                workflowEffectKind,
+                key: `workflow:${String(w.workflow_id)}`,
+                label: workflowAttentionLabel(w.execution_intent, String(w.workflow_state), evidence.workflows?.stale === true, workflowEffectKind),
+                reason: safeText(w.last_result_summary),
+                state: w.workflow_state === "blocked" ? "blocked" : "warning",
+                to: detailPath("/workflows", w.workflow_id) ?? "/workflows",
+                stale: evidence.workflows?.stale,
+                workflowState: String(w.workflow_state),
+            };
+        }),
     ];
     const deduplicated = new Map<string, typeof attention[number]>();
     for (const item of attention) {

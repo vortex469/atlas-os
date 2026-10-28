@@ -2172,3 +2172,12 @@ desktop spacing. Delayed synthetic reads verify loading and recovery into the
 record at 320px and 1280px (2 browser checks). The focused action-detail suite
 passes (6 tests), as do lint and the production build. Action records and
 provider behavior are unchanged.
+
+## Maintenance approval wording — 2026-10-28
+
+The overview attention list and workflow cards now identify an operational
+approval as maintenance-request approval. Repository changes retain their
+implementation-approval wording, and stale maintenance records remain marked
+last-known. The focused dashboard suites pass (78 tests), along with six
+synthetic browser checks at 320px, 390px, and 1280px; lint and the production
+build pass. Approval authority and workflow transitions are unchanged.

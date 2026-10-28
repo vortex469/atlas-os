@@ -25,6 +25,30 @@ describe("MC overview evidence", () => {
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
     });
 
+    it("describes operational approval as maintenance request approval", () => {
+        show({ workflows: { data: { items: [{
+            workflow_id: 'maintenance-review', workflow_state: 'awaiting_implementation_approval',
+            effect_kind: 'operational_action', execution_intent: 'restart-service',
+            last_result_summary: 'Waiting for implementation approval', timeline: [],
+        }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('link', { name: 'Restart Service' })).toHaveAttribute('href', '/workflows/maintenance-review');
+        expect(attention.getByText('Action needed: Waiting for maintenance request approval')).toBeVisible();
+        expect(attention.queryByText('Action needed: Waiting for implementation approval')).not.toBeInTheDocument();
+        expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
+    });
+
+    it("keeps stale maintenance approval wording last-known", () => {
+        show({ workflows: { stale: true, unavailable: true, data: { items: [{
+            workflow_id: 'old-maintenance-review', workflow_state: 'awaiting_implementation_approval',
+            effect_kind: 'operational_action', execution_intent: 'restart-service',
+            last_result_summary: 'Waiting for implementation approval', timeline: [],
+        }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Last-known status: Waiting for maintenance request approval. Current status unknown.')).toBeVisible();
+        expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
+    });
+
     it('names a workflow attention item by its proposed action and keeps its ID in technical details', () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'workflow-123', workflow_state: 'awaiting_verification_approval',

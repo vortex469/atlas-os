@@ -110,6 +110,25 @@ describe("WorkflowDashboardPage", () => {
         expect(details.getByText("candidate-123", { exact: true })).toBeVisible();
     });
 
+    it("labels operational approval as maintenance request approval", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([workflow({
+            workflow_id: "maintenance-review",
+            effect_kind: "operational_action",
+            execution_intent: "restart-service",
+            target_id: "VM 110",
+        })]));
+
+        renderDashboard();
+
+        const title = await screen.findByRole("heading", { name: "Restart Service" });
+        const card = title.closest("article");
+        expect(card).not.toBeNull();
+        const details = within(card as HTMLElement);
+        expect(details.getByText("Stage: Maintenance request approval")).toBeVisible();
+        expect(details.getByText("Your approval is needed")).toBeVisible();
+        expect(details.queryByText("Stage: Change approval")).not.toBeInTheDocument();
+    });
+
     it("keeps the common filters visible and tucks source and ID searches under More filters", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([
             workflow(),

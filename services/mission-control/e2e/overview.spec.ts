@@ -103,6 +103,38 @@ for (const width of [320, 768, 1440]) {
     });
 }
 
+for (const width of [320, 390, 1280]) {
+    test(`operator attention names the maintenance approval at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+            items: [{
+                workflow_id: "maintenance-review",
+                workflow_source: "candidate",
+                workflow_state: "awaiting_implementation_approval",
+                effect_kind: "operational_action",
+                execution_intent: "restart-service",
+                candidate_id: null,
+                planning_session_id: null,
+                repository: null,
+                target_id: "VM 110",
+                last_result_summary: "Waiting for implementation approval",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 200,
+            offset: 0,
+        } }));
+        await page.goto("/");
+
+        const attention = page.getByRole("region", { name: "Operator Attention" });
+        await expect(attention.getByRole("link", { name: "Restart Service", exact: true })).toHaveAttribute("href", "/workflows/maintenance-review");
+        await expect(attention.getByText("Action needed: Waiting for maintenance request approval", { exact: true })).toBeVisible();
+        await expect(attention.getByText("Waiting for implementation approval", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 test('Atlas Doctor stays collapsed under System health until an operator runs it', async ({ page, rejectedMutationRequests }) => {
     let doctorReads = 0;
     await page.route('**/api/v1/ops/doctor', route => {

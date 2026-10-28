@@ -44,6 +44,40 @@ for (const width of [320, 390, 1280]) {
 }
 
 for (const width of [320, 390, 1280]) {
+    test(`maintenance workflow card names its approval stage at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+            items: [{
+                workflow_id: "maintenance-review",
+                workflow_source: "candidate",
+                workflow_state: "awaiting_implementation_approval",
+                effect_kind: "operational_action",
+                execution_intent: "restart-service",
+                candidate_id: null,
+                planning_session_id: null,
+                repository: null,
+                target_id: "VM 110",
+                last_result_summary: "Waiting for implementation approval",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 200,
+            offset: 0,
+        } }));
+        await page.goto("/workflows");
+
+        const title = page.getByRole("heading", { name: "Restart Service", exact: true });
+        await expect(title).toBeVisible();
+        const card = title.locator("xpath=ancestor::article[1]");
+        await expect(card.getByText("Stage: Maintenance request approval", { exact: true })).toBeVisible();
+        await expect(card.getByText("Your approval is needed", { exact: true })).toBeVisible();
+        await expect(card.getByText("Stage: Change approval", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
     test(`workflow empty state explains the result without a duplicate count at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {

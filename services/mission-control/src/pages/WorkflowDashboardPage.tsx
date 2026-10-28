@@ -317,7 +317,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 className="break-words text-lg font-semibold text-white">{title}</h3>
-                    <p className="mt-1 text-sm text-slate-400">Stage: {workflowStageLabel(workflow.workflow_state)}</p>
+                    <p className="mt-1 text-sm text-slate-400">Stage: {workflowStageLabel(workflow.workflow_state, workflow.effect_kind)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     Open workflow

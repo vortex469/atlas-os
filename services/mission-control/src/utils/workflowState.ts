@@ -93,7 +93,10 @@ const STATUS_PRIORITY: WorkflowRailStatus[] = [
     "completed",
 ];
 
-export function workflowStageLabel(state: string): string {
+export function workflowStageLabel(state: string, effectKind?: string): string {
+    if (effectKind === "operational_action" && state === "awaiting_implementation_approval") {
+        return "Maintenance request approval";
+    }
     switch (state) {
         case "awaiting_approval":
             return "Workflow approval";
