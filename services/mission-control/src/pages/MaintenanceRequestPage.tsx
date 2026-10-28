@@ -21,7 +21,7 @@ import type {
 } from "../types/operatorIntent";
 
 function errorMessage(status: number | undefined): string {
-    if (status === undefined || status >= 500) return "Atlas could not confirm whether a restart proposal was created. The VM has not restarted.";
+    if (status === undefined || status >= 500) return "Atlas could not confirm whether a restart proposal was created. The VM has not restarted. Check proposals before trying again.";
     if (status === 403) return "Your account does not have permission to request maintenance.";
     if (status === 409) return "This VM changed. Refresh the list and choose it again.";
     if (status === 429) return "Too many maintenance requests. Wait before trying again.";
@@ -93,7 +93,6 @@ export function MaintenanceRequestPage() {
         setResultExpired(false);
         setLoading(true);
         setError(null);
-        setProposalOutcomeUncertain(false);
         try {
             const capabilities = await getOperationalCapabilities();
             if (generation !== selectorGeneration.current) return;
@@ -161,7 +160,7 @@ export function MaintenanceRequestPage() {
     const selected = resources.find((resource) => resource.resource_id === selectedId) ?? null;
     const expiry = result ? formatExpiry(result.candidate.expires_at) : null;
     async function submit() {
-        if (!selected?.requestable || !selected.operational_target_fingerprint || !session.csrfToken || !permitted || loading || submitting) return;
+        if (!selected?.requestable || !selected.operational_target_fingerprint || !session.csrfToken || !permitted || loading || submitting || proposalOutcomeUncertain) return;
         const generation = ++submissionGeneration.current;
         setSubmitting(true);
         setError(null);
@@ -180,7 +179,8 @@ export function MaintenanceRequestPage() {
                 || response.candidate.target_type !== selected.resource_type
                 || response.candidate.execution_intent !== "restart-service"
                 || response.candidate.source_subsystem !== "operator-intent") {
-                setError("The returned proposal does not match this maintenance request. Refresh the resource list before continuing.");
+                setProposalOutcomeUncertain(true);
+                setError("The returned proposal does not match this request. Check the proposal list before trying again.");
                 return;
             }
             setResult(response);
@@ -228,12 +228,12 @@ export function MaintenanceRequestPage() {
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your account does not have permission to request maintenance.</p>}
             {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Check whether a proposal was created</Link>}</div>}
             <section className="space-y-3" aria-label="Available virtual machines">
-                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting || proposalOutcomeUncertain} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Loading available VMs…</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">
-                            <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted || loading || submitting} onChange={() => { setSelectedId(resource.resource_id); setResult(null); setResultExpired(false); setError(null); setProposalOutcomeUncertain(false); }} />
+                            <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted || loading || submitting || proposalOutcomeUncertain} onChange={() => { setSelectedId(resource.resource_id); setResult(null); setResultExpired(false); setError(null); setProposalOutcomeUncertain(false); }} />
                             <span className="min-w-0 flex-1">
                                 <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                     <strong className="text-slate-100">{resource.display_name}</strong>
@@ -246,7 +246,7 @@ export function MaintenanceRequestPage() {
                     </label>
                 ))}
             </section>
-            <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
+            <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted || proposalOutcomeUncertain} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
                 {submitting ? "Requesting restart proposal…" : "Request restart proposal"}
             </button>
             {result && <section aria-label="Restart proposal ready" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">

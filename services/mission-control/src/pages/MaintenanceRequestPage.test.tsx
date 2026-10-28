@@ -270,8 +270,13 @@ describe("MaintenanceRequestPage", () => {
         renderPage();
         fireEvent.click(await screen.findByRole("radio", { name: /Frigate/i }));
         fireEvent.click(screen.getByRole("button", { name: "Request restart proposal" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this maintenance request");
+        expect(await screen.findByRole("alert")).toHaveTextContent("The returned proposal does not match this request. Check the proposal list before trying again.");
+        expect(screen.getByRole("link", { name: "Check whether a proposal was created" })).toHaveAttribute("href", "/execution-candidates");
+        expect(screen.getByRole("radio", { name: /Frigate/i })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
         expect(screen.queryByRole("link", { name: "Review restart proposal" })).not.toBeInTheDocument();
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
 
     it("clears the previous proposal when another resource is selected", async () => {
@@ -405,7 +410,10 @@ describe("MaintenanceRequestPage", () => {
         await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
         await user.click(screen.getByRole("button", { name: "Request restart proposal" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas could not confirm whether a restart proposal was created. The VM has not restarted.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas could not confirm whether a restart proposal was created. The VM has not restarted. Check proposals before trying again.");
+        expect(screen.getByRole("radio", { name: /Frigate/i })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
         await user.click(screen.getByRole("link", { name: "Check whether a proposal was created" }));
         expect(await screen.findByText("Change proposal list")).toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);

@@ -1742,3 +1742,13 @@ is unknown and directs the operator to the existing Refresh history control.
 The Operational history suite passes (13 tests), the full Mission Control
 suite passes (2,786 tests across 181 files), lint and production build pass.
 No maintenance action or backend contract changed.
+
+## Maintenance proposal result recovery — 2026-10-28
+
+If proposal creation has an uncertain result or the returned proposal does not
+match the selected VM, the request screen locks target selection, refresh, and
+submission, then directs the operator to check the proposal list. This prevents
+an immediate duplicate request from the same screen. The Maintenance request
+suite passes (31 tests), the full Mission Control suite passes (2,786 tests
+across 181 files), lint and production build pass. Backend contracts and
+execution authority are unchanged.
