@@ -34,7 +34,7 @@ export function ProviderOverviewContent({ evidence }: { evidence?: Evidence }) {
         {provider.path && <Link to={provider.path}>View {provider.name} →</Link>}
     </article>;
     return <>
-        <p>Saved providers and their reported status. A saved provider may still be unavailable.</p>
+        <p>Saved providers and the status Atlas reports for each one.</p>
         {providers === null && <p>Provider configuration unknown.</p>}
         {providers?.length === 0 && <p>{stale ? "No providers were in the last available list; the current list is unknown." : evidence?.unavailable ? "Provider configuration unknown." : "No providers configured."}</p>}
         {providers?.slice(0, 4).map(renderProvider)}

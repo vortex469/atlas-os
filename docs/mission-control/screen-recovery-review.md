@@ -739,3 +739,11 @@ removed because the AI provider card already explains that limitation. Provider
 status and action permissions are unchanged. The focused component suite passes
 (10 tests), the keyboard-accessible overview browser check passes, and lint,
 production build, and `git diff --check` pass.
+
+## Provider summary wording — 2026-10-28
+
+The Providers card now says, “Saved providers and the status Atlas reports for
+each one.” This removes the repeated “saved provider” phrasing while keeping
+clear that the card shows reported status. The focused component suite passes
+(10 tests), the keyboard-accessible overview browser check passes, and lint,
+production build, and `git diff --check` pass.

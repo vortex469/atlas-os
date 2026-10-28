@@ -23,7 +23,7 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.queryByText("Evidence unknown.")).not.toBeInTheDocument();
         expect(agent.queryByText("Evidence unavailable.")).not.toBeInTheDocument();
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
-        expect(registry().getByText("Saved providers and their reported status. A saved provider may still be unavailable.")).toBeInTheDocument();
+        expect(registry().getByText("Saved providers and the status Atlas reports for each one.")).toBeInTheDocument();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
         expect(registry().getByText("Reported status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
