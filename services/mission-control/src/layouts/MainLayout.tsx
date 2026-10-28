@@ -16,7 +16,7 @@ import { StatusBadge } from "../components/StatusBadge";
  * - Compact mobile top bar with an openable navigation drawer that never
  *   consumes desktop-sidebar width at narrow viewports.
  * - Shared branding header with the current route/page context and the
- *   Atlas Core API connection status.
+ *   Atlas Core connection status.
  * - A single `NavigationList` renders both the desktop sidebar and the
  *   mobile drawer from the shared metadata in `app/navigation.ts`, so the
  *   two surfaces cannot drift apart.
@@ -115,9 +115,9 @@ const API_STATUS_KEY: Record<ApiAvailability, string> = {
     unavailable: "unavailable",
 };
 const API_HEADER_TEXT: Record<ApiAvailability, string> = {
-    checking: "Checking API",
-    online: "Core API online",
-    unavailable: "API unavailable",
+    checking: "Checking Atlas Core",
+    online: "Atlas Core online",
+    unavailable: "Atlas Core unavailable",
 };
 
 function ApiStatusBadge({ availability, header = false }: { availability: ApiAvailability; header?: boolean }) {
@@ -136,7 +136,7 @@ function CoreApiFooter({ availability, releaseLabel }: { availability: ApiAvaila
         <div className="border-t border-mc-divider px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col items-start gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-mc-text-muted">
-                    Atlas Core API
+                    Atlas Core
                 </span>
                 <ApiStatusBadge availability={availability} />
             </div>

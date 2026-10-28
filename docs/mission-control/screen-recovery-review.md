@@ -1330,3 +1330,12 @@ disclosures now reveal the full installed or running model-name list. The
 focused AI inventory suite passes (28 tests), along with lint and production
 build. The inventory remains observational and does not imply selection or
 readiness.
+
+## Core connection wording — 2026-10-28
+
+The shell now names the service whose status it reports: “Checking Atlas Core,”
+“Atlas Core online,” or “Atlas Core unavailable.” The sidebar status heading
+also says “Atlas Core” instead of “Atlas Core API.” This changes wording only;
+the same read still determines the connection state. The layout suite passes
+(33 tests), the focused unavailable-state browser test passes, and lint and
+production build pass.

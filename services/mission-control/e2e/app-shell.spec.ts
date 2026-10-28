@@ -117,7 +117,7 @@ test.describe("Mobile navigation", () => {
     });
 });
 
-test.describe("Atlas Core API unavailable", () => {
+test.describe("Atlas Core unavailable", () => {
     test.use({ mockMode: "core-unavailable" });
 
     test("renders the unavailable state safely", async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe("Atlas Core API unavailable", () => {
         await expect(systemHealth).toContainText("Atlas shows each source separately; it does not calculate one overall score.");
         await expect(systemHealth).not.toContainText("Healthy");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
-        await expect(page.getByText("API unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("Atlas Core unavailable", { exact: true })).toBeVisible();
         await expect(page.getByText("Release label: Unavailable", { exact: true })).toBeVisible();
     });
 });

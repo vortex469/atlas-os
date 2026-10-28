@@ -70,14 +70,14 @@ describe("MainLayout", () => {
             expect(screen.getByText("Dashboard content").closest("#mc-page-content")).toHaveFocus();
         });
 
-        it("renders branding, Core API status, and its configured release label", async () => {
+        it("renders branding, Core status, and its configured release label", async () => {
             renderAt();
 
             expect(screen.getAllByText("ATLAS").length).toBeGreaterThan(0);
             expect(screen.getAllByText("Mission Control", { exact: true }).length).toBeGreaterThan(0);
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
-            expect(await screen.findByText("Core API online")).toBeInTheDocument();
-            expect(screen.getByText("Atlas Core API")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core online")).toBeInTheDocument();
+            expect(screen.getByText("Atlas Core", { exact: true })).toBeInTheDocument();
             expect(screen.getByText("Release label: Foundry")).toBeInTheDocument();
             expect(atlas.get).toHaveBeenCalledWith("");
         });
@@ -301,12 +301,12 @@ describe("MainLayout", () => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });
 
-    describe("Core API and release-label states", () => {
+    describe("Core connection and release-label states", () => {
         it("shows a safe unavailable state when Atlas Core does not respond", async () => {
             vi.mocked(atlas.get).mockRejectedValue(new Error("boom"));
             renderAt();
 
-            expect(await screen.findByText("API unavailable")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core unavailable")).toBeInTheDocument();
             expect(screen.getByText("Release label: Unavailable")).toBeInTheDocument();
             const badges = document.querySelectorAll(".mc-status-badge");
             expect(Array.from(badges).some((badge) => badge.getAttribute("data-mc-status") === "disabled")).toBe(true);
@@ -316,7 +316,7 @@ describe("MainLayout", () => {
             vi.mocked(atlas.get).mockResolvedValue({ data: { release } });
             renderAt();
 
-            expect(await screen.findByText("Core API online")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core online")).toBeInTheDocument();
             expect(screen.getByText("Release label: Not reported")).toBeInTheDocument();
         });
     });
