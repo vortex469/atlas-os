@@ -928,3 +928,12 @@ loading ends. Stale provider lists are labeled as last available. Requests and
 operator authority are unchanged. Focused component and structural tests,
 responsive overview browser checks, lint, production build, and
 `git diff --check` pass.
+
+## Dashboard health-report loading — 2026-10-28
+
+The three health reports now show “Checking…” while their first reads are in
+flight, instead of displaying unknown statuses before any response arrives. A
+failed read without prior data gets one unavailable message; stale reports
+still identify their last-known status. The dashboard uses the same sources and
+does not calculate new health results. Focused component tests, responsive
+overview browser checks, lint, production build, and `git diff --check` pass.

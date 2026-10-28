@@ -329,7 +329,7 @@ it('integrates one health summary with independent source freshness and safe rea
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     const policy = within(screen.getByRole('article', { name: 'Policy settings check' }));
     expect(policy.getByText('Current information could not be loaded.')).toBeInTheDocument();
-    expect(policy.getByText('Unknown')).toBeInTheDocument();
+    expect(policy.queryByText('Unknown')).not.toBeInTheDocument();
 });
 
 it('does not promote operational success or malformed summary evidence to health', () => {

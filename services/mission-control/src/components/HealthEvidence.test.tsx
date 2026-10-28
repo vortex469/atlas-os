@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HealthEvidence } from "./HealthEvidence";
 import { HealthEvidenceContext } from "./healthEvidenceContext";
@@ -93,6 +93,25 @@ describe("authoritative health presentation", () => {
         expect(screen.getByText("Degraded")).toBeInTheDocument();
         expect(screen.getByText("Policy validation failed")).toBeInTheDocument();
         expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
+    });
+
+    it("shows checking only for health reports that have not returned yet", () => {
+        render(<SystemHealthSummary evidence={{ health: { data: { atlas: "healthy" } } }} loading />);
+        const overall = within(screen.getByRole("article", { name: "Overall service status" }));
+        const findings = within(screen.getByRole("article", { name: "System findings" }));
+        const policy = within(screen.getByRole("article", { name: "Policy settings check" }));
+        expect(overall.getByText("Healthy")).toBeInTheDocument();
+        expect(findings.getByRole("status")).toHaveTextContent("Checking…");
+        expect(policy.getByRole("status")).toHaveTextContent("Checking…");
+        expect(findings.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
+    });
+
+    it("shows a single unavailable message when a health report failed without data", () => {
+        render(<SystemHealthSummary evidence={{ policyHealth: { unavailable: true } }} />);
+        const policy = within(screen.getByRole("article", { name: "Policy settings check" }));
+        expect(policy.getByText("Current information could not be loaded.")).toBeInTheDocument();
+        expect(policy.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
+        expect(policy.queryByText("No status information is available.")).not.toBeInTheDocument();
     });
 
     it("omits missing-time placeholders from system summaries when sources do not report check times", () => {

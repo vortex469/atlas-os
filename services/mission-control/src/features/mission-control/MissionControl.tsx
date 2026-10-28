@@ -155,7 +155,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="System health" showSourceNote={false}>
-                <SystemHealthSummary evidence={evidence} />
+                <SystemHealthSummary evidence={evidence} loading={loading} />
                 <Link to="/operations">Open operations →</Link>
             </Card>
             <Card title="Service checks" evidence={evidence.health} loading={loading}>

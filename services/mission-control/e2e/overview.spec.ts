@@ -1,10 +1,16 @@
 import { expect, test } from './mission-control-fixtures';
 
-test('overview separates initial Agent and provider loading from unavailable data', async ({ page }) => {
+test('overview separates initial loading from unavailable data across dashboard cards', async ({ page }) => {
     let releaseAgent!: () => void;
     let releaseProviders!: () => void;
+    let releaseHealth!: () => void;
+    let releaseFindings!: () => void;
+    let releasePolicy!: () => void;
     const agentGate = new Promise<void>(resolve => { releaseAgent = resolve; });
     const providersGate = new Promise<void>(resolve => { releaseProviders = resolve; });
+    const healthGate = new Promise<void>(resolve => { releaseHealth = resolve; });
+    const findingsGate = new Promise<void>(resolve => { releaseFindings = resolve; });
+    const policyGate = new Promise<void>(resolve => { releasePolicy = resolve; });
     await page.route('**/agent-api/api/v1/agent/info', async route => {
         await agentGate;
         await route.fallback();
@@ -13,19 +19,43 @@ test('overview separates initial Agent and provider loading from unavailable dat
         await providersGate;
         await route.fallback();
     });
+    await page.route('**/api/v1/health', async route => {
+        await healthGate;
+        await route.fallback();
+    });
+    await page.route('**/api/v1/ace/summary', async route => {
+        await findingsGate;
+        await route.fallback();
+    });
+    await page.route('**/api/v1/policies/status', async route => {
+        await policyGate;
+        await route.fallback();
+    });
     await page.goto('/');
     const agent = page.getByRole('region', { name: 'Agent details' });
     const providers = page.getByRole('region', { name: 'Providers' });
+    const healthReports = page.getByRole('region', { name: 'Health reports' });
     try {
         await expect(agent.getByText('Loading Agent details…')).toBeVisible();
         await expect(providers.getByText('Loading providers…')).toBeVisible();
         await expect(providers.getByText('Provider configuration unknown.')).toHaveCount(0);
+        for (const name of ['Overall service status', 'System findings', 'Policy settings check']) {
+            const report = healthReports.getByRole('article', { name });
+            await expect(report.getByRole('status')).toHaveText('Checking…');
+            await expect(report.getByText('Unknown', { exact: true })).toHaveCount(0);
+        }
     } finally {
         releaseAgent();
         releaseProviders();
+        releaseHealth();
+        releaseFindings();
+        releasePolicy();
     }
     await expect(agent.getByText('This report includes only the Agent name and version.')).toBeVisible();
     await expect(providers.getByText('Saved providers and the status Atlas reports for each one.')).toBeVisible();
+    await expect(healthReports.getByRole('article', { name: 'Overall service status' }).getByText('Healthy', { exact: true })).toBeVisible();
+    await expect(healthReports.getByRole('article', { name: 'System findings' }).getByText('Healthy', { exact: true })).toBeVisible();
+    await expect(healthReports.getByRole('article', { name: 'Policy settings check' }).getByText('Last report: Healthy. Current status unknown.')).toBeVisible();
 });
 
 for (const width of [320, 768, 1440]) {

@@ -4,7 +4,7 @@ import { record, safeText } from "./overviewEvidence";
 import type { OverviewEvidence } from "./useOverviewEvidence";
 
 // Use the dashboard's independently refreshed evidence; never compute a second aggregate.
-export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }) {
+export function SystemHealthSummary({ evidence, loading = false }: { evidence: OverviewEvidence; loading?: boolean }) {
     const core = record(evidence.health?.data);
     const ace = record(evidence.summary?.data);
     const policy = record(evidence.policyHealth?.data);
@@ -16,20 +16,30 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
     ];
     return (
         <section aria-label="Health reports" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
-            {sources.map(source => (
-                <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
-                    <h4 className="font-semibold">{source.title}</h4>
-                    {source.evidence?.unavailable && <p>{source.evidence.stale ? "Refresh failed. Showing the last available information." : "Current information could not be loaded."}</p>}
-                    <HealthEvidenceContext.Provider value={{ stale: source.evidence?.stale === true }}>
-                        <HealthEvidence
-                            compact
-                            status={source.evidence?.unavailable && !source.evidence.stale ? undefined : safeText(source.status)}
-                            reason={safeText(source.reason)}
-                            checkedAt={source.checkedAt}
-                        />
-                    </HealthEvidenceContext.Provider>
-                </article>
-            ))}
+            {sources.map(source => {
+                const hasData = source.evidence?.data !== undefined;
+                const unavailable = source.evidence?.unavailable === true;
+                const checking = loading && !hasData && !unavailable;
+                const showHealth = !checking && !(unavailable && !hasData);
+                const unavailableMessage = source.evidence?.stale && hasData
+                    ? "Refresh failed. Showing the last available information."
+                    : "Current information could not be loaded.";
+                return (
+                    <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
+                        <h4 className="font-semibold">{source.title}</h4>
+                        {checking && <p role="status">Checking…</p>}
+                        {unavailable && <p>{unavailableMessage}</p>}
+                        {showHealth && <HealthEvidenceContext.Provider value={{ stale: source.evidence?.stale === true }}>
+                            <HealthEvidence
+                                compact
+                                status={unavailable && !source.evidence?.stale ? undefined : safeText(source.status)}
+                                reason={safeText(source.reason)}
+                                checkedAt={source.checkedAt}
+                            />
+                        </HealthEvidenceContext.Provider>}
+                    </article>
+                );
+            })}
             {hasServiceMap && Object.keys(record(core.services)).length === 0 && <p>No configured service checks were reported.</p>}
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
                 <p>Atlas shows each source separately; it does not calculate one overall score. Core does not supply an overall check time. Reports older than a minute are marked out of date.</p>
