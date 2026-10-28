@@ -18,7 +18,7 @@ test("workflow totals show one explanation when the Agent omits them", async ({ 
     const totals = page.getByRole("region", { name: "Workflow totals" });
     await expect(totals).toContainText("This version of Atlas Agent does not report workflow totals.");
     await expect(totals.getByText("Unavailable", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: allWorkflows[0].workflow_id, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
     await expect(page.getByText("Showing 1 of 1 matching workflows", { exact: true })).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
 });

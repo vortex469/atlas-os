@@ -42,6 +42,10 @@ describe("WorkflowDashboardPage", () => {
         list.mockResolvedValue(response([workflow()], { total: 215, state_counts: { awaiting_implementation_approval: 1, completed: 214 }, items: [workflow(), ...Array.from({ length: 9 }, (_, i) => workflow({ workflow_id: `completed-${i}`, workflow_state: "completed" }))] }));
         renderDashboard();
         await screen.findByText("workflow-123");
+        expect(screen.getAllByRole("heading", { name: "Update Compose Stack" })).toHaveLength(10);
+        expect(screen.getByText("workflow-123", { exact: true })).toBeVisible();
+        const workflowCard = screen.getByText("workflow-123", { exact: true }).closest("article")!;
+        expect(within(workflowCard).getByText(/Workflow ID:/)).toBeVisible();
         expect(list).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, offset: 0 }));
         expect(screen.getByText("Showing 10 of 215 matching workflows")).toBeVisible();
         expect(screen.getByRole("heading", { name: "Totals for this search" })).toBeVisible();
@@ -183,7 +187,7 @@ describe("WorkflowDashboardPage", () => {
         expect(within(totals).queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
         expect(within(totals).getByRole("status")).toHaveTextContent("This version of Atlas Agent does not report workflow totals.");
         expect(within(totals).getByRole("status")).toHaveTextContent("You can still search and browse workflows");
-        expect(screen.getByRole("heading", { name: "workflow-123" })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeVisible();
     });
 
     it("refuses unsupported approval filtering and offers a working clear action", async () => {
@@ -258,7 +262,7 @@ describe("WorkflowDashboardPage", () => {
     it.each(["awaiting_implementation_approval", "completed", "blocked"])("keeps %s directory results visible with supporting facts expandable", async workflow_state => {
         list.mockResolvedValue(response([workflow({workflow_state})]));
         renderDashboard();
-        const heading = await screen.findByRole("heading", {name: "workflow-123"});
+        const heading = await screen.findByRole("heading", {name: "Update Compose Stack"});
         const card = within(heading.closest("article")!);
         expect(card.getByText("/repo")).toBeVisible();
         expect(card.getByText("No result yet")).toBeVisible();
@@ -334,7 +338,7 @@ describe("WorkflowDashboardPage", () => {
         expect(await screen.findByRole("heading", {name: "Workflows unavailable"})).toBeVisible();
         expect(screen.getByRole("alert")).toHaveTextContent("inconsistent workflow page");
         fireEvent.click(screen.getByRole("button", {name: "Try again"}));
-        expect(await screen.findByRole("heading", {name: "workflow-123"})).toBeVisible();
+        expect(await screen.findByRole("heading", {name: "Update Compose Stack"})).toBeVisible();
         expect(list).toHaveBeenCalledTimes(2);
     });
 
@@ -359,9 +363,9 @@ describe("WorkflowDashboardPage", () => {
             workflow_source: undefined, workflow_state: "future_state", extra_metadata: "not-a-public-field"} as unknown as WorkflowSummary;
         list.mockResolvedValue(response([compatible]));
         renderDashboard();
-        expect(await screen.findByRole("heading", {name: "workflow-123"})).toBeVisible();
+        expect(await screen.findByRole("heading", {name: "Update Compose Stack"})).toBeVisible();
         expect(screen.getByText("Other states")).toBeVisible();
-        const card = within(screen.getByRole("heading", {name: "workflow-123"}).closest("article")!);
+        const card = within(screen.getByRole("heading", {name: "Update Compose Stack"}).closest("article")!);
         expect(card.getByText("Unknown — open workflow to review")).toBeVisible();
         expect(card.queryByText("Not waiting for approval")).not.toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();

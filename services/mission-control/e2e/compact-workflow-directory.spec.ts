@@ -11,7 +11,7 @@ for (const width of [320, 390, 1280]) for (const state of ['awaiting_implementat
             total: 1, limit: 10, offset: 0, state_counts: {[state]: 1},
         }}));
         await page.goto('/workflows');
-        const card = page.getByRole('article').filter({has: page.getByRole('heading', {name: 'workflow-browser-baseline', exact: true})});
+        const card = page.getByRole('article').filter({has: page.getByRole('heading', {name: 'Update Compose Stack', exact: true})});
         await expect(card.getByText('/fixture/repository', {exact: true})).toBeVisible();
         await expect(card.getByText('Recorded workflow result', {exact: true})).toBeVisible();
         await expect(card.getByText('saved-candidate', {exact: true})).not.toBeVisible();

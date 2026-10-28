@@ -316,12 +316,16 @@ function WorkflowCard({ workflow, retained }: { workflow: WorkflowSummary; retai
     const approvalLabel = WORKFLOW_STATES.some(state => state === workflow.workflow_state)
         ? actionRequired ? "Waiting for approval" : "Not waiting for approval"
         : "Unknown — open workflow to review";
+    const title = workflow.execution_intent?.trim()
+        ? formatWorkflowLabel(workflow.execution_intent)
+        : "Workflow";
     const railId = `workflow-rail-${workflow.workflow_id}`;
     return (
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h3 className="break-all text-lg font-semibold text-white">{workflow.workflow_id}</h3>
+                    <h3 className="break-words text-lg font-semibold text-white">{title}</h3>
+                    <p className="mt-1 text-xs text-slate-500"><span>Workflow ID: </span><span className="break-all">{workflow.workflow_id}</span></p>
                     <p className="mt-1 text-sm text-slate-400">{retained ? "Last loaded stage" : "Current stage"}: {workflowStageLabel(workflow.workflow_state)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
