@@ -112,18 +112,21 @@ function SubjectValues({ record }: { record: InstallationCandidateRecordEnvelope
 function IntentDetails({ intent, sourcePresent }: { intent: InstallationApprovalIntentV1; sourcePresent: boolean }) {
     const subject = intent.approved_subject;
     return <section aria-labelledby="approval-evidence-detail-heading" className="mt-5 rounded-md border border-slate-700 p-3">
-        <h6 id="approval-evidence-detail-heading" className="font-semibold text-slate-100">Immutable operator-scoped approval evidence</h6>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Historical evidence only. It grants no authority and cannot be executed.</p>
+        <h6 id="approval-evidence-detail-heading" className="font-semibold text-slate-100">Historical approval evidence</h6>
+        <p className="mt-1 text-sm font-semibold text-amber-200">This record grants no authority and cannot be executed.</p>
         <p className="mt-1 text-sm text-slate-300">Source record: {sourcePresent ? "available in this operator-scoped review" : "unavailable or deleted; the historical identity is not reconstructed"}.</p>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-            <Value name="Schema" value={intent.schema} /><Value name="Approval intent ID" value={intent.approval_intent_id} />
-            <Value name="Authenticated operator ID" value={intent.operator_id} /><Value name="Server-recorded time" value={intent.recorded_at} />
-            <Value name="Candidate record ID" value={subject.candidate_record_id} />
-            <Value name="Candidate envelope fingerprint" value={subject.candidate_envelope_fingerprint} />
-            <Value name="Admission fingerprint" value={subject.admission_fingerprint} />
-            <Value name="Embedded candidate-record fingerprint" value={subject.candidate_record_fingerprint} />
-            <Value name="Exact fixed approval statement" value={intent.statement} /><Value name="Approval intent fingerprint" value={intent.intent_fingerprint} />
-        </dl>
+        <details className="mt-3 text-sm text-slate-300">
+            <summary className="mc-focusable cursor-pointer text-blue-200">Evidence details</summary>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Value name="Schema" value={intent.schema} /><Value name="Approval intent ID" value={intent.approval_intent_id} />
+                <Value name="Authenticated operator ID" value={intent.operator_id} /><Value name="Server-recorded time" value={intent.recorded_at} />
+                <Value name="Candidate record ID" value={subject.candidate_record_id} />
+                <Value name="Candidate envelope fingerprint" value={subject.candidate_envelope_fingerprint} />
+                <Value name="Admission fingerprint" value={subject.admission_fingerprint} />
+                <Value name="Embedded candidate-record fingerprint" value={subject.candidate_record_fingerprint} />
+                <Value name="Exact fixed approval statement" value={intent.statement} /><Value name="Approval intent fingerprint" value={intent.intent_fingerprint} />
+            </dl>
+        </details>
     </section>;
 }
 

@@ -1697,3 +1697,12 @@ flags remain available under collapsed Record details. The lifecycle suite
 passes (9 tests), the full Mission Control suite passes (2,783 tests across
 181 files), lint and production build pass. No backend contract or action
 changed.
+
+## Approval evidence detail summary — 2026-10-28
+
+Reviewing recorded approval evidence now leads with its historical, read-only
+status and whether the source record is still available. Operator,
+record, statement, and fingerprint fields remain available under collapsed
+Evidence details. The focused approval-evidence suite passes (6 tests), the
+full Mission Control suite passes (2,783 tests across 181 files), lint and
+production build pass. No approval-recording behavior or authority changed.

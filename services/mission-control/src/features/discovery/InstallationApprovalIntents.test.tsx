@@ -59,12 +59,18 @@ describe("installation approval evidence", () => {
         const user = userEvent.setup();
         render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
         await user.click(await screen.findByRole("button", { name: /review approval evidence/i }));
-        const detail = screen.getByRole("heading", { name: /immutable operator-scoped/i }).parentElement!;
-        expect(within(detail).getByText("operator-a")).toBeInTheDocument();
-        expect(within(detail).getByText("2026-08-27T12:00:01Z")).toBeInTheDocument();
-        expect(within(detail).getByText("operator_approved_exact_non_executable_candidate")).toBeInTheDocument();
+        const detail = screen.getByRole("heading", { name: /historical approval evidence/i }).parentElement!;
+        expect(within(detail).getByText(/grants no authority and cannot be executed/i)).toBeVisible();
+        expect(within(detail).getByText(/source record: available/i)).toBeVisible();
+        const evidenceDetails = within(detail).getByText("Evidence details").closest("details");
+        expect(evidenceDetails).not.toHaveAttribute("open");
+        expect(within(evidenceDetails as HTMLElement).getByText("operator-a")).not.toBeVisible();
+        await user.click(within(detail).getByText("Evidence details"));
+        expect(within(detail).getByText("operator-a")).toBeVisible();
+        expect(within(detail).getByText("2026-08-27T12:00:01Z")).toBeVisible();
+        expect(within(detail).getByText("operator_approved_exact_non_executable_candidate")).toBeVisible();
         for (const value of [ids.record, "a".repeat(64), "b".repeat(64), "c".repeat(64), "d".repeat(64)]) {
-            expect(within(detail).getByText(value)).toBeInTheDocument();
+            expect(within(detail).getByText(value)).toBeVisible();
         }
     });
 
@@ -79,7 +85,7 @@ describe("installation approval evidence", () => {
         expect(within(confirmation).getByText(/does not authorize or initiate any work/i)).toBeInTheDocument();
         await user.click(within(confirmation).getByRole("button", { name: /confirm and record approval evidence only/i }));
         expect(recordInstallationApprovalIntent).toHaveBeenCalledWith(ids.record, "csrf", "approval-key");
-        expect(await screen.findByText(/historical evidence only/i)).toBeInTheDocument();
+        expect(await screen.findByText(/grants no authority and cannot be executed/i)).toBeInTheDocument();
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
     });
 
