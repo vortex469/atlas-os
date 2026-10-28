@@ -132,7 +132,7 @@ export function OperationalHistoryPage() {
     }
 
     return (
-        <main className="mx-auto max-w-7xl space-y-6 p-8">
+        <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
             <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
                 <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Maintenance</p><h1 className="mt-2 text-3xl font-semibold text-white">Maintenance history</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">See past maintenance requests and their latest results.</p></div>
                 <div className="flex gap-3"><Link to="/operations/request" className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100">Request maintenance</Link><button type="button" onClick={() => void load()} disabled={isLoading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50">Refresh history</button></div>

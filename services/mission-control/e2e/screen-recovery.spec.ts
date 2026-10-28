@@ -58,6 +58,32 @@ for (const width of [320, 1280]) {
     });
 }
 
+for (const width of [320, 1280]) {
+    test(`maintenance history uses responsive spacing while loading at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let releaseHistoryRead!: () => void;
+        const historyRead = new Promise<void>((resolve) => { releaseHistoryRead = resolve; });
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", async (route) => {
+            await historyRead;
+            return route.fulfill({ json: { items: [], total: 0, limit: 10, offset: 0 } });
+        });
+
+        try {
+            await page.goto("/operations/history");
+            const loadingMessage = page.getByRole("status").filter({ hasText: "Loading operational history..." });
+            await expect(loadingMessage).toBeVisible();
+            await expectResponsiveMainPadding(loadingMessage, width);
+            releaseHistoryRead();
+            const emptyState = page.getByText("No maintenance requests yet.", { exact: true });
+            await expect(emptyState).toBeVisible();
+            await expectResponsiveMainPadding(emptyState, width);
+            expect(rejectedMutationRequests).toEqual([]);
+        } finally {
+            releaseHistoryRead();
+        }
+    });
+}
+
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
     let reads = 0;
     await page.setViewportSize({ width: 390, height: 844 });
@@ -828,7 +854,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`maintenance history keeps unavailable requests findable and details optional at ${width}px`, async ({ page }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 844 });
@@ -857,7 +883,9 @@ for (const width of [390, 1280]) {
             await route.fallback();
         });
         await page.goto("/operations/history");
-        await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        const itemHeading = page.getByRole("heading", { name: "Virtual machine 110" });
+        await expect(itemHeading).toBeVisible();
+        await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeHidden();
         await expect(page.getByRole("combobox", { name: "Latest result", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeHidden();
@@ -880,7 +908,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`malformed maintenance history offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 844 });
@@ -892,8 +920,10 @@ for (const width of [390, 1280]) {
         });
         await page.goto("/operations/history");
 
-        await expect(page.getByRole("alert")).toContainText("Could not load maintenance history.");
-        await expect(page.getByRole("alert")).toContainText("The maintenance outcome is unknown.");
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Could not load maintenance history.");
+        await expect(alert).toContainText("The maintenance outcome is unknown.");
+        await expectResponsiveMainPadding(alert, width);
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {
             await page.getByRole("button", { name: "Open navigation" }).click();
@@ -1100,7 +1130,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`malformed lifecycle details leave maintenance history readable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/agent-api/**", async (route) => {
@@ -1126,7 +1156,9 @@ for (const width of [390, 1280]) {
         });
         await page.goto("/operations/history");
 
-        await expect(page.getByRole("heading", { name: "Maintenance target 110" })).toBeVisible();
+        const itemHeading = page.getByRole("heading", { name: "Maintenance target 110" });
+        await expect(itemHeading).toBeVisible();
+        await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
         await expect(page.getByText("42", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Restart service · Healthy")).toBeVisible();

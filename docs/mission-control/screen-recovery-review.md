@@ -2148,3 +2148,12 @@ and rejected credentials at phone and desktop sizes (5 checks). The focused
 login and session suites pass (14 tests), as do lint and the production build.
 Password clearing, validated return context, and Core-owned authentication
 behavior are unchanged.
+
+## Maintenance history phone spacing — 2026-10-28
+
+Maintenance history now uses compact page spacing on phones while keeping its
+desktop layout. Synthetic browser checks cover loading, request results,
+unavailable history, and incomplete lifecycle details at 320px, 390px, and
+1280px (11 checks). The history page suite passes (13 tests), as do lint and
+the production build. Filters, pagination, and all maintenance actions are
+unchanged.
