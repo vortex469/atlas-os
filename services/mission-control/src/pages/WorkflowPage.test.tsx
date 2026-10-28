@@ -983,7 +983,7 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent("Workflow not found");
     });
 
-    it("renders verification plan, evidence, and deterministic review", async () => {
+    it("shows checks, results, and one clear review decision", async () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Checks to run" })).toBeInTheDocument();
@@ -999,12 +999,15 @@ describe("WorkflowPage", () => {
         expect(screen.getByRole("heading", { name: "Check results" })).toBeInTheDocument();
         expect(verificationReview.getByText("abc123")).not.toBeVisible();
         expect(verificationReview.getByText("compose-config: passed")).toBeVisible();
-        expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
-        expect(verificationReview.getByText("Decision")).toBeVisible();
-        expect(verificationReview.getByText("0 findings, 0 recommendations")).toBeVisible();
-        expect(verificationReview.getByText("compose.yaml")).toBeVisible();
+        const review = within(screen.getByRole("region", { name: "Review" }));
+        expect(review.getByText("Decision")).toBeVisible();
+        expect(review.getByText("Approved", { exact: true })).toBeVisible();
+        expect(review.getByText("0 findings, 0 recommendations")).toBeVisible();
+        expect(review.getByText("compose.yaml")).toBeVisible();
+        expect(review.queryByText("Review result", { exact: true })).not.toBeInTheDocument();
+        expect(review.queryByText("Review status", { exact: true })).not.toBeInTheDocument();
+        expect(review.queryByText("Model-assisted review", { exact: true })).not.toBeInTheDocument();
         expect(verificationReview.getByText("review-fingerprint-123")).not.toBeVisible();
-        expect(screen.getAllByText("Disabled").length).toBeGreaterThan(0);
 
         fireEvent.click(verificationReview.getByText("Technical details"));
 
@@ -1014,7 +1017,10 @@ describe("WorkflowPage", () => {
         for (const digest of verificationReview.getAllByText("changed-digest-123")) expect(digest).toBeVisible();
         expect(verificationReview.getByText("/opt/atlas/services/demo")).toBeVisible();
         expect(verificationReview.getByText("abc123")).toBeVisible();
+        expect(verificationReview.getByText("Review result", { exact: true })).toBeVisible();
+        expect(verificationReview.getByText("Review status", { exact: true })).toBeVisible();
         expect(verificationReview.getByText("review-fingerprint-123")).toBeVisible();
+        expect(verificationReview.getByText("Model-assisted review", { exact: true })).toBeVisible();
     });
 
     it("shows the next verification step without empty result fields", async () => {

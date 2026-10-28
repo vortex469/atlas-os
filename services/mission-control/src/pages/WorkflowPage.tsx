@@ -665,6 +665,9 @@ function VerificationReviewSection({
     const plan = workflow.verification_plan;
     const evidence = workflow.verification_evidence;
     const review = workflow.review;
+    const reviewDecision = review.approved === null
+        ? review.review_result ?? review.review_status
+        : review.approved ? "approved" : "failed";
     const hasVerificationResults = evidence.verification_status !== null
         || evidence.completed_time !== null
         || evidence.executed_checks.length > 0
@@ -697,7 +700,10 @@ function VerificationReviewSection({
                     <Detail label="Repository" value={plan.repository ?? "Not available"} />
                     <Detail label="Repository HEAD" value={evidence.repository_head ?? "Not available"} />
                     <Detail label="Evidence changed-files digest" value={evidence.changed_files_digest ?? "Not available"} />
+                    <Detail label="Review result" value={review.review_result ? formatLabel(review.review_result) : "Not available"} />
+                    <Detail label="Review status" value={review.review_status ? formatLabel(review.review_status) : "Not available"} />
                     <Detail label="Review fingerprint" value={review.review_fingerprint ?? "Not available"} />
+                    <Detail label="Model-assisted review" value={review.model_assisted_review} />
                 </dl>
             </details>
 
@@ -732,12 +738,9 @@ function VerificationReviewSection({
                 <h3 id="review-heading" className="text-base font-semibold text-white">Review</h3>
                 {hasReviewResults ? (
                     <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                        <Detail label="Review result" value={review.review_result ? formatLabel(review.review_result) : "Not available"} />
-                        <Detail label="Review status" value={review.review_status ? formatLabel(review.review_status) : "Not available"} />
-                        <Detail label="Decision" value={review.approved === null ? "Not available" : review.approved ? "Approved" : "Failed"} />
+                        <Detail label="Decision" value={reviewDecision ? formatLabel(reviewDecision) : "Not available"} />
                         <Detail label="Findings" value={review.evidence_summary ?? "Not available"} />
                         <Detail label="Changed files" value={review.changed_files.length > 0 ? review.changed_files.join(", ") : "None reported"} />
-                        <Detail label="Model-assisted review" value={review.model_assisted_review} />
                     </dl>
                 ) : (
                     <p className="mt-3 text-sm text-slate-300">Review results will appear after verification runs.</p>
