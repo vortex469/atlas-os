@@ -38,7 +38,7 @@ for (const width of [390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Change proposals unavailable");
-        await expect(alert).toContainText("Mission Control could not load change proposals.");
+        await expect(alert).toContainText("Mission Control could not load the latest proposal results.");
         await expect(alert.getByRole("button", { name: "Retry search" })).toBeVisible();
         await expect(page.getByText("Results unavailable", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();

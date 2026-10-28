@@ -122,8 +122,10 @@ test.describe("Atlas Core API unavailable", () => {
     test("renders the unavailable state safely", async ({ page }) => {
         await page.goto("/");
 
-        await expect(page.getByRole("region", { name: "System health" })).toContainText("Current information could not be loaded.");
-        await expect(page.getByRole("region", { name: "System health" })).toContainText("Unknown");
+        const systemHealth = page.getByRole("region", { name: "System health" });
+        await expect(systemHealth).toContainText("Current information could not be loaded.");
+        await expect(systemHealth).toContainText("Atlas shows each source separately; it does not calculate one overall score.");
+        await expect(systemHealth).not.toContainText("Healthy");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
         await expect(page.getByText("API unavailable", { exact: true })).toBeVisible();
         await expect(page.getByText("Release label: Unavailable", { exact: true })).toBeVisible();
