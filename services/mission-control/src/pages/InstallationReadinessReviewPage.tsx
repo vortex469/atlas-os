@@ -5,17 +5,22 @@ import { getInstallationReadinessReview, LINKAGE_KEYS } from "../api/installatio
 import { createExecutionPermissionGrant, executionPermissionGrantIdempotencyKey, listExecutionPermissionGrants } from "../api/executionPermissionGrant";
 import { InstallationExecutionAdmissions } from "../features/installation/InstallationExecutionAdmissions";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
-import type { FingerprintV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
+import type { FingerprintV1, InstallationReadinessBlockerV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
 import { EXECUTION_PERMISSION_CONFIRMATION, type ExecutionPermissionGrantCreateV1, type ExecutionPermissionGrantResultV1 } from "../types/executionPermissionGrant";
 
-const BLOCKER_LABELS: Record<string, string> = {
-    missing_evidence: "Missing evidence", ownership_mismatch: "Ownership mismatch",
-    linkage_mismatch: "Linkage mismatch", fingerprint_mismatch: "Fingerprint mismatch",
-    invalid_evidence: "Invalid evidence", stale_evidence: "Stale evidence",
-    expired_evidence: "Expired evidence", terminal_ambiguity: "Terminal ambiguity",
-    agent_evidence_unavailable: "Agent evidence unavailable", source_unavailable: "Source unavailable",
-    installation_capability_unsupported: "Installation capability unsupported",
-    execution_admission_not_defined: "Execution admission is not defined",
+const BLOCKER_LABELS: Record<InstallationReadinessBlockerV1, string> = {
+    missing_evidence: "Required evidence is missing.",
+    ownership_mismatch: "The evidence belongs to a different operator.",
+    linkage_mismatch: "The evidence does not match the linked installation records.",
+    fingerprint_mismatch: "The recorded evidence does not pass its integrity check.",
+    invalid_evidence: "Required evidence is incomplete or could not be verified.",
+    stale_evidence: "Some evidence is out of date.",
+    expired_evidence: "Some evidence has expired.",
+    terminal_ambiguity: "A previous step has an unclear final status.",
+    agent_evidence_unavailable: "Atlas could not check evidence from the Agent.",
+    source_unavailable: "Atlas could not check one of the required evidence sources.",
+    installation_capability_unsupported: "Atlas cannot install this type of item yet.",
+    execution_admission_not_defined: "Atlas has not defined how to start this installation yet.",
 };
 
 export function InstallationReadinessReviewPage() {

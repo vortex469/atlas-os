@@ -1418,3 +1418,13 @@ and pauses Previous and Next until the operator applies them. Applying a filter
 still returns the list to its first page. The page suite passes 10 tests, and
 six browser checks pass across 390px and 1280px. Workflow retrieval and
 approval behavior are unchanged.
+
+## Readiness blocker wording — 2026-10-28
+
+The installation readiness review now explains every blocker in operator-facing
+language, including incomplete evidence, ownership and record mismatches,
+unclear prior status, unavailable sources, and unsupported installation. The
+technical blocker codes remain under the collapsed review details. The focused
+readiness page suite passes 25 tests, including coverage for all 12 blocker
+explanations. Evidence collection, permissions, and execution boundaries are
+unchanged.

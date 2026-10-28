@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { StrictMode } from "react";
-import type { InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
+import type { InstallationReadinessBlockerV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationReadinessReview } from "../api/installationReadinessReview";
@@ -115,10 +115,35 @@ describe("InstallationReadinessReviewPage", () => {
         expect(await screen.findByRole("heading", { name: "Blocked" })).toBeInTheDocument();
         const blockers = screen.getByRole("list", { name: "Ordered readiness blockers" });
         const items = within(blockers).getAllByRole("listitem");
-        expect(items[0]).toHaveTextContent("Stale evidence");
-        expect(items[1]).toHaveTextContent("Installation capability unsupported");
+        expect(items[0]).toHaveTextContent("Some evidence is out of date.");
+        expect(items[1]).toHaveTextContent("Atlas cannot install this type of item yet.");
         expect(screen.getByText("This review is blocked by the evidence issues listed below.")).toBeInTheDocument();
         expect(screen.getByRole("list", { name: "Ordered readiness blockers" })).toBeInTheDocument();
+    });
+
+    it.each([
+        ["missing_evidence", "Required evidence is missing."],
+        ["ownership_mismatch", "The evidence belongs to a different operator."],
+        ["linkage_mismatch", "The evidence does not match the linked installation records."],
+        ["fingerprint_mismatch", "The recorded evidence does not pass its integrity check."],
+        ["invalid_evidence", "Required evidence is incomplete or could not be verified."],
+        ["stale_evidence", "Some evidence is out of date."],
+        ["expired_evidence", "Some evidence has expired."],
+        ["terminal_ambiguity", "A previous step has an unclear final status."],
+        ["agent_evidence_unavailable", "Atlas could not check evidence from the Agent."],
+        ["source_unavailable", "Atlas could not check one of the required evidence sources."],
+        ["installation_capability_unsupported", "Atlas cannot install this type of item yet."],
+        ["execution_admission_not_defined", "Atlas has not defined how to start this installation yet."],
+    ] as const satisfies readonly (readonly [InstallationReadinessBlockerV1, string])[])("explains the %s blocker in plain language", async (blocker, explanation) => {
+        const response = structuredClone(blockedFixture);
+        response.review.blockers = [blocker];
+        response.audit_evidence.blocker_codes = [blocker];
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
+
+        renderPage();
+
+        const blockers = await screen.findByRole("list", { name: "Ordered readiness blockers" });
+        expect(within(blockers).getByText(explanation)).toBeVisible();
     });
 
     it("renders redacted error and empty states without leaked details", async () => {
