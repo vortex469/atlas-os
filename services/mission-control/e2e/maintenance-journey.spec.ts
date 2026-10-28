@@ -101,6 +101,11 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Maintenance progress", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Execution timeline", exact: true })).toHaveCount(0);
+        const maintenanceStatus = page.getByRole("region", { name: "Maintenance status" });
+        await expect(maintenanceStatus.getByText("Technical evidence", { exact: true })).toBeVisible();
+        const technicalEvidence = maintenanceStatus.locator("details");
+        await expect(technicalEvidence).not.toHaveAttribute("open");
+        await expect(technicalEvidence.getByText("Workflow ID", { exact: true })).toBeHidden();
         const maintenanceStages = page.getByRole("list", { name: "Maintenance workflow stages" });
         await expect(maintenanceStages.getByText("Maintenance request approval", { exact: true })).toBeVisible();
         await expect(maintenanceStages.getByText("Run maintenance", { exact: true })).toBeVisible();
@@ -116,6 +121,10 @@ for (const width of [320, 390, 1280]) {
         const auditHeading = page.getByRole("heading", { name: "Maintenance audit", exact: true });
         await expect(auditHeading).toBeVisible();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
+        const auditMaintenanceStatus = page.getByRole("region", { name: "Maintenance status" });
+        const auditTechnicalEvidence = auditMaintenanceStatus.locator("details");
+        await expect(auditTechnicalEvidence).not.toHaveAttribute("open");
+        await expect(auditTechnicalEvidence.getByText("Workflow ID", { exact: true })).toBeHidden();
         await expect(page.getByText(/Maintenance status:/)).toContainText("Maintenance workflow completed.");
         await expect(page.getByRole("heading", { name: "Commit Request", exact: true })).toHaveCount(0);
         const auditPadding = await auditHeading.evaluate((element) => {

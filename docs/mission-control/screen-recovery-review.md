@@ -135,6 +135,17 @@ terms. Repository audit wording remains unchanged. The focused audit page tests
 pass (26 tests), the request-through-audit browser journey passes at 320, 390,
 and 1280 pixels, and lint/build pass.
 
+## Maintenance status panel simplification — 2026-10-28
+
+The maintenance workflow and audit now show the outcome and safe next step first.
+IDs, approval records, execution counters, verification fields, and recorded
+status changes are grouped under a closed “Technical evidence” disclosure.
+Outcome headings and guidance now use operator terms such as “Request result
+unknown” and “Approved target changed.” The no-repeat guidance and existing
+approval and execution boundaries remain in place. The focused workflow,
+timeline, audit, and lifecycle tests pass (135 tests); the maintenance journey
+passes at 320, 390, and 1280 pixels, and lint/build pass.
+
 ## Maintenance history stage wording — 2026-10-28
 
 Maintenance history now calls its optional disclosure “Request details” and

@@ -34,7 +34,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
             </ol>
 
             {isOperational
-                ? <p className="mt-5 text-sm text-slate-300">Check the Operational lifecycle section above for the maintenance outcome and verification.</p>
+                ? <p className="mt-5 text-sm text-slate-300">Check Maintenance status above for the outcome and verification.</p>
                 : <ExecutionSection execution={workflow.execution} workflowState={workflow.workflow_state} approvalStatus={workflow.implementation_approval_status} />}
         </section>
     );
@@ -107,10 +107,10 @@ function ExecutionSection({ execution, workflowState, approvalStatus }: { execut
 function executionStateText(workflow: WorkflowDetailResponse): string {
     if (workflow.effect_kind === "operational_action") {
         if (workflow.workflow_state === "completed") return "Maintenance workflow completed. Review the recorded operational outcome.";
-        if (workflow.workflow_state === "blocked") return "Maintenance workflow is blocked. Review the operational lifecycle.";
+        if (workflow.workflow_state === "blocked") return "Maintenance workflow is blocked. Review Maintenance status for details.";
         if (workflow.implementation_approval_status === "rejected") return "Maintenance request rejected.";
         if (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status !== "approved") return "Waiting for maintenance request approval.";
-        return "Review the Operational lifecycle for maintenance results.";
+        return "Review Maintenance status for the latest result.";
     }
     const execution = workflow.execution;
     if (execution.execution_status === "unknown") return "Worker outcome unknown. Check the original result; do not resubmit.";

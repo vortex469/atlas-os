@@ -22,46 +22,51 @@ function timestamp(value: string | null): string {
 
 export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, refreshDisabled = false, error, onRefresh }: OperationalLifecyclePanelProps) {
     if (isLoading) {
-        return <section aria-label="Operational lifecycle"><p role="status" className="text-slate-300">Loading operational lifecycle...</p></section>;
+        return <section aria-label="Maintenance status"><p role="status" className="text-slate-300">Checking maintenance status…</p></section>;
     }
     if (error) {
-        return <section aria-label="Operational lifecycle" role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><h2 className="text-lg font-semibold text-red-100">Operational lifecycle unavailable</h2><p className="mt-2 text-sm text-red-100">Mission Control could not verify the latest lifecycle, so the maintenance outcome may still be unknown.</p><p className="mt-2 text-sm text-slate-300">Checking status again does not repeat the maintenance action.</p><button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">{isRefreshing ? "Checking status…" : "Check status again"}</button><details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{error}</p></details></section>;
+        return <section aria-label="Maintenance status" role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><h2 className="text-lg font-semibold text-red-100">Maintenance status unavailable</h2><p className="mt-2 text-sm text-red-100">Mission Control could not check the latest maintenance status, so the result may still be unknown.</p><p className="mt-2 text-sm text-slate-300">Checking status again does not repeat the maintenance action.</p><button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">{isRefreshing ? "Checking status…" : "Check status again"}</button><details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{error}</p></details></section>;
     }
     if (!lifecycle || !lifecycle.applicable) return null;
     const outcome = operationalOutcome(lifecycle);
     return (
-        <section aria-labelledby="operational-lifecycle-heading" className="space-y-5 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-5">
+        <section aria-labelledby="maintenance-status-heading" className="space-y-5 rounded-xl border border-cyan-500/30 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-                <div><p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Operational workflow</p><h2 id="operational-lifecycle-heading" className="mt-2 text-xl font-semibold text-white">Operational lifecycle</h2></div>
-                <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">{isRefreshing ? "Refreshing..." : "Refresh lifecycle"}</button>
+                <div><p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Maintenance request</p><h2 id="maintenance-status-heading" className="mt-2 text-xl font-semibold text-white">Maintenance status</h2></div>
+                <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">{isRefreshing ? "Refreshing..." : "Refresh maintenance status"}</button>
             </div>
             <section aria-labelledby="outcome-heading" className="rounded-lg border border-slate-700 bg-slate-950/60 p-4">
                 <h3 id="outcome-heading" className="font-semibold text-white">{outcome.title}</h3>
                 <p className="mt-2 text-sm text-slate-300"><strong>Atlas knows:</strong> {outcome.known}</p>
                 <p className="mt-1 text-sm text-slate-300"><strong>Atlas does not know:</strong> {outcome.unknown}</p>
                 <p className="mt-1 text-sm text-cyan-200"><strong>Safe next step:</strong> {outcome.guidance}</p>
-                {outcome.retryProhibited && <p className="mt-2 text-sm font-semibold text-amber-200">Mutation retry is prohibited. This view provides no retry or run-again control.</p>}
+                {outcome.retryProhibited && <p className="mt-2 text-sm font-semibold text-amber-200">Do not repeat this request. Check its status first.</p>}
             </section>
-            <LifecycleGroup title="Identity" values={[
-                ["Workflow ID", lifecycle.workflow_id], ["Candidate ID", lifecycle.candidate_id], ["Planning Session ID", lifecycle.planning_session_id], ["Operation Intent", lifecycle.execution_intent], ["Provider / Resource", lifecycle.target_label],
-            ]} />
-            <LifecycleGroup title="Provenance" values={[
-                ["Source Subsystem", lifecycle.candidate_source_subsystem], ["Operator Intent Record", lifecycle.operator_intent_record_id], ["Candidate Fingerprint", lifecycle.candidate_fingerprint], ["Plan Fingerprint", lifecycle.plan_fingerprint],
-            ]} />
-            <LifecycleGroup title="Approvals" values={[
-                ["Preparation Approval", lifecycle.preparation_approval ? `${label(lifecycle.preparation_approval.presentation_state)} (${label(lifecycle.preparation_approval.decision_status)})` : null],
-                ["Action Approval", lifecycle.action_approval ? `${label(lifecycle.action_approval.presentation_state)} (${label(lifecycle.action_approval.decision_status)})` : null],
-                ["Action Approval Expiry", lifecycle.action_approval ? timestamp(lifecycle.action_approval.expires_at) : null],
-            ]} />
-            <LifecycleGroup title="Execution and exactly-once evidence" values={[
-                ["Action Request ID", lifecycle.action_request_id], ["Disruption Scope", lifecycle.disruption_scope], ["Agent Execution Stage", label(lifecycle.agent_execution_stage)], ["Core Ledger State", label(lifecycle.core_record_state)], ["Dispatch Status", label(lifecycle.dispatch_status)],
-                ["Barrier Crossed", lifecycle.barrier_crossed ? "Yes" : "No"], ["Barrier Crossing Count", String(lifecycle.barrier_crossing_count)], ["Provider Operation Captured", lifecycle.provider_operation_captured ? "Yes" : "No"], ["Provider Operation Capture Count", String(lifecycle.provider_operation_capture_count)],
-            ]} />
-            {lifecycle.terminal && lifecycle.barrier_crossing_count === 1 && lifecycle.provider_operation_capture_count <= 1 && <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">Exactly-once evidence shows one dispatch barrier crossing and no replay in the recorded lifecycle.</p>}
-            <LifecycleGroup title="Verification" values={[
-                ["Verification Status", label(lifecycle.verification_status)], ["Observed Service State", lifecycle.observed_state], ["Observed Health", lifecycle.observed_health], ["Provider Operation Reference", lifecycle.provider_operation_reference], ["Dispatch Started", timestamp(lifecycle.dispatch_started_at)], ["Dispatch Completed", timestamp(lifecycle.dispatch_completed_at)], ["Verification Started", timestamp(lifecycle.verification_started_at)], ["Verification Completed", timestamp(lifecycle.verification_completed_at)], ["Terminal", lifecycle.terminal ? "Yes" : "No"],
-            ]} />
-            <div><h3 className="font-semibold text-white">Durable transitions</h3>{lifecycle.transitions.length === 0 ? <p className="mt-2 text-sm text-slate-400">No Core transitions are available.</p> : <ol className="mt-3 space-y-2">{lifecycle.transitions.map((transition) => <li key={transition.sequence} className="text-sm text-slate-300"><span className="font-mono text-cyan-200">{transition.sequence}</span> · {label(transition.state)} · {timestamp(transition.occurred_at)}</li>)}</ol>}</div>
+            {lifecycle.terminal && lifecycle.barrier_crossing_count === 1 && lifecycle.provider_operation_captured && lifecycle.provider_operation_capture_count === 1 && <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">Atlas recorded one maintenance run and no replay.</p>}
+            <details className="rounded-lg border border-slate-700 px-4 py-3">
+                <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Technical evidence</summary>
+                <div className="mt-4 space-y-5">
+                    <LifecycleGroup title="Identity" values={[
+                        ["Workflow ID", lifecycle.workflow_id], ["Candidate ID", lifecycle.candidate_id], ["Planning Session ID", lifecycle.planning_session_id], ["Operation Intent", lifecycle.execution_intent], ["Provider / Resource", lifecycle.target_label],
+                    ]} />
+                    <LifecycleGroup title="Provenance" values={[
+                        ["Source Subsystem", lifecycle.candidate_source_subsystem], ["Operator Intent Record", lifecycle.operator_intent_record_id], ["Candidate Fingerprint", lifecycle.candidate_fingerprint], ["Plan Fingerprint", lifecycle.plan_fingerprint],
+                    ]} />
+                    <LifecycleGroup title="Approvals" values={[
+                        ["Preparation Approval", lifecycle.preparation_approval ? `${label(lifecycle.preparation_approval.presentation_state)} (${label(lifecycle.preparation_approval.decision_status)})` : null],
+                        ["Action Approval", lifecycle.action_approval ? `${label(lifecycle.action_approval.presentation_state)} (${label(lifecycle.action_approval.decision_status)})` : null],
+                        ["Action Approval Expiry", lifecycle.action_approval ? timestamp(lifecycle.action_approval.expires_at) : null],
+                    ]} />
+                    <LifecycleGroup title="Execution records" values={[
+                        ["Action Request ID", lifecycle.action_request_id], ["Disruption Scope", lifecycle.disruption_scope], ["Agent Execution Stage", label(lifecycle.agent_execution_stage)], ["Core Ledger State", label(lifecycle.core_record_state)], ["Dispatch Status", label(lifecycle.dispatch_status)],
+                        ["Barrier Crossed", lifecycle.barrier_crossed ? "Yes" : "No"], ["Barrier Crossing Count", String(lifecycle.barrier_crossing_count)], ["Provider Operation Captured", lifecycle.provider_operation_captured ? "Yes" : "No"], ["Provider Operation Capture Count", String(lifecycle.provider_operation_capture_count)],
+                    ]} />
+                    <LifecycleGroup title="Verification" values={[
+                        ["Verification Status", label(lifecycle.verification_status)], ["Observed Service State", lifecycle.observed_state], ["Observed Health", lifecycle.observed_health], ["Provider Operation Reference", lifecycle.provider_operation_reference], ["Dispatch Started", timestamp(lifecycle.dispatch_started_at)], ["Dispatch Completed", timestamp(lifecycle.dispatch_completed_at)], ["Verification Started", timestamp(lifecycle.verification_started_at)], ["Verification Completed", timestamp(lifecycle.verification_completed_at)], ["Terminal", lifecycle.terminal ? "Yes" : "No"],
+                    ]} />
+                    <div><h3 className="font-semibold text-white">Recorded status changes</h3>{lifecycle.transitions.length === 0 ? <p className="mt-2 text-sm text-slate-400">No recorded status changes.</p> : <ol className="mt-3 space-y-2">{lifecycle.transitions.map((transition) => <li key={transition.sequence} className="text-sm text-slate-300"><span className="font-mono text-cyan-200">{transition.sequence}</span> · {label(transition.state)} · {timestamp(transition.occurred_at)}</li>)}</ol>}</div>
+                </div>
+            </details>
         </section>
     );
 }

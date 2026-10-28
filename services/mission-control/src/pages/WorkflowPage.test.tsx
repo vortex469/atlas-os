@@ -853,7 +853,7 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("heading", { name: "Checks to run" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
-        expect(await screen.findByRole("heading", { name: "Operational lifecycle" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Maintenance status" })).toBeInTheDocument();
         expect(screen.getAllByText("resolved (approved)")).toHaveLength(2);
     });
 
@@ -969,7 +969,7 @@ describe("WorkflowPage", () => {
         expect(mockedGetWorkflowOperationalLifecycle).not.toHaveBeenCalled();
         expect(mockedGetWorkflowRecoveryDiagnostic).not.toHaveBeenCalled();
         expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
-        expect(screen.queryByRole("heading", { name: "Operational lifecycle" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Maintenance status" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Support evidence" })).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Recovery summary")).not.toBeInTheDocument();
     });
@@ -978,7 +978,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Refresh lifecycle" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Refresh maintenance status" }));
 
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
         expect(mockedGetWorkflowOperationalLifecycle).toHaveBeenCalledTimes(2);
@@ -991,7 +991,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Operational lifecycle unavailable");
+        expect(alert).toHaveTextContent("Maintenance status unavailable");
         expect(alert).toHaveTextContent("Checking status again does not repeat the maintenance action.");
         fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
 

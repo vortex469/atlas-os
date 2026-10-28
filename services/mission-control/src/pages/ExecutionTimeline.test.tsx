@@ -150,7 +150,7 @@ describe("ExecutionTimeline", () => {
         }
         expect(within(stages).getAllByRole("listitem")).toHaveLength(7);
         expect(screen.getByText("Waiting for maintenance request approval.")).toBeInTheDocument();
-        expect(screen.getByText("Check the Operational lifecycle section above for the maintenance outcome and verification.")).toBeInTheDocument();
+        expect(screen.getByText("Check Maintenance status above for the outcome and verification.")).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Change progress" })).not.toBeInTheDocument();
         for (const internalName of ["Execution Candidate", "Planning Session", "Candidate Plan", "Implementation Approval", "Execution", "Verification", "Review", "Commit"]) {
             expect(within(stages).queryByText(internalName, { exact: true })).not.toBeInTheDocument();
@@ -202,6 +202,12 @@ describe("ExecutionTimeline", () => {
         expect(screen.getByText("docker-compose")).toBeInTheDocument();
         expect(screen.getByText("exec-123")).toBeInTheDocument();
         expect(screen.getByText("compose.yaml, services/demo/Dockerfile")).toBeInTheDocument();
+    });
+
+    it("directs a blocked maintenance workflow to its status panel", () => {
+        renderTimeline(workflow({ effect_kind: "operational_action", workflow_state: "blocked" }));
+
+        expect(screen.getByText("Maintenance workflow is blocked. Review Maintenance status for details.")).toBeInTheDocument();
     });
 
     it("renders blocked state from backend stage status", () => {
