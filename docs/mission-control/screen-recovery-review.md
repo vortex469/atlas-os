@@ -235,6 +235,15 @@ Read-only reasons and save conflicts use plain-language descriptions while
 the same server-side permissions, identity checks, and explicit Save remain in
 place.
 
+## Proxmox older settings wording — 2026-10-28
+
+The retained Proxmox VM expectations are labeled as older settings kept for
+reference. The page says they do not apply automatically to current VMs and
+points operators to the current monitoring section. It no longer uses
+"non-authoritative" or "resource identities" for this explanation. Focused
+policy and provider-page tests, lint, and build validate the wording; provider
+configuration and monitoring authority are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

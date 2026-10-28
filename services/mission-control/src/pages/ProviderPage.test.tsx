@@ -11,7 +11,7 @@ vi.mock("../components/ProviderResources", () => ({ ProviderResources: () => <se
 vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => <section><h2>Connection</h2></section> }));
 vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: () => <section><h2>Telemetry</h2></section> }));
-vi.mock("../components/ProviderPolicyDetails", () => ({ ProviderPolicyDetails: () => <section><h2>Legacy policy evidence</h2></section> }));
+vi.mock("../components/ProviderPolicyDetails", () => ({ ProviderPolicyDetails: () => <section><h2>Older VM settings</h2></section> }));
 
 function position(name: string): Element {
     return screen.getByRole("heading", { name });
@@ -86,7 +86,7 @@ describe("ProviderPage authority layout", () => {
             position("Operational maintenance"),
             position("Connection"),
             position("Telemetry"),
-            position("Legacy policy evidence"),
+            position("Older VM settings"),
         ];
         for (let index = 1; index < ordered.length; index += 1) {
             expect(ordered[index - 1].compareDocumentPosition(ordered[index]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

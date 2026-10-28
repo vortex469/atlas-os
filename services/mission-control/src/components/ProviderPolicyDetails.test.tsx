@@ -61,7 +61,7 @@ const policies: AtlasPolicies = {
 };
 
 describe("ProviderPolicyDetails", () => {
-    it("presents Proxmox YAML guest values only as non-authoritative legacy evidence", () => {
+    it("presents older Proxmox VM settings as reference without applying them automatically", () => {
         render(
             <ProviderPolicyDetails
                 providerId="proxmox"
@@ -72,10 +72,12 @@ describe("ProviderPolicyDetails", () => {
             />,
         );
 
-        expect(screen.getByRole("heading", { name: "Legacy policy evidence" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Older VM settings" })).toBeInTheDocument();
+        expect(screen.getByText("Older VM expectations")).toBeInTheDocument();
         expect(screen.getByText("110: stopped")).toBeInTheDocument();
-        expect(screen.getByText(/non-authoritative review context/i)).toBeInTheDocument();
-        expect(screen.getByText(/do not automatically apply to current resource identities/i)).toBeInTheDocument();
+        expect(screen.getByText(/kept for reference/i)).toBeInTheDocument();
+        expect(screen.getByText(/does not apply them automatically to current VMs/i)).toBeInTheDocument();
+        expect(screen.getByText(/Set current monitoring expectations under Resources and monitoring above/i)).toBeInTheDocument();
         expect(screen.queryByText(/currently enforced/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/current Atlas expectations/i)).not.toBeInTheDocument();
     });

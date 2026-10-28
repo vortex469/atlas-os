@@ -33,7 +33,7 @@ function policyDetails(
         );
         return [
             {
-                label: "Legacy guest evidence",
+                label: "Older VM expectations",
                 value: names(guests),
             },
         ];
@@ -221,9 +221,9 @@ export function ProviderPolicyDetails({
     return (
         <section>
             <SectionHeader
-                title={isProxmox ? "Legacy policy evidence" : "Operational Policy"}
+                title={isProxmox ? "Older VM settings" : "Operational Policy"}
                 description={isProxmox
-                    ? "Retained policies.yaml compatibility history. These guest values are non-authoritative review context, do not automatically apply to current resource identities, and do not replace Provider Intent."
+                    ? "These older VM expectations are kept for reference. Atlas does not apply them automatically to current VMs. Set current monitoring expectations under Resources and monitoring above."
                     : "Live validated expectations currently enforced for this provider."}
             />
 
