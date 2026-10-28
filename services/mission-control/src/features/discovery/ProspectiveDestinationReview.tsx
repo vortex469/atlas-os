@@ -41,6 +41,13 @@ const ASSESSMENT_STATUS_LABELS = {
     preconditions_satisfied_but_unsupported: "Plan and destination checks passed; installation support is unavailable",
 } as const;
 
+type AssessmentRequest = {
+    item_id: string;
+    catalog_entry_id: string;
+    plan_fingerprint: string;
+    selection_id: string;
+};
+
 export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: InstallationPlan; csrfToken: string | null }) {
     const [destinations, setDestinations] = useState<ProspectiveInstallationDestinationV1[]>([]);
     const [loading, setLoading] = useState(true);
@@ -48,7 +55,18 @@ export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: Instal
     const [selection, setSelection] = useState<InstallationDestinationSelectionV1 | null>(null);
     const [assessment, setAssessment] = useState<InstallationAdmissionAssessmentV1 | null>(null);
     const [mutation, setMutation] = useState<"selection" | "assessment" | null>(null);
-    const [mutationError, setMutationError] = useState<string | null>(null);
+    const [mutationError, setMutationError] = useState<{
+        action: "selection" | "assessment";
+        technicalDetail: string;
+    } | null>(null);
+    const [selectionRecovery, setSelectionRecovery] = useState<{
+        destination: ProspectiveInstallationDestinationV1;
+        idempotencyKey: string;
+    } | null>(null);
+    const [assessmentRecovery, setAssessmentRecovery] = useState<{
+        request: AssessmentRequest;
+        idempotencyKey: string;
+    } | null>(null);
 
     useEffect(() => {
         let current = true;
@@ -61,20 +79,28 @@ export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: Instal
         return () => { current = false; };
     }, []);
 
-    const select = async (destination: ProspectiveInstallationDestinationV1) => {
+    const select = async (destination: ProspectiveInstallationDestinationV1, idempotencyKey: string) => {
         if (!csrfToken || mutation) return;
         setMutation("selection");
         setMutationError(null);
+        setAssessment(null);
+        setAssessmentRecovery(null);
         try {
             const next = await selectProspectiveInstallationDestination(
                 { resource_id: destination.resource_id, enumeration_token: destination.enumeration_token },
                 csrfToken,
-                installationIdempotencyKey(),
+                idempotencyKey,
             );
             setSelection(next);
             setAssessment(null);
+            setSelectionRecovery(null);
+            setAssessmentRecovery(null);
         } catch (requestError: unknown) {
-            setMutationError(getAtlasErrorMessage(requestError, "The prospective destination selection could not be recorded."));
+            setSelectionRecovery({ destination, idempotencyKey });
+            setMutationError({
+                action: "selection",
+                technicalDetail: getAtlasErrorMessage(requestError, "The prospective destination selection could not be recorded."),
+            });
         } finally { setMutation(null); }
     };
 
@@ -82,23 +108,43 @@ export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: Instal
         if (!csrfToken || !selection || selection.status !== "active" || mutation) return;
         setMutation("assessment");
         setMutationError(null);
+        setAssessment(null);
+        const request: AssessmentRequest = {
+            item_id: plan.application.item_id,
+            catalog_entry_id: plan.application.catalog_entry_id,
+            plan_fingerprint: plan.fingerprint.value,
+            selection_id: selection.selection_id,
+        };
+        const canReuseRetryKey = assessmentRecovery !== null
+            && assessmentRecovery.request.item_id === request.item_id
+            && assessmentRecovery.request.catalog_entry_id === request.catalog_entry_id
+            && assessmentRecovery.request.plan_fingerprint === request.plan_fingerprint
+            && assessmentRecovery.request.selection_id === request.selection_id;
+        const idempotencyKey = canReuseRetryKey ? assessmentRecovery.idempotencyKey : installationIdempotencyKey();
         try {
-            setAssessment(await assessInstallationAdmission({
-                item_id: plan.application.item_id,
-                catalog_entry_id: plan.application.catalog_entry_id,
-                plan_fingerprint: plan.fingerprint.value,
-                selection_id: selection.selection_id,
-            }, csrfToken, installationIdempotencyKey()));
+            setAssessment(await assessInstallationAdmission(request, csrfToken, idempotencyKey));
+            setAssessmentRecovery(null);
         } catch (requestError: unknown) {
-            setMutationError(getAtlasErrorMessage(requestError, "Installation admission could not be assessed."));
+            setAssessmentRecovery({ request, idempotencyKey });
+            setMutationError({
+                action: "assessment",
+                technicalDetail: getAtlasErrorMessage(requestError, "Installation admission could not be assessed."),
+            });
         } finally { setMutation(null); }
     };
 
     const assessmentDisabledReason = !csrfToken
         ? "An authenticated operator session with mutation protection is required."
-        : selection?.status !== "active"
-          ? "Assessment requires a current active prospective destination selection."
-          : null;
+        : selectionRecovery !== null
+            ? "Resolve the pending destination selection before assessing."
+            : selection?.status !== "active"
+                ? "Assessment requires a current active prospective destination selection."
+                : null;
+    const canRetryAssessment = assessmentRecovery !== null
+        && assessmentRecovery.request.item_id === plan.application.item_id
+        && assessmentRecovery.request.catalog_entry_id === plan.application.catalog_entry_id
+        && assessmentRecovery.request.plan_fingerprint === plan.fingerprint.value
+        && assessmentRecovery.request.selection_id === selection?.selection_id;
 
     return <section aria-labelledby="prospective-destination-heading" className="mt-6 border-t border-slate-700 pt-5">
         <h3 id="prospective-destination-heading" className="text-lg font-semibold text-white">Prospective installation destination</h3>
@@ -107,22 +153,49 @@ export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: Instal
         {!loading && error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
         {!loading && !error && destinations.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No prospective installation destinations are currently available.</p>}
         {!loading && !error && destinations.length > 0 && <ul aria-label="Prospective installation destinations" className="mt-4 space-y-3">
-            {destinations.map((destination) => <li key={`${destination.resource_id}-${destination.destination_fingerprint}`} className="rounded-lg border border-slate-700 p-4">
-                <dl className="grid gap-2 text-sm sm:grid-cols-2">
-                    <Value name="QEMU resource ID" value={destination.resource_id} />
-                    <Value name="Provider" value="Proxmox" />
-                    <Value name="Resource type" value="QEMU" />
-                    <Value name="Placement" value="existing guest" />
-                </dl>
-                <button type="button" aria-label={`Select as prospective installation destination — QEMU resource ${destination.resource_id}`} disabled={!csrfToken || mutation !== null} onClick={() => void select(destination)} className="mt-3 rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:cursor-not-allowed disabled:opacity-50">Select as prospective installation destination</button>
-                {!csrfToken && <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required to record a selection.</p>}
-            </li>)}
+            {destinations.map((destination) => {
+                const recoveryAttempt = selectionRecovery?.destination.resource_id === destination.resource_id
+                    && selectionRecovery.destination.enumeration_token === destination.enumeration_token
+                    ? selectionRecovery
+                    : null;
+                return (
+                    <li key={`${destination.resource_id}-${destination.destination_fingerprint}`} className="rounded-lg border border-slate-700 p-4">
+                        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                            <Value name="QEMU resource ID" value={destination.resource_id} />
+                            <Value name="Provider" value="Proxmox" />
+                            <Value name="Resource type" value="QEMU" />
+                            <Value name="Placement" value="existing guest" />
+                        </dl>
+                        <button
+                            type="button"
+                            aria-label={recoveryAttempt
+                                ? `Retry selection — QEMU resource ${destination.resource_id}`
+                                : `Select as prospective installation destination — QEMU resource ${destination.resource_id}`}
+                            disabled={!csrfToken || mutation !== null || (selectionRecovery !== null && !recoveryAttempt)}
+                            onClick={() => void select(
+                                recoveryAttempt ? recoveryAttempt.destination : destination,
+                                recoveryAttempt ? recoveryAttempt.idempotencyKey : installationIdempotencyKey(),
+                            )}
+                            className="mt-3 rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        >{recoveryAttempt ? "Retry selection" : "Select as prospective installation destination"}</button>
+                        {!csrfToken && <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required to record a selection.</p>}
+                    </li>
+                );
+            })}
         </ul>}
         {mutation === "selection" && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Recording prospective destination selection…</p>}
-        {mutationError && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{mutationError}</p>}
+        {mutationError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+            <p>{mutationError.action === "selection"
+                ? "Atlas could not confirm whether it saved this destination selection. Retry the same request to recover its result."
+                : "Atlas could not confirm the assessment result. Retry the assessment to request the result again."}</p>
+            <details className="mt-3 text-red-100/80">
+                <summary className="cursor-pointer">Technical details</summary>
+                <p className="mt-2 break-words">{mutationError.technicalDetail}</p>
+            </details>
+        </div>}
         {selection && <SelectionSummary selection={selection} />}
         {selection && <div className="mt-4">
-            <button type="button" disabled={assessmentDisabledReason !== null || mutation !== null} onClick={() => void assess()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:cursor-not-allowed disabled:opacity-50">Assess installation admission</button>
+            <button type="button" disabled={assessmentDisabledReason !== null || mutation !== null} onClick={() => void assess()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:cursor-not-allowed disabled:opacity-50">{canRetryAssessment ? "Retry assessment" : "Assess installation admission"}</button>
             {assessmentDisabledReason && <p className="mt-2 text-xs text-slate-400">{assessmentDisabledReason}</p>}
         </div>}
         {mutation === "assessment" && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Assessing installation admission…</p>}

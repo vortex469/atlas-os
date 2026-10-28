@@ -6,6 +6,7 @@ import type { InstallationPlan } from "../../types/installationPlan";
 import type { InstallationAdmissionReasonCode } from "../../types/installationDestination";
 import {
     assessInstallationAdmission,
+    installationIdempotencyKey,
     listProspectiveInstallationDestinations,
     selectProspectiveInstallationDestination,
 } from "../../api/installationDestination";
@@ -102,6 +103,103 @@ describe("ProspectiveDestinationReview", () => {
         rerender(<ProspectiveDestinationReview key="unavailable" plan={plan} csrfToken="csrf" />);
         expect(await screen.findByRole("alert")).toHaveTextContent("Prospective installation destinations are currently unavailable.");
         expect(document.body).not.toHaveTextContent("raw secret");
+    });
+
+    it("shows a plain selection recovery message and retries the exact request key", async () => {
+        const apiError = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Installation selection request conflicts with current state." } } },
+        };
+        vi.mocked(installationIdempotencyKey)
+            .mockReturnValueOnce("selection-request-key-1")
+            .mockReturnValueOnce("selection-request-key-2");
+        vi.mocked(listProspectiveInstallationDestinations).mockResolvedValueOnce([destination, secondDestination]);
+        vi.mocked(selectProspectiveInstallationDestination).mockRejectedValueOnce(apiError);
+        const user = userEvent.setup();
+        render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
+
+        const message = await screen.findByText("Atlas could not confirm whether it saved this destination selection. Retry the same request to recover its result.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm whether it saved this destination selection.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Installation selection request conflicts with current state.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Retry selection — QEMU resource 101" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Select as prospective installation destination — QEMU resource 202" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Assess installation admission" })).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry selection — QEMU resource 101" }));
+        expect(await screen.findByRole("heading", { name: "Immutable selection summary" })).toBeInTheDocument();
+        expect(selectProspectiveInstallationDestination).toHaveBeenNthCalledWith(
+            1,
+            { resource_id: "101", enumeration_token: "b".repeat(64) },
+            "csrf",
+            "selection-request-key-1",
+        );
+        expect(selectProspectiveInstallationDestination).toHaveBeenNthCalledWith(
+            2,
+            { resource_id: "101", enumeration_token: "b".repeat(64) },
+            "csrf",
+            "selection-request-key-1",
+        );
+        expect(installationIdempotencyKey).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText("Atlas could not confirm whether it saved this destination selection.")).not.toBeInTheDocument();
+    });
+
+    it("shows plain assessment recovery, clears stale results, and reuses its request key", async () => {
+        const apiError = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Installation admission could not be assessed." } } },
+        };
+        vi.mocked(installationIdempotencyKey)
+            .mockReturnValueOnce("selection-request-key")
+            .mockReturnValueOnce("assessment-request-key-1")
+            .mockReturnValueOnce("assessment-request-key-2")
+            .mockReturnValueOnce("assessment-request-key-3");
+        vi.mocked(assessInstallationAdmission)
+            .mockResolvedValueOnce(assessment("blocked", ["installation_plan_insufficient_information"]))
+            .mockRejectedValueOnce(apiError)
+            .mockResolvedValueOnce(assessment("blocked", ["installation_plan_insufficient_information"]));
+        const user = userEvent.setup();
+        render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
+        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
+        expect(await screen.findByRole("heading", { name: "Assessment result" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
+
+        const message = await screen.findByText("Atlas could not confirm the assessment result. Retry the assessment to request the result again.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm the assessment result.");
+        expect(screen.queryByRole("heading", { name: "Assessment result" })).not.toBeInTheDocument();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Installation admission could not be assessed.")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry assessment" }));
+        expect(await screen.findByRole("list", { name: "Installation admission blockers" })).toBeInTheDocument();
+        expect(assessInstallationAdmission).toHaveBeenNthCalledWith(
+            1,
+            { item_id: "home-assistant", catalog_entry_id: "d5-home-assistant", plan_fingerprint: fingerprint, selection_id: selection.selection_id },
+            "csrf",
+            "assessment-request-key-1",
+        );
+        expect(assessInstallationAdmission).toHaveBeenNthCalledWith(
+            2,
+            { item_id: "home-assistant", catalog_entry_id: "d5-home-assistant", plan_fingerprint: fingerprint, selection_id: selection.selection_id },
+            "csrf",
+            "assessment-request-key-2",
+        );
+        expect(assessInstallationAdmission).toHaveBeenNthCalledWith(
+            3,
+            { item_id: "home-assistant", catalog_entry_id: "d5-home-assistant", plan_fingerprint: fingerprint, selection_id: selection.selection_id },
+            "csrf",
+            "assessment-request-key-2",
+        );
+        expect(installationIdempotencyKey).toHaveBeenCalledTimes(3);
+        expect(screen.queryByText("Atlas could not confirm the assessment result. Retry the assessment to request the result again.")).not.toBeInTheDocument();
     });
 
     it.each(["cancelled", "expired", "stale"] as const)("shows %s as terminal and disables assessment", async (status) => {

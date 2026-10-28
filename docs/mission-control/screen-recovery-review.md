@@ -1645,3 +1645,17 @@ against the generated frontend assets. The suite covers responsive navigation,
 the repository and maintenance journeys, provider and history summaries, and
 the overview. API interactions use isolated fixtures. Source-module loading and
 screen-recovery cases remain in the 133-test development-server suite.
+
+## Prospective destination mutation recovery — 2026-10-28
+
+Selection and admission-assessment failures now lead with plain-language
+uncertainty; backend responses stay under collapsed Technical details. A
+failed destination selection keeps its original request key on a Retry
+selection control, while other destinations remain unavailable until the
+result is recovered. This lets Core replay a saved selection instead of
+creating another one. Assessment retries reuse the key only while the exact
+plan and selection are unchanged. The focused screen suite passes (13 tests),
+the full Mission Control suite passes (2,779 tests across 181 files), lint and
+production build pass, and the live-delivery structural boundary test passes.
+No API contract, authorization check, installation action, approval, or
+execution capability changed.
