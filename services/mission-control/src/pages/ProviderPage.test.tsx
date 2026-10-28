@@ -95,6 +95,8 @@ describe("ProviderPage authority layout", () => {
 
     it("states that monitoring is policy-only and maintenance is a separate workflow", () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.getByText("Health and monitoring messages for this provider.")).toBeInTheDocument();
+        expect(screen.getByText("No messages about this provider right now.")).toBeInTheDocument();
         expect(screen.getByText(/Monitoring expectations describe monitoring policy/)).toHaveTextContent("do not start, stop, restart, or remediate resources");
         expect(screen.getByText(/start a request, review its proposal and plan, then approve the exact action/)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");

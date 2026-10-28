@@ -252,6 +252,14 @@ results and time limit without the internal ACE name or “snapshots” and
 telemetry tests, lint and build cover the labels, graph description, limit and
 no-limit states; collection and policy behavior are unchanged.
 
+## Provider diagnostics wording — 2026-10-28
+
+The provider diagnostics section now describes health and monitoring messages
+without internal ACE terminology or the phrase “policy mutation.” Its empty
+state simply says when there are no messages for the provider. The provider
+page test covers both; diagnostic selection and action boundaries are
+unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

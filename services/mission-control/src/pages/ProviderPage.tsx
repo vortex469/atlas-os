@@ -188,7 +188,7 @@ export function ProviderPage() {
                     <section>
                         <SectionHeader
                             title="Diagnostics"
-                            description="Read-only advisory findings from observed provider and monitoring evidence. Findings do not authorize policy mutation or execution."
+                            description="Health and monitoring messages for this provider."
                         />
 
                         {relatedFindings.length > 0 ? (
@@ -213,8 +213,7 @@ export function ProviderPage() {
                             </div>
                         ) : (
                             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                ACE has no current findings for this
-                                provider.
+                                No messages about this provider right now.
                             </div>
                         )}
                     </section>
