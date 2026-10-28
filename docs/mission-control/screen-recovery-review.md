@@ -343,6 +343,15 @@ that listings do not establish compatibility, install support, or permission to
 make changes. Focused page, item, proposal, shell, and route checks cover these
 labels and disclosures; catalog reads remain unchanged.
 
+## Agent and provider summary wording — 2026-10-28
+
+The Agent card says its name does not establish availability or workflow
+ability. The Providers card says a saved provider may still be unavailable and
+keeps connection, action-permission, and model-assignment limits under
+“Technical details.” Status evidence, freshness handling, and read-only links
+are unchanged; focused Agent/provider tests and responsive overview browser
+checks cover the wording and keyboard-operable disclosure.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

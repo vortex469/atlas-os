@@ -42,7 +42,7 @@ describe("MC overview evidence", () => {
     });
     it("presents reported state, reasons, providers and safe detail links; deduplicates subsystem attention", () => {
         show({ health: { data: { atlas: 'degraded', services: { Beta: { provider_id: 'beta', status: 'offline', message: 'Connection refused' } } } }, providers: { data: [{ id: 'alpha', name: 'Alpha', health: { status: 'healthy' }, secret: 'private-credential' }, { id: 'beta', name: 'Beta', health: { status: 'offline', message: 'Connection refused', details: { token: 'private-credential' } } }] }, workflows: { data: { items: [{ workflow_id: 'w/1', workflow_state: 'blocked', last_result_summary: 'Approval expired' }, { workflow_id: 'w2', workflow_state: 'executing' }] } } });
-        expect(screen.getByRole('link', { name: 'Inspect Alpha →' })).toHaveAttribute('href', '/providers/alpha');
+        expect(screen.getByRole('link', { name: 'View Alpha →' })).toHaveAttribute('href', '/providers/alpha');
         expect(screen.getByRole('link', { name: 'w/1' })).toHaveAttribute('href', '/workflows/w%2F1');
         expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Beta')).toHaveLength(1);
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
@@ -176,7 +176,7 @@ it('surfaces incomplete attention evidence and rejects uninspectable activity', 
 it('keeps a troubled provider visible ahead of routine healthy providers', () => {
     show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Healthy ${i}`, health: { status: 'healthy' } })), { id: 'offline', name: 'Offline provider', health: { status: 'offline', message: 'Connection failed' } }] } });
     const card = within(screen.getByRole('region', { name: 'Providers' }));
-    expect(card.getByRole('link', { name: 'Inspect Offline provider →' })).toBeInTheDocument();
+    expect(card.getByRole('link', { name: 'View Offline provider →' })).toBeInTheDocument();
     expect(card.getByText('Connection failed')).toBeInTheDocument();
 });
 

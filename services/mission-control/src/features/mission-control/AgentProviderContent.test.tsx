@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Overview } from "./MissionControl";
@@ -11,16 +12,23 @@ function show(evidence: OverviewEvidence) {
 const registry = () => within(screen.getByRole("region", { name: "Providers" }));
 
 describe("integrated agent/provider evidence", () => {
-    it("keeps identity separate from health and supplies existing read-only navigation", () => {
+    it("keeps identity separate from health and supplies existing read-only navigation", async () => {
+        const user = userEvent.setup();
         show({ agent: { data: { app_name: "Development Agent", token: "private-canary" } }, providers: { data: [provider("alpha", "healthy"), provider("beta", "failed"), provider("gamma", "offline"), provider("delta", "degraded"), provider("epsilon", "configured")] } });
         const agent = within(screen.getByRole("region", { name: "Agent state" }));
         expect(agent.getByText("Unknown")).toBeInTheDocument();
+        expect(agent.getByText("Atlas Agent does not report health status.")).toBeInTheDocument();
+        expect(agent.getByText("A reported name does not show whether the Agent is available or can run workflows.")).toBeInTheDocument();
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
+        expect(registry().getByText("Saved providers and their reported status. A saved provider may still be unavailable.")).toBeInTheDocument();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
         expect(registry().getByText("Reported status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
         expect(registry().getByText("Unknown")).toBeInTheDocument();
-        expect(registry().getByRole("link", { name: "Inspect alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
+        expect(registry().getByRole("link", { name: "View alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
+        expect(registry().getByText(/permission to run actions/)).not.toBeVisible();
+        await user.click(registry().getByText("Technical details"));
+        expect(registry().getByText(/permission to run actions/)).toBeVisible();
         expect(screen.queryByText(/private-canary/)).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
     });
@@ -30,7 +38,7 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText(/Last known status: Healthy/)).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
-        expect(registry().getByText(/current configuration unknown/)).toBeInTheDocument();
+        expect(registry().getByText(/current list is unknown/)).toBeInTheDocument();
     });
     it.each([undefined, null, {}, { providers: [] }])("does not present malformed or missing registries as empty: %s", data => {
         show({ providers: { data } });
@@ -41,7 +49,7 @@ describe("integrated agent/provider evidence", () => {
         show({ providers: { data: [null, {}, provider("duplicate", "healthy"), provider("duplicate", "healthy"), ...["..", "../escape", "https://host", "a/b", "%2e%2e", "\ud800", "token-private"].map(id => provider(id, "healthy")), { ...provider("bad-name", "healthy"), name: { secret: "private-canary" } }, provider("valid", {})] } });
         expect(registry().queryByText("Healthy")).not.toBeInTheDocument();
         expect(registry().getAllByRole("link", { hidden: true })).toHaveLength(2);
-        expect(registry().getByRole("link", { name: "Inspect valid →", hidden: true })).toHaveAttribute("href", "/providers/valid");
+        expect(registry().getByRole("link", { name: "View valid →", hidden: true })).toHaveAttribute("href", "/providers/valid");
     });
     it("withholds sensitive configuration, diagnostics, and identity labels", () => {
         const view = show({ providers: { data: [{ ...provider("safe", "healthy"), config: { key: "private-canary" }, model: "private-canary", health: { status: "healthy", message: "Bearer private-canary", details: { password: "private-canary" } } }] }, agent: { data: { app_name: "Bearer private-canary", version: {} } } });

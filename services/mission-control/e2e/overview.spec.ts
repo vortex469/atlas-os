@@ -12,7 +12,7 @@ for (const width of [320, 768, 1440]) {
         await page.getByRole('link', { name: 'Review workflows →' }).click();
         await expect(page).toHaveURL(/\/workflows$/);
         await page.goBack();
-        await page.getByRole('link', { name: 'Inspect Proxmox →' }).click();
+        await page.getByRole('link', { name: 'View Proxmox →' }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
         await page.goBack();
         await page.getByRole('link', { name: 'Open operational history →' }).click();
@@ -82,6 +82,13 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await runtimeToggle.focus();
     await page.keyboard.press('Enter');
     await expect(runtime.getByText('Version', { exact: true })).toBeVisible();
+    const providers = page.getByRole('region', { name: 'Providers' });
+    await expect(providers.getByText('Saved providers and their reported status. A saved provider may still be unavailable.')).toBeVisible();
+    await expect(providers.getByText(/permission to run actions/)).toBeHidden();
+    const providerToggle = providers.locator('summary', { hasText: 'Technical details' });
+    await providerToggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(providers.getByText(/permission to run actions/)).toBeVisible();
     const worker = page.getByRole('region', { name: 'Work activity' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();
