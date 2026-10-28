@@ -19,7 +19,7 @@ describe("integrated Local AI runtime observations", () => {
     it.each([["online", "Healthy"], ["offline", "Unavailable"], ["degraded", "Degraded"], ["future", "Unknown"]])("preserves %s provider health without claiming runtime availability", (status, label) => {
         const card = show({ data: data(status) });
         expect(card.getAllByText(label).length).toBeGreaterThan(0);
-        expect(card.getByText(/does not confirm that AI is available on this computer/)).toBeInTheDocument();
+        expect(card.getByText(/Provider health does not show whether AI is available on this computer/)).toBeInTheDocument();
         expect(card.getByText("Selected model: Not reported.")).not.toBeVisible();
         expect(card.getByRole("link")).toBeVisible();
         fireEvent.click(card.getByText("AI details"));
@@ -32,7 +32,12 @@ describe("integrated Local AI runtime observations", () => {
         expect(card.queryByRole("button")).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
     });
-    it.each([undefined, null, [], {}, { provider: { online: true } }, { health: [], models: { installed: [null], running: {} } }])("keeps absent or malformed evidence unknown: %j", value => {
+    it("keeps not-yet-received evidence unknown without showing empty model inventories", () => {
+        const card = show(undefined);
+        expect(card.getByText("AI provider information has not been received yet.")).toBeInTheDocument();
+        expect(card.queryByText(/Installed models:/)).not.toBeInTheDocument();
+    });
+    it.each([null, [], {}, { provider: { online: true } }, { health: [], models: { installed: [null], running: {} } }])("keeps malformed evidence unknown: %j", value => {
         const card = show({ data: value });
         expect(card.queryByText("Healthy")).not.toBeInTheDocument();
         expect(card.getByText(/Installed models: (Could not load list|Model names could not be read)/)).toBeInTheDocument();
@@ -63,7 +68,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("distinguishes observation failure from runtime offline", () => {
         const card = show({ unavailable: true });
-        expect(card.getByText("Could not load this information.")).toBeInTheDocument();
+        expect(card.getByText("AI provider details could not be loaded. Refresh Mission Control to try again.")).toBeInTheDocument();
         expect(card.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
     });
     it.each(["..", "https://user:password@host", "runtime/other", "\ud800", "token-abc"])('rejects unsafe provider links and withholds sensitive fields: %s', id => {

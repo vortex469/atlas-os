@@ -6,6 +6,12 @@ for (const width of [320, 768, 1440]) {
         const grid = page.getByTestId('overview-grid');
         await expect(grid.locator(':scope > section')).toHaveCount(6);
         await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
+        const ai = page.getByRole('region', {name: 'AI provider'});
+        await expect(ai.getByText('AI provider details could not be loaded. Refresh Mission Control to try again.', {exact: true})).toBeVisible();
+        await expect(ai.getByText('Configured provider status', {exact: true})).toHaveCount(0);
+        const providers = page.getByRole('region', {name: 'Providers'});
+        await expect(providers.getByText('Show provider status', {exact: false})).toBeVisible();
+        await expect(providers.locator('details')).not.toHaveAttribute('open');
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(width < 768 ? 1 : width < 1280 ? 2 : 3);
@@ -13,6 +19,7 @@ for (const width of [320, 768, 1440]) {
         await page.getByRole('link', { name: 'Inspect executions →' }).click();
         await expect(page).toHaveURL(/\/workflows$/);
         await page.goBack();
+        await providers.getByText(/Show provider status/).click();
         await page.getByRole('link', { name: 'Inspect Proxmox →' }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
         await page.goBack();
@@ -77,9 +84,8 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'AI provider' });
     await expect(runtime.getByRole('heading', { name: 'AI provider', exact: true })).toBeVisible();
-    await expect(runtime.getByText('Selected model: Not reported.', { exact: true })).toBeHidden();
-    await expect(runtime.getByText(/does not confirm that AI is available on this computer/)).toBeVisible();
-    await expect(runtime.getByText('Runtime version', { exact: true })).toBeHidden();
+    await expect(runtime.getByText('AI provider details could not be loaded. Refresh Mission Control to try again.', { exact: true })).toBeVisible();
+    await expect(runtime.getByText('Configured AI provider: Unknown', { exact: true })).toHaveCount(0);
     const agent = page.getByRole('region', { name: 'Agent state', exact: true });
     const identity = agent.getByText('atlas-agent · browser-fixture', { exact: true });
     await expect(identity).toBeHidden();
@@ -95,11 +101,6 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
     await page.screenshot({ path: '/tmp/atlas-plain-worker-390.png', fullPage: true });
-    const runtimeToggle = runtime.locator('summary', { hasText: 'AI details' });
-    await runtimeToggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(runtime.getByText('Runtime version', { exact: true })).toBeVisible();
-    await expect(runtime.getByText('Selected model: Not reported.', { exact: true })).toBeVisible();
     const worker = page.getByRole('region', { name: 'Worker / Execution' });
     await expect(worker.getByText('Worker availability and queue size are not reported.', { exact: true })).toBeVisible();
     await expect(worker.getByText('No executing workflows are listed. This does not confirm that a worker is idle.', { exact: true })).toBeHidden();

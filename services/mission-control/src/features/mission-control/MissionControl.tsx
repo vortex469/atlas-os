@@ -34,10 +34,10 @@ function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }
     if (evidence?.data === undefined) return <p>{prefix}Information has not been received yet.</p>;
     return null;
 }
-function Card({ title, children, evidence }: { title: string; children: ReactNode; evidence?: Evidence }) {
+function Card({ title, children, evidence, showEvidenceNote = true }: { title: string; children: ReactNode; evidence?: Evidence; showEvidenceNote?: boolean }) {
     return <section aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
         <h2 className="mb-3 text-lg font-semibold text-mc-text-primary">{title}</h2>
-        <div className="space-y-3 text-sm text-mc-text-secondary"><SourceNote evidence={evidence} />{children}</div>
+        <div className="space-y-3 text-sm text-mc-text-secondary">{showEvidenceNote && <SourceNote evidence={evidence} />}{children}</div>
     </section>;
 }
 function ObservedStatus({ value, reason, stale, checkedAt }: { value: unknown; reason?: unknown; stale?: boolean; checkedAt?: unknown }) {
@@ -140,7 +140,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     return <>
         <Card title="Operator Attention" evidence={evidence.summary}>
             <p>Review the conditions below and open a workflow when it needs your decision.</p>
-            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
+            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
             {!workflowKnown && <p>Workflow status could not be confirmed.</p>}
             {!findingsKnown && <p>Operational findings could not be confirmed.</p>}
             {uniqueAttention.length === 0 && <p>No attention items appear in the information received. Atlas cannot confirm an all-clear while information is missing.</p>}
@@ -174,10 +174,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Agent state" evidence={evidence.agent}>
                 <AgentOverviewContent evidence={evidence.agent} />
             </Card>
-            <Card title="AI provider" evidence={evidence.ai}>
+            <Card title="AI provider" evidence={evidence.ai} showEvidenceNote={false}>
                 <LocalAiContent evidence={evidence.ai} />
             </Card>
-            <Card title="Providers" evidence={evidence.providers}>
+            <Card title="Providers" evidence={evidence.providers} showEvidenceNote={false}>
                 <ProviderOverviewContent evidence={evidence.providers} />
             </Card>
         </div>

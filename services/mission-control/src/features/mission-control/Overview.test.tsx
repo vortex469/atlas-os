@@ -74,7 +74,7 @@ describe("MC overview evidence", () => {
         show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: value } } } });
         const card = screen.getByRole('region', { name: 'AI provider' });
         expect(within(card).getAllByText(value[0].toUpperCase() + value.slice(1)).length).toBeGreaterThan(0);
-        expect(within(card).getByText(/This screen shows the configured provider's status/)).toBeInTheDocument();
+        expect(within(card).getByText(/These details describe the configured provider/)).toBeInTheDocument();
     });
     it("marks failed refresh evidence stale and never displays cached health as current", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
@@ -137,8 +137,7 @@ describe('overview fail-closed regressions', () => {
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
         const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
-        expect(runtime.getByText(/does not confirm that AI is available on this computer/)).toBeVisible();
-        expect(runtime.getByText('Configured provider status')).toBeInTheDocument();
+        expect(runtime.getByText(/Provider health does not show whether AI is available on this computer/)).toBeVisible();
     });
 });
 
@@ -164,7 +163,16 @@ it('includes configured AI failures in attention without asserting local availab
     expect(attention.getByText('Unavailable')).toBeInTheDocument();
     expect(attention.getByRole('link', { name: 'Runtime' })).toHaveAttribute('href', '/providers/runtime');
     expect(attention.getByText('Endpoint unavailable')).toBeInTheDocument();
-    expect(screen.getByText(/does not confirm that AI is available on this computer/)).toBeInTheDocument();
+    expect(screen.getByText(/Provider health does not show whether AI is available on this computer/)).toBeInTheDocument();
+});
+
+it('shows provider source failures on their cards without repeating generic notes in attention', () => {
+    show({ providers: { unavailable: true }, ai: { unavailable: true } });
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.queryByText('Providers: Could not load this information.')).not.toBeInTheDocument();
+    expect(attention.queryByText('AI provider: Could not load this information.')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Providers' })).getByText('Provider details could not be loaded. Refresh Mission Control to try again.')).toBeVisible();
+    expect(within(screen.getByRole('region', { name: 'AI provider' })).getByText('AI provider details could not be loaded. Refresh Mission Control to try again.')).toBeVisible();
 });
 
 it('deduplicates configured AI and provider evidence and preserves freshness', () => {
@@ -194,11 +202,15 @@ it('surfaces incomplete attention evidence and rejects uninspectable activity', 
     expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });
 
-it('keeps a troubled provider visible ahead of routine healthy providers', () => {
+it('keeps a troubled provider in Operator Attention and collapses routine provider details', () => {
     show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Healthy ${i}`, health: { status: 'healthy' } })), { id: 'offline', name: 'Offline provider', health: { status: 'offline', message: 'Connection failed' } }] } });
+    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    expect(attention.getByRole('link', { name: 'Offline provider' })).toBeVisible();
     const card = within(screen.getByRole('region', { name: 'Providers' }));
-    expect(card.getByRole('link', { name: 'Inspect Offline provider →' })).toBeInTheDocument();
-    expect(card.getByText('Connection failed')).toBeInTheDocument();
+    expect(card.getByText('5 providers reported.')).toBeVisible();
+    expect(card.getByRole('link', { name: 'Inspect Offline provider →', hidden: true })).toBeInTheDocument();
+    expect(card.getByText('Connection failed')).not.toBeVisible();
+    expect(card.getByText('Show provider status (5)', { exact: true }).closest('details')).not.toHaveAttribute('open');
 });
 
 it('deduplicates an AI condition also reported as an operational finding', () => {
