@@ -326,6 +326,24 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             : canResumeCommit
                 ? "Resume Approved Commit"
                 : "Resume";
+    const resumeHeading = canReconcileWorker
+        ? "Check original worker result"
+        : isOperational
+            ? "Run approved maintenance"
+            : canResumeImplementation
+                ? "Run approved change"
+                : canResumeVerification
+                    ? "Run approved checks"
+                    : "Finish approved commit";
+    const resumeDescription = canReconcileWorker
+        ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals."
+        : isOperational
+            ? "Submit the approved maintenance request. Atlas checks its execution permissions before acting."
+            : canResumeImplementation
+                ? "The change is approved. Resume the workflow to run it. Verification and commit still need separate approvals."
+                : canResumeVerification
+                    ? "The checks are approved. Resume the workflow to run them. The local commit still needs separate approval."
+                    : "The local commit is approved. Resume the workflow to finish the change.";
 
     async function resumeWorkflowTransition() {
         if (!workflow || !canResume || controlsBusy || readPending.current) {
@@ -387,8 +405,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             </section>;
     const resumeControls = canResume && (
                 <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{canReconcileWorker ? "Check original worker result" : isOperational ? "Run approved maintenance" : "Resume approved stage"}</h2>
-                    <p className="mt-2 text-sm text-slate-400">{canReconcileWorker ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals." : isOperational ? "Submit the approved maintenance request. Atlas checks its execution permissions before acting." : "Use this to advance execution after an approval decision."}</p>
+                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{resumeHeading}</h2>
+                    <p className="mt-2 text-sm text-slate-400">{resumeDescription}</p>
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button
                             type="button"
