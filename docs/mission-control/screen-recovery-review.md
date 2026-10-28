@@ -553,6 +553,14 @@ setting changed and point operators to Refresh resources. Reviewing a
 suggestion still only fills the form; the explicit Save action remains
 separate.
 
+## Maintenance history filter scope — 2026-10-28
+
+Maintenance history now explains that its filters narrow the requests on the
+current page. Operators can browse other pages to check the rest of the
+history. The filter query and bounded page loading are unchanged. The focused
+page suite passes (10 tests), responsive browser checks pass at 390px and
+1280px (2 tests), and lint/build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

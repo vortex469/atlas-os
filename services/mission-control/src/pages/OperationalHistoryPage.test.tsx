@@ -104,6 +104,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("proxmox/qemu/110");
 
+        expect(screen.getByText("Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.")).toBeVisible();
         const diagnosticFilter = screen.getByRole("combobox", { name: "Latest result" });
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");

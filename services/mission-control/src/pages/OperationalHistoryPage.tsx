@@ -112,6 +112,7 @@ export function OperationalHistoryPage() {
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} A loading problem does not tell us whether maintenance failed.</p>}
             {!isLoading && !error && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{offset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
             {!isLoading && !error && items.length > 0 && <section aria-label="Operational history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <p className="text-sm text-slate-400">Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <Filter label="Latest result" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
                 </div>
