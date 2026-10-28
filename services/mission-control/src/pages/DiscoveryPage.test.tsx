@@ -384,6 +384,28 @@ describe("DiscoveryPage", () => {
         expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(1);
     });
 
+    it("shows a retryable result state when the catalog contains an unreadable item", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryItems
+            .mockResolvedValueOnce({ ...page([]), entries: [null as unknown as DiscoveryCatalogEntry], total: 1 })
+            .mockResolvedValueOnce(page([entry()]));
+
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Catalog could not be loaded");
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+
+        await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
+
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(2);
+    });
+
     it("keeps catalog results available when status fails and retries status alone", async () => {
         const user = userEvent.setup();
         mockedGetDiscoveryMetadata

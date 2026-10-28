@@ -1110,8 +1110,10 @@ Catalog status and catalog results load independently. If the status read fails,
 valid results remain visible, the unavailable status and total are identified,
 and a status-only retry is available. If the results read fails, previous cards
 are cleared, an unavailable state is shown instead of an empty grid, and a
-read-only retry repeats the exact filters and page. Raw server details stay
-collapsed, and unavailable results are not reported as zero matches.
+read-only retry repeats the exact filters and page. Malformed items use the
+same retryable unavailable state, preserving the page shell and navigation.
+Raw server details stay collapsed, and unavailable results are not reported
+as zero matches.
 
 ## Workflow list refresh recovery — 2026-10-28
 

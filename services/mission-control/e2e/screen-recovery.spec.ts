@@ -352,20 +352,34 @@ test("workflows recover from an initial outage without reloading", async ({ page
     expect(attempts).toBe(2);
 });
 
-test("a broken page keeps navigation and hides raw error details", async ({ page }) => {
-    await page.route("**/api/v1/discovery/items?**", (route) => route.fulfill({
-        status: 200, contentType: "application/json",
-        body: JSON.stringify({ entries: [null], total: 1, offset: 0, limit: 25, has_more: false }),
-    }));
-    await page.goto("/discovery");
-    await expect(page.getByRole("heading", { name: "This page could not load" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
-    await expect(page.getByText("Unexpected Application Error!")).toHaveCount(0);
-    await expect(page.getByText(/TypeError:|Cannot read properties/)).toHaveCount(0);
-    await page.getByRole("link", { name: "Return to Mission Control" }).click();
-    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
-});
+for (const width of [390, 1280]) {
+    test(`malformed catalog data has a read-only retry and keeps navigation at ${width}px`, async ({ page }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/api/v1/discovery/items?**", (route) => {
+            reads += 1;
+            return route.fulfill({ json: reads === 1
+                ? { entries: [null], total: 1, offset: 0, limit: 25, has_more: false }
+                : discoveryItemsPage });
+        });
+        await page.goto("/discovery");
+
+        const alert = page.getByRole("alert");
+        await expect(page.getByRole("heading", { name: "Browse the catalog" })).toBeVisible();
+        await expect(alert).toContainText("Catalog could not be loaded");
+        await expect(alert).toContainText("Your search filters are still selected.");
+        if (width < 1024) await page.getByRole("button", { name: "Open navigation" }).click();
+        await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+        if (width < 1024) await page.getByRole("button", { name: "Close navigation" }).click();
+        await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
+        await expect(page.getByText(/TypeError:|Cannot read properties/)).toHaveCount(0);
+        await page.getByRole("button", { name: "Retry catalog load" }).click();
+
+        await expect(page.getByRole("link", { name: "Fixture Application" })).toBeVisible();
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
 
 for (const width of [390, 1280]) {
     test(`maintenance history keeps unavailable requests findable and details optional at ${width}px`, async ({ page }) => {

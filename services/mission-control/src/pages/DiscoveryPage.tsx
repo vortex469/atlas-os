@@ -111,6 +111,9 @@ export function DiscoveryPage() {
 
             try {
                 const page = await fetchDiscoveryPage(nextFilters, offset);
+                if (!isDisplayableDiscoveryPage(page)) {
+                    throw new Error("The catalog response included an item that Mission Control could not display.");
+                }
 
                 if (generation === requestGeneration.current) {
                     setResult({
@@ -414,6 +417,35 @@ async function fetchDiscoveryPage(filters: FilterState, offset: number) {
     }
 
     return listDiscoveryItems(query);
+}
+
+function isDisplayableDiscoveryPage(value: unknown): value is {
+    entries: DiscoveryCatalogEntry[];
+    total: number;
+    offset: number;
+    has_more: boolean;
+} {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const page = value as Record<string, unknown>;
+    return Array.isArray(page.entries)
+        && page.entries.every(isDisplayableDiscoveryEntry)
+        && typeof page.total === "number" && Number.isInteger(page.total) && page.total >= 0
+        && typeof page.offset === "number" && Number.isInteger(page.offset) && page.offset >= 0
+        && typeof page.has_more === "boolean";
+}
+
+function isDisplayableDiscoveryEntry(value: unknown): value is DiscoveryCatalogEntry {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const entry = value as Record<string, unknown>;
+    if (typeof entry.item !== "object" || entry.item === null || Array.isArray(entry.item)) return false;
+    const item = entry.item as Record<string, unknown>;
+    return typeof item.id === "string"
+        && typeof item.name === "string"
+        && typeof item.type === "string"
+        && typeof item.status === "string"
+        && typeof item.description === "string"
+        && Array.isArray(item.capabilities) && item.capabilities.every((value) => typeof value === "string")
+        && Array.isArray(item.tags) && item.tags.every((value) => typeof value === "string");
 }
 
 function toDiscoveryQuery(filters: FilterState, offset: number): DiscoveryListQuery {
