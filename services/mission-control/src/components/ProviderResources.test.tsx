@@ -183,6 +183,13 @@ async function renderResources() {
 }
 
 describe("ProviderResources Provider Intent flow", () => {
+    it("explains provider-verified identity in plain language", async () => {
+        await renderResources();
+
+        expect(screen.getByText("Provider verified")).toBeVisible();
+        expect(screen.getByText("Atlas can detect if this provider instance is replaced.")).toBeVisible();
+    });
+
     it("clears the previous provider's monitoring selection before the next inventory arrives", async () => {
         const user = userEvent.setup();
         const view = render(<ProviderResources provider={provider} />);
@@ -700,6 +707,15 @@ describe("ProviderResources exact-coordinate composition", () => {
 });
 
 describe("ProviderResources bounded monitoring presentation", () => {
+    it.each([
+        ["authoritative", "Provider verified"],
+        ["unavailable", "Unable to verify"],
+        ["unsupported", "Not supported"],
+    ] as const)("explains %s identity assurance as %s", (assurance, label) => {
+        const resource = publicManagement({ identity_assurance: assurance }).resources[0];
+        expect(monitoringPresentation(resource, "running", false).identity).toBe(label);
+    });
+
     it.each([
         ["running", "running", "Configured — matches observed state"],
         ["stopped", "stopped", "Configured — matches observed state"],

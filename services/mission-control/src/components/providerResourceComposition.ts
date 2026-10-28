@@ -106,12 +106,12 @@ export function monitoringPresentation(
 ) {
     if (unavailable || !managed) {
         return {
-            identity: "Unavailable",
+            identity: "Unable to verify",
             expectation: "Monitoring unavailable",
             status: "Monitoring unavailable — Provider Intent authority could not be read",
         };
     }
-    const identity = formatLabel(managed.identity_assurance);
+    const identity = identityLabel(managed.identity_assurance);
     const expectation = managed.expectation === "ignored"
         ? "Ignored"
         : managed.expectation
@@ -147,6 +147,19 @@ export function monitoringPresentation(
         expectation,
         status: statuses[managed.intent_reason] ?? formatLabel(managed.intent_status),
     };
+}
+
+function identityLabel(
+    assurance: "authoritative" | "unavailable" | "unsupported",
+): string {
+    switch (assurance) {
+        case "authoritative":
+            return "Provider verified";
+        case "unsupported":
+            return "Not supported";
+        case "unavailable":
+            return "Unable to verify";
+    }
 }
 
 export function formatLabel(value: string): string {

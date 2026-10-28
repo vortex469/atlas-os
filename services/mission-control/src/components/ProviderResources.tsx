@@ -217,6 +217,13 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
         ? "Missing"
         : formatLabel(observed?.current_state ?? "Unavailable");
     const presentation = monitoringPresentation(managed, observed?.current_state ?? null, managementUnavailable || resource.inconsistent);
+    const identityDetail = resource.inconsistent
+        ? "Observed and monitoring records do not match."
+        : managed?.identity_assurance === "authoritative"
+          ? "Atlas can detect if this provider instance is replaced."
+          : managed?.identity_assurance === "unsupported"
+            ? "This resource type has no stable provider identity."
+            : "A stable provider identity could not be confirmed.";
     const displayedSuggestion = suggestion ?? reviewedSuggestion;
     const suggestionStale = displayedSuggestion !== null && (
         (reviewInvalidated && displayedSuggestion.suggestion_id === reviewedSuggestion?.suggestion_id)
@@ -238,7 +245,7 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                 <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex gap-2"><dt>{column.label}:</dt><dd>{column.render(observed)}</dd></div>)}</dl>}</section>
                 <FactSection title="Observed state" value={observedState} detail="Live provider inventory; not monitoring policy." />
-                <FactSection title="Identity" value={presentation.identity} detail={resource.inconsistent ? "Inventory and management coordinates disagree." : "Provider identity assurance; no native identity is displayed."} />
+                <FactSection title="Identity check" value={presentation.identity} detail={identityDetail} />
                 <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
             </div>
             {displayedSuggestion && <ProviderIntentSuggestionCard suggestion={displayedSuggestion} stale={suggestionStale} reviewed={reviewedCurrentSuggestion} onReview={() => onReview(displayedSuggestion)} />}
