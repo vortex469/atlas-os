@@ -394,7 +394,7 @@ describe("MaintenanceRequestPage", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent(message);
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
         if (status === 503) {
-            expect(screen.getByRole("link", { name: "Check Change proposals before trying again" })).toHaveAttribute("href", "/execution-candidates");
+            expect(screen.getByRole("link", { name: "Check whether a proposal was created" })).toHaveAttribute("href", "/execution-candidates");
         }
     });
 
@@ -406,7 +406,7 @@ describe("MaintenanceRequestPage", () => {
         await user.click(screen.getByRole("button", { name: "Request restart proposal" }));
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Atlas could not confirm whether a restart proposal was created. The VM has not restarted.");
-        await user.click(screen.getByRole("link", { name: "Check Change proposals before trying again" }));
+        await user.click(screen.getByRole("link", { name: "Check whether a proposal was created" }));
         expect(await screen.findByText("Change proposal list")).toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });

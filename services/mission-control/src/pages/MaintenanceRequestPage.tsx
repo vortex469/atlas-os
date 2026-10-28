@@ -226,7 +226,7 @@ export function MaintenanceRequestPage() {
                 <FixedField label="Resource type" value={descriptorLabel(capability.resource_type)} />
             </section>}
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your account does not have permission to request maintenance.</p>}
-            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Check Change proposals before trying again</Link>}</div>}
+            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Check whether a proposal was created</Link>}</div>}
             <section className="space-y-3" aria-label="Available virtual machines">
                 <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Loading available VMs…</p>}
