@@ -68,6 +68,8 @@ export function MaintenanceRequestPage() {
     const [proposal, setProposal] = useState<DiscoveryProposalNavigation | null>(null);
     const [proposalLoading, setProposalLoading] = useState(false);
     const [proposalError, setProposalError] = useState<string | null>(null);
+    const [proposalNotFound, setProposalNotFound] = useState(false);
+    const [proposalLoadAttempt, setProposalLoadAttempt] = useState(0);
     const proposalId = proposalIdFromState(location.state);
 
     const selectorGeneration = useRef(0);
@@ -123,12 +125,14 @@ export function MaintenanceRequestPage() {
             if (cancelled) return;
             setProposal(null);
             setProposalError(null);
+            setProposalNotFound(false);
             setProposalLoading(true);
             void getDiscoveryProposal(proposalId)
                 .then((value) => { if (!cancelled) setProposal(value); })
                 .catch((requestError: unknown) => {
                     if (cancelled) return;
                     const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
+                    setProposalNotFound(status === 404);
                     setProposalError(status === 404
                         ? "This suggestion is no longer available. Choose a VM from the list below."
                         : "Suggestion details could not be loaded. You can still choose a VM from the list below.");
@@ -136,7 +140,7 @@ export function MaintenanceRequestPage() {
                 .finally(() => { if (!cancelled) setProposalLoading(false); });
         });
         return () => { cancelled = true; };
-    }, [proposalId, session.authenticated]);
+    }, [proposalId, proposalLoadAttempt, session.authenticated]);
 
     if (session.loading) return <main className="p-8 text-slate-400">Restoring operator session…</main>;
     if (!session.authenticated) {
@@ -200,7 +204,7 @@ export function MaintenanceRequestPage() {
                     <h2 className="text-xl font-semibold text-white">Suggestion details</h2>
                     <p className="text-sm text-slate-400">This suggestion cannot select a VM for you. Choose one from the VM list below.</p>
                     {proposalLoading && <p className="text-sm text-slate-400">Loading suggestion details…</p>}
-                    {proposalError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{proposalError}</p>}
+                    {proposalError && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p>{proposalError}</p>{!proposalNotFound && <button type="button" onClick={() => setProposalLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">Retry loading suggestion</button>}</div>}
                     {proposal && <DiscoveryProposalCard proposal={proposal} showNavigation={false} />}
                 </section>
             )}

@@ -309,7 +309,43 @@ describe("MaintenanceRequestPage", () => {
         vi.mocked(getDiscoveryProposal).mockRejectedValue({ isAxiosError: true, response: { status: 404 } });
         renderPage({ proposalId });
         expect(await screen.findByRole("alert")).toHaveTextContent("This suggestion is no longer available.");
+        expect(screen.queryByRole("button", { name: "Retry loading suggestion" })).not.toBeInTheDocument();
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
+    it("retries a temporary suggestion read without reloading or selecting a VM", async () => {
+        const user = userEvent.setup();
+        const proposalId = `discovery-operator-proposal-${"f".repeat(64)}`;
+        let resolveRetry!: (value: Awaited<ReturnType<typeof getDiscoveryProposal>>) => void;
+        vi.mocked(getDiscoveryProposal).mockRejectedValueOnce(new Error("temporary read failure")).mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
+        const currentSuggestion = {
+            proposal_id: proposalId,
+            destination_kind: "operator_maintenance_selection",
+            catalog_item_id: "frigate",
+            catalog_source_type: "curated",
+            compatibility_status: "compatible",
+            finding_reference_count: 1,
+            evidence_reference_count: 2,
+            status: "current",
+            reason: "compatible",
+            intent_hint: "restart-service",
+            target_hints: [],
+            generated_at: "2026-08-15T00:00:00Z",
+            expires_at: "2026-08-15T00:30:00Z",
+            actionable_navigation: true,
+        } as Awaited<ReturnType<typeof getDiscoveryProposal>>;
+
+        renderPage({ proposalId });
+        expect(await screen.findByRole("alert")).toHaveTextContent("Suggestion details could not be loaded.");
+        await user.click(screen.getByRole("button", { name: "Retry loading suggestion" }));
+        expect(await screen.findByText("Loading suggestion details…")).toBeInTheDocument();
+        await act(async () => resolveRetry(currentSuggestion));
+        expect(await screen.findByText("Status: Current")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Retry loading suggestion" })).not.toBeInTheDocument();
+        expect(getDiscoveryProposal).toHaveBeenCalledTimes(2);
+        expect(getCapabilityResources).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("radio", { name: /Frigate/i })).not.toBeChecked();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();
     });
 

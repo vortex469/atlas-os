@@ -1056,3 +1056,10 @@ change action is added.
 
 Proposal expiry and creation timestamps now say that they are shown in the
 browser's local time. Their displayed values and expiry checks are unchanged.
+
+## Maintenance suggestion recovery — 2026-10-28
+
+Temporary failures while loading optional suggestion details now offer an
+in-place retry of that GET. A 404 stays a separate “no longer available” state
+without retry. The selected VM, provider capability list, and maintenance
+request state are not changed by the retry; the suggestion remains advisory.
