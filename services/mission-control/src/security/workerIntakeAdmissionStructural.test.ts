@@ -25,12 +25,15 @@ describe("v0.40 worker intake admission Mission Control boundary", () => {
         expect(component).not.toMatch(/>\s*(start|enqueue|dequeue|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
-    it("keeps operator status simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/Mission Control shows the worker intake admission status here in the existing worker flow/i);
-        expect(component).toMatch(/does not send work to a queue or start a worker/i);
-        expect(component).toMatch(/Advanced details/);
+    it("keeps operator status simple and technical evidence in closed details", () => {
+        expect(component).toMatch(/This saved record checks the worker and intake references for a later review/i);
+        expect(component).toMatch(/does not contact a worker, send work to a queue, or start anything/i);
+        expect(component).toMatch(/Safety limits recorded for a future worker/);
+        expect(component).toMatch(/Worker and intake details/);
+        expect(component).toMatch(/Exact safety limits and earlier evidence/);
+        expect(component).toMatch(/Record and authority details/);
         expect(component).toMatch(/Worker intake admission fixed-false authority fields/);
-        expect(component).toMatch(/not live enqueue, dequeue, worker contact, worker start, dispatch, execution/i);
+        expect(component).toMatch(/This record cannot be retried or replayed/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /worker-intake-admissions|WorkerIntakeAdmission/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/oneShotDequeueWorkerBinding.ts",
