@@ -22,15 +22,14 @@ describe("v0.38 worker admission stub presentation boundary", () => {
         expect(controls).toHaveLength(0);
         expect(component).not.toMatch(/>\s*(worker|start|enqueue|queue|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
     });
-    it("renders simple state and keeps technical evidence under Advanced details", () => {
-        expect(component).toMatch(/preserves a non-enqueuing worker admission stub evidence record only/i);
-        expect(component).toMatch(/State: eligible evidence; bound: false; blocked: yes/i);
-        expect(component).toMatch(/Advanced details/);
+    it("shows the saved worker outcome and blockers before closed technical details", () => {
+        expect(component).toMatch(/keeps a worker under consideration for a later review/i);
+        expect(component).toMatch(/does not contact or start a worker, create a queue, or authorize installation/i);
+        expect(component).toMatch(/Worker and record details/);
         expect(component).toMatch(/Worker admission fixed-false authority fields/);
         expect(component).toMatch(/Worker capability fingerprint/);
-        expect(component).toMatch(/Inherited byte-exact sandbox, resource, network, and filesystem ceilings/);
-        expect(component).toMatch(/Blockers/);
-        expect(component).toMatch(/not worker start, queue or enqueue, execution start, runner binding, install, dispatch/i);
+        expect(component).toMatch(/Exact safety limits and earlier evidence/);
+        expect(component).toMatch(/What still needs to be in place/);
         const consumers = Object.entries(productionModules).filter(([, source]) => /worker-admission-stubs|WorkerAdmissionStub/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/workerAdmissionStub.ts",

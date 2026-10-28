@@ -49,7 +49,7 @@ describe("RunnerBindingPlans", () => {
         vi.mocked(listRunnerBindingPlans).mockResolvedValue({ ...empty, plans: [expired] });
         render(<RunnerBindingPlans candidateId="candidate" admission={admissionResultFixture} homeAssistantBlocked />);
         expect(await screen.findByRole("heading", { name: "Expired runner plan" })).toBeInTheDocument();
-        expect(screen.getByText(/Atlas cannot install Home Assistant/i)).toBeInTheDocument();
+        expect(screen.getByText(/Atlas cannot install Home Assistant, so it cannot be prepared for a runner/i)).toBeInTheDocument();
         expect(screen.getByText(/No runner is available to bind from this review/i)).toBeInTheDocument();
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
