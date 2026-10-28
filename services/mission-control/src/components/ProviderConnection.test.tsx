@@ -225,6 +225,8 @@ describe("ProviderConnection", () => {
         await renderConnection();
 
         expect(screen.getByLabelText("Host")).toHaveValue("10.10.50.10");
+        expect(screen.getAllByText("From Atlas configuration").length).toBeGreaterThan(0);
+        expect(screen.queryByText(/atlas_yaml/)).not.toBeInTheDocument();
         expect(screen.getByLabelText("Port")).toHaveValue(8006);
         expect(screen.getByLabelText("Node")).toHaveValue("vorex469");
         expect(screen.getByLabelText("Verify TLS")).not.toBeChecked();
@@ -233,6 +235,27 @@ describe("ProviderConnection", () => {
         expect(screen.getAllByText(/Secret is Configured/).length).toBeGreaterThan(0);
         expect(screen.getByText(/Secret is Missing/)).toBeInTheDocument();
         expect(screen.queryByText("existing-secret")).not.toBeInTheDocument();
+    });
+
+    it("describes connection sources in plain language", async () => {
+        const sourceLabels = [
+            "From saved connection settings",
+            "From an environment variable",
+            "Not configured",
+            "Source unavailable",
+        ];
+        mockedGetProviderConnection.mockResolvedValue(proxmoxSchema({
+            fields: proxmoxSchema().fields.slice(0, 4).map((candidate, index) => ({
+                ...candidate,
+                source: ["runtime", "environment", "missing", null][index],
+            })),
+        }));
+
+        await renderConnection();
+
+        for (const label of sourceLabels) {
+            expect(screen.getByText(label)).toBeInTheDocument();
+        }
     });
 
     it("respects required and editable state and hides when capability is absent", async () => {

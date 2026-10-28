@@ -25,7 +25,7 @@ runtime, tag, or publish a release.
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
 | Provider action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results; UTC date filters are explained beside local display times | `src/pages/OperationsPage.test.tsx`, `e2e/action-history-dates.spec.ts` |
 | Atlas Doctor | Rerunning clears the previous report; pending and failed reads cannot retain an old healthy score | `src/components/AtlasDoctorPanel.test.tsx` includes healthy-to-pending-to-unavailable coverage |
-| Provider connections | Saved status appears only after settings load; failed reads can be refreshed without testing or saving; editing inputs or reloading clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` covers read recovery, stale-result invalidation and synthetic secret canaries, and mocks every test/save request |
+| Provider connections | Saved status appears only after settings load; failed reads can be refreshed without testing or saving; field origins use plain labels; editing inputs or reloading clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` covers read recovery, source labels, stale-result invalidation and synthetic secret canaries, and mocks every test/save request |
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
 | Installation readiness | Review state and plain-language blockers lead; evidence IDs, linkage fingerprints and audit fields are available under optional details; owner evidence stays bound to the current record | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
 
@@ -210,8 +210,10 @@ Connection settings no longer show an "incomplete" status before Core has
 loaded the provider settings. A failed read leaves the saved status hidden and
 offers a plain-language refresh action. Its recovery test confirms that
 refreshing performs another read and does not test or save a connection. The
-existing test-result invalidation, confirmation, and secret-redaction behavior
-remains covered.
+field labels explain their source without showing internal identifiers such as
+`atlas_yaml`. Source-label tests cover saved settings, environment variables,
+missing values and absent source metadata. Existing test-result invalidation,
+confirmation, and secret-redaction behavior remains covered.
 
 ## Acceptance status and remaining gaps
 

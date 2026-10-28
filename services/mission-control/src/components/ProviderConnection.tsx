@@ -367,7 +367,7 @@ function ConnectionField({
                     {field.required && <span className="text-amber-300"> *</span>}
                 </span>
                 <span className="text-xs text-slate-500">
-                    {field.source ? `Source: ${field.source}` : "No source"}
+                    {connectionFieldSourceLabel(field.source)}
                 </span>
             </span>
 
@@ -395,6 +395,30 @@ function ConnectionField({
             )}
         </label>
     );
+}
+
+function connectionFieldSourceLabel(source: string | null): string {
+    switch (source) {
+        case "atlas_yaml":
+            return "From Atlas configuration";
+        case "runtime":
+            return "From saved connection settings";
+        case "environment":
+            return "From an environment variable";
+        case "missing":
+            return "Not configured";
+        case "default":
+        case "defaults":
+            return "From Atlas defaults";
+        case "inventory":
+            return "From provider inventory";
+        case "settings":
+            return "From Atlas settings";
+        case null:
+            return "Source unavailable";
+        default:
+            return `From ${source.replaceAll("_", " ")}`;
+    }
 }
 
 function renderFieldControl({

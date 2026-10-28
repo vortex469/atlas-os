@@ -125,7 +125,8 @@ submitted actions remain associated with their original provider and its
 recorded action history. Confirmation and backend permission checks remain
 in their existing controls. Connection settings show a saved status only after
 Core returns the settings; a failed read can be refreshed without testing or
-saving a connection.
+saving a connection. Field origins use plain labels such as Atlas configuration
+and environment variable.
 
 Action-history date filters cover whole UTC days; timestamps in the results
 use the browser's local time zone.
