@@ -31,9 +31,10 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(registry().getByText("Unknown")).toBeInTheDocument();
         expect(registry().getByRole("link", { name: "View alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
-        expect(registry().getByText(/permission to run actions/)).not.toBeVisible();
-        await user.click(registry().getByText("Technical details"));
-        expect(registry().getByText(/permission to run actions/)).toBeVisible();
+        expect(registry().getByText(/actions are allowed/)).not.toBeVisible();
+        expect(registry().queryByText(/which model an Agent uses/)).not.toBeInTheDocument();
+        await user.click(registry().getByText("About provider status"));
+        expect(registry().getByText(/actions are allowed/)).toBeVisible();
         expect(screen.queryByText(/private-canary/)).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
     });

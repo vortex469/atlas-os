@@ -40,8 +40,8 @@ export function ProviderOverviewContent({ evidence }: { evidence?: Evidence }) {
         {providers?.slice(0, 4).map(renderProvider)}
         {providers && providers.length > 4 && <details><summary>{providers.length - 4} more providers</summary>{providers.slice(4).map(renderProvider)}</details>}
         <details>
-            <summary className="mc-focusable cursor-pointer text-mc-primary">Technical details</summary>
-            <p className="mt-2">Provider health does not confirm an available connection or permission to run actions. Atlas does not report which model an Agent uses.</p>
+            <summary className="mc-focusable cursor-pointer text-mc-primary">About provider status</summary>
+            <p className="mt-2">A reported healthy status does not guarantee that the connection works or that actions are allowed.</p>
         </details>
         <Link to="/providers">View provider registry</Link>
     </>;

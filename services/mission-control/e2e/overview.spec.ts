@@ -94,11 +94,12 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
     const providers = page.getByRole('region', { name: 'Providers' });
     await expect(providers.getByText('Saved providers and their reported status. A saved provider may still be unavailable.')).toBeVisible();
-    await expect(providers.getByText(/permission to run actions/)).toBeHidden();
-    const providerToggle = providers.locator('summary', { hasText: 'Technical details' });
+    await expect(providers.getByText(/actions are allowed/)).toBeHidden();
+    await expect(providers.getByText(/which model an Agent uses/)).toHaveCount(0);
+    const providerToggle = providers.locator('summary', { hasText: 'About provider status' });
     await providerToggle.focus();
     await page.keyboard.press('Enter');
-    await expect(providers.getByText(/permission to run actions/)).toBeVisible();
+    await expect(providers.getByText(/actions are allowed/)).toBeVisible();
     const worker = page.getByRole('region', { name: 'Work activity' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();

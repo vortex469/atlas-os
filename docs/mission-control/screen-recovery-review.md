@@ -729,3 +729,13 @@ source changed. The focused health and overview suites pass (100 tests), the
 phone and desktop browser checks pass (2 tests at 390px and 1280px), and lint,
 production build, and `git diff --check` pass. The browser fixture rejected
 unexpected mutation requests.
+
+## Provider status wording — 2026-10-28
+
+The Providers card now labels its optional explanation “About provider status.”
+It explains that a healthy report does not guarantee a working connection or
+permission to run actions. The repeated note about Agent model selection was
+removed because the AI provider card already explains that limitation. Provider
+status and action permissions are unchanged. The focused component suite passes
+(10 tests), the keyboard-accessible overview browser check passes, and lint,
+production build, and `git diff --check` pass.
