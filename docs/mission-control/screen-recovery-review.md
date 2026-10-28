@@ -1453,3 +1453,11 @@ Operator Attention no longer repeats the generic stale-condition sentence
 after the more specific last-known workflow warning. Stale provider, service,
 and AI conditions retain their generic freshness explanation. Overview tests
 cover both cases; workflow state and source evidence are unchanged.
+
+## Planning session status refresh — 2026-10-28
+
+When Atlas reports that it is still creating a plan, the page now offers a
+“Check plan status” control that repeats only the planning-session read. It
+shows the ready plan when available and does not submit another planning
+request. The focused test verifies the read and confirms no generation call is
+made.

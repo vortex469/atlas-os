@@ -32,6 +32,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
     const [operationalPlan, setOperationalPlan] = useState<OperationalCandidatePlanApiResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [readAttempt, setReadAttempt] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -97,7 +98,14 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         return () => {
             cancelled = true;
         };
-    }, [sessionId]);
+    }, [sessionId, readAttempt]);
+
+    function checkPlanningStatus() {
+        setError(null);
+        setErrorDetails(null);
+        setIsLoading(true);
+        setReadAttempt((attempt) => attempt + 1);
+    }
 
     async function generatePlan() {
         if (!session || session.planning_allowed !== true || session.status !== "ready_for_planning" || isGenerating) {
@@ -251,6 +259,11 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
                 <p className="mt-2 text-sm text-slate-400">{planSectionDescription(session, hasPlan)}</p>
+                {session.status === "planning" && (
+                    <button type="button" onClick={checkPlanningStatus} className="mt-4 rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Check plan status
+                    </button>
+                )}
                 {session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && !generateError && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
@@ -443,7 +456,7 @@ function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boo
     if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Return to the proposal and refresh before trying again.";
     if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return "Atlas cannot plan this type of change yet.";
     if (session.status === "planning_failed") return "Atlas could not create a plan. Review Technical details above for the recorded reason.";
-    if (session.status === "planning") return "Atlas is still creating the plan. Refresh this page to check the result.";
+    if (session.status === "planning") return "Atlas is still creating the plan. Check the status again to see whether it is ready.";
     if (session.status === "ready_for_planning" && session.planning_allowed === true) return "Generate a plan for review. It will not apply changes or grant approval.";
     return "Planning is unavailable for this session.";
 }

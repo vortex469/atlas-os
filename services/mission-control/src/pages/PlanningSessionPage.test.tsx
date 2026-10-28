@@ -208,6 +208,22 @@ describe("PlanningSessionPage", () => {
         expect(screen.queryByRole("button", { name: /execute|approve|create workflow|implementation|commit/i })).not.toBeInTheDocument();
     });
 
+    it("checks a pending plan with a read-only session refresh", async () => {
+        const user = userEvent.setup();
+        mockedGetCandidatePlanningSession
+            .mockResolvedValueOnce(session({ status: "planning" }))
+            .mockResolvedValueOnce(session({ status: "plan_ready", plan: plan() }));
+        renderPage();
+
+        expect(await screen.findByText("Atlas is still creating the plan. Check the status again to see whether it is ready.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Check plan status" })).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Check plan status" }));
+
+        expect(await screen.findByRole("heading", { name: "Review the plan" })).toBeVisible();
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
+    });
+
     it("links to the latest session and keeps session lineage IDs technical", async () => {
         const user = userEvent.setup();
         mockedGetCandidatePlanningSession.mockResolvedValue(
