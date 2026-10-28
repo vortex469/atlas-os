@@ -234,6 +234,36 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("button", { name })).toBeEnabled();
     });
 
+    it.each(["implementation", "verification", "commit"] as const)("refreshes %s state when an approval request errors", async (stage) => {
+        let initial: WorkflowDetailResponse;
+        let decided: WorkflowDetailResponse;
+        let buttonName: string;
+        if (stage === "implementation") {
+            initial = workflow();
+            decided = workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" });
+            buttonName = "Approve Implementation";
+            mockedSubmitWorkflowImplementationApproval.mockRejectedValueOnce(new Error("Approval already decided"));
+        } else if (stage === "verification") {
+            initial = workflowAwaitingVerification({ verification_approval_status: "pending" });
+            decided = workflowAwaitingVerification({ verification_approval_status: "approved" });
+            buttonName = "Approve Verification";
+            mockedSubmitWorkflowVerificationApproval.mockRejectedValueOnce(new Error("Approval already decided"));
+        } else {
+            initial = workflowAwaitingCommit();
+            decided = workflowAwaitingCommit({ workflow_state: "committing", commit_approval_status: "approved" });
+            buttonName = "Approve Commit";
+            mockedSubmitWorkflowCommitApproval.mockRejectedValueOnce(new Error("Approval already decided"));
+        }
+        mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockResolvedValueOnce(decided);
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: buttonName }));
+
+        expect(await screen.findByText("Approval already decided.")).toBeVisible();
+        await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
+        expect(screen.queryByRole("button", { name: buttonName })).not.toBeInTheDocument();
+    });
+
     it.each(["implementation", "verification", "commit"] as const)("disables %s resume while current status is being checked", async (stage) => {
         const initial = stage === "implementation" ? workflow({ implementation_approval_status: "approved" })
             : stage === "verification" ? workflowAwaitingVerification({ verification_approval_status: "approved" })

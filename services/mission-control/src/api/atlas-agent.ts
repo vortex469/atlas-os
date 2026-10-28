@@ -1100,12 +1100,14 @@ export function getAtlasAgentErrorMessage(
     fallback: string,
 ): string {
     if (isAxiosError(error)) {
-        const detail = error.response?.data as
-            | { detail?: string }
-            | undefined;
-
-        return detail?.detail ?? error.message ?? fallback;
+        const responseData = error.response?.data;
+        const detail = isRecord(responseData) ? responseData.detail : undefined;
+        if (typeof detail === "string" && detail.trim()) return detail;
+        if (isRecord(detail) && typeof detail.message === "string" && detail.message.trim()) {
+            return detail.message;
+        }
+        return error.message?.trim() || fallback;
     }
 
-    return error instanceof Error ? error.message : fallback;
+    return error instanceof Error && error.message.trim() ? error.message : fallback;
 }

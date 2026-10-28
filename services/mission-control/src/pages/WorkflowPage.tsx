@@ -192,6 +192,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             await loadWorkflow("refresh");
         } catch (error) {
             setApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Approval failed." : "Rejection failed."));
+            await loadWorkflow("refresh");
         } finally {
             setIsSubmitting(false);
         }
@@ -207,6 +208,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             await loadWorkflow("refresh");
         } catch (error) {
             setVerificationApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Verification approval failed." : "Verification rejection failed."));
+            await loadWorkflow("refresh");
         } finally {
             setIsSubmittingVerification(false);
         }
@@ -222,6 +224,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             await loadWorkflow("refresh");
         } catch (error) {
             setCommitApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Commit approval failed." : "Commit rejection failed."));
+            await loadWorkflow("refresh");
         } finally {
             setIsSubmittingCommit(false);
         }

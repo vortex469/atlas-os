@@ -19,6 +19,7 @@ import {
     createCandidateWorkflowShell,
     generateCandidatePlan,
     getAgentInfo,
+    getAtlasAgentErrorMessage,
     getCandidatePlan,
     getCandidatePlanningSession,
     getReviewReport,
@@ -88,14 +89,14 @@ function candidateImplementationTranslation(overrides: Record<string, unknown> =
     };
 }
 
-function axiosError(status: number): unknown {
+function axiosError(status: number, responseData?: unknown): unknown {
     const error = new Error(`Request failed with status code ${status}`) as unknown as {
         isAxiosError: boolean;
-        response: { status: number };
+        response: { status: number; data: unknown };
     };
 
     error.isAxiosError = true;
-    error.response = { status };
+    error.response = { status, data: responseData };
 
     return error;
 }
@@ -220,6 +221,25 @@ describe("Atlas Agent optional summary endpoints", () => {
         await expect(getSprintStatus()).rejects.toBeInstanceOf(Error);
         await expect(getVerificationReport()).rejects.toBeInstanceOf(Error);
         await expect(getReviewReport()).rejects.toBeInstanceOf(Error);
+    });
+
+    it("reads string and structured messages from Agent API error details", () => {
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: { code: "approval_already_decided", message: "Approval already decided" } }),
+            "Approval failed.",
+        )).toBe("Approval already decided");
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: "Workflow is stale" }),
+            "Approval failed.",
+        )).toBe("Workflow is stale");
+    });
+
+    it("falls back to a readable request error when response details are malformed", () => {
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: { code: "approval_already_decided" } }),
+            "Approval failed.",
+        )).toBe("Request failed with status code 409");
+        expect(getAtlasAgentErrorMessage(new Error(""), "Atlas Agent unavailable.")).toBe("Atlas Agent unavailable.");
     });
 
     it("returns valid workflow list entries with the requested effect kind", async () => {
