@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -66,14 +66,25 @@ describe("ProvidersPage", () => {
         expect(get).toHaveBeenCalledTimes(1);
     });
 
-    it("does not keep old health visible after a failed refresh", async () => {
-        get.mockResolvedValueOnce({ data: [provider()] }).mockRejectedValueOnce(new Error("offline"));
+    it("keeps last loaded providers visible as unknown during and after a failed refresh", async () => {
+        get.mockResolvedValueOnce({ data: [provider()] });
+        let rejectRefresh!: (error: Error) => void;
+        get.mockImplementationOnce(() => new Promise((_, reject) => { rejectRefresh = reject; }));
         show();
         const list = await screen.findByRole("region", { name: "Provider list" });
         expect(within(list).getByText("Healthy", { exact: true })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-        await screen.findByRole("alert");
-        expect(screen.queryByRole("region", { name: "Provider list" })).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Refreshing providers. Showing the last loaded information.");
+        expect(within(list).getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
+        expect(within(list).queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
+
+        await act(async () => rejectRefresh(new Error("offline")));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Provider refresh failed");
+        expect(alert).toHaveTextContent("Current provider information is unknown.");
+        expect(screen.getByRole("region", { name: "Provider list" })).toBeInTheDocument();
+        expect(within(list).getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
     });
 
     it("keeps duplicate identities unavailable and withholds sensitive reasons", async () => {

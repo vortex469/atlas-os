@@ -572,6 +572,34 @@ test("provider registry retries an unavailable read", async ({ page }) => {
 });
 
 for (const width of [390, 1280]) {
+    test(`provider registry keeps last loaded status clearly marked after refresh fails at ${width}px`, async ({ page }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/providers", async route => {
+            reads += 1;
+            return reads === 1
+                ? route.fallback()
+                : route.fulfill({ status: 503, json: { detail: "PRIVATE_SERVER_ERROR" } });
+        });
+        await page.goto("/providers");
+        const list = page.getByRole("region", { name: "Provider list" });
+        await expect(list.getByRole("heading", { name: "Proxmox" })).toBeVisible();
+        await expect(list.getByText("Healthy", { exact: true })).toBeVisible();
+
+        await page.getByRole("button", { name: "Refresh" }).click();
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Provider refresh failed");
+        await expect(alert).toContainText("Current provider information is unknown.");
+        await expect(alert).not.toContainText("PRIVATE_SERVER_ERROR");
+        await expect(list.getByRole("heading", { name: "Proxmox" })).toBeVisible();
+        await expect(list.getByText("Last report: Healthy. Current status unknown.", { exact: true })).toBeVisible();
+        await expect(list.getByText("Healthy", { exact: true })).toHaveCount(0);
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`change proposal details can retry after a temporary read failure at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 900 });

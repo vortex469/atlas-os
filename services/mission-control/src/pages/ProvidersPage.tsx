@@ -24,7 +24,6 @@ export function ProvidersPage() {
             if (generation === requestGeneration.current) setProviders(observations);
         } catch {
             if (generation === requestGeneration.current) {
-                setProviders(null);
                 setError(true);
             }
         } finally {
@@ -51,32 +50,41 @@ export function ProvidersPage() {
                 </div>
                 <button type="button" onClick={() => void load()} disabled={loading} className="mc-control mc-focusable px-4 py-2 text-sm font-semibold disabled:opacity-50">Refresh</button>
             </header>
-            {loading && <p role="status" className="text-slate-300">Loading providers…</p>}
-            {!loading && error && (
+            {loading && providers === null && <p role="status" className="text-slate-300">Loading providers…</p>}
+            {loading && providers !== null && <p role="status" className="text-slate-300">Refreshing providers. Showing the last loaded information.</p>}
+            {!loading && error && providers === null && (
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h2 className="font-semibold text-red-100">Providers could not load</h2>
                     <button type="button" onClick={() => void load()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             )}
+            {!loading && error && providers !== null && (
+                <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
+                    <h2 className="font-semibold text-amber-100">Provider refresh failed</h2>
+                    <p className="mt-1 text-sm text-amber-100/80">Current provider information is unknown. The list shows the last loaded response.</p>
+                    <button type="button" onClick={() => void load()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
+                </section>
+            )}
             {!loading && !error && providers?.length === 0 && <p className="rounded-xl border border-slate-800 p-5 text-slate-300">No providers are listed yet.</p>}
-            {!loading && !error && providers !== null && (providers.length > 1 || query.length > 0) && (
+            {(loading || error) && providers?.length === 0 && <p role="status" className="text-slate-300">The last loaded response listed no providers.</p>}
+            {providers !== null && (providers.length > 1 || query.length > 0) && (
                 <label className="block max-w-md text-sm text-slate-300">
                     Search providers
                     <input type="search" value={query} maxLength={100} onChange={(event) => setQuery(event.target.value)} placeholder="Find a provider" className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
                 </label>
             )}
-            {!loading && !error && providers !== null && providers.length > 0 && visible.length === 0 && (
+            {providers !== null && providers.length > 0 && visible.length === 0 && (
                 <section className="rounded-xl border border-slate-800 p-5 text-slate-300">
                     <p>No providers match your search.</p>
                     <button type="button" onClick={() => setQuery("")} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm">Clear search</button>
                 </section>
             )}
-            {!loading && !error && visible.length > 0 && (
+            {providers !== null && visible.length > 0 && (
                 <section aria-label="Provider list" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {visible.map((provider, index) => (
                         <article key={provider.path ?? index} className="min-w-0 space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]">
                             <h2 className="text-lg font-semibold text-white">{provider.name}</h2>
-                            <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} compact />
+                            <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} stale={loading || error} compact />
                             {provider.path && <Link to={provider.path} className="inline-block text-sm font-semibold text-blue-300">Open {provider.name} provider</Link>}
                         </article>
                     ))}

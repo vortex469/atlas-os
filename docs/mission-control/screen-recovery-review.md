@@ -1924,3 +1924,13 @@ planning and approval are separate steps. The complete Mission Control suite
 passes (2,792 tests across 181 files), proposal-list browser checks pass at
 390px and 1280px (6 checks), and lint and production build pass. Browser reads
 use synthetic fixtures; no API or approval behavior changed.
+
+## Provider refresh recovery — 2026-10-28
+
+The provider registry keeps its last loaded list on screen during refresh and
+after a failed refresh. Its status is marked unknown while refreshing or after
+failure, and the page explains when it is showing the last response. This
+avoids both a disappearing list and a stale health value that looks current.
+The full Mission Control suite passes (2,792 tests across 181 files), provider
+registry browser checks pass (5 checks, including 390px and 1280px recovery),
+and lint and production build pass. Browser reads use synthetic fixtures.
