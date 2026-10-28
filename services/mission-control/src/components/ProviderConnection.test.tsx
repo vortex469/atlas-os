@@ -3,6 +3,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -181,10 +182,16 @@ describe("ProviderConnection", () => {
 
         render(<ProviderConnection provider={provider} />);
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Core unavailable");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Connection settings could not be loaded. Refresh to try again. No settings were changed.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable")).not.toBeVisible();
         expect(screen.queryByText(/Saved settings:/)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh settings" })).toBeEnabled();
 
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable")).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Refresh settings" }));
 
         expect(await screen.findByLabelText("Host")).toHaveValue("10.10.50.10");

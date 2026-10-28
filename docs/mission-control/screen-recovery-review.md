@@ -1540,3 +1540,11 @@ list is unavailable and no action was run. Service details stay collapsed, and
 tests), the source-server browser recovery passes (1 test), and lint, build,
 and `git diff --check` pass. Uncertain action results still use their separate
 Action history guidance; no provider action behavior changed.
+
+## Provider connection read-error wording — 2026-10-28
+
+A failed connection-settings read now says the settings are unavailable and
+that no settings changed. The service error is under collapsed Technical
+details; Refresh settings continues to repeat only the read. The connection
+suite passes (16 tests), along with lint, build, and `git diff --check`. Test
+and save failures retain their existing secret-redacted messages.

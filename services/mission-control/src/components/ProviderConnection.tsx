@@ -35,6 +35,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
         hasConnectionCapability ? "loading" : null,
     );
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [testResult, setTestResult] =
         useState<TestProviderConnectionResult | null>(null);
 
@@ -45,6 +46,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
 
         setBusyMode("loading");
         setError(null);
+        setErrorDetails(null);
         setTestResult(null);
 
         try {
@@ -57,12 +59,10 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                 `Unable to load connection for ${provider.id}:`,
                 requestError,
             );
-            setError(
-                getAtlasErrorMessage(
-                    requestError,
-                    `Mission Control could not load connection settings for ${provider.name}.`,
-                ),
-            );
+            const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
+            const details = getAtlasErrorMessage(requestError, fallback);
+            setError("Connection settings could not be loaded. Refresh to try again. No settings were changed.");
+            setErrorDetails(details === fallback ? null : details);
         } finally {
             setBusyMode(null);
         }
@@ -85,6 +85,8 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     setSchema(nextSchema);
                     setFormValues(initialFormValues(nextSchema));
                     setSecretValues({});
+                    setError(null);
+                    setErrorDetails(null);
                 })
                 .catch((requestError: unknown) => {
                     if (cancelled) {
@@ -94,12 +96,10 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                         `Unable to load connection for ${provider.id}:`,
                         requestError,
                     );
-                    setError(
-                        getAtlasErrorMessage(
-                            requestError,
-                            `Mission Control could not load connection settings for ${provider.name}.`,
-                        ),
-                    );
+                    const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
+                    const details = getAtlasErrorMessage(requestError, fallback);
+                    setError("Connection settings could not be loaded. Refresh to try again. No settings were changed.");
+                    setErrorDetails(details === fallback ? null : details);
                 })
                 .finally(() => {
                     if (!cancelled) {
@@ -131,6 +131,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     ): void {
         setTestResult(null);
         setError(null);
+        setErrorDetails(null);
         if (field.secret) {
             setSecretValues((current) => ({
                 ...current,
@@ -159,6 +160,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
 
         setBusyMode("testing");
         setError(null);
+        setErrorDetails(null);
         setTestResult(null);
 
         try {
@@ -199,6 +201,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
 
         setBusyMode("saving");
         setError(null);
+        setErrorDetails(null);
 
         try {
             const result = await updateProviderConnection(provider.id, {
@@ -280,7 +283,11 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                         role="alert"
                         className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
                     >
-                        {error}
+                        <p>{error}</p>
+                        {errorDetails && <details className="mt-3">
+                            <summary className="cursor-pointer font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                            <p className="mt-2 break-words text-slate-400">{errorDetails}</p>
+                        </details>}
                     </div>
                 )}
 
