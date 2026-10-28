@@ -48,6 +48,7 @@ export function InstallationCapabilityAssessment({ itemId, selectionId }: { item
     const [assessment, setAssessment] = useState<InstallationCapabilityAssessmentV1 | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
         if (!selectionId) {
@@ -68,14 +69,21 @@ export function InstallationCapabilityAssessment({ itemId, selectionId }: { item
             })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
-    }, [itemId, selectionId]);
+    }, [itemId, selectionId, loadAttempt]);
 
     return <section aria-labelledby="capability-assessment-heading" className="mt-5 rounded-lg border border-slate-700 p-4">
         <h4 id="capability-assessment-heading" className="font-semibold text-slate-100">Installation capability assessment</h4>
         <p className="mt-1 text-sm text-slate-300">Read-only comparison of sanitized provider configuration facts. It does not inspect actual in-guest or runtime capability and grants no installation or execution authority.</p>
         {!selectionId && <p className="mt-3 text-sm text-slate-400">No prospective destination selection is available for capability assessment.</p>}
         {selectionId && loading && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Loading installation capability assessment…</p>}
-        {selectionId && !loading && error && <p role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
+        {selectionId && !loading && error && <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <p>Atlas could not load the capability check. Retry to refresh the provider facts.</p>
+            <details className="mt-3 text-red-100/80">
+                <summary className="cursor-pointer">Technical details</summary>
+                <p className="mt-2 break-words">{error}</p>
+            </details>
+            <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry capability check</button>
+        </div>}
         {selectionId && !loading && !error && !assessment && <p className="mt-3 text-sm text-slate-400">No installation capability assessment was returned.</p>}
         {selectionId && assessment && !loading && !error && <Assessment assessment={assessment} />}
     </section>;

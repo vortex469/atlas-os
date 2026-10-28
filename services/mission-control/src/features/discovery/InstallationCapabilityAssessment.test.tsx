@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationCapabilityAssessment } from "../../api/installationCapability";
@@ -60,10 +61,17 @@ describe("installation capability assessment", () => {
 
         let rejectRequest: (reason: Error) => void = () => undefined;
         vi.mocked(getInstallationCapabilityAssessment).mockReturnValueOnce(new Promise((_, reject) => { rejectRequest = reject; }));
+        vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture());
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
         expect(await screen.findByText(/loading installation capability/i)).toBeInTheDocument();
         rejectRequest(new Error("secret provider address 10.0.0.1"));
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        await waitFor(() => expect(screen.getByRole("alert").querySelector(":scope > p")).toHaveTextContent("Atlas could not load the capability check."));
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Installation capability assessment is currently unavailable.")).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByRole("button", { name: "Retry capability check" }));
+        expect(await screen.findByRole("heading", { name: /sanitized provider configuration facts/i })).toBeInTheDocument();
+        expect(getInstallationCapabilityAssessment).toHaveBeenCalledTimes(2);
     });
 
     it("does not render raw provider data or prohibited controls and navigation", async () => {

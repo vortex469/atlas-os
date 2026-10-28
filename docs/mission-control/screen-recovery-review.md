@@ -1659,3 +1659,11 @@ the full Mission Control suite passes (2,779 tests across 181 files), lint and
 production build pass, and the live-delivery structural boundary test passes.
 No API contract, authorization check, installation action, approval, or
 execution capability changed.
+
+## Read-only installation check recovery — 2026-10-28
+
+The capability and candidate-admission panels now show a plain error summary,
+keep server diagnostics collapsed, and offer a retry that reloads the same
+read-only GET. Their focused suites pass (11 tests), as do the full Mission
+Control suite (2,779 tests across 181 files), lint and production build. No
+mutation, selection, approval, installation, or execution route is added.

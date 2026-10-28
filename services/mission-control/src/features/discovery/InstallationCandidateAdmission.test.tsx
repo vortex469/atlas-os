@@ -81,11 +81,18 @@ describe("installation candidate admission", () => {
 
         let rejectRequest: (reason: Error) => void = () => undefined;
         vi.mocked(getInstallationCandidateAdmission).mockReturnValueOnce(new Promise((_, reject) => { rejectRequest = reject; }));
+        vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(fixture(false));
         const loading = render(<InstallationCandidateAdmission itemId="example" selectionId="selection-1" />);
         expect(await screen.findByText(/loading installation candidate admission/i)).toBeInTheDocument();
         rejectRequest(new Error("credential secret at /internal/path and 10.0.0.1"));
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        await waitFor(() => expect(screen.getByRole("alert").querySelector(":scope > p")).toHaveTextContent("Atlas could not load candidate admission for this destination."));
         expect(loading.container).not.toHaveTextContent(/secret|internal\/path|10\.0\.0\.1/i);
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Installation candidate admission is currently unavailable.")).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByRole("button", { name: "Retry admission check" }));
+        expect(await screen.findByText("No candidate record was created")).toBeInTheDocument();
+        expect(getInstallationCandidateAdmission).toHaveBeenCalledTimes(2);
         loading.unmount();
 
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(null as unknown as InstallationCandidateAdmissionV1);

@@ -27,6 +27,7 @@ export function InstallationCandidateAdmission({ itemId, selectionId, csrfToken 
     const [admission, setAdmission] = useState<InstallationCandidateAdmissionV1 | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [loadAttempt, setLoadAttempt] = useState(0);
 
     useEffect(() => {
         if (!selectionId) return;
@@ -41,14 +42,21 @@ export function InstallationCandidateAdmission({ itemId, selectionId, csrfToken 
             })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
-    }, [itemId, selectionId]);
+    }, [itemId, selectionId, loadAttempt]);
 
     return <section aria-labelledby="candidate-admission-heading" className="mt-5 rounded-lg border border-slate-700 p-4">
         <h4 id="candidate-admission-heading" className="font-semibold text-slate-100">Installation candidate admission</h4>
         <p className="mt-1 text-sm text-slate-300">This read-only check does not approve an installation or start work.</p>
         {!selectionId && <p className="mt-3 text-sm text-slate-400">No destination selection is available for candidate admission.</p>}
         {selectionId && loading && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Loading installation candidate admission…</p>}
-        {selectionId && !loading && error && <p role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
+        {selectionId && !loading && error && <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <p>Atlas could not load candidate admission for this destination. Retry to check its current status.</p>
+            <details className="mt-3 text-red-100/80">
+                <summary className="cursor-pointer">Technical details</summary>
+                <p className="mt-2 break-words">{error}</p>
+            </details>
+            <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry admission check</button>
+        </div>}
         {selectionId && !loading && !error && !admission && <p className="mt-3 text-sm text-slate-400">No installation candidate admission was returned.</p>}
         {selectionId && admission && !loading && !error && <Admission admission={admission} />}
         {admission && <InstallationCandidateLifecycle admission={admission} itemId={itemId} selectionId={selectionId} csrfToken={csrfToken} />}

@@ -259,7 +259,8 @@ describe("ProspectiveDestinationReview", () => {
         await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
         const list = await screen.findByRole("list", { name: "Installation admission blockers" });
         expect(within(list).getAllByRole("listitem")).toHaveLength(16);
-        const technicalDetails = screen.getByText("Technical details").closest("details");
+        const assessmentSummary = screen.getByRole("region", { name: "Assessment result" });
+        const technicalDetails = within(assessmentSummary).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(technicalDetails).not.toBeNull();
         for (const code of codes) expect(within(technicalDetails as HTMLElement).getByText(code)).toBeInTheDocument();
