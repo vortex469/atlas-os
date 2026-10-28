@@ -79,6 +79,17 @@ describe("OperationalHistoryPage", () => {
         expect(document.body.textContent).not.toContain("native secret exception");
     });
 
+    it("keeps history visible and identifies incomplete details when lifecycle read fails", async () => {
+        mockedLifecycle.mockRejectedValue(new Error("private lifecycle exception"));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        expect(await screen.findByRole("heading", { name: "Maintenance target 110" })).toBeVisible();
+        expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
+        expect(screen.getByText(/Restart service · Healthy/)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
+        expect(document.body.textContent).not.toContain("private lifecycle exception");
+    });
+
     it("does not show another workflow's target or successful outcome", async () => {
         mockedLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "foreign-workflow", target_label: "Foreign target" }));
         mockedDiagnostic.mockResolvedValue(operationalDiagnostic({ correlation: { workflow_id: "foreign-workflow", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true } }));
@@ -104,6 +115,7 @@ describe("OperationalHistoryPage", () => {
         await screen.findByRole("link", { name: "Open workflow" });
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.getByText(/Restart service · Healthy/)).toBeInTheDocument();
+        expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
     });
 
     it("filters only the bounded current page by controlled diagnostic status", async () => {

@@ -19,6 +19,7 @@ const PAGE_SIZE = 10;
 interface HistoryItem {
     workflow: WorkflowSummary;
     lifecycle: WorkflowOperationalLifecycle | null;
+    lifecycleUnavailable: boolean;
     diagnostic: WorkflowRecoveryDiagnostic | null;
     diagnosticUnavailable: boolean;
 }
@@ -77,14 +78,18 @@ export function OperationalHistoryPage() {
             const evidence = await Promise.all(
                 page.items.map(async (workflow) => {
                     const [lifecycle, diagnostic] = await Promise.all([
-                        getWorkflowOperationalLifecycle(workflow.workflow_id).catch(() => null),
+                        getWorkflowOperationalLifecycle(workflow.workflow_id)
+                            .then((value) => ({ value, unavailable: false }))
+                            .catch(() => ({ value: null, unavailable: true })),
                         getWorkflowRecoveryDiagnostic(workflow.workflow_id)
                             .then((value) => ({ value, unavailable: false }))
                             .catch(() => ({ value: null, unavailable: true })),
                     ]);
-                    const matchingLifecycle = lifecycle?.workflow_id === workflow.workflow_id ? lifecycle : null;
+                    const matchingLifecycle = lifecycle.value?.workflow_id === workflow.workflow_id ? lifecycle.value : null;
                     const matchingDiagnostic = diagnostic.value?.correlation?.workflow_id === workflow.workflow_id ? diagnostic.value : null;
-                    return { lifecycle: matchingLifecycle, diagnostic: matchingDiagnostic,
+                    return { lifecycle: matchingLifecycle,
+                        lifecycleUnavailable: lifecycle.unavailable || (lifecycle.value !== null && matchingLifecycle === null),
+                        diagnostic: matchingDiagnostic,
                         diagnosticUnavailable: diagnostic.unavailable || (diagnostic.value !== null && matchingDiagnostic === null) };
                 }),
             );
@@ -158,7 +163,7 @@ export function OperationalHistoryPage() {
     );
 }
 
-function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUnavailable }: HistoryItem) {
+function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, diagnostic, diagnosticUnavailable }: HistoryItem) {
     const outcome = diagnostic ? recoveryPresentation(diagnostic) : null;
     const resultTimestamp = lifecycle?.verification_completed_at ?? lifecycle?.dispatch_completed_at ?? null;
     const action = workflow.execution_intent === "restart-service" ? "Restart service" : workflow.execution_intent ?? "Maintenance request";
@@ -172,6 +177,7 @@ function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUna
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Open workflow</Link>
             </div>
+            {lifecycleUnavailable && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.</p>}
             <OperationalRecoverySummary diagnostic={diagnostic} error={diagnosticUnavailable ? "Could not load the latest status for this request." : null} supportEvidenceAvailable={diagnostic !== null} compact />
             <details className="rounded-lg border border-slate-800 p-3">
                 <summary className="cursor-pointer text-sm font-medium text-slate-200">Workflow details</summary>

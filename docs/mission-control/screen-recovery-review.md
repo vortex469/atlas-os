@@ -1133,6 +1133,11 @@ An unavailable lifecycle now offers a read-only workflow status retry and says
 that the maintenance outcome may still be unknown. The retry does not repeat
 the provider action; technical error text is optional.
 
+Maintenance history also keeps the workflow row and any successful diagnostic
+visible when lifecycle details are unavailable or belong to another workflow.
+It identifies target and timing details as incomplete and points to Refresh
+history, which retries reads only.
+
 ## Planning session read failures — 2026-10-28
 
 When Mission Control cannot read a planning session, the page now says its
