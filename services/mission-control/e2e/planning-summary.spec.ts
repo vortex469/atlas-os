@@ -7,6 +7,8 @@ const planning: CandidatePlanningResponse = {
     candidate_id: `candidate-${"b".repeat(64)}`,
     status: "ready_for_planning",
     planning_allowed: true,
+    predecessor_session_id: `planning-previous-${"d".repeat(40)}`,
+    successor_session_id: `planning-newer-${"e".repeat(40)}`,
     intake_status: "accepted_for_planning",
     intake_reason_codes: [],
     candidate_fingerprint: `candidate-fingerprint-v1:${"c".repeat(64)}`,
@@ -18,7 +20,7 @@ const planning: CandidatePlanningResponse = {
 for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }, { width: 1280, height: 900 }]) {
     test.describe(`Plain planning summary at ${viewport.width}px`, () => {
         test.use({ viewport });
-        test("keeps the next step visible and details read-only", async ({ page, baseURL, rejectedMutationRequests }) => {
+        test("keeps plain next steps visible and session IDs under read-only details", async ({ page, baseURL, rejectedMutationRequests }) => {
             const expectedOrigin = new URL(baseURL ?? "http://127.0.0.1:5173").origin;
             let reads = 0;
             await page.route(`**/agent-api/candidate-planning/${planning.session_id}`, async (route) => {
@@ -36,12 +38,18 @@ for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }
             const disclosure = page.locator("details").filter({ has: page.getByText("Technical details", { exact: true }) });
             await expect(disclosure).not.toHaveAttribute("open");
             await expect(page.getByText(planning.candidate_fingerprint!, { exact: true })).toBeHidden();
+            await expect(page.getByText(planning.predecessor_session_id!, { exact: true })).toBeHidden();
+            await expect(page.getByText(planning.successor_session_id!, { exact: true })).toBeHidden();
+            await expect(page.getByRole("link", { name: "Open earlier session" })).toHaveAttribute("href", `/candidate-planning/${planning.predecessor_session_id}`);
+            await expect(page.getByRole("link", { name: "Open newer session" })).toHaveAttribute("href", `/candidate-planning/${planning.successor_session_id}`);
             const nextStep = page.getByRole("button", { name: "Generate Plan", exact: true });
             await expect(nextStep).toBeEnabled();
             await expect(nextStep).toBeVisible();
             const initialReads = reads;
             await disclosure.locator("summary").click();
             await expect(page.getByText(planning.candidate_fingerprint!, { exact: true })).toBeVisible();
+            await expect(page.getByText(planning.predecessor_session_id!, { exact: true })).toBeVisible();
+            await expect(page.getByText(planning.successor_session_id!, { exact: true })).toBeVisible();
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
             expect(reads).toBe(initialReads);
             expect(rejectedMutationRequests).toEqual([]);
