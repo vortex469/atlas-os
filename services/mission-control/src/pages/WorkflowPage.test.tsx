@@ -1081,19 +1081,30 @@ describe("WorkflowPage", () => {
         await screen.findByText("Verification approval rejected.");
     });
 
-    it("renders commit request and reviewed files read-only", async () => {
+    it("keeps commit message and files visible with technical references collapsed", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Commit Request" })).toBeInTheDocument();
-        expect(screen.getByText("approval-commit-workflow-123")).toBeInTheDocument();
-        expect(screen.getAllByText("/opt/atlas").length).toBeGreaterThan(0);
-        expect(screen.getByText("feature/atlas-agent")).toBeInTheDocument();
-        expect(screen.getAllByText("abc123").length).toBeGreaterThan(0);
-        expect(screen.getByText("feat(compose): update stack")).toBeInTheDocument();
-        expect(screen.getAllByText("compose.yaml, services/demo/Dockerfile").length).toBeGreaterThan(0);
-        expect(screen.getByText("reviewed-fingerprint-123")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Commit details" })).toBeInTheDocument();
+        const commitDetails = within(screen.getByRole("region", { name: "Commit details" }));
+        expect(commitDetails.getByText("feature/atlas-agent")).toBeVisible();
+        expect(commitDetails.getByText("feat(compose): update stack")).toBeVisible();
+        expect(commitDetails.getByText("compose.yaml, services/demo/Dockerfile")).toBeVisible();
+        const technicalDetails = commitDetails.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(commitDetails.getByText("approval-commit-workflow-123")).not.toBeVisible();
+        expect(commitDetails.getByText("/opt/atlas")).not.toBeVisible();
+        expect(commitDetails.getByText("abc123")).not.toBeVisible();
+        expect(commitDetails.getByText("reviewed-fingerprint-123")).not.toBeVisible();
         expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+
+        fireEvent.click(commitDetails.getByText("Technical details"));
+
+        expect(technicalDetails).toHaveAttribute("open");
+        expect(commitDetails.getByText("approval-commit-workflow-123")).toBeVisible();
+        expect(commitDetails.getByText("/opt/atlas")).toBeVisible();
+        expect(commitDetails.getByText("abc123")).toBeVisible();
+        expect(commitDetails.getByText("reviewed-fingerprint-123")).toBeVisible();
     });
 
     it("submits commit approval with only workflow id and decision", async () => {
@@ -1183,7 +1194,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
         renderPage();
 
-        await screen.findByRole("heading", { name: "Commit Request" });
+        await screen.findByRole("heading", { name: "Commit details" });
         expect(screen.queryByRole("button", { name: /push/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /tag/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /amend/i })).not.toBeInTheDocument();

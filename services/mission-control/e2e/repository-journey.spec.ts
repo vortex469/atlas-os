@@ -112,6 +112,14 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Verification approved. Resume to run the checks.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(9);
+        const commitDetails = page.getByRole("region", { name: "Commit details" });
+        await expect(commitDetails.getByText("test: update fixture compose configuration", { exact: true })).toBeVisible();
+        await expect(commitDetails.getByText("compose.production.yaml", { exact: true })).toBeVisible();
+        await expect(commitDetails.getByText("commit-request-browser-journey", { exact: true })).toBeHidden();
+        await commitDetails.getByText("Technical details", { exact: true }).click();
+        await expect(commitDetails.getByText("commit-request-browser-journey", { exact: true })).toBeVisible();
+        await commitDetails.getByText("Technical details", { exact: true }).click();
+        await expect(commitDetails.getByText("commit-request-browser-journey", { exact: true })).toBeHidden();
         await page.getByRole("button", { name: "Approve Commit", exact: true }).click();
         await expect(page.getByRole("button", { name: "Resume Approved Commit", exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Resume to finish the local commit.", { exact: true })).toBeVisible();

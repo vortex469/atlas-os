@@ -771,20 +771,27 @@ function CommitSection({
             </div>
 
             <section aria-labelledby="commit-request-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="commit-request-heading" className="text-base font-semibold text-white">Commit Request</h3>
+                <h3 id="commit-request-heading" className="text-base font-semibold text-white">Commit details</h3>
                 {request ? (
-                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                        <Detail label="Commit Request ID" value={request.commit_request_id} />
-                        <Detail label="Repository" value={request.repository ?? "Not available"} />
-                        <Detail label="Branch" value={request.branch ?? "Not available"} />
-                        <Detail label="Expected HEAD" value={request.expected_head ?? "Not available"} />
-                        <Detail label="Commit message" value={request.commit_message} />
-                        <Detail label="Reviewed files" value={request.reviewed_files.length > 0 ? request.reviewed_files.join(", ") : "None reported"} />
-                        <Detail label="Reviewed-content fingerprint" value={request.reviewed_content_fingerprint} />
-                        <Detail label="Commit approval status" value={formatLabel(request.commit_approval_status)} />
-                    </dl>
+                    <>
+                        <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                            <Detail label="Branch" value={request.branch ?? "Not available"} />
+                            <Detail label="Commit message" value={request.commit_message} />
+                            <Detail label="Reviewed files" value={request.reviewed_files.length > 0 ? request.reviewed_files.join(", ") : "None reported"} />
+                            <Detail label="Commit approval status" value={formatLabel(request.commit_approval_status)} />
+                        </dl>
+                        <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
+                            <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                            <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                                <Detail label="Commit request ID" value={request.commit_request_id} />
+                                <Detail label="Repository" value={request.repository ?? "Not available"} />
+                                <Detail label="Expected HEAD" value={request.expected_head ?? "Not available"} />
+                                <Detail label="Reviewed-content fingerprint" value={request.reviewed_content_fingerprint} />
+                            </dl>
+                        </details>
+                    </>
                 ) : (
-                    <p className="mt-3 text-sm text-slate-300">Commit request is not available for this workflow.</p>
+                    <p className="mt-3 text-sm text-slate-300">Commit details are unavailable for this workflow.</p>
                 )}
             </section>
 

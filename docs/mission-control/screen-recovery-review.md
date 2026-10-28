@@ -1868,3 +1868,15 @@ suite passes (81 tests), the responsive fixture-backed repository journey
 passes (8 tests at 390px and 1280px), the full Mission Control suite passes
 (2,791 tests across 181 files), and lint and production build pass. Browser
 workflow writes remain intercepted by synthetic fixtures.
+
+## Commit review details — 2026-10-28
+
+The commit card leads with the target branch, commit message, files, and
+approval status. Repository path, expected HEAD, request ID, and reviewed
+content fingerprint remain available under collapsed technical details. The
+card continues to describe approval and local commit as separate steps, with
+no push or release action. The focused WorkflowPage suite passes (81 tests),
+the responsive fixture-backed repository journey passes (8 tests at 390px and
+1280px), the full Mission Control suite passes (2,791 tests across 181 files),
+and lint and production build pass. Browser workflow writes remain
+intercepted by synthetic fixtures.
