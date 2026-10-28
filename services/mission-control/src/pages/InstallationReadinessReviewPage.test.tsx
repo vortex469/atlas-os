@@ -158,7 +158,11 @@ describe("InstallationReadinessReviewPage", () => {
         vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
         vi.mocked(createExecutionPermissionGrant).mockResolvedValue(grantResultFixture);
         renderPage();
-        expect(await screen.findByRole("heading", { name: "Active permission evidence" })).toBeInTheDocument();
+        const recordHeading = await screen.findByRole("heading", { name: "Current evidence record" });
+        const recordRow = recordHeading.closest("li");
+        const recordTimes = within(recordRow!).getByText(/^Recorded /);
+        expect(recordTimes).toHaveTextContent(/UTC; valid until .* UTC; status checked .* UTC\./);
+        expect(recordTimes).not.toHaveTextContent(/2026-08-27T/);
         expect(screen.getByText("Record IDs and audit details").closest("details")).not.toHaveAttribute("open");
         fireEvent.click(screen.getByText("Record IDs and audit details"));
         expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));

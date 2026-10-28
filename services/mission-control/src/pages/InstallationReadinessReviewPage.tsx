@@ -238,8 +238,8 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
 function Grant({ result }: { result: ExecutionPermissionGrantResultV1 }) {
     const grant = result.grant!; const status = result.status!; const audit = result.audit_evidence!;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <h3 className="font-semibold">{status.lifecycle === "active" ? "Active permission evidence" : "Expired permission evidence"}</h3>
-        <p className="mt-1">Recorded {grant.recorded_at}; valid until {grant.valid_until}; observed {status.observed_at}. Expiry does not erase or refresh this append-only evidence.</p>
+        <h3 className="font-semibold">{status.lifecycle === "active" ? "Current evidence record" : "Expired evidence record"}</h3>
+        <p className="mt-1">Recorded {formatUtcTimestamp(grant.recorded_at)}; valid until {formatUtcTimestamp(grant.valid_until)}; status checked {formatUtcTimestamp(status.observed_at)}. Expiry does not erase or renew this record.</p>
         <p className="mt-2">Confirmation: {grant.confirmation_text}</p>
         <details className="mt-3">
             <summary className="cursor-pointer text-xs text-slate-400">Record IDs and audit details</summary>

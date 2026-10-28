@@ -431,6 +431,14 @@ screen still explains that past actions do not show current health. The focused
 dashboard suites pass (68 tests), lint/build pass, and all 3 built responsive
 browser checks pass.
 
+## Installation permission evidence wording — 2026-10-28
+
+An active lifecycle is now labeled “Current evidence record” so it cannot be
+read as active execution permission. Recorded, expiry, and status-check times
+use readable UTC dates. The focused readiness review suite and responsive
+browser checks cover the record at mobile and desktop widths; lint and build
+pass. The grant's authority fields and server behavior are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

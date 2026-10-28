@@ -1,4 +1,5 @@
 import { expect, test } from "./mission-control-fixtures";
+import { grantResultFixture } from "../src/test/executionPermissionGrant";
 import { fp, readinessGatedFixture, uuid4 } from "../src/test/installationReadinessReview";
 
 for (const width of [390, 1280]) {
@@ -21,7 +22,7 @@ for (const width of [390, 1280]) {
             }
             evidenceReads.push(path!);
             if (path === "execution-permission-grants") return route.fulfill({ json: {
-                grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false,
+                grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false,
             } });
             if (path === "execution-admissions") return route.fulfill({ json: {
                 admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false,
@@ -49,7 +50,11 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Technical review details", { exact: true })).toBeVisible();
         await page.getByText("Technical review details", { exact: true }).click();
         await expect(page.getByRole("heading", { name: "Required linkage and fingerprints", exact: true })).toBeVisible();
-        await expect(page.getByText("No execution permission evidence has been recorded.", { exact: true })).toBeVisible();
+        const permissionGrant = page.getByRole("list", { name: "Execution permission grants" });
+        await expect(permissionGrant.getByRole("heading", { name: "Current evidence record", exact: true })).toBeVisible();
+        const grantTimes = permissionGrant.getByText(/^Recorded /);
+        await expect(grantTimes).toContainText("UTC; valid until");
+        await expect(grantTimes).not.toContainText("2026-08-27T");
         await expect(page.getByText("How permission evidence is handled", { exact: true })).toBeVisible();
         await expect(page.getByText(/Core binds the authenticated operator and exact v0\.20–v0\.34 evidence\/readiness fingerprints/).first()).toBeHidden();
         await expect(page.getByText("How admission evidence is handled", { exact: true })).toBeVisible();
