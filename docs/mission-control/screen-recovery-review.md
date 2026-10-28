@@ -714,7 +714,9 @@ approval, and that it does not restart the VM. A missing restart capability no
 longer leaves the action summary stuck on “Loading capability.” Suggestion,
 permission, and resource-loading messages use direct language while the
 Discovery suggestion remains unable to select a VM or submit a request. The
-focused request-page suite passes (28 tests), the sign-in and full maintenance
+VM-loading failures are reported separately from proposal-submission failures
+and point to the read-only Refresh control. The focused request-page suite
+passes (29 tests), the sign-in and full maintenance
 journeys pass at 390px and 1280px (4 browser tests), and lint and production
 build pass. Approval, CSRF, target-fingerprint, and separate run behavior are
 unchanged.

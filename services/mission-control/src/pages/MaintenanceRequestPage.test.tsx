@@ -291,9 +291,20 @@ describe("MaintenanceRequestPage", () => {
         await screen.findByRole("radio", { name: /Frigate/i });
         vi.mocked(getOperationalCapabilities).mockRejectedValueOnce(new Error("Unavailable"));
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
-        await screen.findByRole("alert");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Available VMs could not be loaded. Use Refresh to try again.");
         expect(screen.queryByRole("radio")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        expect(requestRestartServiceIntent).not.toHaveBeenCalled();
+    });
+
+    it("describes a resource-list read failure without implying a request was submitted", async () => {
+        vi.mocked(getCapabilityResources).mockRejectedValueOnce(new Error("Resource service unavailable"));
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Available VMs could not be loaded. Use Refresh to try again.");
+        expect(alert).not.toHaveTextContent("maintenance request could not be completed");
+        expect(screen.queryByRole("radio")).not.toBeInTheDocument();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();
     });
 

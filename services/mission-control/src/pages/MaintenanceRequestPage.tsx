@@ -28,6 +28,14 @@ function errorMessage(status: number | undefined): string {
     return "The maintenance request could not be completed.";
 }
 
+function resourceLoadErrorMessage(status: number | undefined): string {
+    if (status === 401) return "Your sign-in has expired. Sign in again to load available VMs.";
+    if (status === 403) return "Your account does not have permission to request maintenance.";
+    if (status === 429) return "Too many requests to load available VMs. Wait before refreshing.";
+    if (status === 503) return "The VM list is temporarily unavailable. Try again shortly.";
+    return "Available VMs could not be loaded. Use Refresh to try again.";
+}
+
 function descriptorLabel(value: string | undefined): string {
     if (!value) return "Not available";
     if (value === "qemu") return "QEMU";
@@ -104,7 +112,7 @@ export function MaintenanceRequestPage() {
             if (generation !== selectorGeneration.current) return;
             const status = isAxiosError(requestError) ? requestError.response?.status : undefined;
             if (status === 401) session.invalidate();
-            setError(errorMessage(status));
+            setError(resourceLoadErrorMessage(status));
         } finally {
             if (generation === selectorGeneration.current) setLoading(false);
         }
