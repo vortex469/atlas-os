@@ -79,6 +79,45 @@ for (const width of [320, 1280]) {
     });
 }
 
+for (const width of [320, 1280]) {
+    test(`provider loading state keeps compact spacing at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let releaseProviderRead!: () => void;
+        const providerRead = new Promise<void>((resolve) => { releaseProviderRead = resolve; });
+        let readCount = 0;
+
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/providers", async (route) => {
+            readCount += 1;
+            await providerRead;
+            await route.fulfill({ json: providers });
+        });
+        await page.goto("/providers/proxmox");
+
+        const loadingMessage = page.getByText("Loading provider details...", { exact: true });
+        await expect(loadingMessage).toBeVisible();
+        const spacing = await loadingMessage.evaluate((element) => {
+            const page = element.closest("main");
+            const panel = element.closest("section");
+            return {
+                page: page ? getComputedStyle(page).paddingLeft : null,
+                panel: panel ? getComputedStyle(panel).paddingLeft : null,
+            };
+        });
+        if (width < 640) {
+            expect(spacing).toEqual({ page: "16px", panel: "20px" });
+        } else {
+            expect(Number.parseFloat(spacing.page ?? "0px")).toBeGreaterThan(16);
+            expect(Number.parseFloat(spacing.panel ?? "0px")).toBeGreaterThan(20);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+        releaseProviderRead();
+        await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
+        expect(readCount).toBe(1);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 for (const width of [320, 390, 1280]) {
     test(`provider action fields use readable labels at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
