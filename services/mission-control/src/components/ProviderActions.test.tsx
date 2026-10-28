@@ -238,6 +238,11 @@ describe("ProviderActions", () => {
 
     it("keeps the action list after a failed request and points to action history", async () => {
         const user = userEvent.setup();
+        mockedGetProviderActions.mockResolvedValue([
+            diagnosticsAction,
+            { ...diagnosticsAction, id: "run-healthcheck", label: "Run Healthcheck" },
+            unloadAction,
+        ]);
         const onActionCompleted = renderActions();
         mockedRunProviderAction.mockRejectedValue(
             new Error("Provider unavailable."),
@@ -251,13 +256,17 @@ describe("ProviderActions", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Action result unavailable");
-        expect(alert).toHaveTextContent("The action may have completed, but Mission Control did not receive a final result.");
-        expect(alert).toHaveTextContent("Check Action history before trying the action again.");
-        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
+        expect(alert).toHaveTextContent("Provider actions are paused here to prevent a duplicate.");
+        expect(alert).toHaveTextContent("Check Action history, then reload this provider page before deciding whether to try again.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Run Healthcheck" })).toBeDisabled();
+        expect(screen.getByLabelText(/model/i)).toBeDisabled();
         expect(screen.getByRole("link", { name: "Open Action history →" })).toHaveAttribute("href", "/operations");
         expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(onActionCompleted).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Run Diagnostics" }));
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider unavailable.")).not.toBeVisible();

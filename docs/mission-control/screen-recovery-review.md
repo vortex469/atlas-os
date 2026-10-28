@@ -1592,3 +1592,12 @@ proposal result is unconfirmed and make clear that the VM has not restarted.
 The page links to Change proposals so an operator can check before retrying.
 Tests cover HTTP 503 and a lost-response case, and verify the link does not
 submit a second request. No approval or execution step changed.
+
+## Provider action uncertain-result pause — 2026-10-28
+
+When Mission Control loses the final result of a provider action, all provider
+action controls on that page are paused. The message directs the operator to
+Action history and says to reload the provider page before deciding whether to
+retry. Tests verify enabled actions become disabled, inputs are unavailable,
+and clicking again cannot submit a duplicate request. Provider execution and
+approval contracts are unchanged.
