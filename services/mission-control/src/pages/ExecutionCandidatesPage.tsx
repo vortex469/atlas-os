@@ -225,7 +225,6 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
                 <StatusBadge status={candidate.status} />
             </div>
             <dl className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                <Field label="Required approval" value={formatLabel(candidate.required_approval_level)} />
                 <Field label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
                 <Field label="Expires" value={formatExpiry(candidate.expires_at)} />
             </dl>
@@ -233,6 +232,7 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
                 <summary className="cursor-pointer text-sm text-slate-300">Technical details</summary>
                 <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
                     <Field label="Proposal ID" value={candidate.id} />
+                    <Field label="Required approval" value={formatLabel(candidate.required_approval_level)} />
                     <Field label="Target type" value={candidate.target_type} />
                     <Field label="Category" value={formatLabel(candidate.execution_category)} />
                     <Field label="Source" value={candidate.source_subsystem} />
