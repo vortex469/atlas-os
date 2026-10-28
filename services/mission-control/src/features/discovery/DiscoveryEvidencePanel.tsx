@@ -10,6 +10,7 @@ type Props = {
     evidence: DiscoveryItemEvidence | null;
     isLoading: boolean;
     error: string | null;
+    onRetry?: () => void;
 };
 
 const conflictCopy: Record<DiscoveryConflictState, { title: string; detail: string }> = {
@@ -108,7 +109,7 @@ const releaseEvaluationBadgeStyles: Record<ReleaseEvaluationTone, string> = {
     neutral: "rounded-full border border-slate-600 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300",
 };
 
-export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
+export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: Props) {
     return (
         <section
             aria-labelledby="discovery-evidence-heading"
@@ -134,6 +135,7 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
                     <p className="mt-2 text-sm text-slate-300">
                         Showing the curated catalog only. No authoritative Discovery data was lost or changed.
                     </p>
+                    {onRetry && <button type="button" onClick={onRetry} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">Retry source evidence</button>}
                 </div>
             )}
 

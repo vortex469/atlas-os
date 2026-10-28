@@ -963,3 +963,10 @@ retry without reloading the item or its other evidence. The proposal list stays
 read-only, and the catalog context remains visible. Focused component coverage
 and responsive browser checks verify the recovery at 390px and 1280px; no
 proposal or installation action is introduced.
+
+## Discovery source-evidence recovery — 2026-10-28
+
+When supplemental release evidence is unavailable, the panel now retries that
+read independently while preserving the curated catalog view. Focused panel and
+page tests plus mobile and desktop browser checks verify the recovery. No other
+catalog evidence is reloaded, and curated data remains authoritative.

@@ -145,10 +145,13 @@ describe("DiscoveryEvidencePanel", () => {
     });
 
     it("uses a non-blocking alert when the evidence request fails", () => {
-        render(<DiscoveryEvidencePanel evidence={null} isLoading={false} error="Source offline" />);
+        const onRetry = vi.fn();
+        render(<DiscoveryEvidencePanel evidence={null} isLoading={false} error="Source offline" onRetry={onRetry} />);
         const alert = screen.getByRole("alert");
         expect(alert).toHaveTextContent("Dynamic evidence unavailable");
         expect(alert).toHaveTextContent("Showing the curated catalog only");
+        screen.getByRole("button", { name: "Retry source evidence" }).click();
+        expect(onRetry).toHaveBeenCalledOnce();
     });
 
     it("contains no mutation or execution controls", () => {

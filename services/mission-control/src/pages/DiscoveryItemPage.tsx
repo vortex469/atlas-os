@@ -59,6 +59,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [evidence, setEvidence] = useState<DiscoveryItemEvidence | null>(null);
     const [evidenceLoading, setEvidenceLoading] = useState(true);
     const [evidenceError, setEvidenceError] = useState<string | null>(null);
+    const [evidenceLoadAttempt, setEvidenceLoadAttempt] = useState(0);
     const [imageGrounding, setImageGrounding] =
         useState<DiscoveryImageGroundingProjection | null>(null);
     const [imageGroundingLoading, setImageGroundingLoading] = useState(true);
@@ -252,7 +253,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             });
 
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, evidenceLoadAttempt]);
 
     useEffect(() => {
         const handle = window.setTimeout(() => {
@@ -300,6 +301,13 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         setProposalsLoading(true);
         setProposalsError(null);
         setProposalLoadAttempt((attempt) => attempt + 1);
+    }
+
+    function retrySourceEvidence() {
+        setEvidence(null);
+        setEvidenceLoading(true);
+        setEvidenceError(null);
+        setEvidenceLoadAttempt((attempt) => attempt + 1);
     }
 
     if (isLoading) {
@@ -415,6 +423,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 evidence={evidence}
                 isLoading={evidenceLoading}
                 error={evidenceError}
+                onRetry={retrySourceEvidence}
             />
 
             <DiscoveryImageGroundingPanel

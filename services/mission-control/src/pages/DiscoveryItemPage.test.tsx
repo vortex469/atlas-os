@@ -517,6 +517,21 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
     });
 
+    it("retries source evidence without reloading the catalog item", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryItemEvidence.mockRejectedValueOnce(new Error("Evidence service offline"))
+            .mockResolvedValueOnce(itemEvidence());
+
+        renderPage();
+
+        expect(await screen.findByText("Dynamic evidence unavailable")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry source evidence" }));
+
+        expect(await screen.findByText("Curated catalog only")).toBeInTheDocument();
+        expect(mockedGetDiscoveryItemEvidence).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
+    });
+
     it.each([
         [404, "Item grounding projection unavailable or not found."],
         [503, "Image grounding is currently unavailable due to a local source or read failure."],

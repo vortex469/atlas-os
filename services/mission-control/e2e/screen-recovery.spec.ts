@@ -148,6 +148,42 @@ for (const width of [390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`source evidence can retry without reloading the catalog item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        const entry = discoveryItemsPage.entries[0];
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items/fixture-app", (route) => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/relationships", (route) => route.fulfill({ json: {
+            item_id: "fixture-app", incoming: [], outgoing: [],
+        } }));
+        await page.route("**/api/v1/discovery/items/fixture-app/evidence", (route) => {
+            reads += 1;
+            return reads <= 2
+                ? route.fulfill({ status: 503, json: { detail: "PRIVATE_EVIDENCE_ERROR" } })
+                : route.fulfill({ json: {
+                    schema_version: "discovery-merged-item-v1",
+                    catalog_item_id: "fixture-app",
+                    curated: entry,
+                    dynamic_claims: [],
+                    source_states: [],
+                    conflict_state: "none",
+                } });
+        });
+        await page.goto("/discovery/items/fixture-app");
+
+        const evidence = page.getByRole("region", { name: "Release evidence" });
+        await expect(evidence.getByRole("alert")).toContainText("Dynamic evidence unavailable");
+        await expect(evidence.getByRole("alert")).not.toContainText("PRIVATE_EVIDENCE_ERROR");
+        await evidence.getByRole("button", { name: "Retry source evidence" }).click();
+        await expect(evidence.getByText("Curated catalog only")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
+        expect(reads).toBe(3);
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
+
 test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
     let reads = 0;
     await page.setViewportSize({ width: 390, height: 844 });
