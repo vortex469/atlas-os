@@ -369,6 +369,15 @@ and manual or unrecognized workflows to the workflow list. Focused workflow
 page tests cover both sources and the unknown-source fallback; approval and
 resume behavior is unchanged.
 
+## Maintenance history filters — 2026-10-28
+
+The history screen keeps “Latest result” visible and folds completion, action,
+provider and resource filters under “More filters.” Applied extra filters are
+marked, and “Clear filters” appears when any filter is active. Focused page
+tests pass (10 tests), lint/build pass, and all 23 recovery browser checks pass,
+including the history screen at 390px and 1280px. The bounded query and
+maintenance action boundary are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

@@ -104,12 +104,21 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("proxmox/qemu/110");
 
-        const diagnosticFilter = screen.getByRole("combobox", { name: "Status" });
+        const diagnosticFilter = screen.getByRole("combobox", { name: "Latest result" });
+        const moreFilters = screen.getByText("More filters", { exact: true });
+        expect(moreFilters.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByRole("combobox", { name: "Requested action" })).not.toBeVisible();
+        fireEvent.click(moreFilters);
+        const actionFilter = screen.getByRole("combobox", { name: "Requested action" });
+        expect(actionFilter).toBeVisible();
+        fireEvent.change(actionFilter, { target: { value: "restart-service" } });
+        expect(screen.getByText("Additional filters are applied")).toBeVisible();
         fireEvent.change(diagnosticFilter, { target: { value: "attention_required" } });
         expect(screen.getByText("No requests on this page match your filters.")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
         expect(screen.getByText("proxmox/qemu/110")).toBeInTheDocument();
         expect(diagnosticFilter).toHaveValue("all");
+        expect(actionFilter).toHaveValue("all");
         expect(mockedList).toHaveBeenCalledTimes(1);
     });
 
@@ -167,7 +176,7 @@ describe("maintenance history recovery", () => {
         mockedDiagnostic.mockRejectedValue(new Error("not available"));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("unreadable-target");
-        fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "unavailable" } });
+        fireEvent.change(screen.getByRole("combobox", { name: "Latest result" }), { target: { value: "unavailable" } });
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/history-unreadable");
         expect(screen.getByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
     });

@@ -221,39 +221,50 @@ test("a broken page keeps navigation and hides raw error details", async ({ page
     await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
 });
 
-test("maintenance history keeps unavailable requests findable and details optional", async ({ page }) => {
-    let reads = 0;
-    await page.route("**/agent-api/**", async (route) => {
-        const path = new URL(route.request().url()).pathname;
-        if (path.endsWith("/workflows")) {
-            reads += 1;
-            await route.fulfill({ json: {
-                items: [{ workflow_id: "maintenance-test", workflow_source: "candidate",
-                    workflow_state: "completed", effect_kind: "operational_action",
-                    execution_intent: "restart-service", candidate_id: null,
-                    planning_session_id: null, repository: null, target_id: "VM 110",
-                    last_result_summary: "", timeline: [] }],
-                total: 1, limit: 10, offset: 0,
-            } });
-            return;
-        }
-        if (path.includes("/workflows/maintenance-test/")) {
-            await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
-            return;
-        }
-        await route.fallback();
+for (const width of [390, 1280]) {
+    test(`maintenance history keeps unavailable requests findable and details optional at ${width}px`, async ({ page }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/agent-api/**", async (route) => {
+            const path = new URL(route.request().url()).pathname;
+            if (path.endsWith("/workflows")) {
+                reads += 1;
+                await route.fulfill({ json: {
+                    items: [{ workflow_id: "maintenance-test", workflow_source: "candidate",
+                        workflow_state: "completed", effect_kind: "operational_action",
+                        execution_intent: "restart-service", candidate_id: null,
+                        planning_session_id: null, repository: null, target_id: "VM 110",
+                        last_result_summary: "", timeline: [] }],
+                    total: 1, limit: 10, offset: 0,
+                } });
+                return;
+            }
+            if (path.includes("/workflows/maintenance-test/")) {
+                await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
+                return;
+            }
+            await route.fallback();
+        });
+        await page.goto("/operations/history");
+        await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
+        await expect(page.getByRole("combobox", { name: "Latest result", exact: true })).toBeVisible();
+        await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeHidden();
+        await page.getByText("More filters", { exact: true }).click();
+        await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeVisible();
+        await page.getByRole("combobox", { name: "Requested action", exact: true }).selectOption("restart-service");
+        await expect(page.getByText("Additional filters are applied")).toBeVisible();
+        await page.getByRole("combobox", { name: "Latest result", exact: true }).selectOption("unavailable");
+        await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
+        await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
+        await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+        await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
+        await page.getByText("Workflow details", { exact: true }).click();
+        await expect(page.getByText("Workflow State", { exact: true })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(reads).toBe(1);
     });
-    await page.goto("/operations/history");
-    await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
-    await page.getByRole("combobox", { name: "Status", exact: true }).selectOption("unavailable");
-    await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
-    await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
-    await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
-    await page.getByText("Workflow details", { exact: true }).click();
-    await expect(page.getByText("Workflow State", { exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
-    expect(reads).toBe(1);
-});
+}
 
 for (const width of [390, 1280]) {
     test(`provider registry is reachable and links back from details at ${width}px`, async ({ page }) => {
@@ -296,8 +307,8 @@ for (const expires_at of [null, "2999-02-30T00:00:00Z"]) {
         const proposal = { ...executionCandidates[0], expires_at };
         await page.route("**/api/v1/execution-candidates/*", (route) => route.fulfill({ json: proposal }));
         await page.goto(`/execution-candidates/${proposal.id}`);
-        await expect(page.getByRole("heading", { name: proposal.id, exact: true })).toBeVisible();
-        await expect(page.getByText("Review this proposal before planning. Planning does not approve or apply a change.")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
+        await expect(page.getByText("Review the proposed change and its limits before planning. Planning does not approve or apply a change.")).toBeVisible();
         const planning = page.getByRole("button", { name: "Start planning", exact: true });
         if (expires_at === null) await expect(planning).toBeEnabled();
         else {

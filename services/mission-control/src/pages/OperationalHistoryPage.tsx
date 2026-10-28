@@ -90,6 +90,9 @@ export function OperationalHistoryPage() {
         && (intentFilter === "all" || workflow.execution_intent === intentFilter)
         && (providerFilter === "all" || lifecycle?.provider_id === providerFilter)
         && (resourceTypeFilter === "all" || lifecycle?.resource_type === resourceTypeFilter));
+    const hasActiveMoreFilters = terminalFilter !== "all" || intentFilter !== "all"
+        || providerFilter !== "all" || resourceTypeFilter !== "all";
+    const hasActiveFilters = diagnosticFilter !== "all" || hasActiveMoreFilters;
 
     function clearFilters() {
         setDiagnosticFilter("all");
@@ -108,8 +111,25 @@ export function OperationalHistoryPage() {
             {isLoading && <p role="status" className="text-slate-300">Loading operational history...</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} A loading problem does not tell us whether maintenance failed.</p>}
             {!isLoading && !error && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{offset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
-            {!isLoading && !error && items.length > 0 && <section aria-label="Operational history filters" className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4 sm:grid-cols-2 xl:grid-cols-5"><Filter label="Status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} /><Filter label="Completion" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} /><Filter label="Action" value={intentFilter} onChange={setIntentFilter} options={["all", "restart-service"]} /><Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={["all", "proxmox"]} /><Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={["all", "qemu"]} /></section>}
-            {!isLoading && !error && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>No requests on this page match your filters.</p><button type="button" onClick={clearFilters} className="mt-3 rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold">Clear filters</button></section>}
+            {!isLoading && !error && items.length > 0 && <section aria-label="Operational history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <Filter label="Latest result" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
+                </div>
+                <details className="rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-200">
+                        More filters
+                        {hasActiveMoreFilters && <span className="ml-2 text-xs font-normal text-amber-200">Additional filters are applied</span>}
+                    </summary>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <Filter label="Completion" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} />
+                        <Filter label="Requested action" value={intentFilter} onChange={setIntentFilter} options={["all", "restart-service"]} />
+                        <Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={["all", "proxmox"]} />
+                        <Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={["all", "qemu"]} />
+                    </div>
+                </details>
+                {hasActiveFilters && <div className="flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100">Clear filters</button></div>}
+            </section>}
+            {!isLoading && !error && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>No requests on this page match your filters.</p></section>}
             {!isLoading && !error && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} />)}</section>}
             {!isLoading && !error && (offset > 0 || total > PAGE_SIZE) && <nav aria-label="Operational history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} disabled={offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">{items.length > 0 ? `Showing ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}` : `${total} request${total === 1 ? "" : "s"} total`}</span><button type="button" onClick={() => setOffset((current) => current + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
         </main>
@@ -150,7 +170,7 @@ function HistoryDetail({ label, value }: { label: string; value: string }) {
 }
 
 const FILTER_LABELS: Record<string, string> = {
-    all: "All", healthy: "Healthy", pending: "Pending", recovery_in_progress: "Recovering",
+    all: "Any", healthy: "Healthy", pending: "Pending", recovery_in_progress: "Recovering",
     attention_required: "Needs attention", outcome_uncertain: "Result unknown", unavailable: "Unavailable",
     terminal: "Finished", non_terminal: "In progress", "restart-service": "Restart service",
     proxmox: "Proxmox", qemu: "Virtual machine",
