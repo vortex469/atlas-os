@@ -764,3 +764,14 @@ each one.” This removes the repeated “saved provider” phrasing while keepi
 clear that the card shows reported status. The focused component suite passes
 (10 tests), the keyboard-accessible overview browser check passes, and lint,
 production build, and `git diff --check` pass.
+
+## Operator Attention workflow summary — 2026-10-28
+
+The Operator Attention card no longer repeats a generic instruction above its
+links. When a workflow’s recorded reason exactly repeats its approval stage,
+the duplicate line is omitted; a distinct recorded reason remains visible. The
+action-required cue, exact approval stage, stale-state warnings, and technical
+workflow ID remain. The overview component suite passes (52 tests), the
+synthetic overview and dashboard-attention browser suites pass (14 tests across
+phone, tablet, and desktop widths), and lint, build, and `git diff --check`
+pass. The fixture rejects unexpected mutation requests.

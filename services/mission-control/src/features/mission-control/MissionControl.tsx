@@ -49,6 +49,11 @@ function workflowAttentionStage(state: string): string {
     }
 }
 
+function workflowReasonRepeatsStage(reason: string, state: string): boolean {
+    const normalizedReason = reason.trim().replace(/[.!?]+$/, "").toLowerCase();
+    return normalizedReason === workflowAttentionStage(state).toLowerCase();
+}
+
 function workflowAttentionLabel(intent: unknown, state: string, stale: boolean): string {
     const safeIntent = safeText(intent);
     const action = safeIntent && safeIntent !== "[Sensitive text withheld]"
@@ -108,6 +113,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         })),
         ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
             actionRequired: workflowActionRequired(String(w.workflow_state)), workflowId: safeText(w.workflow_id), key: `workflow:${String(w.workflow_id)}`, label: workflowAttentionLabel(w.execution_intent, String(w.workflow_state), evidence.workflows?.stale === true), reason: safeText(w.last_result_summary), state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
+            workflowState: String(w.workflow_state),
         })),
     ];
     const deduplicated = new Map<string, typeof attention[number]>();
@@ -119,7 +125,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
     return <>
         <Card title="Operator Attention" showSourceNote={false}>
-            {uniqueAttention.length > 0 && <p>Review each item and use its link to see the details.</p>}
             {!initialAttentionLoad && <>
                 <SourceNote evidence={evidence.summary} label="System findings" loading={loading} />
                 <SourceNote evidence={evidence.workflows} label="Workflows" loading={loading} />
@@ -135,9 +140,9 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
                 <Link to={item.to}>{item.label || "Inspect condition"}</Link>
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
-                {"workflowId" in item && typeof item.workflowId === "string" ? <>
+                {"workflowId" in item && typeof item.workflowId === "string" && "workflowState" in item && typeof item.workflowState === "string" ? <>
                     {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
-                    {item.reason && <p>{item.reason}</p>}
+                    {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState) && <p>{item.reason}</p>}
                     <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Technical details</summary>
                         <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
                         <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>

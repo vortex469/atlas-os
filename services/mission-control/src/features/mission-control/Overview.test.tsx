@@ -32,10 +32,23 @@ describe("MC overview evidence", () => {
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Update Compose Stack · Waiting for verification approval' })).toHaveAttribute('href', '/workflows/workflow-123');
+        expect(attention.getByText('Review the exact verification')).toBeVisible();
         const workflowId = attention.getByText('workflow-123');
         expect(workflowId).not.toBeVisible();
         fireEvent.click(attention.getByText('Technical details'));
         expect(workflowId).toBeVisible();
+    });
+
+    it('does not repeat an approval stage already named by the workflow link', () => {
+        show({ workflows: { data: { items: [{
+            workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',
+            execution_intent: 'update-compose-stack', last_result_summary: 'Waiting for implementation approval', timeline: [],
+        }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('link', { name: 'Update Compose Stack · Waiting for implementation approval' })).toBeVisible();
+        expect(attention.getByText('Human action required')).toBeVisible();
+        expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
+        expect(attention.queryByText('Review each item and use its link to see the details.')).not.toBeInTheDocument();
     });
 
     it('keeps a stale approval requirement explicitly last-known', () => {

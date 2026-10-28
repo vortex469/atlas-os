@@ -80,6 +80,8 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     expect(attentionBox!.y + attentionBox!.height).toBeLessThanOrEqual(gridBox!.y);
     await expect(attention.getByText('Human action required', { exact: true })).toBeVisible();
     await expect(attention.getByRole('link', { name: 'Update Compose Stack · Waiting for implementation approval' })).toBeVisible();
+    await expect(attention.getByText('Waiting for implementation approval', { exact: true })).toHaveCount(0);
+    await expect(attention.getByText('Review each item and use its link to see the details.')).toHaveCount(0);
     const workflowId = attention.getByText('workflow-browser-baseline', { exact: true });
     await expect(workflowId).toBeHidden();
     await attention.getByText('Technical details', { exact: true }).click();
