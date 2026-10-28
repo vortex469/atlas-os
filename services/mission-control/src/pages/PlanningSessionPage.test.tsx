@@ -371,11 +371,24 @@ describe("PlanningSessionPage", () => {
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
         expect(await screen.findByText("A workflow already exists for this plan, but no session was returned to open.")).toBeInTheDocument();
 
-        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Agent unavailable"));
+        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Agent unavailable"))
+            .mockResolvedValueOnce(workflow());
         cleanup();
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Agent unavailable");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Workflow result not confirmed");
+        expect(alert).toHaveTextContent("The request may have created a workflow, but Mission Control did not receive confirmation.");
+        expect(alert).toHaveTextContent("Select Create Workflow again to retrieve or reuse this plan’s workflow.");
+        expect(alert).toHaveTextContent("Any implementation still needs separate approval; no infrastructure change has run.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByRole("link", { name: "Open Workflow" })).toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(3);
     });
 
     it("requires a reload before retrying a failed plan generation", async () => {
@@ -386,12 +399,18 @@ describe("PlanningSessionPage", () => {
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Generation failed");
-        expect(alert).toHaveTextContent("Reload to check whether Atlas saved the plan before trying again.");
+        expect(alert).toHaveTextContent("Plan result unavailable");
+        expect(alert).toHaveTextContent("Mission Control could not verify the plan result. Reload this page to check whether Atlas saved the plan before trying again.");
+        expect(alert).toHaveTextContent("No approval or infrastructure change was made.");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
         expect(screen.queryByRole("button", { name: /create workflow|approve|execute|implementation|commit/i })).not.toBeInTheDocument();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Generation failed")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Generation failed")).toBeVisible();
     });
     it("clears an older session while a different session is loading", async () => {
         let resolveNext!: (value: CandidatePlanningResponse) => void;
@@ -453,11 +472,19 @@ describe("PlanningSessionPage", () => {
     it("does not open a workflow result from another planning session", async () => {
         const user = userEvent.setup();
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
-        mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_planning_session_id: "other-session" }));
+        mockedCreateCandidateWorkflowShell.mockResolvedValueOnce(workflow({ candidate_planning_session_id: "other-session" }))
+            .mockResolvedValueOnce(workflow());
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
-        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Workflow not opened");
+        expect(alert).toHaveTextContent("Atlas returned a workflow for another planning session.");
+        expect(alert).toHaveTextContent("Select Create Workflow again to request the result for this session.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
         expect(screen.queryByRole("link", { name: "Open Workflow" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Create Workflow" }));
+        expect(await screen.findByRole("link", { name: "Open Workflow" })).toBeInTheDocument();
     });
 
     it("does not offer generation when planning is explicitly disallowed", async () => {

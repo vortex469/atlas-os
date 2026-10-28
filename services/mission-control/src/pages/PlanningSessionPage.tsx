@@ -16,6 +16,12 @@ import type {
     OperationalCandidatePlanApiResponse,
 } from "../types/atlasAgent";
 
+type WorkflowRequestError = {
+    title: string;
+    message: string;
+    details: string;
+};
+
 export function PlanningSessionPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
     return <PlanningSession key={sessionId} sessionId={sessionId} />;
@@ -31,7 +37,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     const [generateError, setGenerateError] = useState<string | null>(null);
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(null);
     const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
-    const [workflowError, setWorkflowError] = useState<string | null>(null);
+    const [workflowError, setWorkflowError] = useState<WorkflowRequestError | null>(null);
     const hasPlan = Boolean(plan || operationalPlan);
 
     useEffect(() => {
@@ -152,18 +158,24 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         try {
             const response = await createCandidateWorkflowShell(sessionId);
             if (!response || response.candidate_planning_session_id !== sessionId || response.candidate_id !== session.candidate_id) {
-                setWorkflowError("The workflow response did not match this planning session. No workflow was opened.");
+                setWorkflowError({
+                    title: "Workflow not opened",
+                    message: "Atlas returned a workflow for another planning session. Mission Control did not open it. Select Create Workflow again to request the result for this session. Any implementation still needs separate approval; no infrastructure change has run.",
+                    details: "The workflow response did not match this planning session.",
+                });
                 return;
             }
             setWorkflow(response);
         } catch (requestError) {
             console.error(`Unable to create workflow shell for ${sessionId}:`, requestError);
-            setWorkflowError(
-                getAtlasAgentErrorMessage(
+            setWorkflowError({
+                title: "Workflow result not confirmed",
+                message: "The request may have created a workflow, but Mission Control did not receive confirmation. Select Create Workflow again to retrieve or reuse this plan’s workflow. Any implementation still needs separate approval; no infrastructure change has run.",
+                details: getAtlasAgentErrorMessage(
                     requestError,
                     "Atlas Agent could not create this workflow.",
                 ),
-            );
+            });
         } finally {
             setIsCreatingWorkflow(false);
         }
@@ -247,10 +259,13 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 )}
                 {generateError && (
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                        <p className="font-semibold text-red-300">Plan generation failed</p>
-                        <p className="mt-1 text-sm text-red-200/80">{generateError}</p>
-                        <p className="mt-2 text-sm text-red-200/80">Reload to check whether Atlas saved the plan before trying again.</p>
+                        <p className="font-semibold text-red-300">Plan result unavailable</p>
+                        <p className="mt-1 text-sm text-red-200/80">Mission Control could not verify the plan result. Reload this page to check whether Atlas saved the plan before trying again. No approval or infrastructure change was made.</p>
                         <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload page</button>
+                        <details className="mt-3">
+                            <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                            <p className="mt-2 break-words text-sm text-slate-400">{generateError}</p>
+                        </details>
                     </div>
                 )}
                 {plan && <PlanViewer plan={plan} />}
@@ -273,8 +288,12 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     )}
                     {workflowError && (
                         <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                            <p className="font-semibold text-red-300">Workflow creation failed</p>
-                            <p className="mt-1 text-sm text-red-200/80">{workflowError}</p>
+                            <p className="font-semibold text-red-300">{workflowError.title}</p>
+                            <p className="mt-1 text-sm text-red-200/80">{workflowError.message}</p>
+                            <details className="mt-3">
+                                <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                                <p className="mt-2 break-words text-sm text-slate-400">{workflowError.details}</p>
+                            </details>
                         </div>
                     )}
                     {workflow && <WorkflowCreationResult workflow={workflow} />}

@@ -1092,3 +1092,9 @@ created and that selecting Start planning again reopens or reuses a matching
 session. Raw server details stay collapsed. A response for another proposal is
 refused, with guidance to refresh the current proposal before trying again.
 Neither state approves or applies an infrastructure change.
+
+Plan and workflow creation errors keep the raw response under collapsed
+Technical details. A plan result that Mission Control cannot verify requires a
+page reload before another generation attempt. Workflow creation explains that
+a submitted request may have created a workflow and that repeating the request
+retrieves or reuses it; implementation still requires separate approval.
