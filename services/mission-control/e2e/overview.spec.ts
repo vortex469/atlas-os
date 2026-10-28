@@ -65,6 +65,8 @@ for (const width of [320, 768, 1440]) {
         const grid = page.getByTestId('overview-grid');
         await expect(grid.locator(':scope > section')).toHaveCount(6);
         await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
+        await expect(page.getByRole('region', { name: 'System health' }).getByRole('link')).toHaveCount(0);
+        await expect(page.getByRole('region', { name: 'Service checks' }).getByRole('link')).toHaveCount(0);
         const policyTime = page.getByRole('article', { name: 'Policy settings check' }).locator('time');
         await expect(policyTime).toBeVisible();
         await expect(policyTime).not.toHaveText(/\d{4}-\d{2}-\d{2}T/);

@@ -208,7 +208,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="System health" showSourceNote={false}>
                 <SystemHealthSummary evidence={evidence} loading={loading} />
-                <Link to="/operations">Open operations →</Link>
             </Card>
             <Card title="Service checks" evidence={evidence.health} loading={loading}>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
@@ -223,7 +222,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">About service checks</summary>
                     <p>These checks show whether configured service endpoints responded. They do not measure Atlas Core’s own process health.</p>
                 </details>
-                <Link to="/operations">Inspect operations →</Link>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
             <Card title="Agent details" showSourceNote={false}>

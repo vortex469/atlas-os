@@ -1802,3 +1802,14 @@ focused dashboard suites pass (81 tests), responsive dashboard browser checks
 pass (25 tests in development and 25 against the built app), the full Mission
 Control suite passes (2,787 tests across 181 files), and lint and production
 build pass. No API or authority contract changed.
+
+## Health-card navigation simplification — 2026-10-28
+
+The System health and Service checks cards no longer show generic Operations
+links that led to Action history. Action history stays linked from Recent
+provider actions, and workflows stay linked from Work activity. This removes
+duplicate navigation from cards that summarize health. The focused overview
+suite passes (59 tests), responsive dashboard browser checks pass (25 tests in
+development and 25 against the built app), and the full suite passes (2,787
+tests across 181 files). Lint and production build pass. No route, API, or
+authority changed.

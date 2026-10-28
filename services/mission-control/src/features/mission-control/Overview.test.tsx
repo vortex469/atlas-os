@@ -50,7 +50,8 @@ describe("MC overview evidence", () => {
         expect(attention.queryByRole('link', { name: 'Review operational conditions →' })).not.toBeInTheDocument();
         expect(attention.queryByRole('link', { name: 'Review workflow attention →' })).not.toBeInTheDocument();
         expect(within(screen.getByRole('region', { name: 'Work activity' })).getByRole('link', { name: 'Review workflows →' })).toHaveAttribute('href', '/workflows');
-        expect(within(screen.getByRole('region', { name: 'System health' })).getByRole('link', { name: 'Open operations →' })).toHaveAttribute('href', '/operations');
+        expect(within(screen.getByRole('region', { name: 'System health' })).queryByRole('link')).not.toBeInTheDocument();
+        expect(within(screen.getByRole('region', { name: 'Service checks' })).queryByRole('link')).not.toBeInTheDocument();
     });
 
     it('prioritizes decisions and lets operators expand the full attention list', () => {
@@ -279,7 +280,7 @@ describe("MC overview evidence", () => {
         show({ providers: { data: [] }, activity: { data: { items: [] } }, workflows: { data: { items: [] } } });
         expect(screen.getByText('No providers configured.')).toBeInTheDocument();
         expect(screen.getByText('No recent provider actions recorded.')).toBeInTheDocument();
-        for (const [name, href] of [['Open operations →','/operations'], ['Review workflows →','/workflows'], ['Open action history →','/operations']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+        for (const [name, href] of [['Review workflows →','/workflows'], ['Open action history →','/operations']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
         expect(within(screen.getByRole('region', { name: 'Agent details' })).queryByRole('link')).not.toBeInTheDocument();
     });
     it("rejects bad timestamps, unsafe paths and sensitive free text", () => {
