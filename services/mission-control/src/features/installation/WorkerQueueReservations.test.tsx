@@ -44,6 +44,11 @@ describe("WorkerQueueReservations", () => {
 
         expect(await screen.findByRole("heading", { name: "Saved for later queue review" })).toBeInTheDocument();
         expect(screen.getByText("This record does not create a queue, add work, or start a worker.")).toBeInTheDocument();
+        const savedAt = document.querySelector(`time[datetime="${record.recorded_at}"]`);
+        const expiresAt = document.querySelector(`time[datetime="${record.valid_until}"]`);
+        expect(savedAt).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(record.recorded_at)));
+        expect(expiresAt).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(record.valid_until)));
+        expect(savedAt).not.toHaveTextContent(record.recorded_at);
         expect(screen.getByLabelText("Planned queue safety limits")).toHaveTextContent(/no network access or live queue contact.*no access to host, repository, or guest files/i);
         expect(screen.getByLabelText("Planned queue safety limits")).toHaveTextContent(/1 CPU core, 512 MiB memory, 64 processes, 15 minutes, 1 MiB output, and 256 MiB temporary workspace/i);
         expect(screen.getByRole("list", { name: "Saved queue review records" }).children).toHaveLength(1);

@@ -53,7 +53,7 @@ function Reservation({ result, homeAssistantBlocked }: { result: WorkerQueueRese
     return <li className="rounded border border-slate-800 p-3 text-sm">
         <h6 className="font-semibold">{status.lifecycle === "active" ? "Saved for later queue review" : "Expired queue review record"}</h6>
         <p className="mt-1">This record does not create a queue, add work, or start a worker.</p>
-        <p className="mt-1">Saved {record.recorded_at}; expires {record.valid_until}.</p>
+        <p className="mt-1">Saved <time dateTime={record.recorded_at}>{formatDateTime(record.recorded_at)}</time>; expires <time dateTime={record.valid_until}>{formatDateTime(record.valid_until)}</time>.</p>
         <h6 className="mt-3 font-medium">What still needs to be in place</h6>
         <ul aria-label="What still needs to be in place" className="mt-2 list-disc pl-5">{status.blockers.map((value) => <li key={value}>{BLOCKER_LABELS[value as QueueReservationBlocker] ?? "A queue or worker requirement is not met"}</li>)}</ul>
         <ul aria-label="Planned queue safety limits" className="mt-3 list-disc pl-5 text-slate-300">
@@ -80,6 +80,7 @@ function Reservation({ result, homeAssistantBlocked }: { result: WorkerQueueRese
     </li>;
 }
 function Value({ n, v }: { n: string; v: string }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{n}</dt><dd className="mt-1 break-all text-slate-300">{v}</dd></div>; }
+function formatDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date); }
 function formatMiB(bytes: number) { return `${bytes / (1024 * 1024)} MiB`; }
 function formatCpu(millis: number) { const cores = millis / 1000; return `${cores} ${cores === 1 ? "CPU core" : "CPU cores"}`; }
 function formatDuration(seconds: number) { const minutes = seconds / 60; return Number.isInteger(minutes) ? `${minutes} ${minutes === 1 ? "minute" : "minutes"}` : `${seconds} seconds`; }
