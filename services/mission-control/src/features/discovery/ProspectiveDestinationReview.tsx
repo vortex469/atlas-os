@@ -36,6 +36,11 @@ const REASON_LABELS: Record<InstallationAdmissionReasonCode, { title: string; de
     agent_install_container_unsupported: { title: "Agent install-container unsupported", detail: "Atlas Agent cannot plan this install intent yet." },
 };
 
+const ASSESSMENT_STATUS_LABELS = {
+    blocked: "Blocked by the issues below",
+    preconditions_satisfied_but_unsupported: "Plan and destination checks passed; installation support is unavailable",
+} as const;
+
 export function ProspectiveDestinationReview({ plan, csrfToken }: { plan: InstallationPlan; csrfToken: string | null }) {
     const [destinations, setDestinations] = useState<ProspectiveInstallationDestinationV1[]>([]);
     const [loading, setLoading] = useState(true);
@@ -146,14 +151,25 @@ function SelectionSummary({ selection }: { selection: InstallationDestinationSel
 function AssessmentSummary({ assessment }: { assessment: InstallationAdmissionAssessmentV1 }) {
     const unsupported = assessment.assessment_status === "preconditions_satisfied_but_unsupported";
     return <section aria-labelledby="admission-assessment-heading" className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-        <h4 id="admission-assessment-heading" className="font-semibold text-slate-100">Installation admission assessment</h4>
-        <p role="status" className="mt-2 font-semibold text-amber-200">Assessment status: {assessment.assessment_status}</p>
+        <h4 id="admission-assessment-heading" className="font-semibold text-slate-100">Assessment result</h4>
+        <p role="status" className="mt-2 font-semibold text-amber-200">{ASSESSMENT_STATUS_LABELS[assessment.assessment_status]}</p>
         {unsupported && <p className="mt-2 text-sm text-slate-300">Atlas can evaluate the reviewed plan and destination consistently, but installation capability and Agent support remain unavailable.</p>}
-        <p className="mt-2 text-sm text-slate-300">Candidate eligibility evaluated: false. This assessment does not establish candidate eligibility or authorization.</p>
-        <h5 className="mt-4 text-sm font-semibold text-slate-200">Assessment blockers</h5>
+        <p className="mt-2 text-sm text-slate-300">Candidate eligibility has not been evaluated. This assessment does not authorize installation.</p>
+        <h5 className="mt-4 text-sm font-semibold text-slate-200">Issues found</h5>
         <ul aria-label="Installation admission blockers" className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-300">
-            {assessment.reason_codes.map((code) => <li key={code}><span className="font-semibold">{REASON_LABELS[code].title}</span><span> — {REASON_LABELS[code].detail} </span><code className="break-all text-xs text-slate-400">{code}</code></li>)}
+            {assessment.reason_codes.map((code) => <li key={code}><span className="font-semibold">{REASON_LABELS[code].title}</span><span> — {REASON_LABELS[code].detail}</span></li>)}
         </ul>
+        <details className="mt-4 text-sm text-slate-400">
+            <summary className="cursor-pointer">Technical details</summary>
+            <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                <Value name="Assessment status code" value={assessment.assessment_status} />
+                <Value name="Candidate eligibility evaluated" value={String(assessment.candidate_eligibility_evaluated)} />
+            </dl>
+            <h5 className="mt-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Issue codes</h5>
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+                {assessment.reason_codes.map((code) => <li key={code}><code className="break-all">{code}</code></li>)}
+            </ul>
+        </details>
     </section>;
 }
 

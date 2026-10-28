@@ -1025,3 +1025,13 @@ that the check cannot approve or start an installation; preservation and other
 authority controls are unchanged. Focused admission, lifecycle, and catalog
 page tests pass (45 tests), along with lint, production build, and
 `git diff --check`.
+
+## Installation assessment wording — 2026-10-28
+
+Prospective-destination assessments now show a readable result and blocker
+explanations without exposing API status or reason codes in the main view.
+Diagnostic codes remain under collapsed Technical details, and the summary
+states that candidate eligibility was not evaluated and installation was not
+authorized. The focused assessment suite passes (11 tests), along with lint,
+production build, and `git diff --check`. Selection and assessment boundaries
+are unchanged.

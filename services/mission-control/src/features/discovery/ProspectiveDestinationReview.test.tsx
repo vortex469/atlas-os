@@ -133,7 +133,9 @@ describe("ProspectiveDestinationReview", () => {
         expect(blockers).toHaveTextContent("Installation plan missing deployment artifact");
         expect(blockers).toHaveTextContent("has not established in-guest installability, runtime, transport, or readiness");
         expect(blockers).toHaveTextContent("Atlas Agent cannot plan this install intent yet");
-        expect(screen.getByText(/Candidate eligibility evaluated: false/)).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Blocked by the issues below");
+        expect(screen.getByText(/Candidate eligibility has not been evaluated/)).toBeInTheDocument();
+        expect(blockers).not.toHaveTextContent("agent_install_container_unsupported");
     });
 
     it("distinguishes preconditions satisfied but unsupported without readiness language", async () => {
@@ -145,6 +147,8 @@ describe("ProspectiveDestinationReview", () => {
         await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
         await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
         expect(await screen.findByText(/installation capability and Agent support remain unavailable/i)).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Plan and destination checks passed; installation support is unavailable");
+        expect(screen.getByRole("status")).not.toHaveTextContent("preconditions_satisfied_but_unsupported");
         expect(document.body).not.toHaveTextContent(/\bready\b|\beligible\b|\bapproved\b|\bexecutable\b/i);
     });
 
@@ -157,7 +161,10 @@ describe("ProspectiveDestinationReview", () => {
         await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
         const list = await screen.findByRole("list", { name: "Installation admission blockers" });
         expect(within(list).getAllByRole("listitem")).toHaveLength(16);
-        for (const code of codes) expect(list).toHaveTextContent(code);
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(technicalDetails).not.toBeNull();
+        for (const code of codes) expect(within(technicalDetails as HTMLElement).getByText(code)).toBeInTheDocument();
     });
 
     it("explains disabled mutation protection and exposes no prohibited control or authority navigation", async () => {
