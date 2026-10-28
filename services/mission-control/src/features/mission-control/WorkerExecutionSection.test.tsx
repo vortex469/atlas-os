@@ -84,6 +84,21 @@ describe("Work activity summary", () => {
         expect(screen.queryByText("Commit completed")).not.toBeInTheDocument();
         expect(screen.getByText(/Execution times are not available/)).toBeInTheDocument();
     });
+    it("puts failed execution outcomes before completed outcomes in the short preview", () => {
+        view(page([
+            workflow("a-completed", "completed", "completed", "restart-service"),
+            workflow("b-completed", "completed", "completed", "restart-service"),
+            workflow("c-completed", "completed", "completed", "restart-service"),
+            workflow("z-failed", "blocked", "failed", "update-compose-stack"),
+        ]));
+        const section = within(screen.getByRole("region", { name: "Work activity" }));
+        fireEvent.click(section.getByText("More about execution data"));
+        const outcomes = within(section.getByRole("list", { name: "Recorded execution outcomes" }));
+        const first = within(outcomes.getAllByRole("listitem")[0]);
+
+        expect(first.getByRole("link", { name: "Update Compose Stack · Execution failed" })).toBeVisible();
+        expect(section.getByRole("button", { name: "Show all 4 recorded execution outcomes" })).toBeVisible();
+    });
     it("lets operators expand each workflow and outcome list beyond three records", () => {
         const records = [
             ...Array.from({ length: 5 }, (_, index) => workflow(`running-${index}`, "executing")),

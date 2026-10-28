@@ -321,6 +321,40 @@ test('work activity reveals all workflow records on mobile without horizontal ov
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+test('work activity shows failed outcomes before completed outcomes in its preview', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    const workflows = [
+        { workflow_id: 'a-completed', workflow_state: 'completed', execution_intent: 'restart-service', stage: 'completed' },
+        { workflow_id: 'b-completed', workflow_state: 'completed', execution_intent: 'restart-service', stage: 'completed' },
+        { workflow_id: 'c-completed', workflow_state: 'completed', execution_intent: 'restart-service', stage: 'completed' },
+        { workflow_id: 'z-failed', workflow_state: 'blocked', execution_intent: 'update-compose-stack', stage: 'failed' },
+    ].map(workflow => ({
+        workflow_id: workflow.workflow_id,
+        workflow_state: workflow.workflow_state,
+        execution_intent: workflow.execution_intent,
+        workflow_source: 'candidate',
+        effect_kind: 'repository_change',
+        candidate_id: null,
+        planning_session_id: null,
+        repository: null,
+        target_id: null,
+        last_result_summary: 'Recorded workflow result',
+        timeline: [{ name: 'Execution', status: workflow.stage }],
+    }));
+    await page.route(/\/agent-api\/api\/v1\/agent\/workflows(?:\?.*)?$/, route => route.fulfill({ json: {
+        items: workflows, total: workflows.length, offset: 0, limit: 200,
+    } }));
+    await page.goto('/');
+
+    const work = page.getByRole('region', { name: 'Work activity' });
+    await work.getByText('More about execution data').click();
+    const outcomes = work.getByRole('list', { name: 'Recorded execution outcomes' });
+    const first = outcomes.getByRole('listitem').first();
+    await expect(first.getByRole('link', { name: 'Update Compose Stack · Execution failed' })).toBeVisible();
+    await expect(work.getByRole('button', { name: 'Show all 4 recorded execution outcomes' })).toBeVisible();
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 test('narrow overview preserves unknown evidence and distinct attention conditions', async ({ page, rejectedMutationRequests }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.route('**/health', route => route.fulfill({ json: {

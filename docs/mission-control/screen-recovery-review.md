@@ -2293,3 +2293,12 @@ component suites pass (79 tests across two files), all Overview browser checks
 pass (23 tests, including 320px and 1280px layouts), and lint and production
 build pass. The UI displays reported configuration only; it does not change
 probe behavior or establish live network reachability.
+
+## Work activity outcome priority — 2026-10-28
+
+The recorded execution outcomes preview now puts failed executions before
+completed executions. Each group keeps its workflow-ID order because the source
+does not report execution times. Running and blocked workflow lists, workflow
+state, and execution controls are unchanged. The Work activity component suite
+passes (29 tests), the Overview browser suite passes (24 tests, including the
+320px phone layout), and lint and production build pass.

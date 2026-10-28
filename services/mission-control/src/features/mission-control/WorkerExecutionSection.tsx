@@ -96,7 +96,14 @@ function EvidenceList({ title, items, available, empty, outcomes = false }: {
     title: string; items: WorkflowSummary[]; available: boolean; empty: string; outcomes?: boolean;
 }) {
     const [showAll, setShowAll] = useState(false);
-    const ordered = [...items].sort((a, b) => a.workflow_id.localeCompare(b.workflow_id));
+    const ordered = [...items].sort((a, b) => {
+        if (outcomes) {
+            const failureOrder = Number(executionStage(a) !== "failed")
+                - Number(executionStage(b) !== "failed");
+            if (failureOrder !== 0) return failureOrder;
+        }
+        return a.workflow_id.localeCompare(b.workflow_id);
+    });
     const displayed = showAll ? ordered : ordered.slice(0, 3);
     return <div>
         <h3 className="text-sm font-semibold text-mc-text-primary">{title}</h3>
