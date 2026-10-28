@@ -40,7 +40,7 @@ describe("authoritative health presentation", () => {
             <HealthEvidence compact status="critical" reason="Policy failure" />
         </>);
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Connection refused")).toBeInTheDocument();
+        expect(screen.getByText("The service refused the connection.")).toBeInTheDocument();
         expect(screen.queryByText("Reported status: offline")).not.toBeInTheDocument();
         expect(screen.getByText("Reported status: critical")).toBeInTheDocument();
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
@@ -48,7 +48,9 @@ describe("authoritative health presentation", () => {
 
     it.each([
         ["[Errno 111] Connection refused", "The service refused the connection."],
+        ["Connection refused", "The service refused the connection."],
         ["[Errno 113] No route to host", "The service could not be reached over the network."],
+        ["No route to host", "The service could not be reached over the network."],
         ["[Errno 110] Connection timed out", "The service did not respond in time."],
         ["timed out", "The service did not respond in time."],
     ])("explains network failures in plain language: %s", (reason, explanation) => {
@@ -137,7 +139,7 @@ describe("authoritative health presentation", () => {
         rerender(<HealthEvidenceContext.Provider value={{ stale: false }}><HealthEvidence status="offline" reason="Connection refused" /></HealthEvidenceContext.Provider>);
         expect(screen.queryByText("Status unknown")).not.toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Connection refused")).toBeInTheDocument();
+        expect(screen.getByText("The service refused the connection.")).toBeInTheDocument();
     });
 
     it.each([null, [], "healthy", { atlas: true, services: [] }, { services: { broken: null, bad: { status: {}, message: [], details: null, latency_ms: "5", http_status: {} } } }])("handles malformed API evidence %j", (payload) => {

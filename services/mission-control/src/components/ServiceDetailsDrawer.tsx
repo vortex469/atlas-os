@@ -3,6 +3,7 @@ import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
+import { evidenceText, healthNextCheck, healthReason } from "../utils/healthPresentation";
 
 type ServiceDetailsDrawerProps = {
     name: string;
@@ -52,9 +53,15 @@ export function ServiceDetailsDrawer({
     }, [onClose]);
 
     const healthCheckAddress = formatHealthCheckAddress(health.details.url);
-    const technicalDetails = Object.fromEntries(
+    const technicalDetails: Record<string, unknown> = Object.fromEntries(
         Object.entries(health.details).filter(([key]) => key !== "url"),
     );
+    const reportedMessage = evidenceText(health.message);
+    const plainMessage = healthReason(health.message);
+    const nextCheck = healthNextCheck(health.message);
+    if (reportedMessage && reportedMessage !== plainMessage) {
+        technicalDetails.reported_message = reportedMessage;
+    }
     const hasTechnicalDetails = Object.keys(technicalDetails).length > 0;
 
     return (
@@ -172,12 +179,20 @@ export function ServiceDetailsDrawer({
 
                     <section>
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                            Message
+                            What this means
                         </h3>
                         <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
                             <p className="text-sm text-slate-300">
-                                {health.message ?? "No service message."}
+                                {plainMessage ?? "No service message."}
                             </p>
+                            {nextCheck && (
+                                <div className="mt-4 border-t border-slate-700 pt-3">
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                        Next check
+                                    </h4>
+                                    <p className="mt-1 text-sm text-slate-300">{nextCheck}</p>
+                                </div>
+                            )}
                         </div>
                     </section>
 

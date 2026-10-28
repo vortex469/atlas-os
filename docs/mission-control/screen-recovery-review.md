@@ -2302,3 +2302,11 @@ does not report execution times. Running and blocked workflow lists, workflow
 state, and execution controls are unchanged. The Work activity component suite
 passes (29 tests), the Overview browser suite passes (24 tests, including the
 320px phone layout), and lint and production build pass.
+
+## Service health failure guidance — 2026-10-28
+
+Service details now explain common connection-refused, no-route, and timeout
+results in plain language and suggest a next check from Atlas Core's network
+location. The exact reported message remains under the collapsed Technical
+details section. Health state and probing behavior are unchanged. Focused service
+health and health-presentation tests cover all three failure types.

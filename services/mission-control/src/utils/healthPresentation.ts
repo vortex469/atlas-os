@@ -22,15 +22,40 @@ export function evidenceText(value: unknown): string | null {
 export function healthReason(value: unknown): string | null {
     const text = evidenceText(value);
     if (!text) return null;
-    const errno = /^\[Errno \d+\]\s*(.*)$/i.exec(text.trim());
-    const message = errno ? errno[1].trim() : text.trim();
+    const { errno, message } = parseHealthError(text);
     switch (message.toLowerCase()) {
-        case "connection refused": return errno ? "The service refused the connection." : text;
-        case "no route to host": return errno ? "The service could not be reached over the network." : text;
+        case "connection refused": return "The service refused the connection.";
+        case "no route to host": return "The service could not be reached over the network.";
         case "connection timed out":
         case "timed out": return "The service did not respond in time.";
         default: return errno ? message || "The connection failed." : text;
     }
+}
+
+export function healthNextCheck(value: unknown): string | null {
+    const text = evidenceText(value);
+    if (!text) return null;
+    const { message } = parseHealthError(text);
+    switch (message.toLowerCase()) {
+        case "connection refused":
+            return "Check that the service is listening on this port and that Atlas Core can reach it.";
+        case "no route to host":
+            return "Check the target address and the network or firewall route from Atlas Core to the service host.";
+        case "connection timed out":
+        case "timed out":
+            return "Check that the service is responding and that network or firewall rules allow access from Atlas Core.";
+        default:
+            return null;
+    }
+}
+
+function parseHealthError(text: string): { errno: boolean; message: string } {
+    const trimmed = text.trim();
+    const errnoMessage = /^\[Errno \d+\]\s*(.*)$/i.exec(trimmed);
+    return {
+        errno: errnoMessage !== null,
+        message: errnoMessage ? errnoMessage[1].trim() : trimmed,
+    };
 }
 
 // Require a timezone and a real calendar date. Date.parse alone normalizes
