@@ -1,8 +1,10 @@
 import {
     act,
+    fireEvent,
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -111,11 +113,15 @@ describe("OperationsPage", () => {
         expect(
             await screen.findByText("Unload Model"),
         ).toBeInTheDocument();
-        expect(screen.getAllByText("Ollama")).toHaveLength(2);
-        expect(screen.getByText("model")).toBeInTheDocument();
-        expect(
-            screen.getByText("request-123"),
-        ).toBeInTheDocument();
+        expect(screen.getAllByText("Ollama")).toHaveLength(1);
+        expect(screen.getByText("Provider: Ollama")).toBeVisible();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        expect(screen.getByText("model")).not.toBeVisible();
+        expect(screen.getByText("request-123")).not.toBeVisible();
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(screen.getByText("model")).toBeVisible();
+        expect(screen.getByText("request-123")).toBeVisible();
         expect(
             screen.getByText("Confirmed"),
         ).toBeInTheDocument();
@@ -161,12 +167,13 @@ describe("OperationsPage", () => {
         mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
         await user.click(screen.getByRole("button", { name: "Failed" }));
         await waitFor(() => expect(screen.queryByText("Unload Model")).not.toBeInTheDocument());
-        expect(screen.getByRole("button", { name: "Prune expired" })).toBeDisabled();
+        fireEvent.click(screen.getByText("Export or delete history"));
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         expect(await screen.findByRole("alert")).toHaveTextContent("Filtered history unavailable");
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
-        expect(screen.getByText("Retention policy unavailable.")).toBeInTheDocument();
+        expect(screen.getByText("History retention is unavailable.")).toBeInTheDocument();
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {
@@ -236,21 +243,22 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
+        fireEvent.click(screen.getByText("Export or delete history"));
         await user.click(
             screen.getByRole("button", {
-                name: "Prune expired",
+                name: "Delete expired entries",
             }),
         );
 
         expect(window.confirm).toHaveBeenCalledWith(
-            "Delete audit entries older than 90 days?",
+            "Delete history records older than 90 days? This does not undo provider actions.",
         );
         expect(
             mockedPruneProviderActionHistory,
         ).toHaveBeenCalledOnce();
         expect(
             await screen.findByText(
-                "1 expired audit entry pruned.",
+                "1 expired history entry deleted.",
             ),
         ).toBeInTheDocument();
     });

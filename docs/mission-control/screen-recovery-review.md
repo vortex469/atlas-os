@@ -707,3 +707,13 @@ focused request-page suite passes (28 tests), the sign-in and full maintenance
 journeys pass at 390px and 1280px (4 browser tests), and lint and production
 build pass. Approval, CSRF, target-fingerprint, and separate run behavior are
 unchanged.
+
+## Provider action history details — 2026-10-28
+
+Action history cards now lead with the action result, provider, and time;
+parameter names, duration, and request ID are under Technical details. History
+export and expired-record deletion are grouped under a collapsed Manage history
+section. The confirmation says that deleting old records does not undo provider
+actions. Status labels and page title use sentence case. The focused page suite
+passes (8 tests), responsive browser checks pass at 390px and 1280px (2 tests),
+and lint, production build, and `git diff --check` pass.

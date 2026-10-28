@@ -5,7 +5,7 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/operations");
 
-        await expect(page.getByRole("heading", { name: "Action History", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
         await expect(page.getByText("Provider actions and their results. Times are shown in your browser’s local time.", { exact: true })).toBeVisible();
         await expect(page.getByLabel("From date")).toBeHidden();
         await expect(page.getByLabel("Provider")).toBeHidden();

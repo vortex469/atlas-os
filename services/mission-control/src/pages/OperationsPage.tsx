@@ -199,7 +199,7 @@ export function OperationsPage() {
     const pruneHistory = useCallback(async () => {
         const retentionDays = summary?.retention_days ?? 90;
         const confirmed = window.confirm(
-            `Delete audit entries older than ${retentionDays} days?`,
+            `Delete history records older than ${retentionDays} days? This does not undo provider actions.`,
         );
 
         if (!confirmed) {
@@ -213,11 +213,9 @@ export function OperationsPage() {
         try {
             const result = await pruneProviderActionHistory();
             setOperationMessage(
-                `${result.deleted_entries} expired audit ${
-                    result.deleted_entries === 1
-                        ? "entry"
-                        : "entries"
-                } pruned.`,
+                `${result.deleted_entries} expired history ${
+                    result.deleted_entries === 1 ? "entry" : "entries"
+                } deleted.`,
             );
             if (offset === 0) {
                 await loadHistory();
@@ -259,7 +257,7 @@ export function OperationsPage() {
                         Operations
                     </p>
                     <h1 className="mt-2 text-3xl font-semibold text-slate-100">
-                        Action History
+                        Action history
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
                         Provider actions and their results. Times are shown in
@@ -306,10 +304,6 @@ export function OperationsPage() {
                         </button>
                     ))}
                 </div>
-
-                <p className="text-xs text-slate-500">
-                    Persistent audit history · retention managed by Atlas Core
-                </p>
             </div>
 
             <section aria-label="Action history filters" className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
@@ -442,20 +436,22 @@ export function OperationsPage() {
                 )}
             </section>
 
-            <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
+            <section className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                     <div>
                         <h2 className="font-semibold text-slate-100">
-                            Audit administration
+                            Manage history
                         </h2>
                         <p className="mt-1 text-sm text-slate-400">
                             {summary
-                                ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
-                                : isLoading ? "Loading retention policy..." : "Retention policy unavailable."}
+                                ? `Atlas is keeping ${summary.entry_count} of ${summary.max_entries} entries for up to ${summary.retention_days} days.`
+                                : isLoading ? "Loading history details..." : "History retention is unavailable."}
                         </p>
                     </div>
-
-                    <div className="flex flex-wrap gap-2">
+                </div>
+                <details className="rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
+                    <div className="mt-4 flex flex-wrap gap-2">
                         <button
                             type="button"
                             onClick={() =>
@@ -482,12 +478,10 @@ export function OperationsPage() {
                             disabled={isPruning || !summary}
                             className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isPruning
-                                ? "Pruning..."
-                                : "Prune expired"}
+                            {isPruning ? "Deleting..." : "Delete expired entries"}
                         </button>
                     </div>
-                </div>
+                </details>
 
                 {operationMessage && (
                     <p
@@ -552,7 +546,7 @@ export function OperationsPage() {
                                                 entry.status,
                                             )}`}
                                         >
-                                            {entry.status}
+                                            {entry.status === "succeeded" ? "Succeeded" : "Failed"}
                                         </span>
                                         {entry.confirmed && (
                                             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
@@ -567,6 +561,9 @@ export function OperationsPage() {
                                     </div>
                                     <p className="mt-2 text-sm text-slate-300">
                                         {entry.message}
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate-400">
+                                        Provider: {entry.provider_name}
                                     </p>
                                     <Link
                                         to={`/operations/actions/${encodeURIComponent(
@@ -586,42 +583,27 @@ export function OperationsPage() {
                                 </time>
                             </div>
 
-                            <dl className="mt-4 grid gap-3 border-t border-slate-800 pt-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Provider
-                                    </dt>
-                                    <dd className="mt-1 text-slate-300">
-                                        {entry.provider_name}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Duration
-                                    </dt>
-                                    <dd className="mt-1 text-slate-300">
-                                        {entry.duration_ms.toFixed(2)} ms
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Parameters
-                                    </dt>
-                                    <dd className="mt-1 text-slate-300">
-                                        {entry.parameter_names.length > 0
-                                            ? entry.parameter_names.join(", ")
-                                            : "None"}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Request ID
-                                    </dt>
-                                    <dd className="mt-1 break-all font-mono text-slate-300">
-                                        {entry.request_id ?? "Unavailable"}
-                                    </dd>
-                                </div>
-                            </dl>
+                            <details className="mt-4 border-t border-slate-800 pt-4">
+                                <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                                <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                                    <div>
+                                        <dt className="text-slate-500">Duration</dt>
+                                        <dd className="mt-1 text-slate-300">{entry.duration_ms.toFixed(2)} ms</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500">Parameters</dt>
+                                        <dd className="mt-1 text-slate-300">
+                                            {entry.parameter_names.length > 0
+                                                ? entry.parameter_names.join(", ")
+                                                : "None"}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500">Request ID</dt>
+                                        <dd className="mt-1 break-all font-mono text-slate-300">{entry.request_id ?? "Unavailable"}</dd>
+                                    </div>
+                                </dl>
+                            </details>
                             </article>
                         ))}
                     </div>
