@@ -199,6 +199,21 @@ describe("MaintenanceRequestPage", () => {
         );
     });
 
+    it("shows a ready proposal expiry in local time with the exact timestamp preserved", async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        await user.click(screen.getByRole("button", { name: "Create restart proposal" }));
+        expect(await screen.findByRole("heading", { name: "Maintenance proposal ready" })).toBeInTheDocument();
+
+        const expiresAt = createdCandidate().candidate.expires_at!;
+        const localTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(expiresAt));
+        const timestamp = screen.getByText(localTime, { exact: true });
+        expect(timestamp.tagName).toBe("TIME");
+        expect(timestamp).toHaveAttribute("datetime", expiresAt);
+        expect(screen.queryByText(expiresAt, { exact: true })).not.toBeInTheDocument();
+    });
+
     it("shows advisory context without selecting or submitting from proposal hints", async () => {
         const proposalId = `discovery-operator-proposal-${"a".repeat(64)}`;
         vi.mocked(getDiscoveryProposal).mockResolvedValue({
