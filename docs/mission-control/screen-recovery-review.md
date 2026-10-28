@@ -422,6 +422,15 @@ explicitly unreported; the dashboard remains read-only. The focused dashboard
 suites pass (71 tests), lint/build pass, and 8 built browser checks pass,
 including mobile and desktop disclosure behavior.
 
+## Main dashboard recent activity — 2026-10-28
+
+Recent action rows now say “Succeeded” or “Failed” instead of using severity
+language, and completion times use the browser’s local date and time format.
+The exact UTC timestamp remains available in the time element’s title. The
+screen still explains that past actions do not show current health. The focused
+dashboard suites pass (68 tests), lint/build pass, and all 3 built responsive
+browser checks pass.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

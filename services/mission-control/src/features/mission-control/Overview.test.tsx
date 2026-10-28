@@ -97,7 +97,7 @@ describe("MC overview evidence", () => {
 describe('operational activity and runtime evidence', () => {
     it('shows failed outcomes and their existing audit route without treating success as health', () => {
         show({ activity: { data: { items: [{ id: 'audit/1', action_label: 'Inspect resource', status: 'failed', message: 'Provider unavailable', completed_at: 'invalid' }] } }, ai: { data: { models: { running: [{ name: 'model-a' }] }, errors: {} } } });
-        expect(screen.getByText('Error · Inspect resource')).toBeInTheDocument();
+        expect(screen.getByText('Failed · Inspect resource')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Inspect action →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
         expect(screen.getByText('Completion time unknown.')).toBeInTheDocument();
         expect(screen.getByText('Running models: model-a')).toBeInTheDocument();
@@ -189,7 +189,7 @@ it('surfaces incomplete attention evidence and rejects uninspectable activity', 
     expect(attention.getByText('Some workflow information is missing or incomplete.')).toBeInTheDocument();
     expect(attention.getByText('Some system findings could not be checked.')).toBeInTheDocument();
     expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
-    expect(screen.queryByText('Informational · Restart')).not.toBeInTheDocument();
+    expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });
 
 it('keeps a troubled provider visible ahead of routine healthy providers', () => {

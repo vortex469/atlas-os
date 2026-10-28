@@ -42,14 +42,20 @@ describe("integrated attention and activity", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
         expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
         expect(attention().getByText(/If a source is missing, Atlas cannot confirm everything is healthy/)).toBeVisible();
-        expect(activity().getByText("Error · Restart")).toBeVisible();
+        expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
     it("orders and deduplicates source history with provider context and safe detail navigation", async () => {
         render(dashboard({ activity: { data: { items: [event, event, { ...event, id: "new", status: "failed", completed_at: "2026-09-02T12:00:00Z" }] } } }));
         const entries = activity().getAllByRole("listitem");
         expect(entries).toHaveLength(2);
-        expect(entries[0]).toHaveTextContent("Error · Restart");
-        expect(entries[1]).toHaveTextContent("Informational · Restart");
+        expect(entries[0]).toHaveTextContent("Failed · Restart");
+        expect(entries[1]).toHaveTextContent("Succeeded · Restart");
+        const completedAt = within(entries[1]).getByText(/^Completed /);
+        expect(completedAt.tagName).toBe("TIME");
+        const canonicalTime = new Date(event.completed_at).toISOString();
+        expect(completedAt).toHaveAttribute("datetime", canonicalTime);
+        expect(completedAt).toHaveAttribute("title", `UTC ${canonicalTime}`);
+        expect(completedAt).not.toHaveTextContent("T12:00:00Z");
         expect(entries[1]).toHaveTextContent("Provider");
         expect(within(entries[1]).getByRole("link")).toHaveAttribute("href", "/operations/actions/audit%2F1");
         await userEvent.click(within(entries[1]).getByRole("link"));
@@ -62,7 +68,7 @@ describe("integrated attention and activity", () => {
     });
     it("preserves usable rows and explicit unknown outcomes/times without leaking arbitrary fields", () => {
         render(dashboard({ activity: { data: { items: [null, { ...event, status: { toString: null }, completed_at: "bad", provider_name: "token=private", message: "https://user:pass@host", details: { secret: "private-value" }, href: "javascript:alert(1)" }] } } }));
-        expect(activity().getByText("Unknown outcome · Restart")).toBeVisible();
+        expect(activity().getByText("Outcome unknown · Restart")).toBeVisible();
         expect(activity().getByText("Completion time unknown.")).toBeVisible();
         expect(activity().getByText("Some activity records are malformed or incomplete.")).toBeVisible();
         expect(screen.queryByText(/private-value|token=private|user:pass/)).not.toBeInTheDocument();
