@@ -26,9 +26,11 @@ describe("v0.51 controlled queue claim lease acknowledgement admission Mission C
     });
 
     it("keeps operator state simple and advanced evidence collapsed", () => {
-        expect(component).toMatch(/v0\.51 state: admission evidence recorded for the completed v0\.50 prerequisite/);
-        expect(component).toMatch(/Operator state: claim\/lease\/ack admission evidence recorded; queue adapter: not defined; queue claim: not defined; queue lease: not defined; queue acknowledgement: not defined; worker-start admission: not defined; blocked: yes/);
-        expect(component).toMatch(/Advanced v0\.51 evidence/);
+        expect(component).toMatch(/Queue operations are blocked/);
+        expect(component).toMatch(/requirements remain/);
+        expect(component).toMatch(/Show what needs to be in place/);
+        expect(component).toMatch(/This is a read-only record from Core. It does not claim, lease, or acknowledge queue work/);
+        expect(component).toMatch(/Advanced details/);
         expect(component).toMatch(/v0\.50 prerequisite state/);
         expect(component).toMatch(/Ordered v0\.51 blockers/);
         expect(component).toMatch(/Controlled queue claim lease acknowledgement fixed-false authority fields/);
@@ -40,6 +42,7 @@ describe("v0.51 controlled queue claim lease acknowledgement admission Mission C
             "../api/controlledWorkerQueueReceipt.ts",
             "../features/installation/ControlledWorkerQueueClaimAdmissions.tsx",
             "../features/installation/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions.tsx",
+            "../features/installation/workerBindingActivationBlockers.ts",
             "../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
         ]);
     });

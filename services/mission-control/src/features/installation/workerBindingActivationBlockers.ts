@@ -1,8 +1,9 @@
 import type { WorkerBindingActivationEvidenceBlockerV1 } from "../../types/workerBindingActivationEvidence";
 import type { WorkerBindingActivationPreflightBlockerV1 } from "../../types/workerBindingActivationPreflight";
 import type { ControlledWorkerQueueClaimAdmissionBlockerV1 } from "../../types/controlledWorkerQueueClaimAdmission";
+import type { ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionBlockerV1 } from "../../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
 
-type WorkerBindingBlocker = WorkerBindingActivationEvidenceBlockerV1 | WorkerBindingActivationPreflightBlockerV1 | ControlledWorkerQueueClaimAdmissionBlockerV1;
+type WorkerBindingBlocker = WorkerBindingActivationEvidenceBlockerV1 | WorkerBindingActivationPreflightBlockerV1 | ControlledWorkerQueueClaimAdmissionBlockerV1 | ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionBlockerV1;
 
 const BLOCKER_LABELS: Record<WorkerBindingBlocker, string> = {
     installation_capability_unsupported: "Atlas cannot install this application",
@@ -15,6 +16,8 @@ const BLOCKER_LABELS: Record<WorkerBindingBlocker, string> = {
     v047_preflight_not_recorded: "The preflight has not been recorded",
     v048_activation_evidence_not_active: "The activation evidence is no longer active",
     v048_activation_evidence_not_recorded: "The activation evidence has not been recorded",
+    v050_prerequisite_not_active: "The queue readiness requirements are no longer active",
+    v050_prerequisite_not_frozen: "The queue readiness requirements have not been confirmed",
     linkage_mismatch: "The related records do not match",
     fingerprint_mismatch: "A record check does not match",
     inherited_limits_mismatch: "The worker safety limits do not match",
@@ -24,8 +27,13 @@ const BLOCKER_LABELS: Record<WorkerBindingBlocker, string> = {
     caller_supplied_credential: "Caller-provided credentials are not allowed",
     caller_supplied_endpoint: "Caller-provided endpoints are not allowed",
     caller_supplied_command: "Caller-provided commands are not allowed",
+    caller_supplied_queue_selector: "Caller-provided queue selections are not allowed",
+    caller_supplied_claim_token: "Caller-provided claim tokens are not allowed",
+    caller_supplied_lease_token: "Caller-provided lease tokens are not allowed",
+    caller_supplied_acknowledgement_handle: "Caller-provided acknowledgement handles are not allowed",
     unsupported_authority: "The requested permission is not supported",
     worker_binding_activation_not_defined: "Worker binding activation is not available",
+    queue_adapter_not_defined: "The queue connection is not available",
     worker_activation_runtime_not_defined: "The worker activation runtime is not available",
     store_contact_not_defined: "Contact with the worker store is not available",
     runtime_contact_not_defined: "Contact with the worker runtime is not available",
