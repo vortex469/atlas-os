@@ -67,9 +67,13 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     expect(attentionBox!.y + attentionBox!.height).toBeLessThanOrEqual(gridBox!.y);
     await expect(attention.getByText('Human action required', { exact: true })).toBeVisible();
     await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeHidden();
-    await attention.getByText('Workflow details', { exact: true }).click();
-    await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeVisible();
-    await attention.getByText('Workflow details', { exact: true }).click();
+    const workflow = attention.getByRole('link', { name: 'Update Compose Stack', exact: true });
+    const workflowItem = workflow.locator('..');
+    await expect(workflowItem.getByText('Workflow ID: workflow-browser-baseline', { exact: true })).toBeHidden();
+    await workflowItem.getByText('Workflow details', { exact: true }).click();
+    await expect(workflowItem.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeVisible();
+    await expect(workflowItem.getByText('Workflow ID: workflow-browser-baseline', { exact: true })).toBeVisible();
+    await workflowItem.getByText('Workflow details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'AI provider' });
     await expect(runtime.getByRole('heading', { name: 'AI provider', exact: true })).toBeVisible();

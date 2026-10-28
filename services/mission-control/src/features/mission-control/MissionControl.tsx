@@ -14,6 +14,19 @@ import { RecentActivity } from "./RecentActivity";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
+interface AttentionItem {
+    actionRequired?: boolean;
+    workflowState?: string;
+    workflowId?: string;
+    checkedAt?: unknown;
+    key: string;
+    label: string;
+    reason: string;
+    state: unknown;
+    to: string;
+    stale?: boolean;
+}
+
 function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }) {
     const prefix = label ? `${label}: ` : "";
     if (evidence?.stale) return <p role="status">{prefix}Refresh failed. Showing previously reported information only; current status is unknown.</p>;
@@ -68,7 +81,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         { key: "policy-status", label: "Policy status", state: policy.status, evidence: evidence.policyHealth, reason: policy.error, checkedAt: policy.checked_at },
     ];
     // One row per authoritative source condition. Do not synthesize alerts from counts.
-    const attention = [
+    const attention: AttentionItem[] = [
         ...healthConditions.filter(source => ["degraded", "unavailable", "blocked"].includes(status(source.state))).map(source => ({
             key: source.key, label: source.label, reason: safeText(source.reason), state: source.state,
             to: `#${source.key}`, stale: source.evidence?.stale, checkedAt: source.checkedAt,
@@ -85,11 +98,22 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         ...findings.filter(f => typeof f.severity === "string" && ["warning", "critical", "blocked"].includes(f.severity)).map(f => ({
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
         })),
-        ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
-            actionRequired: workflowActionRequired(String(w.workflow_state)), workflowState: String(w.workflow_state), key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: safeText(w.last_result_summary), state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
-        })),
+        ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => {
+            const intent = safeText(w.execution_intent);
+            return {
+                actionRequired: workflowActionRequired(String(w.workflow_state)),
+                workflowState: String(w.workflow_state),
+                workflowId: safeText(w.workflow_id),
+                key: `workflow:${String(w.workflow_id)}`,
+                label: intent ? formatWorkflowLabel(intent) : "Workflow needs attention",
+                reason: safeText(w.last_result_summary),
+                state: w.workflow_state === "blocked" ? "blocked" : "warning",
+                to: detailPath("/workflows", w.workflow_id) ?? "/workflows",
+                stale: evidence.workflows?.stale,
+            };
+        }),
     ];
-    const deduplicated = new Map<string, typeof attention[number]>();
+    const deduplicated = new Map<string, AttentionItem>();
     for (const item of attention) {
         const previous = deduplicated.get(item.key);
         if (!previous || (previous.stale && !item.stale) || (Boolean(previous.stale) === Boolean(item.stale) && attentionPriority(item.state) < attentionPriority(previous.state))) deduplicated.set(item.key, item);
@@ -97,7 +121,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
     const renderService = ([name, raw]: [string, unknown]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>;
-    const renderAttentionItem = (item: typeof uniqueAttention[number]) => (
+    const renderAttentionItem = (item: AttentionItem) => (
         <li key={item.key}>
                 {item.to.startsWith("#") ? <a href={item.to}>{item.label}</a> : <Link to={item.to}>{item.label || "Inspect condition"}</Link>}
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
@@ -105,6 +129,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                     {item.state === "blocked" && <p className="text-red-300">{item.stale ? "Last-known workflow blocked; current state unknown." : "Workflow blocked"}</p>}
                     {item.reason && <p>{item.reason}</p>}
                     <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Workflow details</summary>
+                        <p>Workflow ID: {item.workflowId ?? "Unavailable"}</p>
                         <p>{item.stale ? "Last-known workflow stage" : "Workflow stage"}: {formatWorkflowLabel(safeText(item.workflowState))}</p>
                         <p className="text-xs text-mc-text-muted">Stage update time is not supplied.</p>
                     </details>
