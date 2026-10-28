@@ -88,9 +88,32 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage();
         expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Maintenance audit" })).toBeInTheDocument();
+        expect(screen.getByText(/Maintenance status:/)).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Commit details" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Change request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|run|resume/i })).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["awaiting_implementation_approval", "pending", "Maintenance request needs approval."],
+        ["awaiting_implementation_approval", "approved", "Maintenance request is approved. Resume to run it."],
+        ["awaiting_implementation_approval", "rejected", "Maintenance request approval was rejected."],
+        ["awaiting_execution", "approved", "Maintenance request is approved and ready to run."],
+        ["executing", "approved", "Maintenance is running."],
+        ["completed", "approved", "Maintenance workflow completed."],
+    ])("uses maintenance terms in the audit for %s / %s", async (workflow_state, approval, message) => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({
+            effect_kind: "operational_action",
+            workflow_state,
+            approvals: { ...audit().approvals, implementation: { status: approval, approval_id: "approval-maintenance" } },
+        }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderAuditPage();
+
+        const status = await screen.findByText(/Maintenance status:/);
+        expect(status).toHaveTextContent(message);
+        expect(screen.queryByText(/Maintenance action/)).not.toBeInTheDocument();
+        expect(status).toBeVisible();
     });
 
     it("keeps invalid maintenance audit codes under technical details", async () => {

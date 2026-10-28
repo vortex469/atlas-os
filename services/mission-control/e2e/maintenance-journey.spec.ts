@@ -116,6 +116,7 @@ for (const width of [320, 390, 1280]) {
         const auditHeading = page.getByRole("heading", { name: "Maintenance audit", exact: true });
         await expect(auditHeading).toBeVisible();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
+        await expect(page.getByText(/Maintenance status:/)).toContainText("Maintenance workflow completed.");
         await expect(page.getByRole("heading", { name: "Commit Request", exact: true })).toHaveCount(0);
         const auditPadding = await auditHeading.evaluate((element) => {
             const main = element.closest("main");

@@ -365,7 +365,7 @@ function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
             <Link to={`/workflows/${encodeURIComponent(audit.workflow_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
         </header>
         <section aria-label="Audit validation" className="rounded-xl border border-slate-800 p-5 text-slate-300">
-            <p>Workflow status: {formatWorkflowAuditStatus(audit)}</p>
+            <p>Maintenance status: {formatWorkflowAuditStatus(audit)}</p>
             <p>Audit validation: {audit.validation.valid ? "Valid" : "Invalid"}</p>
             {audit.blocked_reason && <p>Blocked reason: {audit.blocked_reason}</p>}
             {audit.validation.failure_code && <p role="alert">This audit record is inconsistent. Review its technical details.</p>}
@@ -449,18 +449,19 @@ function formatStatusLabel(value: string): string {
 }
 
 function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
-    const action = audit.effect_kind === "operational_action" ? "Maintenance action" : "Implementation";
+    const isMaintenance = audit.effect_kind === "operational_action";
+    const action = isMaintenance ? "Maintenance request" : "Implementation";
     switch (audit.workflow_state) {
         case "planned":
-            return "Workflow is ready for review.";
+            return isMaintenance ? "Maintenance request is ready for review." : "Workflow is ready for review.";
         case "awaiting_approval":
-            return "Workflow is waiting for review.";
+            return isMaintenance ? "Maintenance workflow is waiting for review." : "Workflow is waiting for review.";
         case "awaiting_implementation_approval":
             return approvalStatusMessage(action, audit.approvals.implementation.status, "Resume to run it.");
         case "awaiting_execution":
             return action + " is approved and ready to run.";
         case "executing":
-            return action + " is running.";
+            return isMaintenance ? "Maintenance is running." : action + " is running.";
         case "patch_applied_pending_verification":
             return "Implementation is complete. Verification is next.";
         case "awaiting_verification_approval":
@@ -472,11 +473,13 @@ function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
         case "committing":
             return "The commit is being recorded.";
         case "blocked":
-            return "Workflow is blocked. Review the recorded stages and results below.";
+            return isMaintenance
+                ? "Maintenance workflow is blocked. Review the recorded stages and results below."
+                : "Workflow is blocked. Review the recorded stages and results below.";
         case "implementation_rejected":
             return action + " approval was rejected.";
         case "completed":
-            return "Workflow completed.";
+            return isMaintenance ? "Maintenance workflow completed." : "Workflow completed.";
         default:
             return "Workflow status is unavailable.";
     }
