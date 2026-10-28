@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 
@@ -71,9 +71,11 @@ export function DiscoveryPage() {
     });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const requestGeneration = useRef(0);
 
     const loadCatalog = useCallback(
         async (nextFilters: FilterState, offset: number) => {
+            const generation = ++requestGeneration.current;
             setIsLoading(true);
             setError(null);
 
@@ -83,69 +85,44 @@ export function DiscoveryPage() {
                     fetchDiscoveryPage(nextFilters, offset),
                 ]);
 
-                setMetadata(nextMetadata);
-                setResult({
-                    entries: page.entries,
-                    total: page.total,
-                    offset: page.offset,
-                    hasMore: page.has_more,
-                });
+                if (generation === requestGeneration.current) {
+                    setMetadata(nextMetadata);
+                    setResult({
+                        entries: page.entries,
+                        total: page.total,
+                        offset: page.offset,
+                        hasMore: page.has_more,
+                    });
+                }
             } catch (requestError) {
-                console.error("Unable to load Discovery catalog:", requestError);
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not load the catalog.",
-                    ),
-                );
+                if (generation === requestGeneration.current) {
+                    console.error("Unable to load Discovery catalog:", requestError);
+                    setError(
+                        getAtlasErrorMessage(
+                            requestError,
+                            "Mission Control could not load the catalog.",
+                        ),
+                    );
+                }
             } finally {
-                setIsLoading(false);
+                if (generation === requestGeneration.current) {
+                    setIsLoading(false);
+                }
             }
         },
         [],
     );
 
     useEffect(() => {
-        let cancelled = false;
-
-        Promise.all([
-            getDiscoveryMetadata(),
-            fetchDiscoveryPage(emptyFilters, 0),
-        ])
-            .then(([nextMetadata, page]) => {
-                if (cancelled) {
-                    return;
-                }
-                setMetadata(nextMetadata);
-                setResult({
-                    entries: page.entries,
-                    total: page.total,
-                    offset: page.offset,
-                    hasMore: page.has_more,
-                });
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                console.error("Unable to load Discovery catalog:", requestError);
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not load the catalog.",
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            });
-
+        let active = true;
+        void Promise.resolve().then(() => {
+            if (active) return loadCatalog(emptyFilters, 0);
+        });
         return () => {
-            cancelled = true;
+            active = false;
+            requestGeneration.current += 1;
         };
-    }, []);
+    }, [loadCatalog]);
 
     const isSearchMode = submittedFilters.query.trim().length > 0;
     const hasAdvancedFilters = Boolean(submittedFilters.tag || submittedFilters.capability);

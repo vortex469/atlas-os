@@ -603,6 +603,14 @@ uncertainty. Workflow counts, stale-data handling, and execution boundaries are
 unchanged. Focused component suites pass (77 tests), all 8 built overview
 browser checks pass, and lint/build pass.
 
+## Discovery search response ordering — 2026-10-28
+
+Discovery now applies results, errors, metadata, and loading completion only
+from the latest catalog request. The previous request cannot replace newer
+search results or mark a newer search complete. The focused page suite passes
+(7 tests), responsive catalog browser checks pass at 390px and 1280px (2
+tests), and lint/build pass. API requests and read-only behavior are unchanged.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

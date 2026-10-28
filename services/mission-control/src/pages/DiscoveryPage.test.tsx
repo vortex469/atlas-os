@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -112,6 +112,12 @@ function searchPage(entries: DiscoveryCatalogEntry[]): DiscoverySearchPage {
     };
 }
 
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+    return { promise, resolve };
+}
+
 function renderPage() {
     return render(
         <MemoryRouter>
@@ -197,6 +203,45 @@ describe("DiscoveryPage", () => {
             }),
         );
         expect(mockedSearchDiscoveryItems).not.toHaveBeenCalled();
+    });
+
+    it("keeps the latest search results when an older request finishes later", async () => {
+        const user = userEvent.setup();
+        const olderSearch = deferred<DiscoverySearchPage>();
+        const latestSearch = deferred<DiscoverySearchPage>();
+        mockedSearchDiscoveryItems
+            .mockReset()
+            .mockReturnValueOnce(olderSearch.promise)
+            .mockReturnValueOnce(latestSearch.promise);
+
+        renderPage();
+        await screen.findByText("Home Assistant");
+        const query = screen.getByLabelText("Keyword search");
+        const form = screen.getByRole("form", { name: "Search catalog" });
+        await user.type(query, "redis");
+        fireEvent.submit(form);
+        await waitFor(() => expect(mockedSearchDiscoveryItems).toHaveBeenCalledTimes(1));
+
+        await user.clear(query);
+        await user.type(query, "postgres");
+        fireEvent.submit(form);
+        await waitFor(() => expect(mockedSearchDiscoveryItems).toHaveBeenCalledTimes(2));
+
+        await act(async () => olderSearch.resolve(searchPage([entry({
+            item: { ...entry().item, id: "redis", name: "Redis" },
+        })])));
+        expect(screen.getByText("Loading catalog…")).toBeInTheDocument();
+        expect(screen.queryByText("Redis")).not.toBeInTheDocument();
+
+        await act(async () => latestSearch.resolve(searchPage([entry({
+            item: { ...entry().item, id: "postgres", name: "PostgreSQL" },
+        })])));
+
+        expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+        expect(screen.queryByText("Loading catalog…")).not.toBeInTheDocument();
+        expect(screen.queryByText("Redis")).not.toBeInTheDocument();
+        expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(1, expect.objectContaining({ q: "redis" }));
+        expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(2, expect.objectContaining({ q: "postgres" }));
     });
 
     it("resets offset when filters are cleared and respects pagination buttons", async () => {
