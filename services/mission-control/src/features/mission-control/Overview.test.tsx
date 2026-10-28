@@ -269,7 +269,8 @@ describe("MC overview evidence", () => {
         show({ providers: { data: [] }, activity: { data: { items: [] } }, workflows: { data: { items: [] } } });
         expect(screen.getByText('No providers configured.')).toBeInTheDocument();
         expect(screen.getByText('No recent actions recorded.')).toBeInTheDocument();
-        for (const [name, href] of [['Open operations →','/operations'], ['Review workflows →','/workflows'], ['Open deployment analysis →','/forge'], ['Open operational history →','/operations/history']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+        for (const [name, href] of [['Open operations →','/operations'], ['Review workflows →','/workflows'], ['Open operational history →','/operations/history']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+        expect(within(screen.getByRole('region', { name: 'Agent details' })).queryByRole('link')).not.toBeInTheDocument();
     });
     it("rejects bad timestamps, unsafe paths and sensitive free text", () => {
         expect(timestamp('bad')).toBeNull();

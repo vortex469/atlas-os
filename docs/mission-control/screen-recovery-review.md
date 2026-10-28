@@ -1436,3 +1436,13 @@ actions” and points operators to change or clear filters. An unfiltered empty
 history still explains that Atlas Core action records appear here. Focused page
 tests cover both states and preserve protection against a slower old filter
 response replacing the current results.
+
+## Agent card destination — 2026-10-28
+
+The home screen's Agent details card now stays focused on the Agent identity
+report. Its deployment-analysis link was unrelated to that card's contents and
+has been removed; Deployment analysis remains available from the main
+navigation. No Agent status or execution capability was added.
+The Agent/provider and main overview suites pass 69 tests, and the built-app
+navigation journey passes all nine checks, including direct access to
+Deployment analysis. Mission Control lint and production build pass.

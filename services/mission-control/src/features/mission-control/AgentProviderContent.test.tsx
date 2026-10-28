@@ -30,7 +30,7 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().queryByText("Loading providers…")).not.toBeInTheDocument();
     });
 
-    it("keeps identity separate from health and supplies existing read-only navigation", async () => {
+    it("keeps Agent identity separate from health and workflow navigation", async () => {
         const user = userEvent.setup();
         show({ agent: { data: { app_name: "Development Agent", token: "private-canary" } }, providers: { data: [provider("alpha", "healthy"), provider("beta", "failed"), provider("gamma", "offline"), provider("delta", "degraded"), provider("epsilon", "configured")] } });
         const agent = within(screen.getByRole("region", { name: "Agent details" }));
@@ -42,6 +42,7 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.queryByText("Evidence unknown.")).not.toBeInTheDocument();
         expect(agent.queryByText("Evidence unavailable.")).not.toBeInTheDocument();
         expect(agent.queryByRole("link", { name: "View agent workflows" })).not.toBeInTheDocument();
+        expect(agent.queryByRole("link", { name: "Open deployment analysis →" })).not.toBeInTheDocument();
         expect(within(screen.getByRole("region", { name: "Work activity" })).getByRole("link", { name: "Review workflows →" })).toHaveAttribute("href", "/workflows");
         expect(registry().getByText("Saved providers and the status Atlas reports for each one.")).toBeInTheDocument();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
