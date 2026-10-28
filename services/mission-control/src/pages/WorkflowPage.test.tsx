@@ -840,6 +840,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
+        expect(await screen.findByRole("heading", { name: "Review maintenance request" })).toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Maintenance request approval" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Approve maintenance request" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reject maintenance request" })).toBeInTheDocument();
@@ -854,6 +855,25 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Operational lifecycle" })).toBeInTheDocument();
         expect(screen.getAllByText("resolved (approved)")).toHaveLength(2);
+    });
+
+    it("keeps repository-only status details out of the maintenance workflow summary", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        renderPage();
+
+        const summary = within(await screen.findByRole("region", { name: "Workflow summary" }));
+        const disclosure = summary.getByText("Workflow details", { exact: true });
+        const details = disclosure.closest("details") as HTMLDetailsElement;
+        expect(details).not.toHaveAttribute("open");
+        fireEvent.click(disclosure);
+
+        const detailsContent = within(details);
+        expect(detailsContent.getByText("Maintenance request approval", { exact: true })).toBeVisible();
+        expect(detailsContent.queryByText("Implementation approval", { exact: true })).not.toBeInTheDocument();
+        expect(detailsContent.queryByText("Verification approval", { exact: true })).not.toBeInTheDocument();
+        expect(detailsContent.queryByText("Commit approval", { exact: true })).not.toBeInTheDocument();
+        expect(detailsContent.queryByText("Repository", { exact: true })).not.toBeInTheDocument();
+        expect(detailsContent.queryByText("Working directory", { exact: true })).not.toBeInTheDocument();
     });
 
     it("rejects a maintenance request without running it", async () => {

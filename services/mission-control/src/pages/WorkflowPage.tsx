@@ -393,8 +393,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and resume controls are unavailable until this check finishes.</p>}
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
-                    <h1 className="mt-3 text-3xl font-bold text-white">Review workflow</h1>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">{isOperational ? "Maintenance" : "Workflow"}</p>
+                    <h1 className="mt-3 text-3xl font-bold text-white">{isOperational ? "Review maintenance request" : "Review workflow"}</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         {workflow.effect_kind === "operational_action"
                             ? "Review the exact maintenance request below. Approval and running it are separate steps."
@@ -412,18 +412,20 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                         <Detail label="Workflow ID" value={workflow.workflow_id} />
                         <Detail label="Workflow state" value={formatLabel(workflow.workflow_state)} />
-                        <Detail label="Implementation approval" value={formatLabel(workflow.implementation_approval_status)} />
-                        <Detail label="Verification approval" value={formatLabel(workflow.verification_approval_status)} />
-                        <Detail label="Commit approval" value={formatLabel(workflow.commit_approval_status)} />
+                        <Detail label={isOperational ? "Maintenance request approval" : "Implementation approval"} value={formatLabel(workflow.implementation_approval_status)} />
                         <Detail label="Workflow source" value={workflow.workflow_source} />
                         <Detail label="Planning session" value={workflow.planning_session_id ?? "Not available"} />
                         <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not available"} />
                         <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />
                         <Detail label="Plan fingerprint" value={workflow.plan_fingerprint ?? "Not available"} />
-                        <Detail label="Repository" value={workflow.repository ?? "Not available"} />
-                        <Detail label="Working directory" value={workflow.working_directory ?? "Not available"} />
-                        <Detail label="Translator version" value={workflow.translator_version ?? "Not available"} />
-                        <Detail label="Affected files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
+                        {isRepository && <>
+                            <Detail label="Verification approval" value={formatLabel(workflow.verification_approval_status)} />
+                            <Detail label="Commit approval" value={formatLabel(workflow.commit_approval_status)} />
+                            <Detail label="Repository" value={workflow.repository ?? "Not available"} />
+                            <Detail label="Working directory" value={workflow.working_directory ?? "Not available"} />
+                            <Detail label="Translator version" value={workflow.translator_version ?? "Not available"} />
+                            <Detail label="Affected files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
+                        </>}
                     </dl>
                 </details>
             </section>

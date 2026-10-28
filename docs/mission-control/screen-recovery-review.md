@@ -119,8 +119,10 @@ repository-only Review and Commit stages. Loading, unavailable, and not-found
 screens no longer show a generic repository stage rail without a known
 repository workflow. The maintenance browser fixture now uses the nine-stage
 Agent response, so the seven-step operator view is checked against that contract.
+The maintenance detail page also names its task directly and keeps repository,
+verification-approval, and commit-approval fields out of its optional details.
 
-The focused workflow/timeline component tests pass (93 tests), the maintenance
+The focused workflow/timeline component tests pass (94 tests), the maintenance
 journey passes at 320, 390, and 1280 pixels, and Mission Control lint and build
 pass. The change is presentational; it does not change backend contracts,
 approval decisions, execution, or audit behavior.
