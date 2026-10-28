@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+    candidateRecordIdempotencyKey,
     deleteInstallationCandidateRecord, getInstallationCandidateRecord, listInstallationCandidateRecords,
     preserveInstallationCandidateRecord,
 } from "../../api/installationCandidateLifecycle";
@@ -78,6 +79,34 @@ describe("installation candidate lifecycle", () => {
         expect(screen.getByText(/preservation is not approval/i)).toBeInTheDocument();
     });
 
+    it("shows a plain preservation failure and safely retries the same request", async () => {
+        const apiError = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Installation candidate record request conflicts with current state." } } },
+        };
+        vi.mocked(preserveInstallationCandidateRecord)
+            .mockRejectedValueOnce(apiError)
+            .mockResolvedValueOnce(envelope());
+        const user = userEvent.setup();
+        render(<InstallationCandidateLifecycle admission={admission()} itemId="example" selectionId="selection-1" csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Preserve candidate record" }));
+
+        const message = await screen.findByText("Atlas could not confirm whether it saved the candidate record. Retry the same request to recover the result.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm whether it saved the candidate record.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Installation candidate record request conflicts with current state.")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry preservation" }));
+        expect(await screen.findByText("example · active")).toBeInTheDocument();
+        expect(preserveInstallationCandidateRecord).toHaveBeenNthCalledWith(1, { item_id: "example", selection_id: "selection-1" }, "csrf", "preserve-key");
+        expect(preserveInstallationCandidateRecord).toHaveBeenNthCalledWith(2, { item_id: "example", selection_id: "selection-1" }, "csrf", "preserve-key");
+        expect(candidateRecordIdempotencyKey).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText("Atlas could not confirm whether it saved the candidate record.")).not.toBeInTheDocument();
+    });
+
     it("keeps Home Assistant not preserved and exposes no authority control or navigation", async () => {
         const { container } = render(<InstallationCandidateLifecycle admission={admission(false)} itemId="home-assistant" selectionId="selection-1" csrfToken="csrf" />);
         expect(await screen.findByText(/cannot be preserved/i)).toBeInTheDocument();
@@ -94,6 +123,50 @@ describe("installation candidate lifecycle", () => {
         render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken="csrf" />);
         await user.click(await screen.findByRole("button", { name: "Delete saved record" }));
         expect(deleteInstallationCandidateRecord).toHaveBeenCalledWith("record-active", "csrf");
-        expect(await screen.findByText(/advisory record is gone and cannot be replayed/i)).toBeInTheDocument();
+        expect(await screen.findByText(/is no longer present.*cannot be replayed/i)).toBeInTheDocument();
+    });
+
+    it("checks saved records before allowing another delete after an uncertain result", async () => {
+        const apiError = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Installation candidate record dependency is unavailable." } } },
+        };
+        vi.mocked(listInstallationCandidateRecords)
+            .mockResolvedValueOnce([envelope()])
+            .mockResolvedValueOnce([]);
+        vi.mocked(deleteInstallationCandidateRecord).mockRejectedValueOnce(apiError);
+        const user = userEvent.setup();
+        render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Delete saved record" }));
+        const message = await screen.findByText("Atlas could not confirm whether the saved record was removed. Refresh the saved records before deleting it again.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm whether the saved record was removed.");
+        expect(within(alert).getByText("Technical details").closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByRole("button", { name: "Delete saved record" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh saved records" }));
+        expect(await screen.findByText(/is no longer present/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Delete saved record" })).not.toBeInTheDocument();
+        expect(deleteInstallationCandidateRecord).toHaveBeenCalledTimes(1);
+        expect(listInstallationCandidateRecords).toHaveBeenCalledTimes(2);
+    });
+
+    it("re-enables deletion only after refresh confirms the record is still present", async () => {
+        vi.mocked(listInstallationCandidateRecords)
+            .mockResolvedValueOnce([envelope()])
+            .mockResolvedValueOnce([envelope()]);
+        vi.mocked(deleteInstallationCandidateRecord).mockRejectedValueOnce(new Error("connection lost"));
+        const user = userEvent.setup();
+        render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Delete saved record" }));
+        await screen.findByRole("button", { name: "Refresh saved records" });
+        await user.click(screen.getByRole("button", { name: "Refresh saved records" }));
+
+        expect(await screen.findByRole("status")).toHaveTextContent(/is still present.*delete it again/i);
+        expect(screen.getByRole("button", { name: "Delete saved record" })).toBeEnabled();
+        expect(deleteInstallationCandidateRecord).toHaveBeenCalledTimes(1);
+        expect(listInstallationCandidateRecords).toHaveBeenCalledTimes(2);
     });
 });

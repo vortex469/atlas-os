@@ -1667,3 +1667,13 @@ keep server diagnostics collapsed, and offer a retry that reloads the same
 read-only GET. Their focused suites pass (11 tests), as do the full Mission
 Control suite (2,779 tests across 181 files), lint and production build. No
 mutation, selection, approval, installation, or execution route is added.
+
+## Saved candidate record mutation recovery — 2026-10-28
+
+Preservation failures now explain the uncertain result and retry with the same
+idempotency key. A delete failure pauses further mutations until a read refresh
+confirms whether the saved record remains; Mission Control does not repeat the
+delete automatically. Backend diagnostics stay collapsed. The lifecycle suite
+passes (8 tests), the full Mission Control suite passes (2,782 tests across
+181 files), lint and production build pass. API and approval contracts are
+unchanged.

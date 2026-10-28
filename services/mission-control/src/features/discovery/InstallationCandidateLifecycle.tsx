@@ -25,8 +25,17 @@ export function InstallationCandidateLifecycle({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [mutation, setMutation] = useState<"preserve" | "delete" | null>(null);
-    const [mutationError, setMutationError] = useState<string | null>(null);
+    const [mutationError, setMutationError] = useState<{
+        action: "preserve" | "delete";
+        technicalDetail: string;
+    } | null>(null);
+    const [preserveRecovery, setPreserveRecovery] = useState<{
+        request: { item_id: string; selection_id: string; admission_fingerprint: string };
+        idempotencyKey: string;
+    } | null>(null);
+    const [deleteUncertainId, setDeleteUncertainId] = useState<string | null>(null);
     const [deletedId, setDeletedId] = useState<string | null>(null);
+    const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
 
     useEffect(() => {
         let current = true;
@@ -40,16 +49,33 @@ export function InstallationCandidateLifecycle({
     }, []);
 
     const preserve = async () => {
-        if (!csrfToken || !selectionId || admission?.status !== "admitted_but_non_executable" || !admission.candidate_record || mutation) return;
+        if (!csrfToken || !selectionId || admission?.status !== "admitted_but_non_executable" || !admission.candidate_record || mutation || deleteUncertainId !== null) return;
         setMutation("preserve"); setMutationError(null); setDeletedId(null);
+        setRecoveryMessage(null);
+        const request = {
+            item_id: itemId,
+            selection_id: selectionId,
+            admission_fingerprint: admission.admission_fingerprint,
+        };
+        const canReuseRequestKey = preserveRecovery !== null
+            && preserveRecovery.request.item_id === request.item_id
+            && preserveRecovery.request.selection_id === request.selection_id
+            && preserveRecovery.request.admission_fingerprint === request.admission_fingerprint;
+        const idempotencyKey = canReuseRequestKey ? preserveRecovery.idempotencyKey : candidateRecordIdempotencyKey();
         try {
             const value = await preserveInstallationCandidateRecord(
-                { item_id: itemId, selection_id: selectionId }, csrfToken, candidateRecordIdempotencyKey(),
+                { item_id: request.item_id, selection_id: request.selection_id }, csrfToken, idempotencyKey,
             );
             setRecords((current) => [value, ...current.filter((record) => record.candidate_record_id !== value.candidate_record_id)]);
             setReviewed(value);
+            setError(null);
+            setPreserveRecovery(null);
         } catch (requestError: unknown) {
-            setMutationError(getAtlasErrorMessage(requestError, "The candidate record could not be preserved."));
+            setPreserveRecovery({ request, idempotencyKey });
+            setMutationError({
+                action: "preserve",
+                technicalDetail: getAtlasErrorMessage(requestError, "The candidate record could not be preserved."),
+            });
         } finally { setMutation(null); }
     };
 
@@ -62,25 +88,60 @@ export function InstallationCandidateLifecycle({
     };
 
     const remove = async (candidateRecordId: string) => {
-        if (!csrfToken || mutation) return;
-        setMutation("delete"); setMutationError(null);
+        if (!csrfToken || mutation || preserveRecovery !== null || deleteUncertainId !== null) return;
+        setMutation("delete"); setMutationError(null); setDeletedId(null);
+        setRecoveryMessage(null);
         try {
             await deleteInstallationCandidateRecord(candidateRecordId, csrfToken);
             setRecords((current) => current.filter((record) => record.candidate_record_id !== candidateRecordId));
             setReviewed((current) => current?.candidate_record_id === candidateRecordId ? null : current);
             setDeletedId(candidateRecordId);
+            setDeleteUncertainId(null);
         } catch (requestError: unknown) {
-            setMutationError(getAtlasErrorMessage(requestError, "The saved candidate record could not be deleted."));
+            setDeleteUncertainId(candidateRecordId);
+            setMutationError({
+                action: "delete",
+                technicalDetail: getAtlasErrorMessage(requestError, "The saved candidate record could not be deleted."),
+            });
         } finally { setMutation(null); }
     };
 
+    const refreshAfterDelete = async (candidateRecordId: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const currentRecords = await listInstallationCandidateRecords();
+            const stillPresent = currentRecords.some((record) => record.candidate_record_id === candidateRecordId);
+            setRecords(currentRecords);
+            setDeleteUncertainId(null);
+            setMutationError(null);
+            if (stillPresent) {
+                setDeletedId(null);
+                setRecoveryMessage(`Saved record ${candidateRecordId} is still present. You may delete it again if you still want it removed.`);
+            } else {
+                setReviewed((current) => current?.candidate_record_id === candidateRecordId ? null : current);
+                setDeletedId(candidateRecordId);
+                setRecoveryMessage(null);
+            }
+        } catch (requestError: unknown) {
+            setMutationError({
+                action: "delete",
+                technicalDetail: getAtlasErrorMessage(requestError, "Saved candidate records could not be refreshed."),
+            });
+        } finally { setLoading(false); }
+    };
+
     const preservable = admission?.status === "admitted_but_non_executable" && admission.candidate_record !== null;
+    const canRetryPreservation = preserveRecovery !== null
+        && preserveRecovery.request.item_id === itemId
+        && preserveRecovery.request.selection_id === selectionId
+        && preserveRecovery.request.admission_fingerprint === admission?.admission_fingerprint;
     return <section aria-labelledby="candidate-lifecycle-heading" className="mt-5 border-t border-slate-700 pt-5">
         <h5 id="candidate-lifecycle-heading" className="font-semibold text-slate-100">Saved candidate record lifecycle</h5>
         <p className="mt-1 text-sm text-slate-300">Durable advisory records only. Preservation is not approval. Active means only that the exact source facts have not expired.</p>
         <p className="mt-1 text-sm font-semibold text-amber-200">Every record is non-executable, non-approved, non-deployable, non-dispatchable, and has no Agent execution support.</p>
         {preservable && <div className="mt-3">
-            {csrfToken && <button type="button" disabled={mutation !== null} onClick={() => void preserve()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:opacity-50">Preserve candidate record</button>}
+            {csrfToken && <button type="button" disabled={mutation !== null || deleteUncertainId !== null || (preserveRecovery !== null && !canRetryPreservation)} onClick={() => void preserve()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:opacity-50">{canRetryPreservation ? "Retry preservation" : "Preserve candidate record"}</button>}
             {!csrfToken && <p className="text-xs text-slate-400">An authenticated operator session with mutation protection is required to preserve this record.</p>}
         </div>}
         {!preservable && admission && <p className="mt-3 text-sm text-slate-400">This admission cannot be preserved because it has no positive non-executable candidate record.</p>}
@@ -95,13 +156,23 @@ export function InstallationCandidateLifecycle({
                 <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review saved record</button>
                     <a href={`/installation/candidate-records/${encodeURIComponent(record.candidate_record_id)}/readiness-review`} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-blue-200">Open readiness review</a>
-                    <button type="button" disabled={!csrfToken || mutation !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete saved record</button>
+                    <button type="button" disabled={!csrfToken || mutation !== null || preserveRecovery !== null || deleteUncertainId !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete saved record</button>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">Deletion removes only this advisory record. It cannot be replayed and does not cancel any external activity.</p>
             </li>)}
         </ul>}
-        {mutationError && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{mutationError}</p>}
-        {deletedId && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">Deleted saved record {deletedId}. The advisory record is gone and cannot be replayed.</p>}
+        {mutationError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <p>{mutationError.action === "preserve"
+                ? "Atlas could not confirm whether it saved the candidate record. Retry the same request to recover the result."
+                : "Atlas could not confirm whether the saved record was removed. Refresh the saved records before deleting it again."}</p>
+            <details className="mt-3 text-red-100/80">
+                <summary className="cursor-pointer">Technical details</summary>
+                <p className="mt-2 break-words">{mutationError.technicalDetail}</p>
+            </details>
+            {mutationError.action === "delete" && deleteUncertainId && <button type="button" disabled={loading} onClick={() => void refreshAfterDelete(deleteUncertainId)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 disabled:opacity-50">Refresh saved records</button>}
+        </div>}
+        {deletedId && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">Saved record {deletedId} is no longer present. The advisory record cannot be replayed.</p>}
+        {recoveryMessage && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">{recoveryMessage}</p>}
         {reviewed && <RecordDetails record={reviewed} />}
         <InstallationApprovalIntents records={records} csrfToken={csrfToken} />
     </section>;
