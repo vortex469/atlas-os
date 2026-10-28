@@ -413,6 +413,15 @@ dashboard suites pass (68 tests), and 17 built browser checks pass across
 narrow, mobile, tablet and desktop layouts. Lint and build pass; workflow links
 remain read-only.
 
+## Main dashboard work activity — 2026-10-28
+
+Running, blocked and completed-work rows now use the action name and a
+human-readable state or outcome. Workflow IDs are tucked into each row’s
+collapsed technical details. Queue size and worker availability remain
+explicitly unreported; the dashboard remains read-only. The focused dashboard
+suites pass (71 tests), lint/build pass, and 8 built browser checks pass,
+including mobile and desktop disclosure behavior.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

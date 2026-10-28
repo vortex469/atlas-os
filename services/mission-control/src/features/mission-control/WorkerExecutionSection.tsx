@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { WorkflowSummary } from "../../types/atlasAgent";
-import { WORKFLOW_STATES } from "../../utils/workflowState";
+import { formatWorkflowLabel, WORKFLOW_STATES } from "../../utils/workflowState";
 
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
@@ -10,6 +10,26 @@ import { detailPath, safeText } from "./overviewEvidence";
 function executionStage(workflow: WorkflowSummary): string | null {
     const stages = workflow.timeline.filter((stage) => stage.name === "Execution");
     return stages.length === 1 ? stages[0].status : null;
+}
+
+function workflowActionLabel(intent: string | null): string {
+    const safeIntent = safeText(intent);
+    return safeIntent && safeIntent !== "[Sensitive text withheld]"
+        ? formatWorkflowLabel(safeIntent)
+        : "Workflow";
+}
+
+function workflowStatusLabel(workflow: WorkflowSummary, outcomes: boolean): string {
+    if (outcomes) {
+        return executionStage(workflow) === "completed"
+            ? "Execution completed"
+            : "Execution failed";
+    }
+    return workflow.workflow_state === "executing"
+        ? "Running"
+        : workflow.workflow_state === "blocked"
+            ? "Blocked"
+            : formatWorkflowLabel(workflow.workflow_state);
 }
 
 export function WorkerExecutionSection({ evidence, loading = false }: {
@@ -78,8 +98,11 @@ function EvidenceList({ title, items, available, empty, outcomes = false }: {
         {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Unknown"}</p> :
             <ul className="mt-2 space-y-2 text-sm">
                 {[...items].sort((a, b) => a.workflow_id.localeCompare(b.workflow_id)).slice(0, 3).map((item) => <li key={item.workflow_id}>
-                    <Link to={detailPath("/workflows", item.workflow_id)!} className="break-all text-mc-primary focus-visible:outline-2">{safeText(item.workflow_id)}</Link>
-                    <span className="ml-2 text-mc-text-secondary">{outcomes ? `Execution ${executionStage(item)}` : item.workflow_state}</span>
+                    <Link to={detailPath("/workflows", item.workflow_id)!} className="text-mc-primary focus-visible:outline-2">{workflowActionLabel(item.execution_intent)} · {workflowStatusLabel(item, outcomes)}</Link>
+                    <details className="mt-1 text-xs text-mc-text-muted">
+                        <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Technical details</summary>
+                        <p className="mt-1 break-all font-mono">Workflow ID: {safeText(item.workflow_id)}</p>
+                    </details>
                 </li>)}
             </ul>}
     </div>;

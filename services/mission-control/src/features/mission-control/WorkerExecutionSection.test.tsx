@@ -5,9 +5,9 @@ import type { WorkflowListResponse, WorkflowSummary } from "../../types/atlasAge
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isWorkflowEvidencePage } from "./workerExecutionEvidence";
 
-function workflow(id: string, state = "executing", stage = "current"): WorkflowSummary {
+function workflow(id: string, state = "executing", stage = "current", intent: string | null = null): WorkflowSummary {
     return { workflow_id: id, workflow_state: state, workflow_source: "candidate",
-        effect_kind: "repository_change", execution_intent: null, candidate_id: null,
+        effect_kind: "repository_change", execution_intent: intent, candidate_id: null,
         planning_session_id: null, repository: null, target_id: null,
         last_result_summary: "Commit completed", timeline: [{ name: "Execution", status: stage }] };
 }
@@ -32,31 +32,45 @@ describe("Work activity summary", () => {
         expect(within(section).getByText("Not reported")).toBeInTheDocument();
     });
     it("distinguishes executing from verification and links to encoded detail routes", () => {
-        view(page([workflow("a/b?#"), workflow("verify", "verifying", "completed")]));
+        view(page([workflow("a/b?#", "executing", "current", "restart-service"), workflow("verify", "verifying", "completed")]));
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getAllByText("Running workflows")[0].nextElementSibling).toHaveTextContent("1");
-        expect(screen.getByRole("link", { name: "a/b?#" })).toHaveAttribute("href", "/workflows/a%2Fb%3F%23");
+        const workflowLink = within(section).getByRole("link", { name: "Restart Service · Running" });
+        expect(workflowLink).toHaveAttribute("href", "/workflows/a%2Fb%3F%23");
+        const workflowRow = workflowLink.closest("li");
+        const workflowId = within(workflowRow!).getByText(/Workflow ID: a\/b\?#/);
+        expect(workflowId).not.toBeVisible();
+        fireEvent.click(within(workflowRow!).getByText("Technical details"));
+        expect(workflowId).toBeVisible();
         expect(screen.getByRole("link", { name: "Review workflows →" })).toHaveAttribute("href", "/workflows");
     });
     it("shows blocked workflows without claiming that execution started", () => {
         view(page([workflow("blocked", "blocked", "waiting")]));
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getAllByText("Blocked workflows")[0].nextElementSibling).toHaveTextContent("1");
+        expect(within(section).getByRole("link", { name: "Workflow · Blocked" })).toHaveAttribute("href", "/workflows/blocked");
         fireEvent.click(within(section).getByText("More about execution data"));
         expect(within(section).getByText(/A workflow may be blocked before it starts running/)).toBeInTheDocument();
         expect(screen.getByText("No execution outcomes recorded")).toBeInTheDocument();
     });
     it("uses execution evidence, not the latest commit result, and discloses absent recency", () => {
-        view(page([workflow("success", "completed", "completed"), workflow("failure", "blocked", "failed")]));
+        view(page([workflow("success", "completed", "completed", "restart-service"), workflow("failure", "blocked", "failed", "update-container-image")]));
         fireEvent.click(screen.getByText("More about execution data"));
-        expect(screen.getByText("Execution completed")).toBeInTheDocument();
-        expect(screen.getByText("Execution failed")).toBeInTheDocument();
+        const successLink = screen.getByRole("link", { name: "Restart Service · Execution completed" });
+        const failedLink = screen.getByRole("link", { name: "Update Container Image · Execution failed" });
+        expect(successLink).toHaveAttribute("href", "/workflows/success");
+        expect(failedLink).toHaveAttribute("href", "/workflows/failure");
+        const successRow = successLink.closest("li");
+        const successId = within(successRow!).getByText("Workflow ID: success");
+        expect(successId).not.toBeVisible();
+        fireEvent.click(within(successRow!).getByText("Technical details"));
+        expect(successId).toBeVisible();
         expect(screen.queryByText("Commit completed")).not.toBeInTheDocument();
         expect(screen.getByText(/Execution times are not available/)).toBeInTheDocument();
     });
     it("hides old observations on refresh failure and recovers on a new response", () => {
         const { rerender } = view(page([workflow("old")]), true);
-        expect(screen.queryByRole("link", { name: "old" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Workflow · Running" })).not.toBeInTheDocument();
         expect(screen.getByText("Workflow status could not be loaded.")).toBeInTheDocument();
         rerender(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([]) }} loading={false} /></MemoryRouter>);
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector("dd")).toHaveTextContent("0");
@@ -99,7 +113,7 @@ describe("Work activity summary", () => {
 
 it("retains failed-refresh observations explicitly as stale, without asserting health", () => {
     render(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([workflow("old")]), unavailable: true, stale: true }} /></MemoryRouter>);
-    expect(screen.getByRole("link", { name: "old" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Workflow · Running" })).toBeInTheDocument();
     expect(screen.getByText("Showing last-known workflow information. Current status is unknown.")).toBeInTheDocument();
     expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
 });
@@ -112,6 +126,10 @@ it.each(["..", "\ud800", " "])("rejects unsafe workflow navigation: %j", id => {
 it("redacts sensitive display text and discloses partially missing outcomes", () => {
     view(page([workflow("token=private-value", "completed", "completed"), { ...workflow("missing"), timeline: [] }]));
     expect(screen.queryByText(/private-value/)).not.toBeInTheDocument();
-    expect(screen.getByText("[Sensitive text withheld]")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("More about execution data"));
+    const redactedId = screen.getByText("Workflow ID: [Sensitive text withheld]");
+    expect(redactedId).not.toBeVisible();
+    fireEvent.click(within(redactedId.closest("li")!).getByText("Technical details"));
+    expect(redactedId).toBeVisible();
     expect(screen.getByText(/Some execution results are missing or incomplete/)).toBeInTheDocument();
 });

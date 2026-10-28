@@ -102,3 +102,31 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(worker.getByText('Queue size', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+for (const width of [390, 1280]) {
+    test(`work activity names the action and keeps workflow IDs optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route('**/agent-api/api/v1/agent/workflows**', route => route.fulfill({ json: {
+            items: [{
+                workflow_id: 'workflow-running-1', workflow_source: 'candidate',
+                workflow_state: 'executing', effect_kind: 'repository_change',
+                execution_intent: 'restart-service', candidate_id: null,
+                planning_session_id: null, repository: null, target_id: null,
+                last_result_summary: 'Execution is in progress.',
+                timeline: [{ name: 'Execution', status: 'current' }],
+            }],
+            total: 1, limit: 200, offset: 0,
+        } }));
+        await page.goto('/');
+
+        const work = page.getByRole('region', { name: 'Work activity' });
+        await expect(work.getByRole('link', { name: 'Restart Service · Running' })).toBeVisible();
+        const workflowId = work.getByText('Workflow ID: workflow-running-1');
+        await expect(workflowId).toBeHidden();
+        await work.getByText('Technical details', { exact: true }).click();
+        await expect(workflowId).toBeVisible();
+        await expect(work.getByText('executing', { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

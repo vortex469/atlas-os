@@ -242,7 +242,8 @@ it('integrates execution outcomes and stale attention without duplicating health
         }] } },
     });
     const worker = within(screen.getByRole('region', { name: 'Work activity' }));
-    expect(worker.getByText('Execution completed')).toBeInTheDocument();
+    fireEvent.click(worker.getByText('More about execution data'));
+    expect(worker.getByRole('link', { name: 'Workflow · Execution completed' })).toBeVisible();
     expect(worker.queryByText('Commit failed')).not.toBeInTheDocument();
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
     expect(worker.getByText(/Current status is unknown/)).toBeInTheDocument();
