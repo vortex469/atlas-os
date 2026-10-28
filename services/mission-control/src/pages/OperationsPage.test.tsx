@@ -247,6 +247,21 @@ describe("OperationsPage", () => {
         ).toBeInTheDocument();
     });
 
+    it("keeps loaded history visible when an export fails", async () => {
+        const user = userEvent.setup();
+        mockedExportProviderActionHistory.mockRejectedValueOnce(new Error("Export failed"));
+        renderPage();
+
+        await screen.findByText("Unload Model");
+        await user.click(screen.getByText("Export or delete history"));
+        await user.click(screen.getByRole("button", { name: "Export JSON" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Export failed");
+        expect(screen.getByText("Unload Model")).toBeInTheDocument();
+        expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
+        expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
+    });
+
     it("confirms and prunes expired history", async () => {
         const user = userEvent.setup();
         vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -271,6 +286,23 @@ describe("OperationsPage", () => {
                 "1 expired history entry deleted.",
             ),
         ).toBeInTheDocument();
+    });
+
+    it("keeps loaded history visible when pruning fails", async () => {
+        const user = userEvent.setup();
+        vi.spyOn(window, "confirm").mockReturnValue(true);
+        mockedPruneProviderActionHistory.mockRejectedValueOnce(new Error("Delete failed"));
+        renderPage();
+
+        await screen.findByText("Unload Model");
+        await user.click(screen.getByText("Export or delete history"));
+        await user.click(screen.getByRole("button", { name: "Delete expired entries" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Delete failed");
+        expect(screen.getByText("Unload Model")).toBeInTheDocument();
+        expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
+        expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(1);
+        expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
     });
 
     it("filters by provider and UTC date range", async () => {

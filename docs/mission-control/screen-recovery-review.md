@@ -1069,3 +1069,10 @@ request state are not changed by the retry; the suggestion remains advisory.
 Request and result timestamps now identify that they are shown in the
 browser's local time. The recorded timestamps and history queries are
 unchanged.
+
+## Action history operation failures — 2026-10-28
+
+Export and retention-deletion errors now stay with the history-management
+controls. They no longer replace or hide a successfully loaded action list and
+retention summary. History-read failures continue to use the separate
+unavailable state.

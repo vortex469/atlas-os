@@ -77,7 +77,8 @@ export function OperationsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isPruning, setIsPruning] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [historyError, setHistoryError] = useState<string | null>(null);
+    const [operationError, setOperationError] = useState<string | null>(null);
     const [operationMessage, setOperationMessage] = useState<
         string | null
     >(null);
@@ -110,7 +111,7 @@ export function OperationsPage() {
         const requestId = requestSequence.current + 1;
         requestSequence.current = requestId;
         setIsLoading(true);
-        setError(null);
+        setHistoryError(null);
         setEntries([]);
         setSummary(null);
 
@@ -141,7 +142,7 @@ export function OperationsPage() {
                 "Unable to load provider action history:",
                 requestError,
             );
-            setError(
+            setHistoryError(
                 getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not load action history.",
@@ -157,7 +158,7 @@ export function OperationsPage() {
     const exportHistory = useCallback(
         async (format: ActionHistoryExportFormat) => {
             setIsExporting(true);
-            setError(null);
+            setOperationError(null);
             setOperationMessage(null);
 
             try {
@@ -183,7 +184,7 @@ export function OperationsPage() {
                     "Unable to export provider action history:",
                     requestError,
                 );
-                setError(
+                setOperationError(
                     getAtlasErrorMessage(
                         requestError,
                         "Mission Control could not export action history.",
@@ -207,7 +208,7 @@ export function OperationsPage() {
         }
 
         setIsPruning(true);
-        setError(null);
+        setOperationError(null);
         setOperationMessage(null);
 
         try {
@@ -227,7 +228,7 @@ export function OperationsPage() {
                 "Unable to prune provider action history:",
                 requestError,
             );
-            setError(
+            setOperationError(
                 getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not prune action history.",
@@ -449,6 +450,7 @@ export function OperationsPage() {
                         </p>
                     </div>
                 </div>
+                {operationError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{operationError}</p>}
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -495,7 +497,7 @@ export function OperationsPage() {
 
             <AtlasDoctorPanel />
 
-            {error && (
+            {historyError && (
                 <div
                     role="alert"
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
@@ -504,18 +506,18 @@ export function OperationsPage() {
                         History unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error}
+                        {historyError}
                     </p>
                 </div>
             )}
 
-            {!error && isLoading && entries.length === 0 && (
+            {!historyError && isLoading && entries.length === 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">
                     Loading action history...
                 </div>
             )}
 
-            {!error && !isLoading && entries.length === 0 && (
+            {!historyError && !isLoading && entries.length === 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
                     <p className="font-semibold text-slate-200">
                         No actions recorded
@@ -527,7 +529,7 @@ export function OperationsPage() {
                 </div>
             )}
 
-            {!error && !isLoading && entries.length > 0 && (
+            {!historyError && !isLoading && entries.length > 0 && (
                 <>
                     <div className="space-y-3">
                         {entries.map((entry) => (
