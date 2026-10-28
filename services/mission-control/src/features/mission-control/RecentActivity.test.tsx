@@ -21,7 +21,10 @@ describe('recorded activity completion times', () => {
     });
     it.each(['2024-02-29T12:00:00.123456Z', '2026-10-27T14:00:00+02:00', '2026-10-27T07:00:00-05:00'])('retains valid source instant %s', completed_at => {
         render(<MemoryRouter><RecentActivity evidence={{data: {items: [event('known', completed_at)]}}} /></MemoryRouter>);
-        expect(document.querySelector('time')).toHaveAttribute('dateTime', new Date(completed_at).toISOString());
+        const time = document.querySelector('time');
+        expect(time).toHaveAttribute('dateTime', new Date(completed_at).toISOString());
+        expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(completed_at)));
+        expect(time).not.toHaveTextContent(new Date(completed_at).toISOString());
         expect(screen.queryByText('Completion time unknown.')).not.toBeInTheDocument();
     });
     it.each(['1969-12-31T12:00:00Z', '1970-01-01T00:00:00Z', '2026-10-27T11:59:00Z'])('sorts known time %s before unverified future records', known => {

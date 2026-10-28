@@ -42,11 +42,15 @@ export function RecentActivity({ evidence }: { evidence?: Evidence }) {
                 <p>{safeText(event.provider_name) || "Provider unknown."}</p>
                 <p>{safeText(event.message)}</p>
                 <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>
-                {date ? <time dateTime={date.toISOString()}>{date.toISOString()}</time> : <p>Completion time unknown.</p>}
+                {date ? <p>Completed <time dateTime={date.toISOString()}>{formatDateTime(date)}</time>.</p> : <p>Completion time unknown.</p>}
                 <p>{date && now - date.getTime() > 300_000 ? "Historical evidence (older than 5 minutes)." : "Action history does not establish current health."}</p>
             </li>;
         })}</ol>
         {activity.length > 5 && <p>Showing 5 of {activity.length} returned actions.</p>}
         <Link to="/operations/history">Open operational history →</Link>
     </>;
+}
+
+function formatDateTime(date: Date) {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }
