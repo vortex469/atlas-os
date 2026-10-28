@@ -2157,3 +2157,10 @@ unavailable history, and incomplete lifecycle details at 320px, 390px, and
 1280px (11 checks). The history page suite passes (13 tests), as do lint and
 the production build. Filters, pagination, and all maintenance actions are
 unchanged.
+
+## Missing-page recovery phone spacing — 2026-10-28
+
+The missing-page screen now uses compact page spacing on phones while keeping
+its desktop layout. Browser checks verify the recovery link and return path at
+320px, 390px, and 1280px; all 12 navigation checks pass, as do lint and the
+production build. Route behavior and navigation destinations are unchanged.
