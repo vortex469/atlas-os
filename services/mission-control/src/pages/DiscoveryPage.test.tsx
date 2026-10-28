@@ -145,11 +145,17 @@ describe("DiscoveryPage", () => {
         expect(screen.getByRole("heading", { name: "Browse the catalog" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
         expect(screen.getByText(/Listings are reference information; compatibility, install support, and permission to make changes are checked separately/i)).toBeInTheDocument();
-        expect(screen.getByText("Technical details")).toBeInTheDocument();
-        expect(screen.getByText(/Catalog format version: v1/)).not.toBeVisible();
-        await user.click(screen.getByText("Technical details"));
-        expect(screen.getByText("Catalog format version: v1")).toBeVisible();
-        expect(screen.getAllByText("home-automation").length).toBeGreaterThan(0);
+        const itemCard = screen.getByRole("link", { name: "Home Assistant" }).closest("article");
+        expect(within(itemCard as HTMLElement).getByText("Catalog item ID: home-assistant")).not.toBeVisible();
+        expect(within(itemCard as HTMLElement).getAllByText("Home automation")).toHaveLength(2);
+        expect(within(itemCard as HTMLElement).getByText("Device integration")).toBeInTheDocument();
+        expect(within(itemCard as HTMLElement).queryByText("home-automation", { exact: true })).not.toBeInTheDocument();
+        await user.click(within(itemCard as HTMLElement).getByText("Technical details"));
+        expect(within(itemCard as HTMLElement).getByText("Catalog item ID: home-assistant")).toBeVisible();
+        const metadataDetails = screen.getByText("Catalog format version: v1").closest("details");
+        expect(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format version: v1")).not.toBeVisible();
+        await user.click(within(metadataDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format version: v1")).toBeVisible();
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
             "href",

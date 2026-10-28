@@ -13,6 +13,13 @@ for (const width of [390, 1280]) {
         await expect(page.getByLabel("Tag")).toBeHidden();
         await expect(page.getByLabel("Capability")).toBeHidden();
         await expect(page.getByText("Catalog format version: v1")).toBeHidden();
+        const itemCard = page.locator("article").filter({ has: page.getByRole("link", { name: "Fixture Application" }) });
+        await expect(itemCard.getByText("Catalog item ID: fixture-app", { exact: true })).toBeHidden();
+        await expect(itemCard.getByText("Read only", { exact: true })).toBeVisible();
+        await expect(itemCard.getByText("Browser fixture", { exact: true })).toBeVisible();
+        await expect(itemCard.getByText("read-only", { exact: true })).toHaveCount(0);
+        await itemCard.getByText("Technical details", { exact: true }).click();
+        await expect(itemCard.getByText("Catalog item ID: fixture-app", { exact: true })).toBeVisible();
 
         await page.getByText("More filters", { exact: true }).click();
         await expect(page.getByLabel("Tag")).toBeVisible();
@@ -28,7 +35,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("More filters · active")).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Clear filters", exact: true })).toHaveCount(0);
 
-        await page.getByText("Technical details", { exact: true }).click();
+        await page.locator("details").filter({ hasText: "Catalog format version" }).getByText("Technical details", { exact: true }).click();
         await expect(page.getByText("Catalog format version: v1")).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);

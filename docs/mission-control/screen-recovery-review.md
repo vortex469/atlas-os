@@ -1964,3 +1964,11 @@ proposals, so a missing item produces only the catalog lookup. The full
 Mission Control suite passes (2,792 tests across 181 files), the missing-item
 browser checks pass at 390px and 1280px, and lint and production build pass.
 Browser checks use synthetic fixtures and reject mutations.
+
+## Catalog card summary — 2026-10-28
+
+Catalog cards now show capabilities and tags as readable labels. The internal
+catalog item ID is available under collapsed Technical details. The full
+Mission Control suite passes (2,792 tests across 181 files), catalog browser
+checks pass at 390px and 1280px, and lint and production build pass. Browser
+checks use synthetic fixtures and reject mutations.

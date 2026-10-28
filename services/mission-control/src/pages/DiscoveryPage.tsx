@@ -616,7 +616,6 @@ function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
                     >
                         {item.name}
                     </Link>
-                    <p className="mt-1 text-xs text-slate-500">{item.id}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Badge>{formatLabel(item.type)}</Badge>
@@ -628,13 +627,17 @@ function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
                 {item.description}
             </p>
 
-            <ChipList label="Capabilities" values={item.capabilities} />
-            <ChipList label="Tags" values={item.tags} />
+            <ChipList label="Capabilities" values={item.capabilities} formatValue={formatCapability} />
+            <ChipList label="Tags" values={item.tags} formatValue={formatCapability} />
+            <details className="mt-4 border-t border-slate-800 pt-3">
+                <summary className="cursor-pointer text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                <p className="mt-2 break-all text-sm text-slate-400">Catalog item ID: {item.id}</p>
+            </details>
         </article>
     );
 }
 
-function ChipList({ label, values }: { label: string; values: string[] }) {
+function ChipList({ label, values, formatValue }: { label: string; values: string[]; formatValue: (value: string) => string }) {
     if (values.length === 0) {
         return null;
     }
@@ -650,7 +653,7 @@ function ChipList({ label, values }: { label: string; values: string[] }) {
                         key={value}
                         className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300"
                     >
-                        {value}
+                        {formatValue(value)}
                     </span>
                 ))}
             </div>
@@ -668,7 +671,12 @@ function Badge({ children }: { children: string }) {
 
 function formatLabel(value: string): string {
     return value
-        .split("_")
+        .split(/[_-]+/)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+function formatCapability(value: string): string {
+    const words = value.replace(/[_-]+/g, " ").trim();
+    return words ? words.charAt(0).toUpperCase() + words.slice(1) : value;
 }
