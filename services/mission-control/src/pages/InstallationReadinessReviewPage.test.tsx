@@ -54,7 +54,7 @@ describe("InstallationReadinessReviewPage", () => {
             <Route path="/installation/candidate-records/:candidateRecordId/readiness-review" element={<InstallationReadinessReviewPage />} />
         </Routes></MemoryRouter></StrictMode>);
         fireEvent.click(await screen.findByRole("button", { name: "Reload review" }));
-        await screen.findByRole("heading", { name: /Readiness gated/ });
+        await screen.findByRole("heading", { name: "Evidence check complete" });
         expect(getInstallationReadinessReview).toHaveBeenCalledTimes(2);
         expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
     });
@@ -66,7 +66,7 @@ describe("InstallationReadinessReviewPage", () => {
             .mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/installation/candidate-records/:candidateRecordId/readiness-review", element: <InstallationReadinessReviewPage /> }], { initialEntries: [`/installation/candidate-records/${uuid4}/readiness-review`] });
         render(<RouterProvider router={router} />);
-        fireEvent.click(await screen.findByRole("button", { name: "Review permission evidence statement" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Review permission choice" }));
         expect(screen.getByLabelText("Permission evidence confirmation")).toBeInTheDocument();
         const nextId = "00000000-0000-4000-8000-000000000002";
         await act(() => router.navigate(`/installation/candidate-records/${nextId}/readiness-review`));
@@ -76,7 +76,7 @@ describe("InstallationReadinessReviewPage", () => {
         const next = structuredClone(readinessGatedFixture);
         next.review.candidate_record_id = nextId; next.audit_evidence.candidate_record_id = nextId;
         await act(async () => resolveNext(next));
-        await screen.findByRole("button", { name: "Review permission evidence statement" });
+        await screen.findByRole("button", { name: "Review permission choice" });
         expect(screen.queryByLabelText("Permission evidence confirmation")).not.toBeInTheDocument();
         expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
     });
@@ -89,16 +89,21 @@ describe("InstallationReadinessReviewPage", () => {
         renderPage();
         expect(screen.getByRole("status")).toHaveTextContent(/loading installation readiness review/i);
         resolve(readinessGatedFixture);
-        expect(await screen.findByRole("heading", { name: /readiness gated — execution admission is not defined/i })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Evidence check complete" })).toBeInTheDocument();
+        expect(screen.queryByText("operator-a")).not.toBeVisible();
+        screen.getAllByText(readinessGatedFixture.review.review_fingerprint.value).forEach((node) => expect(node).not.toBeVisible());
+        fireEvent.click(screen.getByText("Review identity and technical codes"));
         expect(screen.getByText("Authenticated operator").nextSibling).toHaveTextContent("operator-a");
+        fireEvent.click(screen.getByText("Evidence chain (14 records)"));
         const chain = screen.getByRole("list", { name: "Installation evidence chain" });
         expect(within(chain).getAllByRole("listitem")).toHaveLength(14);
-        expect(within(chain).getByText(/v0.20 · candidate_record · current/i)).toBeInTheDocument();
-        expect(within(chain).getByText(/v0.33 · inert_delivery_receipt · current/i)).toBeInTheDocument();
+        expect(within(chain).getByText(/Saved candidate review · Current at last check/i)).toBeInTheDocument();
+        expect(within(chain).getByText(/Delivery receipt · Current at last check/i)).toBeInTheDocument();
+        within(chain).queryAllByText("a".repeat(64)).forEach((node) => expect(node).not.toBeVisible());
         expect(screen.getAllByText("a".repeat(64)).length).toBeGreaterThan(10);
-        expect(screen.getByRole("heading", { name: /required linkage and fingerprints/i })).toBeInTheDocument();
+        fireEvent.click(screen.getByText("Technical evidence links"));
         expect(screen.getByText("v033_verification_fingerprint")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: /read-only audit evidence/i })).toBeInTheDocument();
+        fireEvent.click(screen.getByText("Audit record and authority flags"));
         expect(screen.getByText("Mutation attempted").nextSibling).toHaveTextContent("false");
     });
 
@@ -106,11 +111,15 @@ describe("InstallationReadinessReviewPage", () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(blockedFixture);
         renderPage();
         expect(await screen.findByRole("heading", { name: "Blocked" })).toBeInTheDocument();
-        const blockers = screen.getByRole("list", { name: "Ordered readiness blockers" });
+        const blockers = screen.getByRole("list", { name: "Readiness issues" });
         const items = within(blockers).getAllByRole("listitem");
-        expect(items[0]).toHaveTextContent("Stale evidence");
-        expect(items[1]).toHaveTextContent("Installation capability unsupported");
-        expect(screen.getByText(/expired or stale evidence remains evidence only and blocks readiness/i)).toBeInTheDocument();
+        expect(items[0]).toHaveTextContent("The evidence is out of date");
+        expect(items[1]).toHaveTextContent("Atlas cannot install this application");
+        expect(screen.queryByText("stale_evidence")).not.toBeVisible();
+        fireEvent.click(screen.getByText("Review identity and technical codes"));
+        expect(screen.getByText("stale_evidence")).toBeVisible();
+        fireEvent.click(screen.getByText(/Evidence chain \(/));
+        expect(screen.getByText(/expired or stale evidence stays recorded but blocks readiness/i)).toBeInTheDocument();
     });
 
     it("renders redacted error and empty states without leaked details", async () => {
@@ -126,10 +135,10 @@ describe("InstallationReadinessReviewPage", () => {
     it("contains explicit non-authorizing copy and no effect controls or action navigation", async () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
         renderPage();
-        await waitFor(() => expect(screen.getByRole("heading", { name: /readiness gated/i })).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByRole("heading", { name: "Evidence check complete" })).toBeInTheDocument());
         const boundary = screen.getByLabelText("Read-only authority boundary");
-        expect(boundary).toHaveTextContent(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
-        expect(boundary).toHaveTextContent(/not approval, admission, authorization, installability, or executability/i);
+        expect(boundary).toHaveTextContent(/does not install anything or start work/i);
+        expect(boundary).toHaveTextContent(/does not approve or authorize installation/i);
         expect(screen.queryAllByRole("button")).toHaveLength(0);
         const links = screen.getAllByRole("link");
         expect(links).toHaveLength(1);
@@ -143,13 +152,17 @@ describe("InstallationReadinessReviewPage", () => {
         vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
         vi.mocked(createExecutionPermissionGrant).mockResolvedValue(grantResultFixture);
         renderPage();
-        expect(await screen.findByRole("heading", { name: "Active permission evidence" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Current record for later review" })).toBeInTheDocument();
+        screen.getAllByText("a".repeat(64)).forEach((node) => expect(node).not.toBeVisible());
+        fireEvent.click(screen.getByText("Record and evidence details"));
         expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
+        fireEvent.click(screen.getByText("Authority and retry details"));
         expect(screen.getByText(/permanent reservation: true/i)).toHaveTextContent(/retry allowed: false · replay allowed: false/i);
-        fireEvent.click(screen.getByRole("button", { name: "Review permission evidence statement" }));
-        expect(screen.getByLabelText("Permission evidence confirmation")).toHaveTextContent(/creates durable permission evidence only/i);
-        fireEvent.click(screen.getByRole("button", { name: "Record permission evidence" }));
+        fireEvent.click(screen.getByRole("button", { name: "Review permission choice" }));
+        expect(screen.getByLabelText("Permission evidence confirmation")).toHaveTextContent(/saves evidence for a later review only/i);
+        fireEvent.click(screen.getByRole("button", { name: "Save permission record" }));
         await waitFor(() => expect(createExecutionPermissionGrant).toHaveBeenCalled());
         expect(createExecutionPermissionGrant).toHaveBeenCalledWith(uuid4, expect.objectContaining({ confirmation_text: expect.stringContaining("This does not install or execute anything."), execution_authorized: false, mutation_allowed: false }), "csrf", "stable-key");
+        expect(within(screen.getByRole("list", { name: "Execution permission grants" })).getAllByRole("listitem")).toHaveLength(1);
     });
 });

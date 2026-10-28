@@ -21,13 +21,13 @@ describe("v0.34 installation readiness review release boundary", () => {
         expect(candidateContext).not.toMatch(/readiness-review[^\n]*(?:button|onClick|post|put|patch|delete)/i);
     });
 
-    it("keeps readiness read-only with manual reload and the v0.35 evidence confirmation", () => {
+    it("keeps the review read-only with manual reload and the v0.35 evidence confirmation", () => {
         expect(page).not.toMatch(/<(?:form|input|select|textarea)\b/i);
         expect(page).not.toMatch(/setInterval|setTimeout|useMutation|atlas\.(?:post|put|patch|delete)/i);
         expect(page.match(/<button\b/g)).toHaveLength(4);
         expect(page).toContain("Reload review");
-        expect(page).toContain("Review permission evidence statement");
-        expect(page).toContain("Record permission evidence");
+        expect(page).toContain("Review permission choice");
+        expect(page).toContain("Save permission record");
         for (const label of [
             "install now", "execute now", "run now", "deploy now", "dispatch now",
             "retry now", "resend now", "send to agent", "start workflow", "roll back now",
@@ -45,9 +45,10 @@ describe("v0.34 installation readiness review release boundary", () => {
         expect(page).toContain("mutation_attempted");
     });
 
-    it("states the complete non-authorizing boundary and Home Assistant blocker", () => {
-        expect(page).toMatch(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
+    it("states the plain non-authorizing boundary and Home Assistant blocker", () => {
+        expect(page).toMatch(/does not install anything or start work/i);
+        expect(page).toMatch(/does not approve or authorize installation/i);
         expect(page).toContain("installation_capability_unsupported");
-        expect(page).toContain("Installation capability unsupported");
+        expect(page).toContain("Atlas cannot install this application");
     });
 });
