@@ -208,7 +208,8 @@ describe("OperationsPage", () => {
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
         fireEvent.click(screen.getByText("More filters", { exact: true }));
         expect(within(screen.getByLabelText("Provider")).getByRole("option", { name: "Ollama" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
+        expect(screen.getByRole("status")).toHaveTextContent("Expired entries cannot be deleted until action history loads successfully.");
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {

@@ -216,7 +216,8 @@ export function OperationsPage() {
     );
 
     const pruneHistory = useCallback(async () => {
-        const retentionDays = summary?.retention_days ?? 90;
+        if (!summary || historyError) return;
+        const retentionDays = summary.retention_days;
         const confirmed = window.confirm(
             `Delete history records older than ${retentionDays} days? This does not undo provider actions.`,
         );
@@ -255,7 +256,7 @@ export function OperationsPage() {
         } finally {
             setIsPruning(false);
         }
-    }, [loadHistory, offset, summary?.retention_days]);
+    }, [historyError, loadHistory, offset, summary]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -469,6 +470,7 @@ export function OperationsPage() {
                         </p>
                     </div>
                 </div>
+                {historyError && <p role="status" className="text-sm text-amber-200">Expired entries cannot be deleted until action history loads successfully.</p>}
                 {operationError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{operationError}</p>}
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
@@ -496,7 +498,7 @@ export function OperationsPage() {
                         <button
                             type="button"
                             onClick={() => void pruneHistory()}
-                            disabled={isPruning || !summary}
+                            disabled={isPruning || !summary || Boolean(historyError)}
                             className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isPruning ? "Deleting..." : "Delete expired entries"}

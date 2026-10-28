@@ -1083,7 +1083,8 @@ Action records now load independently from retention details and provider
 filter options. A failure in either optional read leaves the action list
 available and identifies only the affected information as unavailable.
 When the action-list read fails, successfully loaded retention details and
-provider filter options remain available for their separate history controls.
+provider filter options remain visible. Expired-record deletion stays disabled
+until action history loads successfully.
 
 Provider action failures now lead with the uncertain outcome and direct the
 operator to Action history before retrying. Raw provider errors are available
