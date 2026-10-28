@@ -59,18 +59,30 @@ describe("InstallationPlanReview", () => {
     ])("renders the closed %s status without execution authority", (status) => {
         render(<InstallationPlanReview plan={genericPlan(status)} isLoading={false} unavailable={false} />);
         const panel = screen.getByRole("heading", { name: "Installation plan review" }).closest("section")!;
-        expect(within(panel).getAllByText(status.replaceAll("_", " "), { exact: false }).length).toBeGreaterThan(0);
+        const labels: Record<InstallationPlanStatus, string> = {
+            conflicted: "Evidence conflicts",
+            missing_deployment_artifact: "Deployment file missing",
+            incompatible: "Requirements do not match",
+            stale_evidence: "Evidence is out of date",
+            insufficient_information: "More information needed",
+            plan_ready_for_review: "Ready for review",
+        };
+        expect(within(panel).getByText(labels[status])).toBeInTheDocument();
         expect(within(panel).queryByRole("button")).not.toBeInTheDocument();
         expect(within(panel).queryByRole("link")).not.toBeInTheDocument();
     });
 
-    it("keeps blockers, confirmations, risks, provenance, and fingerprint informational", () => {
+    it("puts blockers and review notes first and keeps identity evidence available on demand", async () => {
         render(<InstallationPlanReview plan={genericPlan()} isLoading={false} unavailable={false} />);
-        expect(screen.getByText(FINGERPRINT)).toBeInTheDocument();
+        expect(screen.getByText("1 issue blocks this plan; 1 review note. Installation cannot start.")).toBeInTheDocument();
+        expect(screen.getByText(/No supported deployment file was found — Home Assistant/i)).toBeInTheDocument();
+        expect(screen.getByText(/Review risk: the storage migration risk/i)).toBeInTheDocument();
+        expect(screen.getByText(/High priority · Compatibility needs review/i)).toBeInTheDocument();
+        expect(screen.queryByText(FINGERPRINT)).not.toBeVisible();
+        const identity = screen.getByText("Plan identity and evidence", { exact: true });
+        await userEvent.click(identity);
+        expect(screen.getByText(FINGERPRINT)).toBeVisible();
         expect(screen.getByText("Integrity linkage only — not approval")).toBeInTheDocument();
-        expect(screen.getByText("1 unresolved blocker; 1 required operator confirmation; this plan is not executable.")).toBeInTheDocument();
-        expect(screen.getByText(/Confirm Risk — Confirm the storage migration risk/i)).toBeInTheDocument();
-        expect(screen.getByText(/High · Compatibility Warning/i)).toBeInTheDocument();
         expect(screen.getByText(/Claim: deployment-binding · Source class: deployment_binding/i)).toHaveTextContent("Observed at: None · Attested at: None");
         expect(screen.queryByRole("button", { name: /approve|confirm|install|execute|deploy|convert/i })).not.toBeInTheDocument();
     });
@@ -88,31 +100,35 @@ describe("InstallationPlanReview", () => {
     it("shows the exact Home Assistant missing-artifact result without action controls", async () => {
         render(<InstallationPlanReview plan={homeAssistantGoldenPlan()} isLoading={false} unavailable={false} />);
         expect(screen.getByText(FINGERPRINT)).not.toBeVisible();
-        const disclosure = screen.getByText("Plan identity and evidence", { exact: true });
-        for (const name of ["Blockers", "Required operator confirmations", "Risks", "Missing facts"]) {
+        const detailsDisclosure = screen.getByText("More plan details", { exact: true });
+        const identityDisclosure = screen.getByText("Plan identity and evidence", { exact: true });
+        for (const name of ["What blocks this plan", "Items to review", "Risks to review"]) {
             const heading = screen.getByRole("heading", { name });
             expect(heading).toBeVisible();
-            expect(heading.compareDocumentPosition(disclosure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+            expect(heading.compareDocumentPosition(detailsDisclosure) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         }
-        const blockers = screen.getByRole("heading", { name: "Blockers" }).parentElement!;
+        const blockers = screen.getByRole("heading", { name: "What blocks this plan" }).parentElement!;
         expect(within(blockers).getAllByRole("listitem")).toHaveLength(5);
         expect(within(blockers).queryByText(/Required Operator Confirmation/)).not.toBeInTheDocument();
-        expect(screen.getByText("5 unresolved blockers; 4 required operator confirmations; this plan is not executable.")).toBeVisible();
-        expect(within(blockers).getByText(/Missing Prerequisite Fact — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
-        expect(within(blockers).getByText(/Missing Prerequisite Fact — Requires capability container-orchestration/)).toBeVisible();
-        const confirmations = screen.getByRole("heading", { name: "Required operator confirmations" }).parentElement!;
+        expect(screen.getByText("5 issues block this plan; 4 review notes. Installation cannot start.")).toBeVisible();
+        expect(within(blockers).getByText(/A required fact is not available — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        expect(within(blockers).getByText(/A required fact is not available — Requires capability container-orchestration/)).toBeVisible();
+        const confirmations = screen.getByRole("heading", { name: "Items to review" }).parentElement!;
         expect(within(confirmations).getAllByRole("listitem")).toHaveLength(4);
-        expect(within(confirmations).getByText(/Review this informational assumption: Target environment must be checked\. Related prerequisite: Requires capability container-orchestration/)).toBeVisible();
-        expect(within(confirmations).getByText(/Review this informational prerequisite: Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        expect(within(confirmations).getByText(/Review assumption — Target environment must be checked\. Related prerequisite: Requires capability container-orchestration/)).toBeVisible();
+        expect(within(confirmations).getByText(/Review prerequisite — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
         const rawBlocker = screen.getByText(/Blocker code: missing_prerequisite_fact · Subject ID: 833c8f05ff5931f984ba64333f4414d2d509b6e57c315889a1b045828982e305/);
         const exactPrompt = screen.getByText(/Exact prompt: Review the informational prerequisite 833c8f05ff5931f984ba64333f4414d2d509b6e57c315889a1b045828982e305/);
         expect(rawBlocker).not.toBeVisible();
         expect(exactPrompt).not.toBeVisible();
-        await userEvent.click(disclosure);
+        await userEvent.click(detailsDisclosure);
+        for (const name of ["Missing facts", "Compatibility", "Prerequisites", "Relationships", "Assumptions"]) {
+            expect(screen.getByRole("heading", { name })).toBeVisible();
+        }
+        await userEvent.click(identityDisclosure);
         expect(rawBlocker).toBeVisible();
         expect(exactPrompt).toBeVisible();
         expect(screen.getByText(FINGERPRINT)).toBeVisible();
-        expect(screen.getAllByText(/Missing Deployment Artifact/).length).toBeGreaterThan(0);
         expect(screen.getAllByText("2026.8.3", { selector: "dd" })).toHaveLength(2);
         expect(screen.getByText("d5-home-assistant")).toBeInTheDocument();
         expect(screen.getByText("Home Assistant")).toBeInTheDocument();
@@ -136,19 +152,16 @@ describe("InstallationPlanReview", () => {
         expect(screen.getByText(/Claim: catalog_entry/)).toHaveTextContent("Source class: curated_catalog");
         expect(screen.getByText(/Claim: freshness/)).toHaveTextContent("Observed at: 2026-08-25T00:00:00Z");
         expect(screen.getByText(/Claim: immutable_image_release · Source class: image_release_evidence/)).toBeInTheDocument();
-        expect(screen.getByText("5 unresolved blockers; 4 required operator confirmations; this plan is not executable.")).toBeInTheDocument();
-        expect(screen.getByText(/Missing Immutable Image Identity/)).toBeInTheDocument();
-        expect(screen.getByText(/Unknown Compatibility/)).toBeInTheDocument();
+        expect(screen.getByText("5 issues block this plan; 4 review notes. Installation cannot start.")).toBeInTheDocument();
+        expect(screen.getByText(/The image has no fixed version identity/)).toBeInTheDocument();
         for (const code of ["Deployment Artifact", "Immutable Image Identity", "Prerequisite Fact", "Compatibility Fact"]) {
             expect(screen.getAllByText(new RegExp(code)).length).toBeGreaterThan(0);
         }
         expect(screen.getByText("No risks reported.")).toBeInTheDocument();
-        expect(screen.getAllByText(/Review the informational assumption/)).toHaveLength(2);
-        expect(screen.getAllByText(/Review the informational prerequisite/)).toHaveLength(2);
-        expect(screen.getByRole("heading", { name: "Blockers" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "What blocks this plan" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Missing facts" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Required operator confirmations" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Risks" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Items to review" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Risks to review" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Provenance" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Accepted evidence" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Relationships" })).toBeInTheDocument();
