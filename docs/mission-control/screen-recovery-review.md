@@ -576,6 +576,14 @@ advanced date filter clarifies that selected dates cover full UTC days. The
 focused page suite passes (8 tests), responsive browser checks pass at 390px
 and 1280px (2 tests), and lint/build pass.
 
+## Dashboard Agent card label — 2026-10-28
+
+The dashboard card is now titled “Agent details,” matching its identity and
+read-only links. It no longer suggests that the card reports Agent health or
+workflow status, which its source does not provide. The focused component
+suites pass (60 tests), all 16 built app-shell and overview browser checks pass,
+and lint/build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact
