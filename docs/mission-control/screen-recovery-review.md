@@ -918,3 +918,13 @@ could be mistaken for a published GitHub release, so availability now describes
 the API connection separately from the label. No Core contract or runtime
 behavior changed. Focused shell tests, shell browser checks, lint, production
 build, and `git diff --check` pass.
+
+## Dashboard Agent and provider loading — 2026-10-28
+
+The Agent and Providers cards now distinguish the first load from unavailable,
+missing, and unreadable data. A slow first response no longer looks like a
+missing provider configuration, and the Agent card stops saying “Loading” once
+loading ends. Stale provider lists are labeled as last available. Requests and
+operator authority are unchanged. Focused component and structural tests,
+responsive overview browser checks, lint, production build, and
+`git diff --check` pass.

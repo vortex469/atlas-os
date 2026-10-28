@@ -170,13 +170,13 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
             <Card title="Agent details" showSourceNote={false}>
-                <AgentOverviewContent evidence={evidence.agent} />
+                <AgentOverviewContent evidence={evidence.agent} loading={loading} />
             </Card>
             <Card title="AI provider" evidence={evidence.ai} showSourceNote={evidence.ai?.data !== undefined} loading={loading}>
                 <LocalAiContent evidence={evidence.ai} loading={loading} />
             </Card>
-            <Card title="Providers" evidence={evidence.providers} loading={loading}>
-                <ProviderOverviewContent evidence={evidence.providers} />
+            <Card title="Providers" showSourceNote={false}>
+                <ProviderOverviewContent evidence={evidence.providers} loading={loading} />
             </Card>
         </div>
         <Card title="Recent Activity" showSourceNote={false}>

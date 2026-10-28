@@ -6,12 +6,30 @@ import { Overview } from "./MissionControl";
 import type { OverviewEvidence } from "./useOverviewEvidence";
 
 const provider = (id: string, status: unknown) => ({ id, name: id, health: { status } });
-function show(evidence: OverviewEvidence) {
-    return render(<MemoryRouter><Overview evidence={evidence} /></MemoryRouter>);
+function show(evidence: OverviewEvidence, loading = false) {
+    return render(<MemoryRouter><Overview evidence={evidence} loading={loading} /></MemoryRouter>);
 }
 const registry = () => within(screen.getByRole("region", { name: "Providers" }));
 
 describe("integrated agent/provider evidence", () => {
+    it("distinguishes first-load, unavailable, and missing states", () => {
+        const view = show({}, true);
+        const agent = within(screen.getByRole("region", { name: "Agent details" }));
+        expect(agent.getByText("Loading Agent details…")).toBeVisible();
+        expect(registry().getByText("Loading providers…")).toBeVisible();
+        expect(registry().queryByText("Provider configuration unknown.")).not.toBeInTheDocument();
+
+        view.rerender(<MemoryRouter><Overview evidence={{ agent: { unavailable: true }, providers: { unavailable: true } }} /></MemoryRouter>);
+        expect(agent.getByText("Agent details could not be loaded.")).toBeVisible();
+        expect(registry().getByText("Provider list could not be loaded.")).toBeVisible();
+
+        view.rerender(<MemoryRouter><Overview evidence={{}} /></MemoryRouter>);
+        expect(agent.getByText("Agent details are not available.")).toBeVisible();
+        expect(agent.queryByText("Loading Agent details…")).not.toBeInTheDocument();
+        expect(registry().getByText("Provider list is not available.")).toBeVisible();
+        expect(registry().queryByText("Loading providers…")).not.toBeInTheDocument();
+    });
+
     it("keeps identity separate from health and supplies existing read-only navigation", async () => {
         const user = userEvent.setup();
         show({ agent: { data: { app_name: "Development Agent", token: "private-canary" } }, providers: { data: [provider("alpha", "healthy"), provider("beta", "failed"), provider("gamma", "offline"), provider("delta", "degraded"), provider("epsilon", "configured")] } });
@@ -67,7 +85,8 @@ describe("integrated agent/provider evidence", () => {
     });
     it.each([undefined, null, {}, { providers: [] }])("does not present malformed or missing registries as empty: %s", data => {
         show({ providers: { data } });
-        expect(registry().getByText("Provider configuration unknown.")).toBeInTheDocument();
+        const expected = data === undefined ? "Provider list is not available." : "Provider list could not be read.";
+        expect(registry().getByText(expected)).toBeInTheDocument();
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
     });
     it("rejects malformed and duplicate identities and unsafe links even in expanded rows", () => {

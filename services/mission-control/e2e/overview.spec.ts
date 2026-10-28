@@ -1,4 +1,33 @@
 import { expect, test } from './mission-control-fixtures';
+
+test('overview separates initial Agent and provider loading from unavailable data', async ({ page }) => {
+    let releaseAgent!: () => void;
+    let releaseProviders!: () => void;
+    const agentGate = new Promise<void>(resolve => { releaseAgent = resolve; });
+    const providersGate = new Promise<void>(resolve => { releaseProviders = resolve; });
+    await page.route('**/agent-api/api/v1/agent/info', async route => {
+        await agentGate;
+        await route.fallback();
+    });
+    await page.route('**/api/v1/providers', async route => {
+        await providersGate;
+        await route.fallback();
+    });
+    await page.goto('/');
+    const agent = page.getByRole('region', { name: 'Agent details' });
+    const providers = page.getByRole('region', { name: 'Providers' });
+    try {
+        await expect(agent.getByText('Loading Agent details…')).toBeVisible();
+        await expect(providers.getByText('Loading providers…')).toBeVisible();
+        await expect(providers.getByText('Provider configuration unknown.')).toHaveCount(0);
+    } finally {
+        releaseAgent();
+        releaseProviders();
+    }
+    await expect(agent.getByText('This report includes only the Agent name and version.')).toBeVisible();
+    await expect(providers.getByText('Saved providers and the status Atlas reports for each one.')).toBeVisible();
+});
+
 for (const width of [320, 768, 1440]) {
     test(`overview fits ${width}px and links to existing detail routes`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
