@@ -508,6 +508,8 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Resume Approved Implementation" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 2, name: "Run approved change" })).toBeInTheDocument();
+        expect(screen.getByText("The change is approved. Resume the workflow to run it. Verification and commit still need separate approvals.")).toBeInTheDocument();
     });
 
     it("does not show resume action when implementation is pending", async () => {
@@ -627,6 +629,8 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 2, name: "Run approved checks" })).toBeInTheDocument();
+        expect(screen.getByText("The checks are approved. Resume the workflow to run them. The local commit still needs separate approval.")).toBeInTheDocument();
     });
 
     it("shows Resume Approved Commit for approved commit state", async () => {
@@ -639,6 +643,8 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Resume Approved Commit" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 2, name: "Finish approved commit" })).toBeInTheDocument();
+        expect(screen.getByText("The local commit is approved. Resume the workflow to finish the change.")).toBeInTheDocument();
     });
 
     it("never shows resume action for blocked workflow", async () => {

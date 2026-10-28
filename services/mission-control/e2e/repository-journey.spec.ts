@@ -6,7 +6,7 @@ async function fitsViewport(page: Page) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`repository journey keeps every approval and resume separate at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, false, { baseURL });
         await page.setViewportSize({ width, height: 844 });
@@ -47,6 +47,8 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);
         await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();
         await expect(page.getByRole("button", { name: "Resume Approved Implementation", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Run approved change", exact: true })).toBeVisible();
+        await expect(page.getByText("The change is approved. Resume the workflow to run it. Verification and commit still need separate approvals.", { exact: true })).toBeVisible();
         await expect(page.getByText("Implementation approved. Resume to run this change.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(5);
         await expect(page.getByRole("button", { name: "Approve Verification", exact: true })).toHaveCount(0);
@@ -58,6 +60,8 @@ for (const width of [390, 1280]) {
         expect(fixture.writes).toHaveLength(6);
         await page.getByRole("button", { name: "Approve Verification", exact: true }).click();
         await expect(page.getByRole("button", { name: "Resume Approved Verification", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Run approved checks", exact: true })).toBeVisible();
+        await expect(page.getByText("The checks are approved. Resume the workflow to run them. The local commit still needs separate approval.", { exact: true })).toBeVisible();
         await expect(page.getByText("Verification approved. Resume to run the checks.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(7);
         await page.getByRole("button", { name: "Resume Approved Verification", exact: true }).click();
@@ -68,6 +72,8 @@ for (const width of [390, 1280]) {
         expect(fixture.writes).toHaveLength(8);
         await page.getByRole("button", { name: "Approve Commit", exact: true }).click();
         await expect(page.getByRole("button", { name: "Resume Approved Commit", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Finish approved commit", exact: true })).toBeVisible();
+        await expect(page.getByText("The local commit is approved. Resume the workflow to finish the change.", { exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Resume to finish the local commit.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(9);
         await page.getByRole("button", { name: "Resume Approved Commit", exact: true }).click();
