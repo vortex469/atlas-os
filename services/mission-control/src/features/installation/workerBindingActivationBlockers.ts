@@ -46,6 +46,6 @@ const BLOCKER_LABELS: Record<WorkerBindingBlocker, string> = {
     execution_start_boundary_not_defined: "Starting execution is not available",
 };
 
-export function workerBindingActivationBlockerLabel(blocker: WorkerBindingBlocker) {
-    return BLOCKER_LABELS[blocker];
+export function workerBindingActivationBlockerLabel(blocker: string) {
+    return BLOCKER_LABELS[blocker as WorkerBindingBlocker] ?? "A required prerequisite is not met";
 }

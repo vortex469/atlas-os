@@ -17,9 +17,14 @@ describe("v0.53 runtime prerequisite presentation", () => {
         responses();
         const { container } = render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
         expect(screen.getByRole("status")).toHaveTextContent("Loading");
-        expect(await screen.findByText(/Core recorded prerequisite evidence/)).toBeVisible();
-        expect(screen.getAllByText(/Runtime prerequisites remain incomplete/).every((node) => node.textContent?.includes("Worker start and execution remain blocked"))).toBe(true);
-        const details = screen.getByText("Advanced v0.53 evidence").closest("details");
+        expect(await screen.findByText("Runtime prerequisite record saved")).toBeVisible();
+        expect(screen.getByText(/Runtime readiness remains incomplete. Worker start and execution are blocked/)).toBeVisible();
+        expect(screen.getByText("Runtime readiness is incomplete")).toBeVisible();
+        expect(screen.getByText("7 requirements remain unavailable.")).toBeVisible();
+        const blockers = screen.getByText("Show what remains").closest("details");
+        expect(blockers).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("Runtime readiness blockers")).toHaveTextContent(/The worker activation runtime is not available.*Contact with the worker store is not available.*Contact with the worker runtime is not available/i);
+        const details = screen.getByText("Advanced details").closest("details");
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(runtimeResult.record.prerequisite_id)).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
@@ -28,34 +33,34 @@ describe("v0.53 runtime prerequisite presentation", () => {
     it("shows expired evidence without suggesting runtime readiness", async () => {
         responses({ ...runtimeResult, status: { ...runtimeResult.status, lifecycle: "expired", evaluated_at: runtimeResult.status.valid_until } });
         render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
-        expect(await screen.findByText(/prerequisite evidence has expired/)).toBeVisible();
-        expect(screen.getAllByText(/Worker start and execution remain blocked/)[0]).toBeVisible();
+        expect(await screen.findByText(/This record has expired/)).toBeVisible();
+        expect(screen.getByText(/Worker start and execution are blocked/)).toBeVisible();
     });
     it.each([401, 403, 404, 409, 503])("redacts failure %s without retry controls", async (status) => {
         vi.mocked(atlas.get).mockRejectedValue({ response: { status, data: { message: "secret endpoint" } } });
         render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
-        expect(await screen.findByText(/Runtime prerequisite evidence is unavailable/)).toBeVisible();
+        expect(await screen.findByText(/Runtime readiness is unavailable/)).toBeVisible();
         expect(screen.queryByText(/secret endpoint/)).not.toBeInTheDocument();
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
     it("distinguishes an empty owned collection", async () => {
         vi.mocked(atlas.get).mockResolvedValue({ data: { ...runtimeCollection, count: 0, items: [] } });
         render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
-        expect(await screen.findByText(/Core has no recorded runtime prerequisite evidence/)).toBeVisible();
+        expect(await screen.findByText(/No runtime readiness record is available/)).toBeVisible();
     });
     it("clears evidence on scope change and ignores late responses", async () => {
         responses();
         const { rerender } = render(<WorkerActivationRuntimePrerequisite receipt={receipt} />);
-        await screen.findByText(/Core recorded prerequisite evidence/);
+        await screen.findByText("Runtime prerequisite record saved");
         let resolve!: (value: unknown) => void;
         vi.mocked(atlas.get).mockReturnValueOnce(new Promise((done) => { resolve = done; }));
         rerender(<WorkerActivationRuntimePrerequisite receipt={{ ...receipt, operatorId: "other-owner" }} />);
-        expect(screen.queryByText(/Core recorded prerequisite evidence/)).not.toBeInTheDocument();
+        expect(screen.queryByText("Runtime prerequisite record saved")).not.toBeInTheDocument();
         vi.mocked(atlas.get).mockRejectedValueOnce(new Error("forbidden"));
         rerender(<WorkerActivationRuntimePrerequisite receipt={{ ...receipt, admissionId: "00000000-0000-5000-8000-000000000054" }} />);
         await act(async () => resolve({ data: runtimeCollection }));
-        expect(await screen.findByText(/Runtime prerequisite evidence is unavailable/)).toBeVisible();
-        expect(screen.queryByText(/Core recorded prerequisite evidence/)).not.toBeInTheDocument();
+        expect(await screen.findByText(/Runtime readiness is unavailable/)).toBeVisible();
+        expect(screen.queryByText("Runtime prerequisite record saved")).not.toBeInTheDocument();
     });
     it("ignores a valid item response that arrives after its owner changes", async () => {
         let resolve!: (value: unknown) => void;
@@ -67,14 +72,14 @@ describe("v0.53 runtime prerequisite presentation", () => {
         vi.mocked(atlas.get).mockRejectedValueOnce(new Error("forbidden"));
         rerender(<WorkerActivationRuntimePrerequisite receipt={{ ...receipt, operatorId: "other-owner" }} />);
         await act(async () => resolve({ data: runtimeResult }));
-        expect(await screen.findByText(/Runtime prerequisite evidence is unavailable/)).toBeVisible();
-        expect(screen.queryByText(/Core recorded prerequisite evidence/)).not.toBeInTheDocument();
+        expect(await screen.findByText(/Runtime readiness is unavailable/)).toBeVisible();
+        expect(screen.queryByText("Runtime prerequisite record saved")).not.toBeInTheDocument();
     });
     it("is nested under the exact v0.52 receipt in the existing workflow", async () => {
         vi.mocked(atlas.get).mockResolvedValueOnce({ data: receiptFixture });
         responses();
         render(<ControlledWorkerQueueReceipt candidateId={receipt.candidateId} admissionId={receipt.admissionId} operatorId={receipt.operatorId} />);
-        expect(await screen.findByText(/Core recorded prerequisite evidence/)).toBeVisible();
+        expect(await screen.findByText("Runtime prerequisite record saved")).toBeVisible();
         expect(screen.getByRole("region", { name: "Controlled queue receipt state" })).toContainElement(screen.getByRole("region", { name: "Worker runtime prerequisite state" }));
     });
 });
