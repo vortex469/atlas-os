@@ -43,4 +43,25 @@ describe("delivery activation preflight presentation", () => {
         const labels = Array.from(container.querySelectorAll("button, a")).map((node) => node.textContent).join(" ");
         expect(labels).not.toMatch(/activate|send|deliver|run|install|execute|deploy|dispatch|start workflow|rollback/i);
     });
+    it("withholds creation until records load and after an uncertain attempt for the same preparation", async () => {
+        const preparation = { schema: "delivery-activation-preflight-create-v1" as const, delivery_preparation_id: "new-preparation", preparation_fingerprint: fixture.result.preparation_fingerprint };
+        let rejectList: (error: Error) => void = () => undefined;
+        vi.mocked(listDeliveryActivationPreflights).mockReturnValueOnce(new Promise((_, reject) => { rejectList = reject; }));
+        const failedRead = render(<DeliveryActivationPreflights preparations={[preparation]} csrfToken="csrf" />);
+        rejectList(new Error("list unavailable"));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: /create durable preflight evidence only/i })).not.toBeInTheDocument();
+        failedRead.unmount();
+
+        vi.mocked(listDeliveryActivationPreflights).mockResolvedValueOnce({ preflights: [fixture], nextCursor: null });
+        vi.mocked(createDeliveryActivationPreflight).mockRejectedValueOnce(new Error("request outcome unknown"));
+        vi.mocked(getDeliveryActivationPreflight).mockResolvedValueOnce(fixture);
+        const user = userEvent.setup();
+        render(<DeliveryActivationPreflights preparations={[preparation]} csrfToken="csrf" />);
+        await user.click(await screen.findByRole("button", { name: /create durable preflight evidence only/i }));
+        await user.click(screen.getByRole("button", { name: /confirm durable evidence creation only/i }));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("heading", { name: /confirm creation of durable preflight/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /create durable preflight evidence only/i })).not.toBeInTheDocument();
+    });
 });

@@ -23,6 +23,7 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [recording, setRecording] = useState(false);
+    const [attemptedApprovals, setAttemptedApprovals] = useState<Set<string>>(() => new Set());
 
     useEffect(() => {
         let current = true;
@@ -40,19 +41,21 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
     };
     const record = async () => {
         if (!confirming || !csrfToken || recording) return;
+        const approvalIntentId = confirming.approval_intent_id;
+        setAttemptedApprovals((current) => new Set(current).add(approvalIntentId));
         setRecording(true); setError(null);
         try {
             const value = await recordInstallationExecutionRequest(confirming, csrfToken, executionRequestIdempotencyKey());
             setRequests((current) => [value, ...current.filter((item) => item.execution_request_id !== value.execution_request_id)]);
             setReviewed(value); setConfirming(null);
-        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The non-executing execution request record could not be preserved.")); }
+        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The non-executing execution request record could not be preserved.")); setConfirming(null); }
         finally { setRecording(false); }
     };
 
     const recordedApprovals = new Set(requests.map((request) => request.linkage.approval_intent_id));
     const eligible = evidenceBundles.flatMap((bundle) => {
         const intent = intents.find((value) => value.approval_intent_id === bundle.agent_request.approval.approval_intent_id && value.approved_subject.candidate_record_id === bundle.agent_request.approval.candidate_record_id);
-        if (!intent || recordedApprovals.has(intent.approval_intent_id) || bundle.agent_validation.status !== "valid_but_unsupported") return [];
+        if (!intent || recordedApprovals.has(intent.approval_intent_id) || attemptedApprovals.has(intent.approval_intent_id) || bundle.agent_validation.status !== "valid_but_unsupported") return [];
         return [{ intent, bundle }];
     });
 
@@ -72,14 +75,14 @@ export function InstallationExecutionRequests({ intents, csrfToken, evidenceBund
                 <button type="button" onClick={() => void review(request.execution_request_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review immutable request record</button>
             </li>)}
         </ul>}
-        {!loading && eligible.length === 0 && <p className="mt-4 text-sm text-slate-400">No exact fresh operator-submitted validation evidence is available for record preservation.</p>}
-        {!loading && eligible.length > 0 && <ul aria-label="Evidence eligible for request recording" className="mt-4 space-y-2">
+        {!loading && !error && eligible.length === 0 && <p className="mt-4 text-sm text-slate-400">No exact fresh operator-submitted validation evidence is available for record preservation.</p>}
+        {!loading && !error && eligible.length > 0 && <ul aria-label="Evidence eligible for request recording" className="mt-4 space-y-2">
             {eligible.map(({ intent, bundle }) => <li key={intent.approval_intent_id} className="rounded-md border border-amber-400/30 p-3">
                 <p className="break-all text-xs text-slate-300">Exact candidate {intent.approved_subject.candidate_record_id} · approval {intent.approval_intent_id} · Agent request {bundle.agent_request.request_id}</p>
                 {csrfToken ? <button type="button" onClick={() => setConfirming({ schema: "installation-execution-request-create-v1", candidate_record_id: intent.approved_subject.candidate_record_id, approval_intent_id: intent.approval_intent_id, agent_request: bundle.agent_request, agent_validation: bundle.agent_validation })} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Preserve non-executing execution request record only</button> : <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required.</p>}
             </li>)}
         </ul>}
-        {confirming && <Confirmation value={confirming} recording={recording} onConfirm={() => void record()} onCancel={() => setConfirming(null)} />}
+        {confirming && !error && <Confirmation value={confirming} recording={recording} onConfirm={() => void record()} onCancel={() => setConfirming(null)} />}
         {reviewed && <RequestDetails request={reviewed} />}
         <InstallationDispatchHandoffs executionRequests={requests} csrfToken={csrfToken} />
     </section>;

@@ -19,9 +19,10 @@ describe("installation dispatch handoff presentation", () => {
     it("renders loading, redacted error, empty, default-disabled, and Home Assistant states", async () => {
         let reject: (error: Error) => void = () => undefined;
         vi.mocked(listInstallationDispatchHandoffs).mockReturnValueOnce(new Promise((_, fail) => { reject = fail; }));
-        const view = render(<InstallationDispatchHandoffs executionRequests={[]} csrfToken={null} />);
+        const view = render(<InstallationDispatchHandoffs executionRequests={[request]} csrfToken="csrf" />);
         expect(screen.getByText(/loading dispatch handoff records/i)).toBeInTheDocument(); reject(new Error("credential /internal/path 10.0.0.1"));
         await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        expect(screen.queryByRole("button", { name: /preserve non-delivering handoff record only/i })).not.toBeInTheDocument();
         expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i); view.unmount();
         render(<InstallationDispatchHandoffs executionRequests={[]} csrfToken={null} />);
         expect(await screen.findByText(/no installation dispatch handoff records/i)).toBeInTheDocument();
@@ -48,5 +49,27 @@ describe("installation dispatch handoff presentation", () => {
         expect(preserveInstallationDispatchHandoff).toHaveBeenCalledWith({ schema: "installation-dispatch-handoff-create-v1", execution_request_id: request.execution_request_id }, "csrf", "handoff-key");
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
         const labels = Array.from(container.querySelectorAll("button, a")).map((node) => node.textContent).join(" "); expect(labels).not.toMatch(/install now|run|execute|deploy|dispatch|deliver|send to agent|start workflow|rollback/i);
+    });
+
+    it("withholds handoff preservation until records load and after an uncertain attempt for the same request", async () => {
+        const otherRequest = { ...request, execution_request_id: "00000000-0000-4000-8000-000000000099" };
+        let rejectList: (error: Error) => void = () => undefined;
+        vi.mocked(listInstallationDispatchHandoffs).mockReturnValueOnce(new Promise((_, reject) => { rejectList = reject; }));
+        const failedRead = render(<InstallationDispatchHandoffs executionRequests={[otherRequest]} csrfToken="csrf" />);
+        rejectList(new Error("list unavailable"));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: /preserve non-delivering handoff record only/i })).not.toBeInTheDocument();
+        failedRead.unmount();
+
+        vi.mocked(listInstallationDispatchHandoffs).mockResolvedValueOnce([handoff]);
+        vi.mocked(preserveInstallationDispatchHandoff).mockRejectedValueOnce(new Error("request outcome unknown"));
+        vi.mocked(getInstallationDispatchHandoff).mockResolvedValueOnce(handoff);
+        const user = userEvent.setup();
+        render(<InstallationDispatchHandoffs executionRequests={[otherRequest]} csrfToken="csrf" />);
+        await user.click(await screen.findByRole("button", { name: /preserve non-delivering handoff record only/i }));
+        await user.click(screen.getByRole("button", { name: /confirm handoff record preservation only/i }));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("heading", { name: /confirm preservation of a non-delivering handoff record only/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /preserve non-delivering handoff record only/i })).not.toBeInTheDocument();
     });
 });

@@ -19,6 +19,7 @@ export function DeliveryEnablements({ candidates = [], csrfToken }: { candidates
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [attemptedPreflights, setAttemptedPreflights] = useState<Set<string>>(() => new Set());
 
     useEffect(() => {
         let current = true;
@@ -36,16 +37,18 @@ export function DeliveryEnablements({ candidates = [], csrfToken }: { candidates
     };
     const create = async () => {
         if (!confirming || !csrfToken || creating) return;
+        const preflightId = confirming.create.preflight_id;
+        setAttemptedPreflights((current) => new Set(current).add(preflightId));
         setCreating(true); setError(null);
         try {
             const value = await createDeliveryEnablement(confirming.create, csrfToken, deliveryEnablementIdempotencyKey());
             setRecords((current) => [value, ...current.filter((item) => item.record.enablement_id !== value.record.enablement_id)]);
             setReviewed(value); setConfirming(null);
-        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "Durable operator enablement evidence could not be created.")); }
+        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "Durable operator enablement evidence could not be created.")); setConfirming(null); }
         finally { setCreating(false); }
     };
     const used = new Set(records.map((record) => record.record.preflight_id));
-    const available = candidates.filter((candidate) => !used.has(candidate.create.preflight_id));
+    const available = candidates.filter((candidate) => !used.has(candidate.create.preflight_id) && !attemptedPreflights.has(candidate.create.preflight_id));
 
     return <section aria-labelledby="delivery-enablement-heading" className="mt-6 border-t border-slate-700 pt-5">
         <h5 id="delivery-enablement-heading" className="font-semibold text-slate-100">Operator-controlled delivery enablement evidence</h5>
@@ -62,11 +65,11 @@ export function DeliveryEnablements({ candidates = [], csrfToken }: { candidates
             <p className="mt-1 text-xs text-slate-400">Enabled {operation.record.enabled_at}; expires {operation.record.expires_at}.</p>
             <button type="button" onClick={() => void review(operation.record.enablement_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review durable enablement evidence</button>
         </li>)}</ul>}
-        {!loading && available.map((candidate) => <div key={candidate.create.preflight_id} className="mt-4 rounded border border-amber-400/30 p-3">
+        {!loading && !error && available.map((candidate) => <div key={candidate.create.preflight_id} className="mt-4 rounded border border-amber-400/30 p-3">
             <p className="break-all text-xs text-slate-300">Exact preflight {candidate.create.preflight_id} · fingerprint {candidate.create.preflight_fingerprint.value}</p>
             {csrfToken ? <button type="button" onClick={() => setConfirming(candidate)} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Enable exact delivery for later consideration only</button> : <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required.</p>}
         </div>)}
-        {confirming && <section aria-labelledby="delivery-enablement-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
+        {confirming && !error && <section aria-labelledby="delivery-enablement-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
             <h6 id="delivery-enablement-confirmation" className="font-semibold text-amber-100">Create durable operator enablement evidence only</h6>
             <p className="mt-2 text-sm text-slate-200">Exact required confirmation: “{DELIVERY_ENABLEMENT_CONFIRMATION}”</p>
             <p className="mt-2 text-sm text-slate-300">This records bounded operator intent only. It performs no delivery, Agent call, transport registration, authentication material read, dispatch, execution, installation, deployment, rollback, or mutation.</p>

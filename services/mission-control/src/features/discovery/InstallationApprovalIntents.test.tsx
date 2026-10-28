@@ -41,10 +41,11 @@ describe("installation approval evidence", () => {
     it("renders loading, empty, and redacted error states", async () => {
         let reject: (error: Error) => void = () => undefined;
         vi.mocked(listInstallationApprovalIntents).mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }));
-        const view = render(<InstallationApprovalIntents records={[]} csrfToken={null} />);
+        const view = render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
         expect(screen.getByText(/loading installation approval evidence/i)).toBeInTheDocument();
         reject(new Error("credential secret /internal/path 10.0.0.1"));
         await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        expect(screen.queryByRole("button", { name: /record approval intent/i })).not.toBeInTheDocument();
         expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i);
         view.unmount();
         vi.mocked(listInstallationApprovalIntents).mockResolvedValueOnce([]);
@@ -80,6 +81,28 @@ describe("installation approval evidence", () => {
         expect(recordInstallationApprovalIntent).toHaveBeenCalledWith(ids.record, "csrf", "approval-key");
         expect(await screen.findByText(/historical evidence only/i)).toBeInTheDocument();
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
+    });
+
+    it("withholds approval recording until records load and after an uncertain attempt for the same candidate", async () => {
+        let rejectList: (error: Error) => void = () => undefined;
+        vi.mocked(listInstallationApprovalIntents).mockReturnValueOnce(new Promise((_, reject) => { rejectList = reject; }));
+        const failedRead = render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
+        rejectList(new Error("list unavailable"));
+        await screen.findByText("Approval evidence is currently unavailable.");
+        expect(screen.queryByRole("button", { name: /record approval intent/i })).not.toBeInTheDocument();
+        failedRead.unmount();
+
+        const otherIntent = { ...intent, approved_subject: { ...intent.approved_subject, candidate_record_id: "00000000-0000-4000-8000-000000000099" } };
+        vi.mocked(listInstallationApprovalIntents).mockResolvedValueOnce([otherIntent]);
+        vi.mocked(recordInstallationApprovalIntent).mockRejectedValueOnce(new Error("request outcome unknown"));
+        vi.mocked(getInstallationApprovalIntent).mockResolvedValueOnce(otherIntent);
+        const user = userEvent.setup();
+        render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
+        await user.click(await screen.findByRole("button", { name: "Record approval intent" }));
+        await user.click(screen.getByRole("button", { name: /confirm and record approval evidence only/i }));
+        await screen.findByText("Approval evidence could not be recorded.");
+        expect(screen.queryByRole("heading", { name: /confirm exact non-executable candidate identity/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Record approval intent" })).not.toBeInTheDocument();
     });
 
     it("keeps Home Assistant non-approvable and exposes no prohibited controls or navigation", async () => {

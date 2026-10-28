@@ -20,9 +20,10 @@ describe("installation execution request presentation", () => {
     it("renders loading, redacted error, empty, default-disabled, and Home Assistant states", async () => {
         let reject: (error: Error) => void = () => undefined;
         vi.mocked(listInstallationExecutionRequests).mockReturnValueOnce(new Promise((_, fail) => { reject = fail; }));
-        const view = render(<InstallationExecutionRequests intents={[]} csrfToken={null} />);
+        const view = render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
         expect(screen.getByText(/loading execution request records/i)).toBeInTheDocument(); reject(new Error("credential /internal/path 10.0.0.1"));
         await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        expect(screen.queryByRole("button", { name: /preserve non-executing execution request record only/i })).not.toBeInTheDocument();
         expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i); view.unmount();
         render(<InstallationExecutionRequests intents={[]} csrfToken={null} />);
         expect(await screen.findByText(/no installation execution request records/i)).toBeInTheDocument();
@@ -47,5 +48,27 @@ describe("installation execution request presentation", () => {
         expect(recordInstallationExecutionRequest).toHaveBeenCalledWith(expect.objectContaining({ schema: "installation-execution-request-create-v1", candidate_record_id: intent.approved_subject.candidate_record_id, approval_intent_id: intent.approval_intent_id }), "csrf", "execution-key");
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
         const labels = Array.from(container.querySelectorAll("button, a")).map((node) => node.textContent).join(" "); expect(labels).not.toMatch(/install now|run|execute|deploy|dispatch|send to agent|start workflow|rollback/i);
+    });
+
+    it("withholds request recording until records load and after an uncertain attempt for the same approval", async () => {
+        let rejectList: (error: Error) => void = () => undefined;
+        vi.mocked(listInstallationExecutionRequests).mockReturnValueOnce(new Promise((_, reject) => { rejectList = reject; }));
+        const failedRead = render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        rejectList(new Error("list unavailable"));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: /preserve non-executing execution request record only/i })).not.toBeInTheDocument();
+        failedRead.unmount();
+
+        const existing = { ...record, linkage: { ...record.linkage, approval_intent_id: "00000000-0000-4000-8000-000000000099" } };
+        vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([existing]);
+        vi.mocked(recordInstallationExecutionRequest).mockRejectedValueOnce(new Error("request outcome unknown"));
+        vi.mocked(getInstallationExecutionRequest).mockResolvedValueOnce(existing);
+        const user = userEvent.setup();
+        render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        await user.click(await screen.findByRole("button", { name: /preserve non-executing execution request record only/i }));
+        await user.click(screen.getByRole("button", { name: /confirm record preservation only/i }));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("heading", { name: /confirm preservation of a non-executing execution request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /preserve non-executing execution request record only/i })).not.toBeInTheDocument();
     });
 });

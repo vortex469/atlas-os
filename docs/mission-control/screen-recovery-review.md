@@ -1382,3 +1382,14 @@ fails or returns a blocked result. This follows the backend's permanent
 reservation and no-retry contracts. Five focused component suites cover
 loading, empty, existing, and post-submit states; no approval or runtime
 authority changed.
+
+## Discovery evidence action recovery — 2026-10-28
+
+Installation approval, execution request, dispatch handoff, delivery preflight,
+and delivery enablement panels now require their record list to load
+successfully before offering a one-time evidence action. A failed submission
+closes its confirmation and hides the action for that exact source in the
+current view, avoiding an accidental second reservation with a new request
+key. The five focused suites pass 22 tests across read failure, confirmation,
+and submission failure states. No execution, delivery, or installation
+authority changed.

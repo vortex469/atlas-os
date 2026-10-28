@@ -14,6 +14,7 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [preserving, setPreserving] = useState(false);
+    const [attemptedRequests, setAttemptedRequests] = useState<Set<string>>(() => new Set());
 
     useEffect(() => {
         let current = true;
@@ -31,17 +32,19 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
     };
     const preserve = async () => {
         if (!confirming || !csrfToken || preserving) return;
+        const requestId = confirming.execution_request_id;
+        setAttemptedRequests((current) => new Set(current).add(requestId));
         setPreserving(true); setError(null);
         try {
             const value = await preserveInstallationDispatchHandoff({ schema: "installation-dispatch-handoff-create-v1", execution_request_id: confirming.execution_request_id }, csrfToken, dispatchHandoffIdempotencyKey());
             setHandoffs((current) => [value, ...current.filter((item) => item.dispatch_envelope_id !== value.dispatch_envelope_id)]);
             setReviewed(value); setConfirming(null);
-        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The non-delivering handoff record could not be preserved.")); }
+        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "The non-delivering handoff record could not be preserved.")); setConfirming(null); }
         finally { setPreserving(false); }
     };
 
     const usedRequests = new Set(handoffs.map((handoff) => handoff.linkage.execution_request_id));
-    const eligible = executionRequests.filter((request) => request.lifecycle_state === "recorded" && !usedRequests.has(request.execution_request_id));
+    const eligible = executionRequests.filter((request) => request.lifecycle_state === "recorded" && !usedRequests.has(request.execution_request_id) && !attemptedRequests.has(request.execution_request_id));
 
     return <section aria-labelledby="dispatch-handoffs-heading" className="mt-6 border-t border-slate-700 pt-5">
         <h5 id="dispatch-handoffs-heading" className="font-semibold text-slate-100">Installation dispatch handoff records</h5>
@@ -59,14 +62,14 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
                 <button type="button" onClick={() => void review(handoff.dispatch_envelope_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review immutable handoff record</button>
             </li>)}
         </ul>}
-        {!loading && eligible.length === 0 && <p className="mt-4 text-sm text-slate-400">No fresh execution request record is eligible for handoff preservation.</p>}
-        {!loading && eligible.length > 0 && <ul aria-label="Execution requests eligible for handoff preservation" className="mt-4 space-y-2">
+        {!loading && !error && eligible.length === 0 && <p className="mt-4 text-sm text-slate-400">No fresh execution request record is eligible for handoff preservation.</p>}
+        {!loading && !error && eligible.length > 0 && <ul aria-label="Execution requests eligible for handoff preservation" className="mt-4 space-y-2">
             {eligible.map((request) => <li key={request.execution_request_id} className="rounded-md border border-amber-400/30 p-3">
                 <p className="break-all text-xs text-slate-300">Exact execution request {request.execution_request_id} · fingerprint {request.execution_request_fingerprint.value}</p>
                 {csrfToken ? <button type="button" onClick={() => setConfirming(request)} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Preserve non-delivering handoff record only</button> : <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required.</p>}
             </li>)}
         </ul>}
-        {confirming && <section aria-labelledby="dispatch-handoff-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
+        {confirming && !error && <section aria-labelledby="dispatch-handoff-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
             <h6 id="dispatch-handoff-confirmation" className="font-semibold text-amber-100">Confirm preservation of a non-delivering handoff record only</h6>
             <p className="mt-2 text-sm text-slate-200">Confirm the exact execution request identity. Core only prepares an inert record; it does not deliver, invoke Agent, admit work, authorize execution, or permit replay.</p>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Execution request ID" value={confirming.execution_request_id} /><Value name="Execution request fingerprint" value={confirming.execution_request_fingerprint.value} /></dl>

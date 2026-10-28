@@ -19,6 +19,7 @@ export function DeliveryActivationPreflights({ preparations = [], csrfToken }: {
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [attemptedPreparations, setAttemptedPreparations] = useState<Set<string>>(() => new Set());
 
     useEffect(() => {
         let current = true;
@@ -36,16 +37,18 @@ export function DeliveryActivationPreflights({ preparations = [], csrfToken }: {
     };
     const create = async () => {
         if (!confirming || !csrfToken || creating) return;
+        const preparationId = confirming.delivery_preparation_id;
+        setAttemptedPreparations((current) => new Set(current).add(preparationId));
         setCreating(true); setError(null);
         try {
             const value = await createDeliveryActivationPreflight(confirming, csrfToken, deliveryActivationPreflightIdempotencyKey());
             setRecords((current) => [value, ...current.filter((item) => item.result.preflight_id !== value.result.preflight_id)]);
             setReviewed(value); setConfirming(null);
-        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "Durable preflight evidence could not be created.")); }
+        } catch (requestError: unknown) { setError(getAtlasErrorMessage(requestError, "Durable preflight evidence could not be created.")); setConfirming(null); }
         finally { setCreating(false); }
     };
     const used = new Set(records.map((record) => record.result.delivery_preparation_id));
-    const available = preparations.filter((value) => !used.has(value.delivery_preparation_id));
+    const available = preparations.filter((value) => !used.has(value.delivery_preparation_id) && !attemptedPreparations.has(value.delivery_preparation_id));
 
     return <section aria-labelledby="delivery-preflight-heading" className="mt-6 border-t border-slate-700 pt-5">
         <h5 id="delivery-preflight-heading" className="font-semibold text-slate-100">Delivery activation preflight evidence</h5>
@@ -62,11 +65,11 @@ export function DeliveryActivationPreflights({ preparations = [], csrfToken }: {
             <p className="mt-1 text-xs text-slate-400">Evaluated {record.result.evaluated_at}; expires {record.result.expires_at}.</p>
             <button type="button" onClick={() => void review(record.result.preflight_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review durable preflight evidence</button>
         </li>)}</ul>}
-        {!loading && available.map((preparation) => <div key={preparation.delivery_preparation_id} className="mt-4 rounded border border-amber-400/30 p-3">
+        {!loading && !error && available.map((preparation) => <div key={preparation.delivery_preparation_id} className="mt-4 rounded border border-amber-400/30 p-3">
             <p className="break-all text-xs text-slate-300">Dormant preparation {preparation.delivery_preparation_id} · fingerprint {preparation.preparation_fingerprint.value}</p>
             {csrfToken ? <button type="button" onClick={() => setConfirming(preparation)} className="mt-2 rounded border border-amber-400/50 px-3 py-1.5 text-sm font-semibold text-amber-100">Create durable preflight evidence only</button> : <p className="mt-2 text-xs text-slate-400">An authenticated operator session with mutation protection is required.</p>}
         </div>)}
-        {confirming && <section aria-labelledby="delivery-preflight-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
+        {confirming && !error && <section aria-labelledby="delivery-preflight-confirmation" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
             <h6 id="delivery-preflight-confirmation" className="font-semibold text-amber-100">Confirm creation of durable preflight evidence only</h6>
             <p className="mt-2 text-sm text-slate-200">This evaluates one exact operator-owned dormant preparation. It does not activate delivery, invoke Agent, send, dispatch, execute, install, deploy, or grant mutation authority.</p>
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Delivery preparation ID" value={confirming.delivery_preparation_id} /><Value name="Preparation fingerprint" value={confirming.preparation_fingerprint.value} /></dl>

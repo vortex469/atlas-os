@@ -21,6 +21,7 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [recording, setRecording] = useState(false);
+    const [attemptedCandidates, setAttemptedCandidates] = useState<Set<string>>(() => new Set());
 
     useEffect(() => {
         let current = true;
@@ -43,6 +44,8 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
 
     const record = async () => {
         if (!confirming || !csrfToken || recording) return;
+        const candidateId = confirming.candidate_record_id;
+        setAttemptedCandidates((current) => new Set(current).add(candidateId));
         setRecording(true); setError(null);
         try {
             const value = await recordInstallationApprovalIntent(
@@ -52,11 +55,12 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
             setReviewed(value); setConfirming(null);
         } catch (requestError: unknown) {
             setError(getAtlasErrorMessage(requestError, "Approval evidence could not be recorded."));
+            setConfirming(null);
         } finally { setRecording(false); }
     };
 
     const evidenced = new Set(intents.map((intent) => intent.approved_subject.candidate_record_id));
-    const active = records.filter((recordValue) => recordValue.lifecycle_state === "active" && !evidenced.has(recordValue.candidate_record_id));
+    const active = records.filter((recordValue) => recordValue.lifecycle_state === "active" && !evidenced.has(recordValue.candidate_record_id) && !attemptedCandidates.has(recordValue.candidate_record_id));
     return <section aria-labelledby="approval-intents-heading" className="mt-6 border-t border-slate-700 pt-5">
         <h5 id="approval-intents-heading" className="font-semibold text-slate-100">Installation approval evidence</h5>
         <p className="mt-1 text-sm font-semibold text-amber-200">Evidence only — an approval intent is not execution authorization, dispatch, or installation.</p>
@@ -79,7 +83,7 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
                 <button type="button" onClick={() => void review(intent.approval_intent_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review approval evidence</button>
             </li>)}
         </ul>}
-        {confirming && <section aria-labelledby="approval-confirmation-heading" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
+        {confirming && !error && <section aria-labelledby="approval-confirmation-heading" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
             <h6 id="approval-confirmation-heading" className="font-semibold text-amber-100">Confirm exact non-executable candidate identity</h6>
             <p className="mt-2 text-sm text-slate-200">You are recording approval evidence only for this complete identity:</p>
             <SubjectValues record={confirming} />

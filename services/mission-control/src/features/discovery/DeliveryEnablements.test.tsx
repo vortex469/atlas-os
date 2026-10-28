@@ -56,4 +56,26 @@ describe("operator delivery enablement presentation", () => {
         const labels = Array.from(container.querySelectorAll("button, a")).map((node) => node.textContent).join(" ");
         expect(labels).not.toMatch(/\bsend\b|\bdeliver\b|\bactivate\b|\brun\b|\binstall\b|\bexecute\b|\bdeploy\b|\bdispatch\b|start workflow|\brollback\b/i);
     });
+
+    it("withholds creation until records load and after an uncertain attempt for the same preflight", async () => {
+        const candidate = { create: { schema: "operator-controlled-delivery-enablement-create-v1" as const, preflight_id: "new-preflight", preflight_fingerprint: fixture.record.preflight_fingerprint, confirmation: DELIVERY_ENABLEMENT_CONFIRMATION }, deliveryPreparationId: "new-preparation", preparationFingerprint: fixture.record.preparation_fingerprint };
+        let rejectList: (error: Error) => void = () => undefined;
+        vi.mocked(listDeliveryEnablements).mockReturnValueOnce(new Promise((_, reject) => { rejectList = reject; }));
+        const failedRead = render(<DeliveryEnablements candidates={[candidate]} csrfToken="csrf" />);
+        rejectList(new Error("list unavailable"));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: /enable exact delivery for later consideration only/i })).not.toBeInTheDocument();
+        failedRead.unmount();
+
+        vi.mocked(listDeliveryEnablements).mockResolvedValueOnce({ enablements: [fixture], nextCursor: null });
+        vi.mocked(createDeliveryEnablement).mockRejectedValueOnce(new Error("request outcome unknown"));
+        vi.mocked(getDeliveryEnablement).mockResolvedValueOnce(fixture);
+        const user = userEvent.setup();
+        render(<DeliveryEnablements candidates={[candidate]} csrfToken="csrf" />);
+        await user.click(await screen.findByRole("button", { name: /enable exact delivery for later consideration only/i }));
+        await user.click(screen.getByRole("button", { name: /confirm durable operator enablement evidence only/i }));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("heading", { name: /create durable operator enablement evidence only/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /enable exact delivery for later consideration only/i })).not.toBeInTheDocument();
+    });
 });
