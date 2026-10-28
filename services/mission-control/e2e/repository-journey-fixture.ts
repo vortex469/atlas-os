@@ -46,7 +46,7 @@ const plan: CandidatePlanApiResponse = {
     proposed_steps: ["Edit the compose file.", "Verify configuration.", "Review and commit locally."],
     likely_affected_components: ["fixture-service"], likely_affected_files: [journey.file],
     verification_strategy: ["Check the compose configuration."], rollback_considerations: ["Restore the prior file."],
-    unresolved_questions: [], evidence_ids: [], created_at: observedAt,
+    unresolved_questions: [], evidence_ids: ["evidence-browser-journey"], created_at: observedAt,
     repository_branch: "fixture-branch", repository_head: journey.head,
     revalidated_candidate_fingerprint: journey.candidateFingerprint,
 };

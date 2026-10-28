@@ -42,7 +42,16 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("button", { name: "Generate Plan", exact: true })).toBeVisible();
         await fitsViewport(page);
         await page.getByRole("button", { name: "Generate Plan", exact: true }).click();
-        await expect(page.getByText("Plan details", { exact: true })).toBeVisible();
+        const planCard = page.locator("article").filter({ hasText: "Plan details" });
+        await expect(planCard.getByText("Plan details", { exact: true })).toBeVisible();
+        await expect(planCard.getByText("fixture-branch", { exact: true })).toBeVisible();
+        await expect(planCard.getByText(journey.head, { exact: true })).toBeHidden();
+        await expect(planCard.getByText("evidence-browser-journey", { exact: true })).toBeHidden();
+        await planCard.getByText("Technical details", { exact: true }).click();
+        await expect(planCard.getByText(journey.head, { exact: true })).toBeVisible();
+        await expect(planCard.getByText("evidence-browser-journey", { exact: true })).toBeVisible();
+        await planCard.getByText("Technical details", { exact: true }).click();
+        await expect(planCard.getByText(journey.head, { exact: true })).toBeHidden();
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await expect(page.getByRole("button", { name: "Prepare change for review", exact: true })).toBeEnabled();

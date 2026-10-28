@@ -420,12 +420,18 @@ function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
                 <ListPanel title="Planning assumptions" values={plan.assumptions} empty="No assumptions listed." />
                 <ListPanel title="Constraints" values={plan.constraints} empty="No constraints listed." />
                 <ListPanel title="Proposed steps" values={plan.proposed_steps} empty="No proposed steps listed." ordered />
-                <ListPanel title="Affected repository" values={[plan.repository_branch ? `Branch: ${plan.repository_branch}` : "Branch: unknown", plan.repository_head ? `Commit: ${plan.repository_head}` : "Commit: unknown"]} empty="Repository context unavailable." />
+                <ListPanel title="Target branch" values={plan.repository_branch ? [plan.repository_branch] : []} empty="Target branch not available." />
                 <ListPanel title="Affected files" values={plan.likely_affected_files} empty="No affected files listed." />
                 <ListPanel title="Verification strategy" values={plan.verification_strategy} empty="No verification strategy listed." />
                 <ListPanel title="Rollback considerations" values={plan.rollback_considerations} empty="No rollback considerations listed." />
                 <ListPanel title="Unresolved questions" values={plan.unresolved_questions} empty="No unresolved questions." />
-                <ListPanel title="Evidence IDs" values={plan.evidence_ids} empty="No evidence IDs listed." />
+                <details className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 lg:col-span-2">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2">
+                        <Detail label="Repository HEAD" value={plan.repository_head ?? "Not available"} />
+                        <Detail label="Evidence IDs" value={plan.evidence_ids.length > 0 ? plan.evidence_ids.join(", ") : "None reported"} />
+                    </dl>
+                </details>
             </section>
         </article>
     );

@@ -259,12 +259,20 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("Operator has reviewed the candidate.")).toBeInTheDocument();
         expect(screen.getByText("No implementation commands are included.")).toBeInTheDocument();
         expect(screen.getByText("Review compose changes.")).toBeInTheDocument();
-        expect(screen.getByText("Branch: feature/atlas-agent")).toBeInTheDocument();
+        const planDetails = within(screen.getByText("Plan details").closest("article") as HTMLElement);
+        expect(planDetails.getByText("Target branch")).toBeVisible();
+        expect(planDetails.getByText("feature/atlas-agent")).toBeVisible();
         expect(screen.getByText("compose/home-assistant.yaml")).toBeInTheDocument();
         expect(screen.getByText("Run configuration validation.")).toBeInTheDocument();
         expect(screen.getByText("Restore previous compose file.")).toBeInTheDocument();
         expect(screen.getByText("Confirm maintenance window.")).toBeInTheDocument();
-        expect(screen.getByText("evidence-1")).toBeInTheDocument();
+        const technicalDetails = planDetails.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(planDetails.getByText("abc123")).not.toBeVisible();
+        expect(planDetails.getByText("evidence-1")).not.toBeVisible();
+        await user.click(planDetails.getByText("Technical details"));
+        expect(planDetails.getByText("abc123")).toBeVisible();
+        expect(planDetails.getByText("evidence-1")).toBeVisible();
         expect(screen.queryByText(/argv|execution metadata/i)).not.toBeInTheDocument();
     });
 
