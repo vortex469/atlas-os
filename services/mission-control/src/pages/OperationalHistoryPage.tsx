@@ -29,6 +29,27 @@ function formatTimestamp(value: string | null): string {
     return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
 }
 
+function historyTargetName(workflow: WorkflowSummary, lifecycle: WorkflowOperationalLifecycle | null): string {
+    const targetParts = lifecycle?.target_label?.split("/");
+    const isStructuredTarget = targetParts?.length === 3
+        && targetParts[0] === lifecycle?.provider_id
+        && targetParts[1] === lifecycle?.resource_type
+        && targetParts[2] === lifecycle?.resource_id;
+    if (isStructuredTarget && lifecycle?.resource_id) {
+        const resourceType = lifecycle.resource_type === "qemu"
+            ? "Virtual machine"
+            : lifecycle.resource_type === "lxc"
+                ? "Container"
+                : "Resource";
+        return resourceType + " " + lifecycle.resource_id;
+    }
+    if (lifecycle?.target_label) return lifecycle.target_label;
+    if (!workflow.target_id) return "Maintenance target";
+    return /^(VM|Virtual machine|Container)\b/i.test(workflow.target_id)
+        ? workflow.target_id
+        : "Maintenance target " + workflow.target_id;
+}
+
 export function OperationalHistoryPage() {
     const [items, setItems] = useState<HistoryItem[]>([]);
     const [offset, setOffset] = useState(0);
@@ -145,7 +166,7 @@ function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUna
         <article className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h2 className="break-all text-lg font-semibold text-white">{lifecycle?.target_label ?? workflow.target_id ?? "Maintenance target"}</h2>
+                    <h2 className="break-all text-lg font-semibold text-white">{historyTargetName(workflow, lifecycle)}</h2>
                     <p className="mt-1 text-sm text-slate-400">{action} · {outcome?.title ?? "Status unavailable"}</p>
                     <p className="mt-1 text-sm text-slate-400">Requested: {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
                 </div>
@@ -160,6 +181,7 @@ function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUna
                     <HistoryDetail label="Verification" value={lifecycle?.verification_status ?? "Not reported"} />
                     <HistoryDetail label="Support Evidence" value={diagnostic ? "Available" : "Unavailable"} />
                     <HistoryDetail label="Result recorded" value={formatTimestamp(resultTimestamp)} />
+                    <HistoryDetail label="Target reference" value={lifecycle?.target_label ?? workflow.target_id ?? "Not reported"} />
                 </dl>
             </details>
         </article>

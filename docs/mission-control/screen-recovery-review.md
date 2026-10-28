@@ -684,3 +684,14 @@ controls added. Stage sections now have valid accessible names. The focused page
 suite passes (20 tests), repository and maintenance journeys pass at 390px and
 1280px (6 browser tests), and lint, production build, and `git diff --check`
 pass.
+
+## Maintenance history target labels — 2026-10-28
+
+Maintenance history now presents the canonical Proxmox target reference as
+“Virtual machine 110” when its provider, resource type, and ID match the lifecycle
+record. The original target reference remains available under Workflow details;
+other supplied labels and workflow-only target labels are preserved. Outcome
+status, filtering, pagination, and read-only behavior are unchanged. The focused
+history suite passes (10 tests), the responsive maintenance-history browser
+checks pass at 390px and 1280px (2 tests), and lint, production build, and
+`git diff --check` pass.

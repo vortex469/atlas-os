@@ -58,7 +58,11 @@ describe("OperationalHistoryPage", () => {
     it("loads bounded operational workflows and links to lifecycle detail", async () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        expect(await screen.findByText("proxmox/qemu/110")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        const targetReference = screen.getByText("proxmox/qemu/110");
+        expect(targetReference).not.toBeVisible();
+        fireEvent.click(screen.getByText("Workflow details", { exact: true }));
+        expect(targetReference).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
         expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
@@ -87,7 +91,7 @@ describe("OperationalHistoryPage", () => {
     it("keeps matching lifecycle details when a diagnostic belongs to another workflow", async () => {
         mockedDiagnostic.mockResolvedValue(operationalDiagnostic());
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
-        expect(await screen.findByText("proxmox/qemu/110")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         expect(screen.getByText(/Restart service · Status unavailable/)).toBeInTheDocument();
         expect(screen.getByText("Could not load the latest status for this request.")).toBeInTheDocument();
     });
@@ -102,7 +106,7 @@ describe("OperationalHistoryPage", () => {
 
     it("filters only the bounded current page by controlled diagnostic status", async () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
-        await screen.findByText("proxmox/qemu/110");
+        await screen.findByRole("heading", { name: "Virtual machine 110" });
 
         expect(screen.getByText("Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.")).toBeVisible();
         const diagnosticFilter = screen.getByRole("combobox", { name: "Latest result" });
@@ -117,7 +121,7 @@ describe("OperationalHistoryPage", () => {
         fireEvent.change(diagnosticFilter, { target: { value: "attention_required" } });
         expect(screen.getByText("No requests on this page match your filters.")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-        expect(screen.getByText("proxmox/qemu/110")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         expect(diagnosticFilter).toHaveValue("all");
         expect(actionFilter).toHaveValue("all");
         expect(mockedList).toHaveBeenCalledTimes(1);
@@ -143,14 +147,14 @@ describe("OperationalHistoryPage", () => {
         expect(previous).toBeEnabled();
         expect(screen.getByText("1 request total")).toBeInTheDocument();
         fireEvent.click(previous);
-        expect(await screen.findByText("VM 110")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "VM 110" })).toBeVisible();
         expect(mockedList).toHaveBeenLastCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
     });
 
     it("does not expose lifecycle-native material in history rows", async () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        await screen.findByText("proxmox/qemu/110");
+        await screen.findByRole("heading", { name: "Virtual machine 110" });
         expect(document.body.textContent).not.toMatch(/vmgenid|Authorization|Bearer|CSRF|cookie/i);
     });
 });

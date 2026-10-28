@@ -1,4 +1,5 @@
 import { executionCandidates, expect, providers, test } from "./mission-control-fixtures";
+import { operationalLifecycle } from "../src/test/operationalLifecycle";
 
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
     let reads = 0;
@@ -239,14 +240,19 @@ for (const width of [390, 1280]) {
                 } });
                 return;
             }
-            if (path.includes("/workflows/maintenance-test/")) {
+            if (path.endsWith("/workflows/maintenance-test/operational-lifecycle")) {
+                await route.fulfill({ json: operationalLifecycle({ workflow_id: "maintenance-test" }) });
+                return;
+            }
+            if (path.endsWith("/workflows/maintenance-test/recovery-diagnostic")) {
                 await route.fulfill({ status: 503, json: { detail: "Unavailable" } });
                 return;
             }
             await route.fallback();
         });
         await page.goto("/operations/history");
-        await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeHidden();
         await expect(page.getByRole("combobox", { name: "Latest result", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
@@ -254,12 +260,13 @@ for (const width of [390, 1280]) {
         await page.getByRole("combobox", { name: "Requested action", exact: true }).selectOption("restart-service");
         await expect(page.getByText("Additional filters are applied")).toBeVisible();
         await page.getByRole("combobox", { name: "Latest result", exact: true }).selectOption("unavailable");
-        await expect(page.getByRole("heading", { name: "VM 110" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
         await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
         await page.getByText("Workflow details", { exact: true }).click();
         await expect(page.getByText("Workflow State", { exact: true })).toBeVisible();
+        await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
         await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(reads).toBe(1);
