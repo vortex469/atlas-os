@@ -275,7 +275,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         <p className="mt-1 text-sm text-slate-400">{workflowMessage(workflow)}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
-                        {workflow.workflow_status ? formatLabel(workflow.workflow_status) : formatLabel(workflow.conversion_status)}
+                        {workflowStatusLabel(workflow)}
                     </span>
                 </div>
                 <details className="mt-5 rounded-lg border border-slate-800 p-3">
@@ -289,6 +289,8 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         <Detail label="Plan fingerprint" value={workflow.candidate_plan_fingerprint ?? "Not available"} />
                         <Detail label="Implementation approval status" value={workflow.implementation_approval_request_id ? "Pending" : "Not reported"} />
                         <Detail label="Planning Session ID" value={workflow.candidate_planning_session_id} />
+                        {workflow.reason_codes.length > 0 && <Detail label="Reason codes" value={workflow.reason_codes.join(", ")} />}
+                        {workflow.failure && <Detail label="Failure details" value={`${workflow.failure.code} - ${workflow.failure.message}`} />}
                     </dl>
                 </details>
                 {canCreateImplementation && (
@@ -373,8 +375,6 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         {implementationError}
                     </p>
                 )}
-                {workflow.reason_codes.length > 0 && <p className="mt-4 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
-                {workflow.failure && <p className="mt-4 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
                 {workflow.workflow_session_id && (
                     <Link to={`/workflows/${encodeURIComponent(workflow.workflow_session_id)}`} className="mt-5 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Open Workflow
@@ -390,14 +390,23 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 function workflowMessage(workflow: CandidateWorkflowResponse): string {
-    if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
-    if (workflow.workflow_session_id) return "Workflow available for review.";
-    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
-    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
-    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";
-    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
-    if (workflow.failure?.code === "persistence_failed") return "Persistence failure.";
-    return "Workflow creation did not complete.";
+    if (workflow.conversion_status === "workflow_exists") return "A workflow already exists for this plan.";
+    if (workflow.workflow_session_id) return "This workflow is ready for review.";
+    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "The proposal changed after this plan was created. Review the current proposal before planning again.";
+    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "This plan no longer matches the latest proposal. Review both before continuing.";
+    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "This type of change cannot be prepared through this workflow.";
+    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core is unavailable. Try again later.";
+    if (workflow.failure?.code === "persistence_failed") return "Atlas Agent could not save the workflow. Check the latest status before retrying.";
+    return "Workflow preparation could not be completed.";
+}
+
+function workflowStatusLabel(workflow: CandidateWorkflowResponse): string {
+    if (workflow.workflow_status) return formatLabel(workflow.workflow_status);
+    if (workflow.conversion_status === "workflow_exists") return "Existing workflow";
+    if (workflow.workflow_session_id) return "Ready for review";
+    if (workflow.failure?.code === "candidate_stale" || workflow.failure?.code === "candidate_fingerprint_mismatch"
+        || workflow.failure?.code === "plan_fingerprint_mismatch" || workflow.conversion_status.includes("stale")) return "Needs review";
+    return "Unavailable";
 }
 
 function formatLabel(value: string): string {

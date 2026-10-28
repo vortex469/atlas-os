@@ -160,7 +160,7 @@ describe("WorkflowShellPage", () => {
 
         expect(screen.getByRole("heading", { name: "Review workflow" })).toBeVisible();
         expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
-        expect(screen.getAllByText("Workflow available for review.").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("This workflow is ready for review.").length).toBeGreaterThan(0);
         expect(screen.getByText("workflow-1")).toBeInTheDocument();
         expect(screen.getByText("Atlas Agent candidate planning")).toBeInTheDocument();
         expect((await screen.findAllByText(/Awaiting Approval|Approval Pending/)).length).toBeGreaterThan(0);
@@ -628,22 +628,29 @@ describe("WorkflowShellPage", () => {
         );
     });
 
-    it("renders workflow conversion failure summaries without controls", () => {
-        renderPage({
-            workflow: workflow({
-                workflow_session_id: null,
-                workflow_status: null,
-                conversion_status: "stale_before_workflow",
-                implementation_approval_request_id: null,
-                reason_codes: ["stale"],
-                failure: { code: "candidate_stale", message: "Candidate changed" },
-            }),
+    it("explains a stale proposal in plain language and keeps diagnostic codes in details", async () => {
+        const user = userEvent.setup();
+        const staleWorkflow = workflow({
+            workflow_session_id: null,
+            workflow_status: null,
+            conversion_status: "stale_before_workflow",
+            implementation_approval_request_id: null,
+            reason_codes: ["stale"],
+            failure: { code: "candidate_stale", message: "Candidate changed" },
         });
+        mockedGetCandidateWorkflowShell.mockResolvedValue(staleWorkflow);
+        renderPage({ workflow: staleWorkflow });
 
         expect(screen.getByRole("heading", { name: "Review workflow" })).toBeInTheDocument();
-        expect(screen.getByText("Stale candidate.")).toBeInTheDocument();
-        expect(screen.getByText("Reason codes: stale")).toBeInTheDocument();
-        expect(screen.getByText("Failure: candidate_stale - Candidate changed")).toBeInTheDocument();
+        expect(screen.getByText("The proposal changed after this plan was created. Review the current proposal before planning again.")).toBeVisible();
+        expect(screen.getByText("Needs review", { exact: true })).toBeVisible();
+        expect(screen.getByText("stale", { exact: true })).not.toBeVisible();
+        expect(screen.getByText("candidate_stale - Candidate changed", { exact: true })).not.toBeVisible();
+        const details = screen.getByText("Technical details", { exact: true });
+        expect(details.closest("details")).not.toHaveAttribute("open");
+        await user.click(details);
+        expect(screen.getByText("stale", { exact: true })).toBeVisible();
+        expect(screen.getByText("candidate_stale - Candidate changed", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
     it.each(["awaiting_approval", "blocked"])("does not offer cached %s actions after server validation fails", async (workflow_status) => {
