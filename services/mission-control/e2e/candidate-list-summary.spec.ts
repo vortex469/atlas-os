@@ -49,3 +49,33 @@ for (const width of [390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }
+
+for (const width of [390, 1280]) {
+    test(`malformed proposal data offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/execution-candidates**", route => {
+            reads += 1;
+            return route.fulfill(reads === 1
+                ? { json: { candidates: [null], total: 1, limit: 25, offset: 0, has_more: false } }
+                : { json: { candidates: [], total: 0, limit: 25, offset: 0, has_more: false } });
+        });
+        await page.goto("/execution-candidates");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Change proposals unavailable");
+        await expect(alert).toContainText("Mission Control could not load the latest proposal results.");
+        await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
+        if (width < 1024) {
+            await page.getByRole("button", { name: "Open navigation" }).click();
+            await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+            await page.getByRole("button", { name: "Close navigation" }).click();
+        }
+
+        await alert.getByRole("button", { name: "Retry search" }).click();
+        await expect(page.getByText("No current change proposals.", { exact: true })).toBeVisible();
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

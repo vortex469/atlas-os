@@ -8,6 +8,7 @@ import { listExecutionCandidates } from "../api/executionCandidates";
 import type {
     ExecutionCandidate,
     ExecutionCandidateListQuery,
+    ExecutionCandidatePage,
 } from "../types/executionCandidates";
 import { compatibilityStatusLabel } from "../utils/operatorLanguage";
 
@@ -83,6 +84,9 @@ export function ExecutionCandidatesPage() {
 
         try {
             const page = await listExecutionCandidates(toCandidateQuery(nextFilters, offset));
+            if (!isDisplayableCandidatePage(page)) {
+                throw new Error("The proposal response included data Mission Control could not display.");
+            }
             if (generation !== requestGeneration.current) return;
             setResult({
                 candidates: page.candidates,
@@ -329,4 +333,62 @@ function formatLabel(value: string): string {
 function formatTimestamp(value: string): string {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+function isDisplayableCandidatePage(value: unknown): value is ExecutionCandidatePage {
+    if (!isRecord(value) || !Array.isArray(value.candidates)
+        || typeof value.total !== "number" || !Number.isSafeInteger(value.total) || value.total < 0
+        || typeof value.limit !== "number" || !Number.isSafeInteger(value.limit) || value.limit <= 0
+        || typeof value.offset !== "number" || !Number.isSafeInteger(value.offset) || value.offset < 0
+        || typeof value.has_more !== "boolean"
+        || value.total < value.candidates.length) {
+        return false;
+    }
+
+    const validCandidates = value.candidates.every((candidate) => isRecord(candidate)
+        && isRouteId(candidate.id)
+        && (candidate.effect_kind === "repository_change" || candidate.effect_kind === "operational_action")
+        && typeof candidate.source_recommendation_id === "string"
+        && typeof candidate.source_subsystem === "string"
+        && typeof candidate.recommendation_class === "string"
+        && isOptionalNullableString(candidate.catalog_item_id)
+        && typeof candidate.target_id === "string"
+        && typeof candidate.target_type === "string"
+        && typeof candidate.execution_category === "string"
+        && typeof candidate.execution_intent === "string"
+        && typeof candidate.status === "string"
+        && typeof candidate.required_approval_level === "string"
+        && typeof candidate.rationale === "string"
+        && isStringArray(candidate.constraints)
+        && isStringArray(candidate.evidence_ids)
+        && isOptionalNullableString(candidate.compatibility_assessment_id)
+        && isOptionalNullableString(candidate.compatibility_status)
+        && isStringArray(candidate.relationship_ids)
+        && typeof candidate.created_at === "string"
+        && isOptionalNullableString(candidate.expires_at));
+    if (!validCandidates) return false;
+
+    return new Set(value.candidates.map((candidate) => (candidate as Record<string, unknown>).id)).size === value.candidates.length;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isRouteId(value: unknown): value is string {
+    if (typeof value !== "string" || !value.trim()) return false;
+    try {
+        encodeURIComponent(value);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function isStringArray(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isOptionalNullableString(value: unknown): value is string | null | undefined {
+    return value === undefined || value === null || typeof value === "string";
 }

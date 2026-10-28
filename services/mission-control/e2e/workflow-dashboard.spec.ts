@@ -47,3 +47,33 @@ for (const width of [390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }
+
+for (const width of [390, 1280]) {
+    test(`malformed workflow data offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => {
+            reads += 1;
+            return route.fulfill({ json: reads === 1
+                ? { items: [null], total: 1, limit: 200, offset: 0 }
+                : { items: [], total: 0, limit: 200, offset: 0 } });
+        });
+        await page.goto("/workflows");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Workflows unavailable");
+        await expect(alert).toContainText("Mission Control could not load the workflow list.");
+        await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
+        if (width < 1024) {
+            await page.getByRole("button", { name: "Open navigation" }).click();
+            await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+            await page.getByRole("button", { name: "Close navigation" }).click();
+        }
+
+        await alert.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByText("No workflows yet.", { exact: true })).toBeVisible();
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

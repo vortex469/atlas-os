@@ -1170,3 +1170,14 @@ Provider detail sources now refresh independently. A diagnostics, health, or
 history failure no longer hides a successfully loaded provider; unavailable
 diagnostics and check history are not shown as empty results. A failed provider
 catalog read is kept distinct from a confirmed missing provider.
+
+## Workflow and proposal list response recovery — 2026-10-28
+
+The workflow and change-proposal directories validate list and card fields
+before rendering server responses. An unreadable response now uses the screen's
+existing unavailable state and read-only retry instead of crashing into the
+generic page error. Browser checks cover recovery, shared navigation, and phone
+and desktop widths; they submit no actions. The full component suite (2,705
+tests), lint, build, 108 development-browser checks, and 68 built-app journeys
+pass. Simulated browser coverage does not establish real backend integration or
+operator acceptance.

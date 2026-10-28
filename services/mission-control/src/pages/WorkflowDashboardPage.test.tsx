@@ -238,6 +238,26 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
+    it("offers a retry when the workflow list contains an unreadable entry", async () => {
+        vi.mocked(listWorkflows)
+            .mockResolvedValueOnce(response([null as unknown as WorkflowSummary]))
+            .mockResolvedValueOnce(response([workflow()]));
+        renderDashboard();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Workflows unavailable");
+        expect(alert).toHaveTextContent("Mission Control could not load the workflow list.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(screen.queryByRole("heading", { name: "This page could not load" })).not.toBeInTheDocument();
+
+        fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(listWorkflows).toHaveBeenCalledTimes(2);
+    });
+
     it("labels stale workflow data after a failed refresh and keeps the error optional", async () => {
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]))
             .mockRejectedValueOnce(new Error("Atlas Agent unavailable"))

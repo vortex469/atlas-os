@@ -136,6 +136,26 @@ describe("ExecutionCandidatesPage", () => {
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
     });
 
+    it("offers a retry when the proposal list contains an unreadable entry", async () => {
+        mockedListExecutionCandidates
+            .mockResolvedValueOnce(page([null as unknown as ExecutionCandidate]))
+            .mockResolvedValueOnce(page([candidate()]));
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Change proposals unavailable");
+        expect(alert).toHaveTextContent("Mission Control could not load the latest proposal results.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(screen.queryByRole("heading", { name: "This page could not load" })).not.toBeInTheDocument();
+
+        fireEvent.click(within(alert).getByRole("button", { name: "Retry search" }));
+
+        expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(2);
+    });
+
     it("retries the same proposal search after a read failure", async () => {
         const user = userEvent.setup();
         mockedListExecutionCandidates
