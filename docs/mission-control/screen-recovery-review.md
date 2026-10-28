@@ -1149,3 +1149,10 @@ Catalog item details now load independently from related-item relationships.
 If the relationship read fails or returns another item's data, the catalog
 entry remains visible and the relationship section offers a read-only retry.
 Catalog read errors also keep backend text under collapsed Technical details.
+
+## Provider detail source failures — 2026-10-28
+
+Provider detail sources now refresh independently. A diagnostics, health, or
+history failure no longer hides a successfully loaded provider; unavailable
+diagnostics and check history are not shown as empty results. A failed provider
+catalog read is kept distinct from a confirmed missing provider.

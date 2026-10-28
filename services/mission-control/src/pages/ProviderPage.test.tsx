@@ -67,13 +67,44 @@ describe("ProviderPage authority layout", () => {
     });
 
     it.each([
-        { isLoading: true, error: null },
-        { isLoading: false, error: "Could not load providers" },
+        { isLoading: true, error: null, providerCatalogUnavailable: false },
+        { isLoading: false, error: "Some provider information could not be refreshed. Existing information may be out of date.", providerCatalogUnavailable: true, failedSources: ["provider catalog"] },
     ])("does not call a provider missing before its catalog is available: %j", (state) => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [], ...state }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
-        expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Atlas Core unavailable")).toBeInTheDocument();
+        expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Some information could not be refreshed")).toBeInTheDocument();
+    });
+
+    it("keeps provider details visible when the diagnostics source is unavailable", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
+            summary: null,
+            error: "Some provider information could not be refreshed. Existing information may be out of date.",
+            failedSources: ["diagnostics"],
+            summaryUnavailable: true,
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByRole("heading", { name: "Provider overview" })).toBeInTheDocument();
+        expect(screen.getByText("Some information could not be refreshed")).toBeInTheDocument();
+        expect(screen.getByText("Unavailable: diagnostics.")).toBeInTheDocument();
+        expect(screen.getByText("Diagnostics could not be loaded.")).toBeInTheDocument();
+        expect(screen.getByText("Recommendations could not be loaded.")).toBeInTheDocument();
+        expect(screen.queryByText("No messages about this provider right now.")).not.toBeInTheDocument();
+        expect(screen.queryByText("No recommendations for this provider right now.")).not.toBeInTheDocument();
+    });
+
+    it("does not call a provider missing when the provider catalog could not be checked", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, {
+            providers: [],
+            error: "Some provider information could not be refreshed. Existing information may be out of date.",
+            failedSources: ["provider catalog"],
+            providerCatalogUnavailable: true,
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByText("Atlas could not confirm whether this provider is currently listed.")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
     });
 
     it("orders monitoring, diagnostics, compatibility, maintenance, and retained evidence distinctly", () => {

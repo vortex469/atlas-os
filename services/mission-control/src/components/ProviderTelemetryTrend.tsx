@@ -14,12 +14,14 @@ type Props = {
     providerId: string;
     snapshots: IntelligenceTelemetrySnapshot[];
     performancePolicy?: PerformancePolicy | null;
+    unavailable?: boolean;
 };
 
 export function ProviderTelemetryTrend({
     providerId,
     snapshots,
     performancePolicy = null,
+    unavailable = false,
 }: Props) {
     const points = snapshots
         .flatMap((snapshot) => {
@@ -44,13 +46,18 @@ export function ProviderTelemetryTrend({
             />
             {points.length === 0 ? (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                    Atlas has no check history for this provider yet.
+                    {unavailable
+                        ? "Provider check history could not be loaded."
+                        : "Atlas has no check history for this provider yet."}
                 </div>
             ) : (
-                <TrendChart
-                    points={points}
-                    performancePolicy={performancePolicy}
-                />
+                <>
+                    {unavailable && <p role="status" className="mb-3 text-sm text-amber-200">Showing the last available check history; current history may have changed.</p>}
+                    <TrendChart
+                        points={points}
+                        performancePolicy={performancePolicy}
+                    />
+                </>
             )}
         </section>
     );

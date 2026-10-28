@@ -97,6 +97,30 @@ describe("ProviderTelemetryTrend", () => {
         ).toBeInTheDocument();
     });
 
+    it("distinguishes unavailable history from an empty history", () => {
+        render(
+            <ProviderTelemetryTrend
+                providerId="ollama"
+                snapshots={snapshots}
+                unavailable
+            />,
+        );
+        expect(screen.getByText("Provider check history could not be loaded.")).toBeInTheDocument();
+        expect(screen.queryByText("Atlas has no check history for this provider yet.")).not.toBeInTheDocument();
+    });
+
+    it("labels displayed checks as last-known after a failed refresh", () => {
+        render(
+            <ProviderTelemetryTrend
+                providerId="qdrant"
+                snapshots={snapshots}
+                unavailable
+            />,
+        );
+        expect(screen.getByRole("status")).toHaveTextContent("Showing the last available check history; current history may have changed.");
+        expect(screen.getByText("Checks")).toBeInTheDocument();
+    });
+
     it("describes check problems when no time limit is configured", () => {
         render(
             <ProviderTelemetryTrend

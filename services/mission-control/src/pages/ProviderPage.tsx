@@ -29,6 +29,10 @@ export function ProviderPage() {
         telemetryHistory,
         lastUpdated,
         error,
+        failedSources = [],
+        providerCatalogUnavailable = false,
+        summaryUnavailable = false,
+        telemetryHistoryUnavailable = false,
         isLoading,
         isRefreshing,
         refresh,
@@ -122,13 +126,10 @@ export function ProviderPage() {
                     role="alert"
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
-                    <p className="font-semibold text-red-300">
-                        Atlas Core unavailable
-                    </p>
-
-                    <p className="mt-1 text-sm text-red-200/80">
-                        {error}
-                    </p>
+                    <p className="font-semibold text-red-300">Some information could not be refreshed</p>
+                    <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    {failedSources.length > 0 && <p className="mt-2 text-sm text-red-200/80">Unavailable: {failedSources.join(", ")}.</p>}
+                    {providerCatalogUnavailable && !provider && <p className="mt-2 text-sm text-red-200/80">Atlas could not confirm whether this provider is currently listed.</p>}
                 </div>
             )}
 
@@ -145,7 +146,7 @@ export function ProviderPage() {
             )}
 
             {!isLoading &&
-                !error &&
+                !providerCatalogUnavailable &&
                 !provider && (
                     <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-8">
                         <h1 className="mt-3 text-2xl font-bold text-slate-100">
@@ -179,7 +180,9 @@ export function ProviderPage() {
                             description="Health and monitoring messages for this provider."
                         />
 
-                        {relatedFindings.length > 0 ? (
+                        {summaryUnavailable && summary === null ? (
+                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-100">Diagnostics could not be loaded.</div>
+                        ) : relatedFindings.length > 0 ? (
                             <div className="grid gap-4 xl:grid-cols-2">
                                 {relatedFindings.map((finding) => (
                                     <div
@@ -212,7 +215,9 @@ export function ProviderPage() {
                             description="Suggestions for you to review. They don't change settings or run actions."
                         />
 
-                        {relatedRecommendations.length > 0 ? (
+                        {summaryUnavailable && summary === null ? (
+                            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-6 text-sm text-amber-100">Recommendations could not be loaded.</div>
+                        ) : relatedRecommendations.length > 0 ? (
                             <div className="grid gap-4 lg:grid-cols-2">
                                 {relatedRecommendations.map(
                                     (recommendation, index) => (
@@ -249,6 +254,7 @@ export function ProviderPage() {
                         providerId={provider.id}
                         snapshots={telemetryHistory}
                         performancePolicy={policies?.intelligence.providers[provider.id] ?? null}
+                        unavailable={telemetryHistoryUnavailable}
                     />
 
                     {policies && (
