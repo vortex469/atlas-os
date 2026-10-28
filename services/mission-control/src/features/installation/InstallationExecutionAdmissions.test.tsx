@@ -26,27 +26,31 @@ describe("InstallationExecutionAdmissions", () => {
         let resolve!: (value: typeof empty) => void;
         vi.mocked(listInstallationExecutionAdmissions).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[]} homeAssistantBlocked={false} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading installation execution admission evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading saved runner review records/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no installation execution admission evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no runner review records saved yet/i));
         unmount();
         vi.mocked(listInstallationExecutionAdmissions).mockRejectedValue(new Error("secret token /internal/path 10.0.0.1"));
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[]} homeAssistantBlocked={false} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/could not be recorded/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/unavailable or could not be saved/i);
         expect(document.body).not.toHaveTextContent(/secret token|10\.0\.0\.1/i);
     });
 
-    it("renders admission-gated lifecycle, blockers, full linkage, and false authority", async () => {
+    it("leads with a plain outcome and blockers, with technical identity and authority in disclosures", async () => {
         vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ ...empty, admissions: [admissionResultFixture] });
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
-        expect(await screen.findByRole("heading", { name: "Active admission-gated evidence" })).toBeInTheDocument();
-        expect(screen.getByText(/readiness: admission_gated; lifecycle: active/i)).toBeInTheDocument();
-        const blockers = screen.getByRole("list", { name: "Ordered admission blockers" });
-        expect(within(blockers).getAllByRole("listitem")[0]).toHaveTextContent("Runner binding is not defined");
-        expect(within(blockers).getAllByRole("listitem")[1]).toHaveTextContent("Execution start boundary is not defined");
-        expect(screen.getByText("v0.35 permission grant ID").nextSibling).toHaveTextContent(uuid4);
-        expect(screen.getByText("v0.20–v0.35 chain fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
-        expect(screen.getByText(/permanent idempotency reservation: true/i)).toHaveTextContent(/raw idempotency key persisted: false.*replay allowed: false/i);
+        expect(await screen.findByRole("heading", { name: "Saved for later review" })).toBeInTheDocument();
+        expect(screen.getByText("This record does not choose or contact a runner, authorize installation, or start work.")).toBeInTheDocument();
+        const blockers = screen.getByRole("list", { name: "What still needs to be in place" });
+        expect(within(blockers).getAllByRole("listitem")[0]).toHaveTextContent("No runner is selected");
+        expect(within(blockers).getAllByRole("listitem")[1]).toHaveTextContent("A safe way to start installation is not defined");
+        expect(screen.getByText("Permission record ID")).not.toBeVisible();
+        screen.getAllByText("a".repeat(64)).forEach((node) => expect(node).not.toBeVisible());
+        fireEvent.click(screen.getByText("Record identity and technical status"));
+        expect(screen.getByText("Permission record ID").nextSibling).toHaveTextContent(uuid4);
+        expect(screen.getByText("Evidence chain fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
+        fireEvent.click(screen.getByText("Audit and authority details"));
+        expect(screen.getByText(/Idempotency and permission-record use are reserved permanently/i)).toBeInTheDocument();
         const flags = screen.getByLabelText("Admission fixed-false authority fields");
         expect(within(flags).getByText("Runner binding allowed").nextSibling).toHaveTextContent("false");
         expect(within(flags).getByText("Execution start allowed").nextSibling).toHaveTextContent("false");
@@ -54,23 +58,25 @@ describe("InstallationExecutionAdmissions", () => {
 
     it("uses two-step evidence-only creation through the exact API", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: "csrf" };
+        vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ ...empty, admissions: [admissionResultFixture] });
         vi.mocked(createInstallationExecutionAdmission).mockResolvedValue(admissionResultFixture);
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
-        await screen.findByText(/no installation execution admission evidence/i);
-        fireEvent.click(screen.getByRole("button", { name: "Review admission evidence statement" }));
-        expect(screen.getByLabelText("Admission evidence confirmation")).toHaveTextContent(/records admission evidence only.*does not select or invoke a runner.*does not install or execute anything/i);
-        fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
+        await screen.findByRole("heading", { name: "Saved for later review" });
+        fireEvent.click(screen.getByRole("button", { name: "Review runner review record" }));
+        expect(screen.getByLabelText("Admission evidence confirmation")).toHaveTextContent(/records your request for an installation runner to be considered later.*it does not choose or contact a runner, authorize installation, or start work/i);
+        fireEvent.click(screen.getByRole("button", { name: "Save for later review" }));
         await waitFor(() => expect(createInstallationExecutionAdmission).toHaveBeenCalled());
         expect(createInstallationExecutionAdmission).toHaveBeenCalledWith(uuid4, expect.objectContaining({ permission_grant_id: uuid4, requested_scope: "future_installation_runner_consideration_only", execution_authorized: false, mutation_allowed: false, replay_allowed: false }), "csrf", "stable-admission-key");
+        expect(screen.getByRole("list", { name: "Runner review records" }).children).toHaveLength(1);
     });
 
     it("keeps Home Assistant and expired grants blocked with no creation control", async () => {
         const expired = { ...grantResultFixture, status: { ...grantResultFixture.status!, lifecycle: "expired" as const } };
         const { rerender } = render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[expired]} homeAssistantBlocked={false} />);
-        await screen.findByText(/creation remains blocked/i);
+        await screen.findByText(/saving is unavailable/i);
         expect(screen.queryByRole("button", { name: /admission evidence/i })).not.toBeInTheDocument();
         rerender(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={true} />);
-        expect(screen.getByText(/Home Assistant remains blocked, non-installable, and non-executable/i)).toBeInTheDocument();
+        expect(screen.getByText(/Atlas cannot install Home Assistant/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /admission evidence/i })).not.toBeInTheDocument();
     });
 });
