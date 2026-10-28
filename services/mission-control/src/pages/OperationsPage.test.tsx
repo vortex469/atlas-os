@@ -117,6 +117,28 @@ describe("OperationsPage", () => {
         expect(screen.queryByText("Loading retention details…")).not.toBeInTheDocument();
     });
 
+    it("keeps action records available when retention details fail to load", async () => {
+        mockedGetProviderActionHistorySummary.mockRejectedValueOnce(new Error("Retention read failed"));
+        renderPage();
+
+        expect(await screen.findByText("Unload Model")).toBeInTheDocument();
+        expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
+        expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
+        expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
+    });
+
+    it("keeps action records and date filters available when provider options fail", async () => {
+        mockedGetProviderActionHistoryProviders.mockRejectedValueOnce(new Error("Provider read failed"));
+        renderPage();
+
+        expect(await screen.findByText("Unload Model")).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("More filters", { exact: true }));
+        expect(screen.getByRole("status")).toHaveTextContent("Provider options could not be loaded. Date filters are still available.");
+        expect(screen.getByLabelText("From date")).toBeVisible();
+        expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
+        expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
+    });
+
     it("renders sanitized action audit details", async () => {
         renderPage();
 

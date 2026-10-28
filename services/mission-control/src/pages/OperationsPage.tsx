@@ -72,6 +72,7 @@ export function OperationsPage() {
     const [providers, setProviders] = useState<
         ProviderActionHistoryProvider[]
     >([]);
+    const [providerOptionsUnavailable, setProviderOptionsUnavailable] = useState(false);
     const [summary, setSummary] =
         useState<ProviderActionHistorySummary | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -114,24 +115,41 @@ export function OperationsPage() {
         setHistoryError(null);
         setEntries([]);
         setSummary(null);
+        setProviderOptionsUnavailable(false);
 
         try {
-            const [
-                historyPage,
-                historySummary,
-                historyProviders,
-            ] = await Promise.all([
+            const [historyResult, summaryResult, providersResult] = await Promise.allSettled([
                 getProviderActionHistory(historyQuery),
                 getProviderActionHistorySummary(),
                 getProviderActionHistoryProviders(),
             ]);
 
-            if (requestSequence.current === requestId) {
-                setEntries(historyPage.items);
-                setTotal(historyPage.total);
-                setHasMore(historyPage.has_more);
-                setSummary(historySummary);
-                setProviders(historyProviders);
+            if (requestSequence.current !== requestId) return;
+            if (historyResult.status === "rejected") {
+                console.error("Unable to load provider action history:", historyResult.reason);
+                setHistoryError(getAtlasErrorMessage(
+                    historyResult.reason,
+                    "Mission Control could not load action history.",
+                ));
+                return;
+            }
+
+            setEntries(historyResult.value.items);
+            setTotal(historyResult.value.total);
+            setHasMore(historyResult.value.has_more);
+
+            if (summaryResult.status === "fulfilled") {
+                setSummary(summaryResult.value);
+            } else {
+                console.error("Unable to load provider action history retention details:", summaryResult.reason);
+            }
+
+            if (providersResult.status === "fulfilled") {
+                setProviders(providersResult.value);
+                setProviderOptionsUnavailable(false);
+            } else {
+                console.error("Unable to load provider action history filters:", providersResult.reason);
+                setProviderOptionsUnavailable(true);
             }
         } catch (requestError) {
             if (requestSequence.current !== requestId) {
@@ -348,6 +366,7 @@ export function OperationsPage() {
                         More filters
                         {hasActiveMoreFilters && <span className="ml-2 text-xs font-normal text-amber-200">Additional filters are applied</span>}
                     </summary>
+                    {providerOptionsUnavailable && <p role="status" className="mt-4 text-sm text-amber-200">{providers.length > 0 ? "Provider options could not be refreshed. Showing the last available list." : "Provider options could not be loaded. Date filters are still available."}</p>}
                     <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                         <div>
                             <label

@@ -1076,3 +1076,7 @@ Export and retention-deletion errors now stay with the history-management
 controls. They no longer replace or hide a successfully loaded action list and
 retention summary. History-read failures continue to use the separate
 unavailable state.
+
+Action records now load independently from retention details and provider
+filter options. A failure in either optional read leaves the action list
+available and identifies only the affected information as unavailable.
