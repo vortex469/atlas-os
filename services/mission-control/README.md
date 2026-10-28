@@ -195,13 +195,28 @@ npm ci
 npm run dev
 ```
 
+To view the development UI from another device on the same LAN, start Vite on
+all network interfaces:
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Open the `Network` URL printed by Vite, or use `http://<machine-LAN-IP>:5173`
+from the other device. On Linux, `hostname -I` prints the machine's LAN
+addresses. Allow inbound TCP port 5173 through the machine's firewall if it
+blocks local network connections. Use this only on a trusted LAN; the Vite
+development server is reachable by other devices on that network.
+
 The development server proxies `/api/v1` to Atlas Core at
 `http://127.0.0.1:8643` and `/agent-api` to Atlas Agent at
 `http://127.0.0.1:8090`, removing the Agent prefix as the production edge does.
 Both proxies strip caller-supplied identity headers and preserve session cookies,
 origin and CSRF headers; backends still authenticate and authorize requests.
-Core and Agent must already be running for real integration; the proxy does not
-start either service. The proxy regression test uses ephemeral local HTTP stubs.
+Core and Agent must already be running on the same machine for real integration;
+the proxy does not start either service. The frontend uses Vite as the only LAN
+entry point; its API requests are forwarded to the loopback backend addresses
+above. The proxy regression test uses ephemeral local HTTP stubs.
 Validate with:
 
 ```bash
