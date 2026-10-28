@@ -1,5 +1,5 @@
 import { discoveryItemsPage, executionCandidates, expect, providers, test } from "./mission-control-fixtures";
-import { operationalLifecycle } from "../src/test/operationalLifecycle";
+import { operationalDiagnostic, operationalLifecycle } from "../src/test/operationalLifecycle";
 
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
     let reads = 0;
@@ -636,6 +636,75 @@ for (const width of [390, 1280]) {
         await page.getByText("Export or delete history", { exact: true }).click();
         await expect(page.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         await expect(page.getByText("This page could not load")).toHaveCount(0);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`malformed lifecycle details leave maintenance history readable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/**", async (route) => {
+            const path = new URL(route.request().url()).pathname;
+            if (path.endsWith("/workflows")) {
+                return route.fulfill({ json: {
+                    items: [{ workflow_id: "malformed-maintenance", workflow_source: "candidate",
+                        workflow_state: "completed", effect_kind: "operational_action",
+                        execution_intent: "restart-service", candidate_id: null, planning_session_id: null,
+                        repository: null, target_id: "110", last_result_summary: "verified", timeline: [] }],
+                    total: 1, limit: 10, offset: 0,
+                } });
+            }
+            if (path.endsWith("/workflows/malformed-maintenance/operational-lifecycle")) {
+                return route.fulfill({ json: { ...operationalLifecycle({ workflow_id: "malformed-maintenance" }), target_label: 42 } });
+            }
+            if (path.endsWith("/workflows/malformed-maintenance/recovery-diagnostic")) {
+                return route.fulfill({ json: operationalDiagnostic({
+                    correlation: { ...operationalDiagnostic().correlation, workflow_id: "malformed-maintenance" },
+                }) });
+            }
+            return route.fulfill({ status: 404, json: { detail: "Not found" } });
+        });
+        await page.goto("/operations/history");
+
+        await expect(page.getByRole("heading", { name: "Maintenance target 110" })).toBeVisible();
+        await expect(page.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
+        await expect(page.getByText("42", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("Restart service · Healthy")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`unknown recovery status is shown as unavailable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/**", async (route) => {
+            const path = new URL(route.request().url()).pathname;
+            if (path.endsWith("/workflows")) {
+                return route.fulfill({ json: {
+                    items: [{ workflow_id: "malformed-diagnostic", workflow_source: "candidate",
+                        workflow_state: "completed", effect_kind: "operational_action",
+                        execution_intent: "restart-service", candidate_id: null, planning_session_id: null,
+                        repository: null, target_id: "110", last_result_summary: "verified", timeline: [] }],
+                    total: 1, limit: 10, offset: 0,
+                } });
+            }
+            if (path.endsWith("/workflows/malformed-diagnostic/operational-lifecycle")) {
+                return route.fulfill({ json: operationalLifecycle({ workflow_id: "malformed-diagnostic" }) });
+            }
+            if (path.endsWith("/workflows/malformed-diagnostic/recovery-diagnostic")) {
+                return route.fulfill({ json: { ...operationalDiagnostic(), diagnostic_status: "execution_confirmed" } });
+            }
+            return route.fulfill({ status: 404, json: { detail: "Not found" } });
+        });
+        await page.goto("/operations/history");
+
+        await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        await expect(page.getByText("Status unavailable", { exact: false })).toBeVisible();
+        await expect(page.getByText("Recovery diagnostic unavailable")).toBeVisible();
+        await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
+        await expect(page.getByText("execution confirmed", { exact: false })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
 }

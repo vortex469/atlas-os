@@ -23,6 +23,7 @@ import {
     getWorkflowSupportBundle,
     listWorkflows,
 } from "./atlas-agent";
+import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
 
 function axiosError(status: number): unknown {
     const error = new Error(`Request failed with status code ${status}`) as unknown as {
@@ -180,7 +181,7 @@ describe("Atlas Agent optional summary endpoints", () => {
     });
 
     it("reads a workflow-scoped operational lifecycle contract", async () => {
-        const lifecycle = { applicable: true, workflow_id: "workflow/one" };
+        const lifecycle = operationalLifecycle({ workflow_id: "workflow/one" });
         mockGet.mockResolvedValueOnce({ data: lifecycle });
 
         await expect(getWorkflowOperationalLifecycle("workflow/one")).resolves.toBe(lifecycle);
@@ -189,13 +190,31 @@ describe("Atlas Agent optional summary endpoints", () => {
         );
     });
 
+    it("rejects malformed operational lifecycle details", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...operationalLifecycle(), target_label: 42 } });
+
+        await expect(getWorkflowOperationalLifecycle("workflow/one")).rejects.toThrow(
+            "Malformed operational lifecycle payload.",
+        );
+    });
+
     it("reads a workflow-scoped recovery diagnostic contract", async () => {
-        const diagnostic = { applicable: true, diagnostic_status: "healthy" };
+        const diagnostic = operationalDiagnostic({
+            correlation: { ...operationalDiagnostic().correlation, workflow_id: "workflow/one" },
+        });
         mockGet.mockResolvedValueOnce({ data: diagnostic });
 
         await expect(getWorkflowRecoveryDiagnostic("workflow/one")).resolves.toBe(diagnostic);
         expect(mockGet).toHaveBeenCalledWith(
             "/api/v1/agent/workflows/workflow%2Fone/recovery-diagnostic",
+        );
+    });
+
+    it("rejects unknown recovery diagnostic states", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...operationalDiagnostic(), diagnostic_status: "executed" } });
+
+        await expect(getWorkflowRecoveryDiagnostic("workflow/one")).rejects.toThrow(
+            "Malformed workflow recovery diagnostic payload.",
         );
     });
 

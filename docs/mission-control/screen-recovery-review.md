@@ -1193,3 +1193,14 @@ An audit record returned for a different link remains a mismatch error. The
 full component suite (2,712 tests), lint, build, 114 development-browser checks,
 and 68 built-app journeys pass. Browser fixtures reject all action mutations;
 they do not establish real Core integration or operator acceptance.
+
+## Maintenance lifecycle response validation — 2026-10-28
+
+Agent operational-lifecycle and recovery-diagnostic reads are validated before
+the maintenance history and workflow screens use them. Malformed lifecycle
+details leave the maintenance row visible and mark target/timing information
+unavailable. An unknown recovery status is shown as unavailable and does not
+imply that maintenance failed. Browser fixtures reject mutations. The full
+component suite (2,714 tests), lint, build, 118 development-browser checks, and
+68 built-app journeys pass. These simulated checks do not establish real
+Agent/Core integration or operator acceptance.

@@ -42,6 +42,22 @@ function isNullableString(value: unknown): value is string | null {
     return value === null || typeof value === "string";
 }
 
+function isNullableDateTime(value: unknown): value is string | null {
+    return value === null || (typeof value === "string" && Number.isFinite(Date.parse(value)));
+}
+
+function isNullableBoolean(value: unknown): value is boolean | null {
+    return value === null || typeof value === "boolean";
+}
+
+function isOneOf(value: unknown, options: readonly string[]): value is string {
+    return typeof value === "string" && options.includes(value);
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
 function isSafeRouteId(value: unknown): value is string {
     if (typeof value !== "string" || !value.trim()) return false;
     try {
@@ -89,6 +105,111 @@ function parseWorkflowListResponse(value: unknown): WorkflowListResponse {
     if (!validItems) throw new Error("Malformed workflow list payload.");
 
     return value as unknown as WorkflowListResponse;
+}
+
+function isOperationalLifecycleApproval(value: unknown): boolean {
+    if (value === null) return true;
+    return isRecord(value) && !Array.isArray(value)
+        && isNullableString(value.approval_id)
+        && typeof value.decision_status === "string"
+        && isOneOf(value.presentation_state, ["actionable", "historical", "expired", "superseded", "resolved"])
+        && typeof value.actionable === "boolean"
+        && isNullableDateTime(value.expires_at);
+}
+
+function parseWorkflowOperationalLifecycle(value: unknown): WorkflowOperationalLifecycle {
+    if (!isRecord(value) || Array.isArray(value)
+        || typeof value.applicable !== "boolean"
+        || !isOneOf(value.availability, ["not_applicable", "agent_only", "complete", "unavailable"])
+        || !isOneOf(value.consistency_status, ["not_applicable", "agent_only", "consistent", "core_unavailable", "mismatch"])
+        || !isNullableString(value.controlled_reason)
+        || !isSafeRouteId(value.workflow_id)
+        || typeof value.workflow_state !== "string"
+        || !isNullableString(value.agent_execution_stage)
+        || !isNullableString(value.candidate_id)
+        || !isNullableString(value.planning_session_id)
+        || !isOneOf(value.effect_kind, ["repository_change", "operational_action"])
+        || !isNullableString(value.execution_intent)
+        || !isNullableString(value.provider_id)
+        || !isNullableString(value.resource_id)
+        || !isNullableString(value.resource_type)
+        || !isNullableString(value.target_label)
+        || !isNullableString(value.operator_intent_record_id)
+        || !isNullableString(value.candidate_source_subsystem)
+        || !isNullableString(value.candidate_fingerprint)
+        || !isNullableString(value.plan_fingerprint)
+        || !isOperationalLifecycleApproval(value.preparation_approval)
+        || !isOperationalLifecycleApproval(value.action_approval)
+        || !isNullableString(value.action_request_id)
+        || !isNullableString(value.request_digest)
+        || !isNullableString(value.target_fingerprint)
+        || !isNullableString(value.target_version)
+        || !isNullableString(value.disruption_scope)
+        || !isNullableDateTime(value.request_created_at)
+        || !isNullableDateTime(value.request_expires_at)
+        || !isNullableString(value.core_record_state)
+        || !Array.isArray(value.transitions)
+        || !value.transitions.every((transition) => isRecord(transition) && !Array.isArray(transition)
+            && isNonNegativeSafeInteger(transition.sequence)
+            && typeof transition.state === "string"
+            && isNullableDateTime(transition.occurred_at) && transition.occurred_at !== null)
+        || typeof value.barrier_crossed !== "boolean"
+        || !isNonNegativeSafeInteger(value.barrier_crossing_count)
+        || typeof value.provider_operation_captured !== "boolean"
+        || !isNonNegativeSafeInteger(value.provider_operation_capture_count)
+        || !isNullableString(value.dispatch_status)
+        || !isNullableString(value.provider_operation_reference)
+        || !isNullableDateTime(value.dispatch_started_at)
+        || !isNullableDateTime(value.dispatch_completed_at)
+        || !isNullableString(value.verification_status)
+        || !isNullableString(value.observed_target_fingerprint)
+        || !isNullableString(value.observed_state)
+        || !isNullableString(value.observed_health)
+        || !isNullableDateTime(value.verification_started_at)
+        || !isNullableDateTime(value.verification_completed_at)
+        || !isNullableDateTime(value.verification_deadline)
+        || typeof value.terminal !== "boolean") {
+        throw new Error("Malformed operational lifecycle payload.");
+    }
+
+    return value as unknown as WorkflowOperationalLifecycle;
+}
+
+function parseWorkflowRecoveryDiagnostic(value: unknown): WorkflowRecoveryDiagnostic {
+    if (!isRecord(value) || Array.isArray(value)
+        || typeof value.applicable !== "boolean"
+        || !isOneOf(value.diagnostic_status, ["healthy", "pending", "attention_required", "recovery_in_progress", "outcome_uncertain", "unavailable"])
+        || !isOneOf(value.consistency, ["consistent", "agent_only", "core_unavailable", "immutable_mismatch", "transition_mismatch", "terminal_mismatch"])
+        || !isRecord(value.correlation) || Array.isArray(value.correlation)
+        || !isSafeRouteId(value.correlation.workflow_id)
+        || !isNullableString(value.correlation.request_id)
+        || !isNullableBoolean(value.correlation.request_digest_match)
+        || typeof value.correlation.agent_record_present !== "boolean"
+        || typeof value.correlation.core_record_present !== "boolean"
+        || !isRecord(value.dispatch_evidence) || Array.isArray(value.dispatch_evidence)
+        || typeof value.dispatch_evidence.barrier_crossed !== "boolean"
+        || typeof value.dispatch_evidence.provider_operation_captured !== "boolean"
+        || typeof value.dispatch_evidence.dispatch_result_known !== "boolean"
+        || !isNullableBoolean(value.dispatch_evidence.transition_sequence_valid)
+        || !isRecord(value.verification_evidence) || Array.isArray(value.verification_evidence)
+        || !isNullableString(value.verification_evidence.status)
+        || !isOneOf(value.verification_evidence.target_fingerprint_state, ["unchanged", "replaced", "unavailable", "not_applicable"])
+        || !isNullableString(value.verification_evidence.observed_state)
+        || !isNullableString(value.verification_evidence.observed_health)
+        || typeof value.verification_evidence.terminal_evidence !== "boolean"
+        || !(value.controlled_reason === null || isOneOf(value.controlled_reason, [
+            "not_applicable", "core_unavailable", "missing_core_record", "immutable_request_mismatch",
+            "invalid_transition_sequence", "dispatch_outcome_unknown", "dispatch_failed", "verification_pending",
+            "verification_failed", "target_replaced", "terminal_state_disagreement",
+        ]))
+        || !isOneOf(value.safe_next_action, [
+            "none", "wait_for_verification", "restore_core_availability", "inspect_target_read_only",
+            "preserve_evidence", "operator_review_required", "new_request_only_after_terminal",
+        ])) {
+        throw new Error("Malformed workflow recovery diagnostic payload.");
+    }
+
+    return value as unknown as WorkflowRecoveryDiagnostic;
 }
 
 function parseAgentInfo(value: unknown): AgentInfo {
@@ -404,7 +525,7 @@ export async function getWorkflowOperationalLifecycle(
         const response = await atlasAgent.get<WorkflowOperationalLifecycle>(
             `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/operational-lifecycle`,
         );
-        return response.data;
+        return parseWorkflowOperationalLifecycle(response.data);
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
             return null;
@@ -420,7 +541,7 @@ export async function getWorkflowRecoveryDiagnostic(
         const response = await atlasAgent.get<WorkflowRecoveryDiagnostic>(
             `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/recovery-diagnostic`,
         );
-        return response.data;
+        return parseWorkflowRecoveryDiagnostic(response.data);
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) return null;
         throw error;
