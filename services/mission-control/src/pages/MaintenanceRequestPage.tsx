@@ -204,7 +204,7 @@ export function MaintenanceRequestPage() {
         <main className="mx-auto max-w-6xl space-y-6 p-8">
             <header>
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Maintenance request</p>
-                <h1 className="mt-2 text-3xl font-bold text-white">Request service restart</h1>
+                <h1 className="mt-2 text-3xl font-bold text-white">Request a restart proposal</h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a proposal for separate review and approval; it does not restart the VM.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
             </header>
             {(proposalId !== null || proposalLoading || proposalError || proposal) && (

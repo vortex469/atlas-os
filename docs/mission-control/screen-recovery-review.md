@@ -1471,3 +1471,10 @@ journey verify the title, hidden-by-default ID, and access to the ID when
 details are opened. The workflow shell suite passes 31 tests, the repository
 journey passes all eight checks at 390px and 1280px, and lint/build pass.
 Approval and execution steps are unchanged.
+
+## Maintenance request title — 2026-10-28
+
+The maintenance page heading now says “Request a restart proposal,” matching
+the actual result: a proposal for separate review and approval. The explanatory
+boundary and request behavior are unchanged. The component test and sign-in and
+maintenance browser journeys assert the updated title.

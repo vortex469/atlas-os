@@ -133,6 +133,7 @@ describe("MaintenanceRequestPage", () => {
 
     it("renders fixed semantics and disables non-requestable resources", async () => {
         renderPage();
+        expect(await screen.findByRole("heading", { name: "Request a restart proposal" })).toBeVisible();
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
         expect(screen.getByText(/creates a proposal for separate review and approval/i)).toBeInTheDocument();
         expect(screen.getByText("Restart service")).toBeInTheDocument();

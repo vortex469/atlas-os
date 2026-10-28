@@ -10,6 +10,7 @@ for (const width of [390, 1280]) {
         await page.getByLabel("Operator ID").fill("browser-operator");
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Request a restart proposal", exact: true })).toBeVisible();
         const target = page.getByRole("radio", { name: /Browser fixture VM/ });
         await expect(target).not.toBeChecked();
         await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();

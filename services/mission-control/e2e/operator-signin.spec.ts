@@ -65,7 +65,7 @@ for (const width of [390, 1280]) {
         await page.getByLabel("Operator ID").fill("browser-operator");
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
-        await expect(page.getByRole("heading", { name: "Request service restart" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Request a restart proposal" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Suggestion details" })).toBeVisible();
         await expect(page.getByText("This suggestion cannot select a VM for you. Choose one from the VM list below.")).toBeVisible();
         await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).not.toBeChecked();
