@@ -234,10 +234,18 @@ Open the Network URL printed by Vite or `http://<Atlas-machine-LAN-IP>:5173`;
 on Linux, `hostname -I` lists the machine's addresses. Allow inbound TCP port
 5173 through the host firewall if needed. Vite proxies API requests to Core at
 `127.0.0.1:8643` and Agent at `127.0.0.1:8090`, so start the backend needed by
-the screen you want to inspect on the Atlas machine. See the [Mission Control
-development guide](services/mission-control/README.md#development) for proxy
-and trusted-LAN details. The hardened execution path has its own development
-and test workflows.
+the screen you want to inspect on the Atlas machine. If Agent listens on a
+different interface, set `ATLAS_AGENT_PROXY_TARGET` to its actual address when
+starting Vite, for example:
+
+```bash
+ATLAS_AGENT_PROXY_TARGET=http://192.168.1.20:8090 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Replace `192.168.1.20` with the address Agent listens on. See the [Mission
+Control development guide](services/mission-control/README.md#development) for
+proxy and trusted-LAN details. The hardened execution path has its own
+development and test workflows.
 
 ## Production deployment
 

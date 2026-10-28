@@ -28,6 +28,7 @@ describe("development API proxies", () => {
     });
     let vite: ViteDevServer;
     let base: string;
+    const previousAgentProxyTarget = process.env.ATLAS_AGENT_PROXY_TARGET;
     beforeAll(async () => {
         await new Promise<void>((resolve, reject) => {
             backend.once("error", reject);
@@ -36,6 +37,7 @@ describe("development API proxies", () => {
         const address = backend.address();
         if (!address || typeof address === "string") throw new Error("Stub did not bind");
         const target = `http://127.0.0.1:${address.port}`;
+        process.env.ATLAS_AGENT_PROXY_TARGET = target;
         const vitePort = await unusedLoopbackPort();
         vite = await createServer({
             root: fileURLToPath(new URL("../../", import.meta.url)),
@@ -43,7 +45,7 @@ describe("development API proxies", () => {
             logLevel: "silent",
             optimizeDeps: { noDiscovery: true, include: [] },
             server: { host: "127.0.0.1", port: vitePort, strictPort: true,
-                proxy: { "/api/v1": { target }, "/agent-api": { target } } },
+                proxy: { "/api/v1": { target } } },
         });
         await vite.listen();
         const listening = vite.httpServer?.address();
@@ -54,6 +56,8 @@ describe("development API proxies", () => {
         await vite?.close();
         backend.closeAllConnections();
         await new Promise<void>((resolve) => backend.close(() => resolve()));
+        if (previousAgentProxyTarget === undefined) delete process.env.ATLAS_AGENT_PROXY_TARGET;
+        else process.env.ATLAS_AGENT_PROXY_TARGET = previousAgentProxyTarget;
     });
 
     it.each([

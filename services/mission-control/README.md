@@ -216,9 +216,18 @@ The development server proxies `/api/v1` to Atlas Core at
 Both proxies strip caller-supplied identity headers and preserve session cookies,
 origin and CSRF headers; backends still authenticate and authorize requests.
 Core and Agent must already be running on the same machine for real integration;
-the proxy does not start either service. The frontend uses Vite as the only LAN
-entry point; its API requests are forwarded to the loopback backend addresses
-above. The proxy regression test uses ephemeral local HTTP stubs.
+the proxy does not start either service. The Agent proxy target defaults to
+loopback. If Agent listens on a different interface, set
+`ATLAS_AGENT_PROXY_TARGET` to the address Agent uses and restart Vite. For
+example, replace `192.168.1.20` with that address:
+
+```bash
+ATLAS_AGENT_PROXY_TARGET=http://192.168.1.20:8090 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+The frontend remains Vite's only LAN entry point; API requests are forwarded
+through its configured proxy. The proxy regression test uses ephemeral local
+HTTP stubs.
 Validate with:
 
 ```bash
