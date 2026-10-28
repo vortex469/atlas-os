@@ -311,7 +311,16 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         cleanup();
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Agent unavailable");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Planning session unavailable");
+        expect(alert).toHaveTextContent("Mission Control could not load this planning session, so its current status is unknown.");
+        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        const readError = within(alert).getByText("Agent unavailable");
+        const readErrorDetails = readError.closest("details");
+        expect(readErrorDetails).not.toHaveAttribute("open");
+        expect(readError).not.toBeVisible();
+        await userEvent.setup().click(within(alert).getByText("Technical details"));
+        expect(readError).toBeVisible();
     });
 
     it("creates a workflow shell from a plan-ready session", async () => {

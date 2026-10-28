@@ -1130,3 +1130,9 @@ not submit or change approval state.
 An unavailable lifecycle now offers a read-only workflow status retry and says
 that the maintenance outcome may still be unknown. The retry does not repeat
 the provider action; technical error text is optional.
+
+## Planning session read failures — 2026-10-28
+
+When Mission Control cannot read a planning session, the page now says its
+current status is unknown. Backend error text is available under collapsed
+Technical details, and Reload page remains the recovery action.

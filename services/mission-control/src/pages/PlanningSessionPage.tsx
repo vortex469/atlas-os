@@ -33,6 +33,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     const [operationalPlan, setOperationalPlan] = useState<OperationalCandidatePlanApiResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generateError, setGenerateError] = useState<string | null>(null);
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(null);
@@ -81,12 +82,11 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     return;
                 }
                 console.error(`Unable to load planning session ${sessionId}:`, requestError);
-                setError(
-                    getAtlasAgentErrorMessage(
-                        requestError,
-                        "Mission Control could not load this planning session.",
-                    ),
-                );
+                setError("Mission Control could not load this planning session, so its current status is unknown.");
+                setErrorDetails(getAtlasAgentErrorMessage(
+                    requestError,
+                    "Planning session read failed without additional details.",
+                ));
             })
             .finally(() => {
                 if (!cancelled) {
@@ -196,8 +196,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             <main className="mx-auto max-w-6xl space-y-6 p-8">
                 <Link to="/execution-candidates" className="text-sm text-blue-300">← Change proposals</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <h1 className="text-xl font-semibold text-red-100">{error ? "Planning unavailable" : "Planning session not found"}</h1>
+                    <h1 className="text-xl font-semibold text-red-100">{error ? "Planning session unavailable" : "Planning session not found"}</h1>
                     <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>
+                    {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
                     <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
                 </section>
             </main>
