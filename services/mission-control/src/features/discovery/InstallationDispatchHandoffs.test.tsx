@@ -32,10 +32,18 @@ describe("installation dispatch handoff presentation", () => {
         vi.mocked(listInstallationDispatchHandoffs).mockResolvedValueOnce([handoff]); vi.mocked(getInstallationDispatchHandoff).mockResolvedValueOnce({ ...handoff, lifecycle_state: "expired" });
         const user = userEvent.setup(); render(<InstallationDispatchHandoffs executionRequests={[]} csrfToken="csrf" />);
         expect(await screen.findByText("Prepared · Not sent to Agent")).toBeInTheDocument();
+        const expectedLocalTime = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value));
+        const handoffList = screen.getByRole("list", { name: "Saved delivery handoff records" });
+        const visibleExpiry = within(handoffList).getByText(expectedLocalTime(handoff.valid_until), { exact: true });
+        expect(visibleExpiry).toHaveAttribute("datetime", handoff.valid_until);
         await user.click(await screen.findByRole("button", { name: /review handoff record/i }));
         const detail = screen.getByRole("heading", { name: "Handoff record details" }).parentElement!;
         expect(within(detail).getByText(/this record has expired and cannot be renewed or used to start work/i)).toBeInTheDocument();
         await user.click(within(detail).getByText("Technical handoff and evidence details"));
+        const preparedTime = within(detail).getByText(expectedLocalTime(handoff.prepared_at), { exact: true });
+        expect(preparedTime).toHaveAttribute("datetime", handoff.prepared_at);
+        const exactExpiry = within(detail).getAllByText(expectedLocalTime(handoff.valid_until), { exact: true }).find((node) => node.closest("time"));
+        expect(exactExpiry).toHaveAttribute("datetime", handoff.valid_until);
         expect(within(detail).getByText("core_prepared_not_delivered")).toBeInTheDocument();
         expect(within(detail).getByText(handoff.linkage.execution_request_fingerprint.value)).toBeInTheDocument();
         await user.click(within(detail).getByText("Agent admission contract"));
