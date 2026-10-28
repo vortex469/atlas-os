@@ -2310,3 +2310,10 @@ results in plain language and suggest a next check from Atlas Core's network
 location. The exact reported message remains under the collapsed Technical
 details section. Health state and probing behavior are unchanged. Focused service
 health and health-presentation tests cover all three failure types.
+
+## Service details keyboard focus — 2026-10-28
+
+The service details drawer now focuses its Close button when opened, keeps Tab
+and Shift+Tab within the modal, and returns focus to the service card when
+closed. Keyboard behavior is covered for both focus boundaries, Escape, and
+backdrop dismissal.

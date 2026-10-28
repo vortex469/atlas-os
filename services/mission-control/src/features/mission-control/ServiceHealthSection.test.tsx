@@ -216,18 +216,18 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        const openDrawer = () =>
-            user.click(
-                screen.getByRole("button", {
-                    name: "View details for Containers",
-                }),
-            );
+        const trigger = screen.getByRole("button", {
+            name: "View details for Containers",
+        });
+        const openDrawer = () => user.click(trigger);
 
         await openDrawer();
+        expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
         fireEvent.keyDown(window, { key: "Escape" });
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
 
         await openDrawer();
         const dialog = screen.getByRole("dialog");
@@ -235,5 +235,32 @@ describe("ServiceHealthSection", () => {
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
+    });
+
+    it("keeps keyboard focus inside the service details drawer", async () => {
+        const user = userEvent.setup();
+        render(
+            <ServiceHealthSection
+                services={{ Containers: service("docker", 8) }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "View details for Containers" }));
+
+        const dialog = screen.getByRole("dialog");
+        const closeButton = within(dialog).getByRole("button", { name: "Close" });
+        const technicalDetails = within(dialog).getByText("Technical details");
+
+        technicalDetails.focus();
+        fireEvent.keyDown(window, { key: "Tab" });
+        expect(closeButton).toHaveFocus();
+
+        closeButton.focus();
+        fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+        expect(technicalDetails).toHaveFocus();
     });
 });
