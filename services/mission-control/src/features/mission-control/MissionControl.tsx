@@ -143,7 +143,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <Link to="/operations">Inspect operations →</Link>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
-            <Card title="Agent state" evidence={evidence.agent}>
+            <Card title="Agent state">
                 <AgentOverviewContent evidence={evidence.agent} />
             </Card>
             <Card title="AI provider" evidence={evidence.ai}>

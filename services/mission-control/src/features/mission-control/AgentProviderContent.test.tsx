@@ -16,9 +16,10 @@ describe("integrated agent/provider evidence", () => {
         const user = userEvent.setup();
         show({ agent: { data: { app_name: "Development Agent", token: "private-canary" } }, providers: { data: [provider("alpha", "healthy"), provider("beta", "failed"), provider("gamma", "offline"), provider("delta", "degraded"), provider("epsilon", "configured")] } });
         const agent = within(screen.getByRole("region", { name: "Agent state" }));
-        expect(agent.getByText("Unknown")).toBeInTheDocument();
-        expect(agent.getByText("Atlas Agent does not report health status.")).toBeInTheDocument();
-        expect(agent.getByText("A reported name does not show whether the Agent is available or can run workflows.")).toBeInTheDocument();
+        expect(agent.getByText("Development Agent")).toBeInTheDocument();
+        expect(agent.getByText("Agent details do not include health or workflow status.")).toBeInTheDocument();
+        expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
+        expect(agent.queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
         expect(registry().getByText("Saved providers and their reported status. A saved provider may still be unavailable.")).toBeInTheDocument();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
@@ -31,6 +32,20 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText(/permission to run actions/)).toBeVisible();
         expect(screen.queryByText(/private-canary/)).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
+    });
+    it("explains unavailable Agent details without inventing a health state", () => {
+        show({ agent: { unavailable: true } });
+        const agent = within(screen.getByRole("region", { name: "Agent state" }));
+        expect(agent.getByText("Agent details are unavailable. Workflow availability is unknown.")).toBeInTheDocument();
+        expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
+        expect(agent.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+    it("labels retained Agent identity as last-known", () => {
+        show({ agent: { data: { app_name: "Development Agent" }, unavailable: true, stale: true } });
+        const agent = within(screen.getByRole("region", { name: "Agent state" }));
+        expect(agent.getByText("Development Agent")).toBeInTheDocument();
+        expect(agent.getByText("Last-known Agent details. Current workflow availability is unknown.")).toBeInTheDocument();
+        expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
     it("retains stale observations without presenting cached success as current", () => {
         const view = show({ providers: { data: [provider("alpha", "healthy")], stale: true, unavailable: true }, agent: { unavailable: true } });

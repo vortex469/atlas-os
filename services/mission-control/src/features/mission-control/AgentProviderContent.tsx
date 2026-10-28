@@ -7,10 +7,19 @@ import type { Evidence } from "./useOverviewEvidence";
 export function AgentOverviewContent({ evidence }: { evidence?: Evidence }) {
     const agent = record(evidence?.data);
     const name = publicLabel(agent.app_name);
+    const version = publicLabel(agent.version);
+    const hasData = evidence?.data !== undefined;
+    const stale = Boolean(evidence?.stale || (evidence?.unavailable && hasData));
+    const summary = !hasData
+        ? evidence?.unavailable
+            ? "Agent details are unavailable. Workflow availability is unknown."
+            : "Loading Agent details…"
+        : stale
+            ? "Last-known Agent details. Current workflow availability is unknown."
+            : "Agent details do not include health or workflow status.";
     return <>
-        <HealthEvidence status={null} stale={evidence?.stale} reason="Atlas Agent does not report health status." />
-        <p>{name || "Agent name unavailable"}{publicLabel(agent.version) && ` · ${publicLabel(agent.version)}`}</p>
-        <p>A reported name does not show whether the Agent is available or can run workflows.</p>
+        {hasData && <p>{name || "Agent name unavailable"}{version && ` · ${version}`}</p>}
+        <p>{summary}</p>
         <Link to="/forge">Open deployment analysis →</Link>
         <Link className="block" to="/workflows">View agent workflows</Link>
     </>;

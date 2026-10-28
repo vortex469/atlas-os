@@ -440,6 +440,14 @@ alerts. Ordering, result, time and action-detail links are unchanged. The
 focused dashboard suites pass (68 tests), lint/build pass, and all 3 built
 responsive dashboard checks pass.
 
+## Agent overview status — 2026-10-28
+
+The Agent card no longer shows an “Unknown” health badge or missing check time
+for information that does not report health. It summarizes loaded, unavailable,
+and last-known Agent details in plain language and keeps the same read-only
+links. The focused suite passes 10 tests; lint/build and all 8 built responsive
+overview browser checks pass. No Agent or execution capability was added.
+
 ## Health check times — 2026-10-28
 
 Shared health summaries now show check times as readable UTC dates instead of

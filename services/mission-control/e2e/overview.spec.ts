@@ -10,6 +10,9 @@ for (const width of [320, 768, 1440]) {
         await expect(policyTime).toBeVisible();
         await expect(policyTime).not.toHaveText(/\d{4}-\d{2}-\d{2}T/);
         await expect(policyTime).toHaveAttribute('dateTime', /^\d{4}-\d{2}-\d{2}T/);
+        const agent = page.getByRole('region', { name: 'Agent state' });
+        await expect(agent.getByText('Agent details do not include health or workflow status.')).toBeVisible();
+        await expect(agent.getByText('Unknown', { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(width < 768 ? 1 : width < 1280 ? 2 : 3);
