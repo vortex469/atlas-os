@@ -46,6 +46,17 @@ describe("authoritative health presentation", () => {
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
     });
 
+    it.each([
+        ["[Errno 111] Connection refused", "The service refused the connection."],
+        ["[Errno 113] No route to host", "The service could not be reached over the network."],
+        ["[Errno 110] Connection timed out", "The service did not respond in time."],
+        ["timed out", "The service did not respond in time."],
+    ])("explains network failures in plain language: %s", (reason, explanation) => {
+        render(<HealthEvidence compact status="offline" reason={reason} />);
+        expect(screen.getByText(explanation)).toBeInTheDocument();
+        expect(screen.queryByText(/Errno/)).not.toBeInTheDocument();
+    });
+
     it("ages current timestamped evidence without changing the authoritative status", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-09-13T12:00:00Z"));
@@ -92,6 +103,12 @@ describe("authoritative health presentation", () => {
             policyHealth: { data: { status: "healthy" } },
         }} />);
         expect(screen.getAllByText("Healthy")).toHaveLength(3);
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+
+    it("omits an unavailable-time placeholder when a compact source reports no timestamp", () => {
+        render(<SystemHealthSummary evidence={{ policyHealth: { data: { status: "healthy", checked_at: null } } }} />);
+        expect(screen.getByText("Healthy")).toBeInTheDocument();
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
     });
 

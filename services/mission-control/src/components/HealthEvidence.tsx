@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from "react";
-import { evidenceText, evidenceTimestamp, healthState } from "../utils/healthPresentation";
+import { evidenceText, evidenceTimestamp, healthReason, healthState } from "../utils/healthPresentation";
 import { HealthEvidenceContext } from "./healthEvidenceContext";
 import { HealthStatusBadge } from "./health/HealthStatusPrimitive";
 import type { HealthState } from "./health/HealthStatusPrimitive";
@@ -13,7 +13,7 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false, compa
 }) {
     const snapshot = useContext(HealthEvidenceContext);
     const state = healthState(status);
-    const message = evidenceText(reason);
+    const message = healthReason(reason);
     const timestamp = evidenceText(checkedAt);
     const parsed = evidenceTimestamp(timestamp);
     const [now, setNow] = useState(() => Date.now());
@@ -28,7 +28,7 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false, compa
     const rawState = raw?.trim().toLowerCase();
     const rawAddsMeaning = ["warning", "critical", "error", "failed"].includes(rawState ?? "");
     const showReportedStatus = Boolean(raw && rawState !== state.toLowerCase() && (!compact || rawAddsMeaning));
-    const showUnavailableTime = !compact || checkedAt !== undefined;
+    const showUnavailableTime = !compact || (checkedAt !== undefined && checkedAt !== null);
 
     return (
         <div className="min-w-0 space-y-1 break-words text-sm" data-health-state={isStale ? "Unknown" : state}>

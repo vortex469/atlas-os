@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { Overview } from "./MissionControl";
 import { safeText, timestamp, status, detailPath } from "./overviewEvidence";
 import type { OverviewEvidence } from "./useOverviewEvidence";
-const show = (evidence: OverviewEvidence = {}) => render(<MemoryRouter><Overview evidence={evidence} /></MemoryRouter>);
+const show = (evidence: OverviewEvidence = {}, loading = false) => render(<MemoryRouter><Overview evidence={evidence} loading={loading} /></MemoryRouter>);
 const activity = () => within(screen.getByRole('region', { name: 'Recent Activity' }));
 
 describe("MC overview evidence", () => {
@@ -54,6 +54,38 @@ describe("MC overview evidence", () => {
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
+    });
+    it("shows a checking state instead of an empty result during the first load", () => {
+        show({}, true);
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Checking current information…')).toBeVisible();
+        expect(attention.queryByText('No attention items were reported by the checked sources.')).not.toBeInTheDocument();
+        expect(attention.queryByText('System findings: Evidence unknown.')).not.toBeInTheDocument();
+    });
+    it("reports no attention only after all current sources are checked", () => {
+        show({
+            summary: { data: { findings: [] } },
+            health: { data: { atlas: 'healthy', services: {} } },
+            providers: { data: [] },
+            ai: { data: { health: { status: 'healthy' } } },
+            workflows: { data: { items: [], total: 0, offset: 0, limit: 200 } },
+        });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('No attention items were reported by the checked sources.')).toBeVisible();
+        expect(attention.queryByText(/cannot confirm whether attention is needed/)).not.toBeInTheDocument();
+    });
+    it("does not repeat an incomplete-workflow warning when the source is unavailable", () => {
+        show({
+            summary: { data: { findings: [] } },
+            workflows: { unavailable: true },
+            health: { data: { atlas: 'healthy', services: {} } },
+            providers: { data: [] },
+            ai: { data: { health: { status: 'healthy' } } },
+        });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Workflows: Evidence unavailable.')).toBeVisible();
+        expect(attention.queryByText('Workflow results are incomplete.')).not.toBeInTheDocument();
+        expect(attention.getByText('Some information is missing. Atlas cannot confirm whether attention is needed.')).toBeVisible();
     });
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
@@ -188,8 +220,8 @@ it('keeps stale AI conditions explicitly unknown', () => {
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
     show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Some workflow information is missing or incomplete.')).toBeInTheDocument();
-    expect(attention.getByText('Some system findings could not be checked.')).toBeInTheDocument();
+    expect(attention.getByText('Workflow results are incomplete.')).toBeInTheDocument();
+    expect(attention.getByText('System findings are incomplete.')).toBeInTheDocument();
     expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
     expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });

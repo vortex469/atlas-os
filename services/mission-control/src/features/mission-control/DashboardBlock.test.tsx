@@ -29,7 +29,7 @@ describe("integrated attention and activity", () => {
     it.each([" ", "", "..", "\ud800", {}])("rejects malformed workflow identity %j without requiring human action", id => {
         render(dashboard({ workflows: { data: { items: [{ workflow_id: id, workflow_state: "awaiting_approval" }] } } }));
         expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText("Some workflow information is missing or incomplete.")).toBeVisible();
+        expect(attention().getByText("Workflow results are incomplete.")).toBeVisible();
     });
     it("keeps stale approval requirements historical and clears them on recovery", () => {
         const view = render(dashboard({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: "w", workflow_state: "awaiting_approval" }] } } }));
@@ -41,7 +41,7 @@ describe("integrated attention and activity", () => {
     it("never creates action requirements from absent or malformed evidence or historical failures", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
         expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText(/If a source is missing, Atlas cannot confirm everything is healthy/)).toBeVisible();
+        expect(attention().getByText(/Atlas cannot confirm whether attention is needed/)).toBeVisible();
         expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
     it("orders and deduplicates source history with provider context and safe detail navigation", async () => {

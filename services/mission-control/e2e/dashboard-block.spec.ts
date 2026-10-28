@@ -1,5 +1,29 @@
 import { expect, test } from "./mission-control-fixtures";
 
+test("dashboard explains unavailable workflow data once and translates network errors", async ({ page, rejectedMutationRequests }) => {
+    await page.route("**/api/v1/health", route => route.fulfill({ json: {
+        atlas: "degraded",
+        services: {
+            refused: { status: "offline", message: "[Errno 111] Connection refused" },
+            unreachable: { status: "offline", message: "[Errno 113] No route to host" },
+        },
+    } }));
+    await page.route(/\/agent-api\/api\/v1\/agent\/workflows(?:\?.*)?$/, route => route.fulfill({
+        status: 503,
+        json: { detail: "Fixture workflow service unavailable." },
+    }));
+
+    await page.goto("/");
+
+    const attention = page.getByRole("region", { name: "Operator Attention" });
+    await expect(attention.getByText("Workflows: Evidence unavailable.")).toBeVisible();
+    await expect(attention.getByText("Workflow results are incomplete.")).toHaveCount(0);
+    await expect(attention.getByText("The service refused the connection.")).toBeVisible();
+    await expect(attention.getByText("The service could not be reached over the network.")).toBeVisible();
+    await expect(page.getByText(/\[Errno \d+\]/)).toHaveCount(0);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 for (const width of [320, 390, 1280]) {
     test(`attention and source history fit ${width}px with safe navigation`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });

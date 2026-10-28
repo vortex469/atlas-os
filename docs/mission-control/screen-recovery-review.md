@@ -217,6 +217,17 @@ time is omitted. Focused component checks and the 390px and 1280px detail
 browser checks verify the hierarchy and disclosure. Provider contracts and
 actions are unchanged.
 
+## Dashboard unavailable-state clarity — 2026-10-28
+
+Operator Attention shows a checking message during its first read and does not
+report an empty result unless current evidence is complete. Unavailable and
+malformed workflow or finding data use distinct, non-duplicated messages.
+Common network errors use plain-language descriptions. Compact health summaries
+omit empty timestamp placeholders when the source supplies no time. The focused
+dashboard and health suites pass (120 tests); four browser checks pass at 320px,
+390px, and 1280px; lint and build pass. Read-only behavior and backend contracts
+are unchanged.
+
 ## Provider action recovery — 2026-10-28
 
 Action-catalog read failures now offer a read-only reload and have their own

@@ -21,6 +21,9 @@ function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }
     if (evidence?.data === undefined) return <p>{prefix}Evidence unknown.</p>;
     return null;
 }
+function sourceIsCurrent(evidence?: Evidence): boolean {
+    return evidence?.data !== undefined && evidence.unavailable !== true && evidence.stale !== true;
+}
 function Card({ title, children, evidence, showSourceNote = true }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean }) {
     return <section aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
         <h2 className="mb-3 text-lg font-semibold text-mc-text-primary">{title}</h2>
@@ -78,6 +81,17 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         typeof f.severity === "string" && ["info", "warning", "critical", "blocked"].includes(f.severity));
     const aiProvider = record(ai.provider);
     const aiHealth = record(ai.health);
+    const healthStatusesKnown = typeof health.atlas === "string" && status(health.atlas) !== "unknown"
+        && services.every(([, service]) => status(record(service).status) !== "unknown");
+    const providersKnown = Array.isArray(evidence.providers?.data)
+        && providers.length === evidence.providers.data.length
+        && providers.every(provider => typeof provider.id === "string" && status(record(provider.health).status) !== "unknown");
+    const attentionSources = [evidence.summary, evidence.workflows, evidence.health, evidence.providers, evidence.ai];
+    const attentionEvidenceComplete = attentionSources.every(sourceIsCurrent)
+        && findingsKnown && workflowKnown && healthStatusesKnown && providersKnown
+        && status(aiHealth.status) !== "unknown";
+    const initialAttentionLoad = loading && !attentionSources.some(source =>
+        source?.data !== undefined || source?.unavailable === true);
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
@@ -104,12 +118,20 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
     return <>
-        <Card title="Operator Attention" evidence={evidence.summary}>
-            <p>Review each item and use its link to see the details.</p>
-            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" />
-            {!workflowKnown && <p>Some workflow information is missing or incomplete.</p>}
-            {!findingsKnown && <p>Some system findings could not be checked.</p>}
-            {uniqueAttention.length === 0 && <p>No issues were reported in the available data. If a source is missing, Atlas cannot confirm everything is healthy.</p>}
+        <Card title="Operator Attention" showSourceNote={false}>
+            {uniqueAttention.length > 0 && <p>Review each item and use its link to see the details.</p>}
+            {!initialAttentionLoad && <>
+                <SourceNote evidence={evidence.summary} label="System findings" />
+                <SourceNote evidence={evidence.workflows} label="Workflows" />
+                <SourceNote evidence={evidence.health} label="System health" />
+                <SourceNote evidence={evidence.providers} label="Providers" />
+                <SourceNote evidence={evidence.ai} label="AI provider" />
+                {evidence.workflows?.data !== undefined && !workflowKnown && <p>Workflow results are incomplete.</p>}
+                {evidence.summary?.data !== undefined && !findingsKnown && <p>System findings are incomplete.</p>}
+            </>}
+            {uniqueAttention.length === 0 && loading && <p>Checking current information…</p>}
+            {uniqueAttention.length === 0 && !loading && !attentionEvidenceComplete && <p>Some information is missing. Atlas cannot confirm whether attention is needed.</p>}
+            {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>No attention items were reported by the checked sources.</p>}
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
                 <Link to={item.to}>{item.label || "Inspect condition"}</Link>
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}

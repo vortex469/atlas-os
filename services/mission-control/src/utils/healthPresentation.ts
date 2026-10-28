@@ -19,6 +19,20 @@ export function evidenceText(value: unknown): string | null {
     return typeof value === "string" && value.trim() ? value : null;
 }
 
+export function healthReason(value: unknown): string | null {
+    const text = evidenceText(value);
+    if (!text) return null;
+    const errno = /^\[Errno \d+\]\s*(.*)$/i.exec(text.trim());
+    const message = errno ? errno[1].trim() : text.trim();
+    switch (message.toLowerCase()) {
+        case "connection refused": return errno ? "The service refused the connection." : text;
+        case "no route to host": return errno ? "The service could not be reached over the network." : text;
+        case "connection timed out":
+        case "timed out": return "The service did not respond in time.";
+        default: return errno ? message || "The connection failed." : text;
+    }
+}
+
 // Require a timezone and a real calendar date. Date.parse alone normalizes
 // impossible dates (for example February 30) into apparently valid evidence.
 export function evidenceTimestamp(value: unknown): number | null {
