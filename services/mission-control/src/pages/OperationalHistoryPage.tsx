@@ -119,6 +119,9 @@ export function OperationalHistoryPage() {
     const hasActiveMoreFilters = terminalFilter !== "all" || intentFilter !== "all"
         || providerFilter !== "all" || resourceTypeFilter !== "all";
     const hasActiveFilters = diagnosticFilter !== "all" || hasActiveMoreFilters;
+    const intentOptions = distinctFilterOptions(items.map(({ workflow }) => workflow.execution_intent), intentFilter);
+    const providerOptions = distinctFilterOptions(items.map(({ lifecycle }) => lifecycle?.provider_id ?? null), providerFilter);
+    const resourceTypeOptions = distinctFilterOptions(items.map(({ lifecycle }) => lifecycle?.resource_type ?? null), resourceTypeFilter);
 
     function clearFilters() {
         setDiagnosticFilter("all");
@@ -149,9 +152,9 @@ export function OperationalHistoryPage() {
                     </summary>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <Filter label="Completion" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} />
-                        <Filter label="Requested action" value={intentFilter} onChange={setIntentFilter} options={["all", "restart-service"]} />
-                        <Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={["all", "proxmox"]} />
-                        <Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={["all", "qemu"]} />
+                        {intentOptions && <Filter label="Requested action" value={intentFilter} onChange={setIntentFilter} options={intentOptions} />}
+                        {providerOptions && <Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={providerOptions} />}
+                        {resourceTypeOptions && <Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={resourceTypeOptions} />}
                     </div>
                 </details>
                 {hasActiveFilters && <div className="flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100">Clear filters</button></div>}
@@ -202,9 +205,21 @@ const FILTER_LABELS: Record<string, string> = {
     all: "Any", healthy: "Healthy", pending: "Pending", recovery_in_progress: "Recovering",
     attention_required: "Needs attention", outcome_uncertain: "Result unknown", unavailable: "Unavailable",
     terminal: "Finished", non_terminal: "In progress", "restart-service": "Restart service",
-    proxmox: "Proxmox", qemu: "Virtual machine",
+    proxmox: "Proxmox", qemu: "Virtual machine", lxc: "Container",
 };
 
 function Filter({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
-    return <label className="text-sm text-slate-300">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">{options.map((option) => <option key={option} value={option}>{FILTER_LABELS[option] ?? option.replaceAll("_", " ")}</option>)}</select></label>;
+    return <label className="text-sm text-slate-300">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">{options.map((option) => <option key={option} value={option}>{filterOptionLabel(option)}</option>)}</select></label>;
+}
+
+function distinctFilterOptions(values: Array<string | null | undefined>, selected: string): string[] | null {
+    const distinct = [...new Set(values.filter((value): value is string => Boolean(value)))].sort();
+    if (distinct.length < 2 && selected === "all") return null;
+    if (selected !== "all" && !distinct.includes(selected)) distinct.push(selected);
+    return ["all", ...distinct.sort()];
+}
+
+function filterOptionLabel(value: string): string {
+    if (FILTER_LABELS[value]) return FILTER_LABELS[value];
+    return value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

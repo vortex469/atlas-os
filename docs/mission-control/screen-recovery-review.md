@@ -1601,3 +1601,10 @@ Action history and says to reload the provider page before deciding whether to
 retry. Tests verify enabled actions become disabled, inputs are unavailable,
 and clicking again cannot submit a duplicate request. Provider execution and
 approval contracts are unchanged.
+
+## Maintenance history filters — 2026-10-28
+
+Maintenance history hides requested-action, provider, and resource-type filters
+when each has only one value on the current page. It shows a filter when the
+page contains multiple values. This removes controls that could not narrow the
+results while retaining the current-page filter boundary.

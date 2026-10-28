@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -126,19 +126,57 @@ describe("OperationalHistoryPage", () => {
         const diagnosticFilter = screen.getByRole("combobox", { name: "Latest result" });
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
-        expect(screen.getByRole("combobox", { name: "Requested action" })).not.toBeVisible();
+        expect(screen.queryByRole("combobox", { name: "Requested action" })).not.toBeInTheDocument();
         fireEvent.click(moreFilters);
-        const actionFilter = screen.getByRole("combobox", { name: "Requested action" });
-        expect(actionFilter).toBeVisible();
-        fireEvent.change(actionFilter, { target: { value: "restart-service" } });
+        const completionFilter = screen.getByRole("combobox", { name: "Completion" });
+        expect(screen.queryByRole("combobox", { name: "Requested action" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: "Provider" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("combobox", { name: "Resource type" })).not.toBeInTheDocument();
+        fireEvent.change(completionFilter, { target: { value: "non_terminal" } });
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
         fireEvent.change(diagnosticFilter, { target: { value: "attention_required" } });
         expect(screen.getByText("No requests on this page match your filters.")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
         expect(screen.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         expect(diagnosticFilter).toHaveValue("all");
-        expect(actionFilter).toHaveValue("all");
+        expect(completionFilter).toHaveValue("all");
         expect(mockedList).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows an optional filter only when the current page has multiple values", async () => {
+        const first = {
+            workflow_id: "workflow-operational-1", workflow_source: "candidate" as const,
+            workflow_state: "completed" as const, effect_kind: "operational_action" as const,
+            execution_intent: "restart-service", candidate_id: "candidate-1", planning_session_id: "planning-1",
+            repository: null, target_id: "110", last_result_summary: "verified", timeline: [],
+        };
+        mockedList.mockResolvedValue({
+            items: [first, { ...first, workflow_id: "workflow-operational-2", execution_intent: "start-service" }],
+            total: 2, limit: 10, offset: 0,
+        });
+        mockedLifecycle
+            .mockResolvedValueOnce(operationalLifecycle())
+            .mockResolvedValueOnce(operationalLifecycle({
+                workflow_id: "workflow-operational-2",
+                provider_id: "libvirt",
+                resource_type: "lxc",
+                target_label: "libvirt/lxc/110",
+            }));
+
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+        await screen.findByRole("heading", { name: "Virtual machine 110" });
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+
+        const actionFilter = screen.getByRole("combobox", { name: "Requested action" });
+        expect(actionFilter).toBeVisible();
+        expect(within(actionFilter).getByRole("option", { name: "Restart service" })).toBeInTheDocument();
+        expect(within(actionFilter).getByRole("option", { name: "Start Service" })).toBeInTheDocument();
+        const providerFilter = screen.getByRole("combobox", { name: "Provider" });
+        expect(within(providerFilter).getByRole("option", { name: "Proxmox" })).toBeInTheDocument();
+        expect(within(providerFilter).getByRole("option", { name: "Libvirt" })).toBeInTheDocument();
+        const resourceTypeFilter = screen.getByRole("combobox", { name: "Resource type" });
+        expect(within(resourceTypeFilter).getByRole("option", { name: "Virtual machine" })).toBeInTheDocument();
+        expect(within(resourceTypeFilter).getByRole("option", { name: "Container" })).toBeInTheDocument();
     });
 
     it("keeps Previous available when a later page becomes empty", async () => {
