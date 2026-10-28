@@ -143,7 +143,7 @@ export function ExecutionCandidatesPage() {
     const hasUnappliedFilters = !filtersEqual(normalizeFilters(filters), submittedFilters);
 
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <div>
                     <h1 className="mt-3 text-3xl font-bold text-white">

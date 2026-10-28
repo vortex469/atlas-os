@@ -135,7 +135,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
+        <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <Link to="/execution-candidates" className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     ← Change proposals
@@ -235,7 +235,7 @@ function statusText(status: string): string {
 
 function PageFrame({ children }: { children: React.ReactNode }) {
     return (
-        <main className="mx-auto max-w-5xl space-y-6 p-8">
+        <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
             <Link to="/execution-candidates" className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">← Change proposals</Link>
             {children}
         </main>

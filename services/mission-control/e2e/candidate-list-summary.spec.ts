@@ -1,6 +1,6 @@
 import { expect, test } from "./mission-control-fixtures";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`proposal list leads with readable change summaries at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/execution-candidates");
@@ -24,7 +24,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`proposal search failure offers a clear retry at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         let requestCount = 0;
@@ -50,7 +50,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`malformed proposal data offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 900 });

@@ -1,6 +1,6 @@
 import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`proposal detail leads with operator information at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         const candidate = executionCandidates[0];
         await page.setViewportSize({ width, height: 900 });

@@ -2063,3 +2063,11 @@ on phones and retain the existing desktop spacing. Browser checks cover all
 three states at 320px, 390px, and 1280px (9 checks); the workflow directory
 component suite passes (10 tests), as do lint and the production build. Workflow
 data, navigation, and approval behavior are unchanged.
+
+## Proposal journey phone spacing — 2026-10-28
+
+The change-proposal directory and detail page now use compact padding on phones,
+including detail-page loading and recovery states, while keeping desktop spacing.
+All 12 proposal browser checks pass at 320px, 390px, and 1280px; the two focused
+page suites pass (32 tests), as do lint and the production build. Planning,
+approval, and proposal data behavior are unchanged.
