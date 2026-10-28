@@ -242,7 +242,7 @@ export function ProviderPage() {
 
                     {provider.id === "proxmox" && <section aria-labelledby="operational-maintenance-heading" className="rounded-lg border border-slate-800 bg-slate-900/70 p-6">
                         <h2 id="operational-maintenance-heading" className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-200">Operational maintenance</h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-400">For maintenance, start a request, review its proposal and plan, then approve the exact action. Monitoring changes and provider actions use separate controls.</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">Request maintenance, review the proposal and plan, then approve it before starting. Monitoring changes and provider actions use separate controls.</p>
                         <Link to="/operations/request" className="mt-4 inline-flex rounded-lg border border-cyan-400/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300">Request operational maintenance</Link>
                     </section>}
 

@@ -1521,3 +1521,13 @@ they do not invite a duplicate request. The focused page suite passes (31
 tests), both repository and maintenance browser journeys pass (10 tests across
 390px and 1280px), and lint, build, and `git diff --check` pass. Request
 contracts and approval/run boundaries are unchanged.
+
+## Maintenance progress labels — 2026-10-28
+
+Provider details now describe maintenance as a request, review, approval, and
+separate start. Operational workflow details use “Maintenance progress” instead
+of “Execution timeline,” translate internal stage names into plain labels, and
+report approval in maintenance terms. The provider and timeline suites pass
+(19 tests), the maintenance browser journey passes at 390px and 1280px (2
+tests), and lint, build, and `git diff --check` pass. Lifecycle evidence and
+permissions are unchanged.

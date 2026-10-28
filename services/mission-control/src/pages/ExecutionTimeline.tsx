@@ -8,13 +8,14 @@ interface ExecutionTimelineProps {
 }
 
 export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = false, onRefresh }: ExecutionTimelineProps) {
+    const isOperational = workflow.effect_kind === "operational_action";
     const executionState = executionStateText(workflow);
 
     return (
         <section aria-labelledby="execution-timeline-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h2 id="execution-timeline-heading" className="text-lg font-semibold text-white">Execution timeline</h2>
+                    <h2 id="execution-timeline-heading" className="text-lg font-semibold text-white">{isOperational ? "Maintenance progress" : "Execution timeline"}</h2>
                     <p aria-live="polite" role="status" className="mt-1 text-sm text-slate-300">{executionState}</p>
                 </div>
                 <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-blue-400 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60">
@@ -22,26 +23,38 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
                 </button>
             </div>
 
-            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label="Authoritative execution stages">
+            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label={isOperational ? "Maintenance workflow stages" : "Execution stages"}>
                 {workflow.timeline.map((stage) => (
-                    <TimelineStage key={stage.name} stage={stage} />
+                    <TimelineStage key={stage.name} stage={stage} isOperational={isOperational} />
                 ))}
             </ol>
 
-            {workflow.effect_kind === "operational_action"
-                ? <p className="mt-5 text-sm text-slate-300">Dispatch and verification results are shown in the operational lifecycle.</p>
+            {isOperational
+                ? <p className="mt-5 text-sm text-slate-300">Check the Operational lifecycle section above for the maintenance outcome and verification.</p>
                 : <ExecutionSection execution={workflow.execution} workflowState={workflow.workflow_state} approvalStatus={workflow.implementation_approval_status} />}
         </section>
     );
 }
 
-function TimelineStage({ stage }: { stage: WorkflowTimelineStage }) {
+function TimelineStage({ stage, isOperational }: { stage: WorkflowTimelineStage; isOperational: boolean }) {
     return (
         <li className={["rounded-lg border px-3 py-2", stageClass(stage.status)].join(" ")}>
-            <span className="block font-medium">{stage.name}</span>
+            <span className="block font-medium">{isOperational ? operationalStageLabel(stage.name) : stage.name}</span>
             <span className="text-xs">{formatLabel(stage.status)}</span>
         </li>
     );
+}
+
+function operationalStageLabel(name: string): string {
+    switch (name) {
+        case "Execution Candidate": return "Proposal";
+        case "Planning Session": return "Planning";
+        case "Candidate Plan": return "Maintenance plan";
+        case "Operational Action Approval": return "Maintenance approval";
+        case "Execution": return "Run maintenance";
+        case "Verification": return "Verify result";
+        default: return name;
+    }
 }
 
 function ExecutionSection({ execution, workflowState, approvalStatus }: { execution: WorkflowExecutionSummary; workflowState: string; approvalStatus: string }) {
@@ -77,9 +90,9 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
     if (workflow.effect_kind === "operational_action") {
         if (workflow.workflow_state === "completed") return "Maintenance workflow completed. Review the recorded operational outcome.";
         if (workflow.workflow_state === "blocked") return "Maintenance workflow is blocked. Review the operational lifecycle.";
-        if (workflow.implementation_approval_status === "rejected") return "Exact action approval was rejected.";
-        if (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status !== "approved") return "Waiting for exact action approval.";
-        return "Check the operational lifecycle for dispatch and verification results.";
+        if (workflow.implementation_approval_status === "rejected") return "Maintenance request rejected.";
+        if (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status !== "approved") return "Waiting for maintenance request approval.";
+        return "Review the Operational lifecycle for maintenance results.";
     }
     const execution = workflow.execution;
     if (execution.execution_status === "unknown") return "Worker outcome unknown. Check the original result; do not resubmit.";

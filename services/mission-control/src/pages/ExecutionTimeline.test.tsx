@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { WorkflowDetailResponse } from "../types/atlasAgent";
@@ -105,6 +105,45 @@ describe("ExecutionTimeline", () => {
         renderTimeline(workflow());
 
         expect(screen.getAllByText("Waiting for implementation approval.").length).toBeGreaterThan(0);
+    });
+
+    it("uses maintenance terms for an operational workflow", () => {
+        renderTimeline(workflow({
+            effect_kind: "operational_action",
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "pending",
+            timeline: [
+                { name: "Execution Candidate", status: "completed" },
+                { name: "Planning Session", status: "completed" },
+                { name: "Candidate Plan", status: "completed" },
+                { name: "Workflow", status: "completed" },
+                { name: "Operational Action Approval", status: "current" },
+                { name: "Execution", status: "waiting" },
+                { name: "Verification", status: "waiting" },
+            ],
+        }));
+
+        expect(screen.getByRole("heading", { name: "Maintenance progress" })).toBeInTheDocument();
+        const stages = screen.getByRole("list", { name: "Maintenance workflow stages" });
+        for (const name of ["Proposal", "Planning", "Maintenance plan", "Workflow", "Maintenance approval", "Run maintenance", "Verify result"]) {
+            expect(within(stages).getByText(name, { exact: true })).toBeInTheDocument();
+        }
+        expect(screen.getByText("Waiting for maintenance request approval.")).toBeInTheDocument();
+        expect(screen.getByText("Check the Operational lifecycle section above for the maintenance outcome and verification.")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Execution timeline" })).not.toBeInTheDocument();
+        for (const internalName of ["Execution Candidate", "Planning Session", "Candidate Plan", "Operational Action Approval", "Execution", "Verification"]) {
+            expect(within(stages).queryByText(internalName, { exact: true })).not.toBeInTheDocument();
+        }
+        expect(screen.queryByText(/exact action/i)).not.toBeInTheDocument();
+    });
+
+    it("describes a rejected operational decision as a rejected maintenance request", () => {
+        renderTimeline(workflow({
+            effect_kind: "operational_action",
+            implementation_approval_status: "rejected",
+        }));
+
+        expect(screen.getByText("Maintenance request rejected.")).toBeInTheDocument();
     });
 
     it("renders running state", () => {

@@ -47,6 +47,12 @@ for (const width of [390, 1280]) {
         expect(fixture.writes).toHaveLength(6);
         await page.getByRole("button", { name: "Run approved maintenance", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Maintenance progress", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Execution timeline", exact: true })).toHaveCount(0);
+        const maintenanceStages = page.getByRole("list", { name: "Maintenance workflow stages" });
+        await expect(maintenanceStages.getByText("Maintenance approval", { exact: true })).toBeVisible();
+        await expect(maintenanceStages.getByText("Run maintenance", { exact: true })).toBeVisible();
+        await expect(maintenanceStages.getByText("Operational Action Approval", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Maintenance workflow completed. Review the recorded operational outcome.", { exact: true })).toBeVisible();
         await expect(page.getByRole("button", { name: /Approve Verification|Approve Commit|Run approved maintenance/ })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
