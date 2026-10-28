@@ -317,7 +317,6 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
     return (
         <div role={isError ? "alert" : "status"} className={["mt-4 rounded-lg border p-4", isError ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"].join(" ")}>
             <p className={isError ? "font-semibold text-amber-200" : "font-semibold text-emerald-200"}>{message}</p>
-            {response.session_id && <p className="mt-1 break-all text-sm text-slate-200">Planning session ID: {response.session_id}</p>}
             {existingWorkflow ? (
                 <Link to={workflowPath ?? "/workflows"} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     {workflowPath ? "Open existing workflow" : "Browse workflows"}
@@ -327,11 +326,17 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
                     {savedPlan ? "Review saved plan" : isError ? "Review planning details" : "Continue planning"}
                 </Link>
             )}
-            <p className="mt-1 text-sm text-slate-400">Status: {formatLabel(response.status)}</p>
-            <p className="mt-1 text-sm text-slate-400">Intake status: {formatLabel(response.intake_status)}</p>
-            {response.intake_reason_codes.length > 0 && <p className="mt-1 text-sm text-slate-400">Reason codes: {response.intake_reason_codes.join(", ")}</p>}
-            {response.unsupported_reason && <p className="mt-1 text-sm text-slate-400">Unsupported reason: {response.unsupported_reason}</p>}
-            {response.planning_failure && <p className="mt-1 text-sm text-slate-400">Failure: {response.planning_failure.code} - {response.planning_failure.message}</p>}
+            <details className="mt-3 rounded-lg border border-slate-700/70 px-3 py-2 text-sm text-slate-400">
+                <summary className="cursor-pointer font-medium text-slate-300">Planning details</summary>
+                <div className="mt-2 space-y-1">
+                    {response.session_id && <p className="break-all">Planning session ID: {response.session_id}</p>}
+                    <p>Status: {formatLabel(response.status)}</p>
+                    <p>Intake status: {formatLabel(response.intake_status)}</p>
+                    {response.intake_reason_codes.length > 0 && <p>Reason codes: {response.intake_reason_codes.join(", ")}</p>}
+                    {response.unsupported_reason && <p>Unsupported reason: {response.unsupported_reason}</p>}
+                    {response.planning_failure && <p>Failure: {response.planning_failure.code} - {response.planning_failure.message}</p>}
+                </div>
+            </details>
         </div>
     );
 }
