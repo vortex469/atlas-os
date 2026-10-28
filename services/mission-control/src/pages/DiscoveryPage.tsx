@@ -95,7 +95,7 @@ export function DiscoveryPage() {
                 setError(
                     getAtlasErrorMessage(
                         requestError,
-                        "Mission Control could not load Discovery Center.",
+                        "Mission Control could not load the catalog.",
                     ),
                 );
             } finally {
@@ -132,7 +132,7 @@ export function DiscoveryPage() {
                 setError(
                     getAtlasErrorMessage(
                         requestError,
-                        "Mission Control could not load Discovery Center.",
+                        "Mission Control could not load the catalog.",
                     ),
                 );
             })
@@ -148,6 +148,7 @@ export function DiscoveryPage() {
     }, []);
 
     const isSearchMode = submittedFilters.query.trim().length > 0;
+    const hasAdvancedFilters = Boolean(submittedFilters.tag || submittedFilters.capability);
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const normalized = normalizeFilters(filters);
@@ -174,17 +175,14 @@ export function DiscoveryPage() {
         <main className="mx-auto max-w-7xl space-y-8 p-8">
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Discovery Center
-                    </p>
                     <h1 className="mt-3 text-3xl font-bold text-white">
-                        Provider-neutral catalog
+                        Browse the catalog
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Browse Atlas&apos;s read-only catalog of applications, services,
-                        integrations, hardware devices, AI models, and deployment
-                        methods. Catalog inclusion does not mean compatibility,
-                        support, installability, or approval to execute changes.
+                        Find applications, services, container images, AI models,
+                        integrations, devices, and deployment methods. Listings are
+                        reference information; compatibility, install support, and
+                        permission to make changes are checked separately.
                     </p>
                 </div>
 
@@ -197,7 +195,7 @@ export function DiscoveryPage() {
                     className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Discovery catalog unavailable
+                        Catalog could not be loaded
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">{error}</p>
                 </div>
@@ -205,89 +203,93 @@ export function DiscoveryPage() {
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <form
-                    className="grid gap-4 lg:grid-cols-[2fr_repeat(4,1fr)_auto]"
+                    className="space-y-4"
                     onSubmit={submitFilters}
-                    aria-label="Search Discovery catalog"
+                    aria-label="Search catalog"
                 >
-                    <label className="space-y-2 text-sm text-slate-300">
-                        <span>Keyword search</span>
-                        <input
-                            type="search"
-                            value={filters.query}
-                            onChange={(event) =>
+                    <div className="grid gap-4 lg:grid-cols-[2fr_repeat(2,1fr)_auto]">
+                        <label className="space-y-2 text-sm text-slate-300">
+                            <span>Keyword search</span>
+                            <input
+                                type="search"
+                                value={filters.query}
+                                onChange={(event) =>
+                                    setFilters((current) => ({
+                                        ...current,
+                                        query: event.target.value,
+                                    }))
+                                }
+                                placeholder="Search by name or description"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                            />
+                        </label>
+
+                        <SelectFilter
+                            label="Item type"
+                            value={filters.type}
+                            onChange={(value) =>
                                 setFilters((current) => ({
                                     ...current,
-                                    query: event.target.value,
+                                    type: value as "" | DiscoveryItemType,
                                 }))
                             }
-                            placeholder="Search by name or description"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                            options={itemTypeOptions}
                         />
-                    </label>
 
-                    <SelectFilter
-                        label="Item type"
-                        value={filters.type}
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                type: value as "" | DiscoveryItemType,
-                            }))
-                        }
-                        options={itemTypeOptions}
-                    />
+                        <SelectFilter
+                            label="Status"
+                            value={filters.status}
+                            onChange={(value) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    status: value as "" | DiscoveryItemStatus,
+                                }))
+                            }
+                            options={statusOptions}
+                        />
 
-                    <SelectFilter
-                        label="Status"
-                        value={filters.status}
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                status: value as "" | DiscoveryItemStatus,
-                            }))
-                        }
-                        options={statusOptions}
-                    />
-
-                    <TextFilter
-                        label="Tag"
-                        value={filters.tag}
-                        placeholder="ai"
-                        onChange={(value) =>
-                            setFilters((current) => ({ ...current, tag: value }))
-                        }
-                    />
-
-                    <TextFilter
-                        label="Capability"
-                        value={filters.capability}
-                        placeholder="mqtt-broker"
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                capability: value,
-                            }))
-                        }
-                    />
-
-                    <div className="flex items-end gap-2">
-                        <button
-                            type="submit"
-                            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={isLoading}
-                        >
-                            Search
-                        </button>
-                        <button
-                            type="button"
-                            onClick={clearFilters}
-                            disabled={isLoading}
-                            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Clear Discovery filters"
-                        >
-                            Clear
-                        </button>
+                        <div className="flex items-end gap-2">
+                            <button
+                                type="submit"
+                                className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={isLoading}
+                            >
+                                Search
+                            </button>
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                disabled={isLoading}
+                                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Clear filters"
+                            >
+                                Clear
+                            </button>
+                        </div>
                     </div>
+                    <details className="rounded-lg border border-slate-800 px-4 py-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            More filters{hasAdvancedFilters ? " · active" : ""}
+                        </summary>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                            <TextFilter
+                                label="Tag"
+                                value={filters.tag}
+                                placeholder="ai"
+                                onChange={(value) =>
+                                    setFilters((current) => ({ ...current, tag: value }))
+                                }
+                            />
+                            <TextFilter
+                                label="Capability"
+                                value={filters.capability}
+                                placeholder="mqtt-broker"
+                                onChange={(value) =>
+                                    setFilters((current) => ({ ...current, capability: value }))
+                                }
+                            />
+                        </div>
+                    </details>
                 </form>
             </section>
 
@@ -308,7 +310,7 @@ export function DiscoveryPage() {
                             onClick={goToPreviousPage}
                             disabled={isLoading || result.offset === 0}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Previous Discovery results page"
+                            aria-label="Previous page"
                         >
                             Previous
                         </button>
@@ -317,7 +319,7 @@ export function DiscoveryPage() {
                             onClick={goToNextPage}
                             disabled={isLoading || !result.hasMore}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Next Discovery results page"
+                            aria-label="Next page"
                         >
                             Next
                         </button>
@@ -326,14 +328,14 @@ export function DiscoveryPage() {
 
                 {isLoading ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
-                        Loading Discovery catalog…
+                        Loading catalog…
                     </div>
                 ) : result.entries.length === 0 && !error ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
                             {metadata?.catalog_loaded && metadata.entry_count === 0
-                                ? "The Discovery catalog is loaded but empty."
-                                : "No Discovery items matched these filters."}
+                                ? "The catalog is loaded but empty."
+                                : "No items matched these filters."}
                         </p>
                         <p className="mt-2 text-sm text-slate-500">
                             Try clearing filters or using a broader keyword.
@@ -408,17 +410,23 @@ function DiscoveryStatus({
           : "Catalog status unknown";
 
     return (
-        <div className="grid gap-3 sm:grid-cols-3">
-            <StatusTile label="Status" value={label} />
-            <StatusTile
-                label="Entries"
-                value={metadata ? String(metadata.entry_count) : "…"}
-            />
-            <StatusTile
-                label="Schema"
-                value={metadata ? `v${metadata.schema_version}` : "…"}
-            />
-        </div>
+        <>
+            <div className="grid gap-3 sm:grid-cols-2">
+                <StatusTile label="Status" value={label} />
+                <StatusTile
+                    label="Items"
+                    value={metadata ? String(metadata.entry_count) : "…"}
+                />
+            </div>
+            <details className="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <summary className="cursor-pointer text-sm font-medium text-slate-300">
+                    Technical details
+                </summary>
+                <p className="mt-3 text-sm text-slate-400">
+                    Catalog format version: {metadata ? `v${metadata.schema_version}` : "Not available"}
+                </p>
+            </details>
+        </>
     );
 }
 

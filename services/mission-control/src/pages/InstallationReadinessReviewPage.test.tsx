@@ -148,7 +148,7 @@ describe("InstallationReadinessReviewPage", () => {
         expect(screen.queryAllByRole("button")).toHaveLength(0);
         const links = screen.getAllByRole("link");
         expect(links).toHaveLength(1);
-        expect(links[0]).toHaveTextContent("Discovery");
+        expect(links[0]).toHaveTextContent("Catalog");
         expect(document.body.textContent).not.toMatch(/install now|execute now|run now|deploy now|dispatch now|retry now|resend now|send to agent|start workflow|roll back now/i);
     });
 

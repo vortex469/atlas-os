@@ -50,7 +50,7 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
     }, [candidateRecordId, readAttempt]);
 
     return <main className="mx-auto max-w-6xl p-6 text-slate-200">
-        <Link to="/discovery" className="text-sm text-blue-300">← Discovery</Link>
+        <Link to="/discovery" className="text-sm text-blue-300">← Catalog</Link>
         <h1 className="mt-4 text-2xl font-semibold">Installation readiness review</h1>
         <p className="mt-2 text-sm text-slate-300">Authenticated, operator-owned, Core-local evidence review. This read does not refresh or consume evidence.</p>
         <AuthorityNotice />

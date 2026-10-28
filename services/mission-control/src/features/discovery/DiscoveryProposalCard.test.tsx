@@ -51,7 +51,7 @@ describe("DiscoveryProposalCard", () => {
     ] as const)("renders %s/%s as review only", (status, reason) => {
         renderCard(proposal({ status, reason, actionable_navigation: false }));
         expect(screen.getByText(/Review only: operational navigation is disabled/i)).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /Review Discovery item/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /View catalog item/i })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: /maintenance selection/i })).not.toBeInTheDocument();
     });
 

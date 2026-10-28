@@ -12,7 +12,7 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
     await expect(page.getByRole("link", { name: "Maintenance history", exact: true })).toHaveAttribute("href", "/operations/history");
     await expect(page.getByRole("link", { name: "Request maintenance", exact: true })).toHaveAttribute("href", "/operations/request");
-    await expect(page.getByRole("link", { name: "Discovery", exact: true })).toHaveAttribute("href", "/discovery");
+    await expect(page.getByRole("link", { name: "Catalog", exact: true })).toHaveAttribute("href", "/discovery");
     await expect(page.getByRole("link", { name: "Change proposals", exact: true })).toHaveAttribute("href", "/execution-candidates");
     await expect(page.getByRole("link", { name: "Workflows", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("link", { name: "Deployment analysis", exact: true })).toHaveAttribute("href", "/forge");
@@ -55,7 +55,7 @@ test.describe("Mobile navigation", () => {
             "Action history",
             "Maintenance history",
             "Request maintenance",
-            "Discovery",
+            "Catalog",
             "Change proposals",
             "Workflows",
             "Deployment analysis",
@@ -76,9 +76,9 @@ test.describe("Mobile navigation", () => {
         await page.goto("/forge");
         const trigger = page.getByRole("button", { name: "Open navigation" });
         await trigger.click();
-        await page.getByRole("dialog").getByRole("link", { name: "Discovery", exact: true }).click();
+        await page.getByRole("dialog").getByRole("link", { name: "Catalog", exact: true }).click();
         await expect(page.getByRole("dialog")).toHaveCount(0);
-        await expect(page.getByLabel("Current page: Discovery")).toBeVisible();
+        await expect(page.getByLabel("Current page: Catalog")).toBeVisible();
         await trigger.click();
         await page.goBack();
         await expect(page.getByRole("dialog")).toHaveCount(0);

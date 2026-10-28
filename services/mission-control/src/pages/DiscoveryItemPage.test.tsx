@@ -311,7 +311,7 @@ describe("DiscoveryItemPage", () => {
         await screen.findByRole("heading", { name: "Frigate" });
         await act(() => router.navigate("/discovery/items/next-item"));
         expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
-        expect(screen.getByText("Loading Discovery item…")).toBeInTheDocument();
+        expect(screen.getByText("Loading catalog item…")).toBeInTheDocument();
         await act(async () => nextRequest.resolve({ ...entry(), item: { ...entry().item, id: "next-item", name: "Next item" } }));
         expect(await screen.findByRole("heading", { name: "Next item" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
@@ -342,14 +342,14 @@ describe("DiscoveryItemPage", () => {
         mockedGetDiscoveryRelationships.mockRejectedValue(httpError(404, "Relationships not found"));
         renderPage();
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Discovery item not found" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
     });
 
     it("does not infer a missing item from error prose", async () => {
         mockedGetDiscoveryItem.mockRejectedValue(new Error("Proxy not found while reading catalog"));
         renderPage();
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Discovery item not found" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
     });
 
     beforeEach(() => {
@@ -535,8 +535,8 @@ describe("DiscoveryItemPage", () => {
     it("distinguishes proposal transport failure from provider state", async () => {
         mockedListDiscoveryProposals.mockRejectedValue(new Error("transport unavailable"));
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Proposal context is temporarily unavailable");
-        expect(screen.getByText(/provider state were not affected/i)).toBeInTheDocument();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Related proposals are temporarily unavailable");
+        expect(screen.getByText(/catalog information is still available/i)).toBeInTheDocument();
     });
 
     it.each([
@@ -701,7 +701,7 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(
-            await screen.findByRole("heading", { name: "Discovery item not found" }),
+            await screen.findByRole("heading", { name: "Catalog item not found" }),
         ).toBeInTheDocument();
         expect(screen.getByText(/could not find a catalog entry/i)).toBeInTheDocument();
     });
@@ -712,7 +712,6 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(within(alert).getByText("Discovery catalog unavailable")).toBeInTheDocument();
-        expect(within(alert).getByText("Catalog unavailable")).toBeInTheDocument();
+        expect(alert).toHaveTextContent("Catalog could not be loaded");
     });
 });

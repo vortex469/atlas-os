@@ -333,6 +333,16 @@ suggested steps without deploying anything. The Agent overview link uses the
 same task name. Focused component, shell and route checks cover these labels;
 the route and action boundaries are unchanged.
 
+## Catalog screen simplification — 2026-10-28
+
+Navigation and item-page breadcrumbs now say “Catalog,” and the list page says
+“Browse the catalog.” Its main search shows keyword, type, and status; tag and
+capability filters are under “More filters,” which marks applied filters.
+Catalog format version is under optional technical details. The screen explains
+that listings do not establish compatibility, install support, or permission to
+make changes. Focused page, item, proposal, shell, and route checks cover these
+labels and disclosures; catalog reads remain unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

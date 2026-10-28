@@ -112,8 +112,8 @@ test("discovery refuses another catalog item's details", async ({ page }) => {
     await expect(page.getByRole("alert")).toContainText("does not match this item");
     await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.getByRole("link", { name: "← Discovery Center" }).click();
-    await expect(page.getByRole("heading", { name: "Provider-neutral catalog", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "← Catalog" }).click();
+    await expect(page.getByRole("heading", { name: "Browse the catalog", exact: true })).toBeVisible();
 });
 
 test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {

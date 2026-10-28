@@ -163,7 +163,7 @@ describe("MainLayout", () => {
         it.each([
             ["/", "Mission Control"],
             ["/operations", "Action history"],
-            ["/discovery", "Discovery"],
+            ["/discovery", "Catalog"],
             ["/forge", "Deployment analysis"],
         ])("surfaces the context label for %s", (initialPath, label) => {
             renderAt(initialPath);
@@ -326,7 +326,7 @@ describe("MainLayout", () => {
                 "Action history",
                 "Maintenance history",
                 "Request maintenance",
-                "Discovery",
+                "Catalog",
                 "Change proposals",
                 "Workflows",
                 "Deployment analysis",

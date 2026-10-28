@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -128,15 +128,19 @@ describe("DiscoveryPage", () => {
         mockedSearchDiscoveryItems.mockResolvedValue(searchPage([entry()]));
     });
 
-    it("renders catalog status, disclaimer, and read-only item cards", async () => {
+    it("renders catalog status, plain-language scope, and read-only item cards", async () => {
+        const user = userEvent.setup();
         renderPage();
 
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
         expect(screen.getByText("2")).toBeInTheDocument();
-        expect(
-            screen.getByText(/does not mean compatibility, support, installability/i),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Browse the catalog" })).toBeInTheDocument();
+        expect(screen.getByText(/Listings are reference information; compatibility, install support, and permission to make changes are checked separately/i)).toBeInTheDocument();
+        expect(screen.getByText("Technical details")).toBeInTheDocument();
+        expect(screen.getByText(/Catalog format version: v1/)).not.toBeVisible();
+        await user.click(screen.getByText("Technical details"));
+        expect(screen.getByText("Catalog format version: v1")).toBeVisible();
         expect(screen.getAllByText("home-automation").length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
@@ -153,9 +157,12 @@ describe("DiscoveryPage", () => {
         await user.type(screen.getByLabelText("Keyword search"), "ollama");
         await user.selectOptions(screen.getByLabelText("Item type"), "service");
         await user.selectOptions(screen.getByLabelText("Status"), "active");
+        expect(screen.getByLabelText("Tag")).not.toBeVisible();
+        await user.click(screen.getByText("More filters"));
         await user.type(screen.getByLabelText("Tag"), "ai");
         await user.type(screen.getByLabelText("Capability"), "llm-inference");
         await user.click(screen.getByRole("button", { name: "Search" }));
+        expect(screen.getByText("More filters · active")).toBeInTheDocument();
 
         await waitFor(() =>
             expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith({
@@ -211,7 +218,7 @@ describe("DiscoveryPage", () => {
 
         renderPage();
         await screen.findByText("Home Assistant");
-        await user.click(screen.getByRole("button", { name: "Next Discovery results page" }));
+        await user.click(screen.getByRole("button", { name: "Next page" }));
 
         await waitFor(() =>
             expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
@@ -224,7 +231,7 @@ describe("DiscoveryPage", () => {
             }),
         );
 
-        await user.click(screen.getByRole("button", { name: "Clear Discovery filters" }));
+        await user.click(screen.getByRole("button", { name: "Clear filters" }));
         await waitFor(() =>
             expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
                 limit: 25,
@@ -244,7 +251,7 @@ describe("DiscoveryPage", () => {
         renderPage();
 
         expect(
-            await screen.findByText("The Discovery catalog is loaded but empty."),
+            await screen.findByText("The catalog is loaded but empty."),
         ).toBeInTheDocument();
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
     });
@@ -255,7 +262,6 @@ describe("DiscoveryPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(within(alert).getByText("Discovery catalog unavailable")).toBeInTheDocument();
-        expect(within(alert).getByText("Catalog unavailable")).toBeInTheDocument();
+        expect(alert).toHaveTextContent("Catalog could not be loaded");
     });
 });

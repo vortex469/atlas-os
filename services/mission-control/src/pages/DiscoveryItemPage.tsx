@@ -204,7 +204,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 console.error(`Unable to load Discovery item ${itemId}:`, requestError);
                 const message = getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load this Discovery item.",
+                    "Mission Control could not load this catalog item.",
                 );
                 setError(message);
             })
@@ -285,7 +285,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             .catch((requestError: unknown) => {
                 if (!cancelled) {
                     console.error(`Unable to load Discovery proposals for ${itemId}:`, requestError);
-                    setProposalsError("Proposal context is temporarily unavailable. Discovery and provider state were not affected.");
+                    setProposalsError("Related proposals are temporarily unavailable. The catalog information is still available.");
                 }
             })
             .finally(() => {
@@ -301,10 +301,10 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
-                    Loading Discovery item…
+                    Loading catalog item…
                 </div>
             </main>
         );
@@ -317,11 +317,11 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                     <h1 className="text-2xl font-bold text-white">
-                        Discovery item not found
+                        Catalog item not found
                     </h1>
                     <p className="mt-2 text-sm text-slate-400">
                         Atlas could not find a catalog entry for {itemId}.
@@ -338,17 +338,17 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <div
                     role="alert"
                     className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Discovery catalog unavailable
+                        Catalog could not be loaded
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error ?? "Mission Control could not load this Discovery item."}
+                        {error ?? "Mission Control could not load this catalog item."}
                     </p>
                     <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
                 </div>
@@ -366,11 +366,11 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Discovery item
+                        Catalog item
                     </p>
                     <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
                         <div>
@@ -388,9 +388,8 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                         {item.description}
                     </p>
                     <p className="mt-3 text-xs text-slate-500">
-                        Read-only catalog information. This entry does not imply
-                        compatibility, support, installability, or authorization to
-                        execute changes.
+                        This is reference information. Compatibility, install
+                        support, and permission to make changes are checked separately.
                     </p>
                 </div>
             </header>
@@ -434,11 +433,11 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
                 <div>
                     <h2 id="discovery-proposals-heading" className="text-xl font-semibold text-white">Operator proposals</h2>
-                    <p className="mt-1 text-sm text-slate-400">Read-only Discovery guidance. Proposals do not grant operational authority.</p>
+                    <p className="mt-1 text-sm text-slate-400">Suggestions based on this item. They do not authorize actions.</p>
                 </div>
-                {proposalsLoading && <p className="text-sm text-slate-400">Loading bounded proposal context…</p>}
+                {proposalsLoading && <p className="text-sm text-slate-400">Loading related proposals…</p>}
                 {proposalsError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{proposalsError}</p>}
-                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No current or observed proposals relate to this item.</p>}
+                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No related proposals are available.</p>}
                 {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} />)}
             </section>
 

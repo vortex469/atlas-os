@@ -4,7 +4,7 @@ import type { DiscoveryProposalNavigation } from "../../types/discovery";
 import { resolveProposalNavigation } from "./proposalNavigation";
 
 const destinationLabels = {
-    discovery_detail: "Review Discovery item",
+    discovery_detail: "View catalog item",
     compatibility_review: "Review compatibility evidence",
     operator_maintenance_selection: "Continue to maintenance selection",
 } as const;

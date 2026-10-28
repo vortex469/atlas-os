@@ -45,7 +45,7 @@ export const primaryNavigationItems: NavigationItem[] = [
         path: "/operations/request",
     },
     {
-        label: "Discovery",
+        label: "Catalog",
         path: "/discovery",
     },
     {
