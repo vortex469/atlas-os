@@ -27,6 +27,14 @@ describe("ProvidersPage", () => {
         expect(screen.queryByRole("button", { name: /approve|execute|restart/i })).not.toBeInTheDocument();
     });
 
+    it("keeps registry health readable without empty check-time placeholders", async () => {
+        get.mockResolvedValue({ data: [provider()] });
+        show();
+        const list = await screen.findByRole("region", { name: "Provider list" });
+        expect(within(list).getByText("Healthy", { exact: true })).toBeInTheDocument();
+        expect(within(list).queryByText("Check time unavailable.", { exact: true })).not.toBeInTheDocument();
+    });
+
     it("offers recovery without exposing raw server errors", async () => {
         get.mockRejectedValueOnce(new Error("PRIVATE_SERVER_BODY"))
             .mockResolvedValueOnce({ data: [] });

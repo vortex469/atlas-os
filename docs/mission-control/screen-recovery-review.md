@@ -201,6 +201,13 @@ wide-screen layout that collapses responsively. A focused component check and
 the 390px and 1280px provider detail browser checks verify the single status
 and page fit. Provider data and actions are unchanged.
 
+## Provider registry health summary — 2026-10-28
+
+Provider registry rows no longer show an unavailable check-time placeholder
+when the catalog does not supply check times. Health state and reported reason
+remain visible. The focused registry test and 390px and 1280px browser checks
+cover the summary; provider reads and actions are unchanged.
+
 ## Provider action recovery — 2026-10-28
 
 Action-catalog read failures now offer a read-only reload and have their own

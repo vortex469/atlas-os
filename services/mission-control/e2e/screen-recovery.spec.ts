@@ -274,6 +274,7 @@ for (const width of [390, 1280]) {
         await expect(page).toHaveURL(/\/providers$/);
         await expect(page.getByRole("heading", { name: "Providers", exact: true })).toBeVisible();
         await expect(page.getByLabel("Current page: Providers", { exact: true })).toBeVisible();
+        await expect(page.getByText("Check time unavailable.", { exact: true })).toHaveCount(0);
         await page.getByRole("link", { name: "Open Proxmox provider", exact: true }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
         await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();

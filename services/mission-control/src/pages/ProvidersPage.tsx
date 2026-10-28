@@ -77,7 +77,7 @@ export function ProvidersPage() {
                     {visible.map((provider, index) => (
                         <article key={provider.path ?? index} className="min-w-0 space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]">
                             <h2 className="text-lg font-semibold text-white">{provider.name}</h2>
-                            <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} />
+                            <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} compact />
                             {provider.path && <Link to={provider.path} className="inline-block text-sm font-semibold text-blue-300">Open {provider.name} provider</Link>}
                         </article>
                     ))}
