@@ -37,9 +37,17 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
             {message && <p className="text-mc-text-secondary">{message}</p>}
             {state === "Unknown" && !message && <p className="text-mc-text-muted">No status information is available.</p>}
             <p className="text-xs text-mc-text-muted">
-                {validTime ? <>{isStale ? "Last checked (UTC)" : "Checked (UTC)"} <time dateTime={timestamp!}>{new Date(parsed).toISOString()}</time></>
+                {validTime ? <>{isStale ? "Last checked (UTC)" : "Checked (UTC)"} <time dateTime={timestamp!}>{formatUtcTimestamp(parsed)}</time></>
                     : "Check time unavailable."}
             </p>
         </div>
     );
+}
+
+function formatUtcTimestamp(value: number): string {
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+    }).format(value);
 }

@@ -431,6 +431,14 @@ screen still explains that past actions do not show current health. The focused
 dashboard suites pass (68 tests), lint/build pass, and all 3 built responsive
 browser checks pass.
 
+## Health check times — 2026-10-28
+
+Shared health summaries now show check times as readable UTC dates instead of
+ISO strings. The exact source timestamp remains in the time element for
+machine-readable use. The focused component suite passes 42 tests; lint and
+build pass. All 8 built overview browser checks pass, including 320px, 768px
+and 1440px layouts. Health status and freshness decisions are unchanged.
+
 ## Installation permission evidence wording — 2026-10-28
 
 An active lifecycle is now labeled “Current evidence record” so it cannot be

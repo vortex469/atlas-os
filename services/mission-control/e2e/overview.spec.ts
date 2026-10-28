@@ -6,6 +6,10 @@ for (const width of [320, 768, 1440]) {
         const grid = page.getByTestId('overview-grid');
         await expect(grid.locator(':scope > section')).toHaveCount(6);
         await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
+        const policyTime = page.getByRole('article', { name: 'Policy settings check' }).locator('time');
+        await expect(policyTime).toBeVisible();
+        await expect(policyTime).not.toHaveText(/\d{4}-\d{2}-\d{2}T/);
+        await expect(policyTime).toHaveAttribute('dateTime', /^\d{4}-\d{2}-\d{2}T/);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(width < 768 ? 1 : width < 1280 ? 2 : 3);

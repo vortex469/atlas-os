@@ -39,6 +39,9 @@ describe("authoritative health presentation", () => {
         vi.setSystemTime(new Date("2026-09-13T12:00:00Z"));
         render(<HealthEvidence status="healthy" checkedAt="2026-09-13T12:00:00Z" />);
         expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
+        const time = document.querySelector("time");
+        expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(Date.parse("2026-09-13T12:00:00Z")));
+        expect(time).not.toHaveTextContent("2026-09-13T");
         act(() => vi.advanceTimersByTime(90_000));
         expect(screen.getByText(/Stale evidence/)).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
