@@ -193,6 +193,14 @@ focused component tests, six overview browser checks, lint and build pass. The
 browser fixture rejects mutations; provider actions and permission checks are
 unchanged.
 
+## Provider detail status simplification — 2026-10-28
+
+Provider health appears once as a readable badge; the duplicate status metric
+is removed. Latency, HTTP status, priority and version remain in a four-column
+wide-screen layout that collapses responsively. A focused component check and
+the 390px and 1280px provider detail browser checks verify the single status
+and page fit. Provider data and actions are unchanged.
+
 ## Provider action recovery — 2026-10-28
 
 Action-catalog read failures now offer a read-only reload and have their own

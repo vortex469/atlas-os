@@ -19,6 +19,13 @@ function view(capabilities: unknown) {
 }
 
 describe("ProviderOverview feature data", () => {
+    it("shows provider health once as a readable status badge", () => {
+        view([]);
+        expect(screen.getByText("Online", { exact: true })).toBeInTheDocument();
+        expect(screen.queryByText("online", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Status", { exact: true })).not.toBeInTheDocument();
+    });
+
     it("distinguishes missing features from an empty advertised list", () => {
         view(undefined);
         expect(screen.getByText("Capabilities unavailable.")).toBeInTheDocument();

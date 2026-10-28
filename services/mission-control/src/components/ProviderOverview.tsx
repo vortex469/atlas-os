@@ -46,20 +46,10 @@ export function ProviderOverview({
                     </p>
                 </div>
 
-                <StatusBadge status={provider.health.status} />
+                <StatusBadge status={formatLabel(provider.health.status)} />
             </div>
 
-            <dl className="mt-8 grid gap-4 border-t border-slate-800 pt-6 sm:grid-cols-2 lg:grid-cols-5">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Status
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold capitalize text-slate-100">
-                        {provider.health.status}
-                    </dd>
-                </div>
-
+            <dl className="mt-8 grid gap-4 border-t border-slate-800 pt-6 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                     <dt className="text-xs uppercase tracking-wider text-slate-500">
                         Latency
