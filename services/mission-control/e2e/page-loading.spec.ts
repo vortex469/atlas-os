@@ -9,12 +9,12 @@ test("a delayed screen keeps navigation usable and pauses the previous page", as
         await route.continue();
     });
     await page.goto("/");
-    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
     await page.getByRole("link", { name: "Deployment analysis", exact: true }).click();
     try {
         await expect(page.getByText("Loading page...", { exact: true })).toBeVisible();
         await expect(page.locator("#mc-page-content")).toHaveAttribute("inert", "");
-        await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Overview", exact: true })).toBeVisible();
     } finally {
         release();
     }
@@ -52,7 +52,7 @@ test("leaving a pending screen ignores its late module", async ({ page }) => {
     const completed = page.waitForResponse("**/src/pages/ForgePage.tsx*");
     try {
         await expect(page.getByText("Loading page...", { exact: true })).toBeVisible();
-        await page.getByRole("link", { name: "Mission Control", exact: true }).click();
+        await page.getByRole("link", { name: "Overview", exact: true }).click();
         await expect(page.getByText("Loading page...", { exact: true })).toHaveCount(0);
         await expect(page.locator("#mc-page-content")).not.toHaveAttribute("inert", "");
     } finally {
@@ -60,6 +60,6 @@ test("leaving a pending screen ignores its late module", async ({ page }) => {
     }
     await completed;
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Deployment analysis" })).toHaveCount(0);
 });

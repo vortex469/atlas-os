@@ -243,8 +243,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
 }
 export function MissionControl() {
     const { evidence, loading, refresh } = useOverviewEvidence();
-    return <main aria-label="Mission Control" className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 [&_a]:text-mc-primary [&_a]:underline [&_a]:underline-offset-4 [&_a:focus-visible]:outline-2">
-        <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">Mission Control</h1><p className="text-sm text-mc-text-secondary">Status, alerts, and recent work.</p></div><button className="rounded-lg border border-mc-border-subtle px-4 py-2" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh"}</button></header>
+    return <main aria-label="Overview" className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 [&_a]:text-mc-primary [&_a]:underline [&_a]:underline-offset-4 [&_a:focus-visible]:outline-2">
+        <header className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">Overview</h1><p className="text-sm text-mc-text-secondary">Status, alerts, and recent work.</p></div><button className="rounded-lg border border-mc-border-subtle px-4 py-2" disabled={loading} onClick={() => void refresh()}>{loading ? "Refreshing…" : "Refresh"}</button></header>
         <Overview evidence={evidence} loading={loading} />
     </main>;
 }

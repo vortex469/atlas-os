@@ -113,7 +113,7 @@ describe("MainLayout", () => {
             }
             // The root link is exact so nested routes do not activate it.
             expect(
-                within(nav).getByRole("link", { name: "Mission Control" }),
+                within(nav).getByRole("link", { name: "Overview" }),
             ).toHaveAttribute("aria-current", "page");
         });
 
@@ -177,7 +177,7 @@ describe("MainLayout", () => {
             renderAt("/");
 
             expect(screen.queryByLabelText("Current page: Mission Control")).not.toBeInTheDocument();
-            expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(2);
+            expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(1);
         });
     });
 
@@ -212,7 +212,7 @@ describe("MainLayout", () => {
 
             const dialog = screen.getByRole("dialog");
             // Focus moved into the drawer after it opened.
-            const firstLink = within(dialog).getByRole("link", { name: "Mission Control" });
+            const firstLink = within(dialog).getByRole("link", { name: "Overview" });
             expect(firstLink).toHaveFocus();
 
             await user.keyboard("{Escape}");
@@ -330,7 +330,7 @@ describe("MainLayout", () => {
     describe("route preservation", () => {
         it("preserves the exact working destination set", () => {
             expect(navigationLabels).toEqual([
-                "Mission Control",
+                "Overview",
                 "Action history",
                 "Maintenance history",
                 "Request maintenance",

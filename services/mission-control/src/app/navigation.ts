@@ -18,7 +18,7 @@ export type NavigationItem = {
     path: string;
     /**
      * NavLink exact-match flag. Only the root route needs `end` so that
-     * `/operations` does not keep the Mission Control link active.
+     * `/operations` does not keep the Overview link active.
      */
     end?: boolean;
     /** Short label for compact mobile navigation, when the label is long. */
@@ -27,7 +27,7 @@ export type NavigationItem = {
 
 export const primaryNavigationItems: NavigationItem[] = [
     {
-        label: "Mission Control",
+        label: "Overview",
         path: "/",
         end: true,
     },

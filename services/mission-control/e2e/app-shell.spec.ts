@@ -5,11 +5,11 @@ test("Mission Control application shell renders with primary navigation", async 
 
     await expect(page.getByText("Mission Control", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Mission Control 2.0", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Mission Control", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
 
-    await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toHaveAttribute("href", "/");
+    await expect(page.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("href", "/");
     await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
     await expect(page.getByRole("link", { name: "Maintenance history", exact: true })).toHaveAttribute("href", "/operations/history");
     await expect(page.getByRole("link", { name: "Request maintenance", exact: true })).toHaveAttribute("href", "/operations/request");
@@ -53,7 +53,7 @@ test.describe("Mobile navigation", () => {
         const dialog = page.getByRole("dialog", { name: "Mission Control navigation" });
         await expect(dialog).toBeVisible();
         for (const label of [
-            "Mission Control",
+            "Overview",
             "Action history",
             "Maintenance history",
             "Request maintenance",
@@ -69,7 +69,7 @@ test.describe("Mobile navigation", () => {
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
         // The main content stays reachable and unobstructed at narrow widths.
-        await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
+        await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
         await expect(page.getByLabel("Current page: Mission Control")).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });

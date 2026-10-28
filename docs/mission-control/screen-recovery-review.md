@@ -1780,3 +1780,14 @@ proposal submission stays disabled. The focused page suite passes (32 tests),
 the 390px fixture-backed browser check passes, the full Mission Control suite
 passes (2,787 tests across 181 files), lint passes, and the production build
 passes. No API contract or approval boundary changed.
+
+## Dashboard destination naming — 2026-10-28
+
+The home destination, main landmark, and page heading are now called
+“Overview,” while “Mission Control” remains the app identity in the brand.
+This removes the repeated product name from the main screen and gives the root
+menu item a clear page label. The focused layout/dashboard tests pass (92
+tests), and the 390px dashboard browser check passes. Shell/navigation/loading
+browser checks pass (21 tests in development and 17 against the built app).
+The full Mission Control suite passes (2,787 tests across 181 files), lint and
+production build pass. Routes, API requests, and authority are unchanged.

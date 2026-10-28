@@ -2,10 +2,10 @@ import { expect, test } from "./mission-control-fixtures";
 
 const routes = [
     {
-        label: "Mission Control",
+        label: "Overview",
         path: "/",
         assertion: async (page) => {
-            await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
+            await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
         },
     },
     {

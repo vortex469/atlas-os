@@ -13,7 +13,7 @@ describe("Mission Control 2.0 shell navigation boundary", () => {
         expect(navigation).not.toMatch(/label:\s*"Deployment analysis"/);
         // Every enabled destination label lives in exactly one metadata
         // module so desktop and mobile surfaces cannot drift apart.
-        expect(navigationMetadata).toMatch(/label:\s*"Mission Control"/);
+        expect(navigationMetadata).toMatch(/label:\s*"Overview"/);
         expect(navigationMetadata).toMatch(/label:\s*"Deployment analysis"/);
     });
 
