@@ -830,3 +830,11 @@ below conditions that already link to their detail pages. General navigation
 remains in System health and Work activity. The focused overview tests and
 responsive browser checks pass, along with lint, production build, and
 `git diff --check`.
+
+## Agent details navigation — 2026-10-28
+
+The Agent details card no longer repeats the workflow link shown in Work
+activity. Its remaining navigation is deployment analysis; workflow review
+stays in Work activity. The focused Agent/provider suite and responsive
+overview browser checks pass, along with lint, production build, and
+`git diff --check`.

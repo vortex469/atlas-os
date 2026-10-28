@@ -21,7 +21,6 @@ export function AgentOverviewContent({ evidence }: { evidence?: Evidence }) {
         {hasData && <p>{name || "Agent name unavailable"}{version && ` · ${version}`}</p>}
         <p>{summary}</p>
         <Link to="/forge">Open deployment analysis →</Link>
-        <Link className="block" to="/workflows">View agent workflows</Link>
     </>;
 }
 
