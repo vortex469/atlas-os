@@ -13,7 +13,8 @@ describe("v0.56 read-only Mission Control isolation", () => {
         expect(api + component + hook).not.toMatch(/atlas\.(post|put|patch|delete)|setInterval|setTimeout|WebSocket|EventSource|Worker\(|localStorage|sessionStorage|document\.cookie|Authorization|Bearer|Date\.now|crypto\./);
         expect(component).not.toMatch(/<(button|form|input|select|textarea)\b|dangerouslySetInnerHTML/i);
         expect(component).not.toMatch(/<details[^>]*\bopen/);
-        expect(component).toContain("Plan review is evidence; runtime prerequisites remain incomplete");
+        expect(component).toContain("A review checks saved plan evidence only.");
+        expect(component).toContain("Worker start remains blocked");
     });
     it("has only exact evidence consumers nested beneath the prerequisite, with no navigation", () => {
         expect(parent).toContain("<WorkerActivationRuntimePlanReview plan={state} />");
