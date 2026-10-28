@@ -214,6 +214,14 @@ describe("OperationsPage", () => {
         expect(screen.getByRole("status")).toHaveTextContent("Expired entries cannot be deleted until action history loads successfully.");
     });
 
+    it("shows the empty-history state when no filters are applied", async () => {
+        mockedGetProviderActionHistory.mockResolvedValue({ items: [], total: 0, offset: 0, limit: 25, has_more: false });
+        renderPage();
+
+        expect(await screen.findByText("No actions recorded")).toBeVisible();
+        expect(screen.getByText("Provider actions executed through Atlas Core will appear here.")).toBeVisible();
+    });
+
     it("ignores a slow filtered response after a newer filter has loaded", async () => {
         const user = userEvent.setup();
         renderPage();
@@ -225,11 +233,12 @@ describe("OperationsPage", () => {
         await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
         mockedGetProviderActionHistory.mockResolvedValueOnce({ items: [], total: 0, offset: 0, limit: 25, has_more: false });
         await user.click(screen.getByRole("button", { name: "Succeeded" }));
-        await screen.findByText("No actions recorded");
+        await screen.findByText("No matching actions");
         await act(async () => { resolveRead(originalPage); });
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
         expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
-        expect(screen.getByText("No actions recorded")).toBeInTheDocument();
+        expect(screen.getByText("No matching actions")).toBeVisible();
+        expect(screen.getByText("No actions match the filters you applied. Change or clear filters to see other history.")).toBeVisible();
     });
 
     it("downloads a sanitized history export", async () => {

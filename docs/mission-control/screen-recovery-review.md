@@ -1428,3 +1428,11 @@ technical blocker codes remain under the collapsed review details. The focused
 readiness page suite passes 25 tests, including coverage for all 12 blocker
 explanations. Evidence collection, permissions, and execution boundaries are
 unchanged.
+
+## Action history empty results — 2026-10-28
+
+When applied filters return no rows, Action history now says “No matching
+actions” and points operators to change or clear filters. An unfiltered empty
+history still explains that Atlas Core action records appear here. Focused page
+tests cover both states and preserve protection against a slower old filter
+response replacing the current results.

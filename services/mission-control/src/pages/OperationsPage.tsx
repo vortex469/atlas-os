@@ -108,6 +108,7 @@ export function OperationsPage() {
     const hasActiveMoreFilters = providerId !== "all" || Boolean(completedFrom || completedTo);
     const hasUnappliedSearch = searchInput.trim() !== search;
     const hasActiveFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search || searchInput.trim());
+    const hasAppliedFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search);
 
     const loadHistory = useCallback(async () => {
         const requestId = requestSequence.current + 1;
@@ -543,11 +544,12 @@ export function OperationsPage() {
             {!historyError && !isLoading && entries.length === 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
                     <p className="font-semibold text-slate-200">
-                        No actions recorded
+                        {hasAppliedFilters ? "No matching actions" : "No actions recorded"}
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
-                        Provider actions executed through Atlas Core will
-                        appear here.
+                        {hasAppliedFilters
+                            ? "No actions match the filters you applied. Change or clear filters to see other history."
+                            : "Provider actions executed through Atlas Core will appear here."}
                     </p>
                 </div>
             )}
