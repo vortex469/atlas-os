@@ -29,7 +29,7 @@ describe("integrated attention and activity", () => {
     it.each([" ", "", "..", "\ud800", {}])("rejects malformed workflow identity %j without requiring human action", id => {
         render(dashboard({ workflows: { data: { items: [{ workflow_id: id, workflow_state: "awaiting_approval" }] } } }));
         expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText("Workflow attention evidence unknown or incomplete.")).toBeVisible();
+        expect(attention().getByText("Workflow status could not be confirmed.")).toBeVisible();
     });
     it("keeps stale approval requirements historical and clears them on recovery", () => {
         const view = render(dashboard({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: "w", workflow_state: "awaiting_approval" }] } } }));
@@ -41,7 +41,7 @@ describe("integrated attention and activity", () => {
     it("never creates action requirements from absent or malformed evidence or historical failures", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
         expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText(/Missing sources do not establish an all-clear/)).toBeVisible();
+        expect(attention().getByText(/Atlas cannot confirm an all-clear while information is missing/)).toBeVisible();
         expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
     it("orders and deduplicates source history with provider context and safe detail navigation", async () => {
@@ -70,13 +70,13 @@ describe("integrated attention and activity", () => {
     });
     it("shows unavailable, stale, and recovered history without accumulating a client audit log", () => {
         const view = render(dashboard({ activity: { unavailable: true } }));
-        expect(activity().getByText("Evidence unavailable.")).toBeVisible();
+        expect(activity().getByText("Could not load this information.")).toBeVisible();
         view.rerender(dashboard({ activity: { stale: true, unavailable: true, data: { items: [event] } } }));
-        expect(activity().getByText(/Stale evidence/)).toBeVisible();
+        expect(activity().getByText(/Refresh failed\. Showing previously reported information only/)).toBeVisible();
         expect(activity().getAllByRole("listitem")).toHaveLength(1);
         view.rerender(dashboard({ activity: { data: { items: [] } } }));
         expect(activity().getByText("No recent actions recorded.")).toBeVisible();
         expect(activity().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(activity().queryByText(/Stale evidence/)).not.toBeInTheDocument();
+        expect(activity().queryByText(/Refresh failed\. Showing previously reported information only/)).not.toBeInTheDocument();
     });
 });

@@ -24,7 +24,7 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
             {sources.map(source => (
                 <article key={source.title} id={source.id} tabIndex={-1} aria-label={source.title} className="scroll-mt-24 min-w-0 space-y-1">
                     <h3 className="font-semibold">{source.title}</h3>
-                    {source.evidence?.unavailable && <p>Evidence unavailable.{source.evidence.stale ? " Last-known observations only." : ""}</p>}
+                    {source.evidence?.unavailable && <p>Could not load this information.{source.evidence.stale ? " Showing previously reported information only; current status is unknown." : ""}</p>}
                     <HealthEvidenceContext.Provider value={{ stale: source.evidence?.stale === true }}>
                         <HealthEvidence
                             status={source.evidence?.unavailable && !source.evidence.stale ? undefined : safeText(source.status)}

@@ -27,7 +27,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
     const outcomes = items?.filter((item) => ["completed", "failed"].includes(executionStage(item) ?? "")) ?? [];
     const missingStages = items?.some((item) =>
         !["waiting", "current", "completed", "failed", "blocked"].includes(executionStage(item) ?? ""));
-    const fallback = unavailable ? "Unavailable" : "Unknown";
+    const fallback = unavailable ? "Unavailable" : "Not confirmed";
 
     return (
         <section aria-labelledby="worker-execution-heading" className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
@@ -38,32 +38,32 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <p className="mt-2 text-sm text-mc-text-muted">
                 Recorded workflow progress. This view does not start work.
             </p>
-            <HealthEvidence status={null} stale={evidence?.stale} reason="Worker readiness and queue size are unknown." />
-            {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Stale evidence — last-known workflow observations; current execution state unknown.</p>}
-            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing execution evidence; displayed observations may be stale.</p>}
+            <HealthEvidence status={null} stale={evidence?.stale} reason="Worker availability and queue size are not reported." />
+            {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Refresh failed. Showing previously reported workflow details; current execution state is unknown.</p>}
+            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing workflow information. Displayed details may be out of date.</p>}
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Metric label="Active execution" value={items && knownStates ? `${active.length} executing workflow${active.length === 1 ? "" : "s"}` : fallback} />
-                <Metric label="Blocked execution / workflow" value={items && knownStates ? `${blocked.length} blocked workflow${blocked.length === 1 ? "" : "s"}` : fallback} />
+                <Metric label="Active workflows" value={items && knownStates ? `${active.length} executing workflow${active.length === 1 ? "" : "s"}` : fallback} />
+                <Metric label="Blocked workflows" value={items && knownStates ? `${blocked.length} blocked workflow${blocked.length === 1 ? "" : "s"}` : fallback} />
             </dl>
-            {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Unrecognized workflow state; activity totals are unknown.</p>}
+            {items && !knownStates && <p className="mt-3 text-sm text-amber-200">A workflow state is not recognized, so activity totals are unavailable.</p>}
             <div className="mt-4 grid gap-4">
                 {active.length > 0 && <EvidenceList title="Active execution evidence" items={active} available={!!items} empty="Unknown" />}
                 {blocked.length > 0 && <EvidenceList title="Blocked workflow evidence" items={blocked} available={!!items} empty="Unknown" />}
             </div>
             <details className="mt-4 text-sm text-mc-text-secondary">
-                <summary className="mc-focusable cursor-pointer text-mc-primary">Execution observations</summary>
+                <summary className="mc-focusable cursor-pointer text-mc-primary">Execution details</summary>
                 <div className="mt-3 space-y-4">
-                    {items && knownStates && active.length === 0 && <p className="text-mc-text-muted">No executing workflows observed. Worker idleness is unknown.</p>}
+                    {items && knownStates && active.length === 0 && <p className="text-mc-text-muted">No executing workflows are listed. This does not confirm that a worker is idle.</p>}
                     <dl className="grid gap-4 sm:grid-cols-2">
-                        <Metric label="Worker availability / state" value="Unknown — worker heartbeat not exposed" />
-                        <Metric label="Queued / admitted work" value="Unknown — aggregate queue and admission evidence not exposed" />
+                        <Metric label="Worker availability" value="Not reported" />
+                        <Metric label="Queued work" value="Queue total not reported" />
                     </dl>
-                    <EvidenceList title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
-                    <p className="text-xs text-mc-text-muted">Up to 3 records per group. Execution timestamps are not exposed: outcome recency is unavailable; records are shown in workflow ID order. Workflow blockers may precede execution.</p>
+                    <EvidenceList title="Past execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Outcome details could not be confirmed" : "No execution outcomes recorded"} outcomes />
+                    <p className="text-xs text-mc-text-muted">Showing up to 3 workflows in each list. Times are not available, so outcomes are not sorted by time. A blocked workflow may not have started execution.</p>
                 </div>
             </details>
-            {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution evidence is missing or malformed; outcomes are incomplete.</p>}
-            {!items && <p role="status" className="mt-3 text-sm text-amber-200">Execution evidence {unavailable ? "unavailable" : "unknown or incomplete"}. No idle or healthy state inferred.</p>}
+            {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some workflow details are incomplete, so outcomes may be missing.</p>}
+            {!items && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Could not load workflow details." : "Workflow details are missing or incomplete."} Worker availability and queue size are not confirmed.</p>}
         </section>
     );
 }
