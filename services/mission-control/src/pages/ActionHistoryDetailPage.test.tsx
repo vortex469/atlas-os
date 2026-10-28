@@ -114,6 +114,7 @@ describe("ActionHistoryDetailPage", () => {
         ).toHaveBeenCalledWith("audit-1");
         expect(screen.getByText("Succeeded")).toBeInTheDocument();
         expect(screen.getByText("Model unloaded.")).toBeInTheDocument();
+        expect(screen.getByText("Times below use your browser’s local time.")).toBeInTheDocument();
         expect(screen.getByText("Ollama")).toBeInTheDocument();
         expect(screen.getByText(/^Completed /)).toBeInTheDocument();
         expect(screen.getByText("Started")).toBeInTheDocument();

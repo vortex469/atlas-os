@@ -118,6 +118,9 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                     <p className="mt-1 text-sm text-slate-400">
                         Recorded result of a provider action. Older records may expire under the history retention policy.
                     </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Times below use your browser’s local time.
+                    </p>
                 </div>
                 <button
                     type="button"
