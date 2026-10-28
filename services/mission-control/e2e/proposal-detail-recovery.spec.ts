@@ -91,7 +91,7 @@ for (const width of [320, 390, 1280]) {
         const refresh = page.getByRole("button", { name: "Refresh proposal", exact: true });
         await expect(refresh).toBeDisabled();
         finish();
-        const message = page.getByText("This proposal changed or expired. Choose Refresh proposal to check its latest state.", { exact: true });
+        const message = page.getByText("This proposal changed or expired. Choose Refresh proposal to check its latest details.", { exact: true });
         await expect(message).toBeVisible();
         const before = reads;
         updated = true;
