@@ -11,6 +11,9 @@ interface ExecutionTimelineProps {
 export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = false, onRefresh }: ExecutionTimelineProps) {
     const isOperational = workflow.effect_kind === "operational_action";
     const executionState = executionStateText(workflow);
+    const timeline = isOperational
+        ? workflow.timeline.filter((stage) => stage.name !== "Review" && stage.name !== "Commit")
+        : workflow.timeline;
 
     return (
         <section aria-labelledby="execution-timeline-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -24,8 +27,8 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
                 </button>
             </div>
 
-            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label={isOperational ? "Maintenance workflow stages" : "Change stages"}>
-                {workflow.timeline.map((stage) => (
+            <ol className={`mt-5 grid gap-2 text-sm md:grid-cols-3 ${isOperational ? "xl:grid-cols-7" : "xl:grid-cols-9"}`} aria-label={isOperational ? "Maintenance workflow stages" : "Change stages"}>
+                {timeline.map((stage) => (
                     <TimelineStage key={stage.name} stage={stage} isOperational={isOperational} />
                 ))}
             </ol>
@@ -65,7 +68,7 @@ function operationalStageLabel(name: string): string {
         case "Execution Candidate": return "Proposal";
         case "Planning Session": return "Planning";
         case "Candidate Plan": return "Maintenance plan";
-        case "Operational Action Approval": return "Maintenance approval";
+        case "Implementation Approval": return "Maintenance request approval";
         case "Execution": return "Run maintenance";
         case "Verification": return "Verify result";
         default: return name;

@@ -28,7 +28,7 @@ import type {
     WorkflowOperationalActionRequestSummary,
 } from "../types/atlasAgent";
 import { operationalRequest } from "../utils/operationalRequest";
-import { fallbackWorkflowRailStages, workflowRailStages } from "../utils/workflowState";
+import { workflowRailStages } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
 
@@ -285,7 +285,6 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     if (loadError) {
         return (
             <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
-                <WorkflowRail />
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
@@ -305,7 +304,6 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     if (!workflow) {
         return (
             <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
-                <WorkflowRail />
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
                     <p className="mt-2 text-sm text-slate-300">Atlas Agent did not find workflow {workflowId}.</p>
@@ -403,7 +401,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                             : "Review each stage below. Implementation, verification and commit each need separate approval and a separate Resume step."}
                     </p>
                 </div>
-                <WorkflowRail workflow={workflow} />
+                {isRepository && <WorkflowRail workflow={workflow} />}
             </header>
 
             <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -855,8 +853,8 @@ function CommitSection({
     );
 }
 
-function WorkflowRail({ workflow }: { workflow?: WorkflowDetailResponse }) {
-    const stages = workflow ? workflowRailStages(workflow) : fallbackWorkflowRailStages();
+function WorkflowRail({ workflow }: { workflow: WorkflowDetailResponse }) {
+    const stages = workflowRailStages(workflow);
     return (
         <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
             <WorkflowMiniRail stages={stages} />

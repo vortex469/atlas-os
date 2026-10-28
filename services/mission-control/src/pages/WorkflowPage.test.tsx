@@ -128,6 +128,7 @@ describe("WorkflowPage", () => {
         expect(within(technicalDetails as HTMLElement).getByText("Network Error")).not.toBeVisible();
         expect(within(alert).getByRole("button", { name: "Try again" })).toBeVisible();
         expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
+        expect(screen.queryByRole("region", { name: "Read-only workflow rail" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
     });
 
@@ -842,6 +843,11 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("heading", { name: "Maintenance request approval" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Approve maintenance request" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reject maintenance request" })).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Read-only workflow rail" })).not.toBeInTheDocument();
+        const stages = screen.getByRole("list", { name: "Maintenance workflow stages" });
+        expect(within(stages).getByText("Maintenance request approval", { exact: true })).toBeInTheDocument();
+        expect(within(stages).queryByText("Review", { exact: true })).not.toBeInTheDocument();
+        expect(within(stages).queryByText("Commit", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Implementation Request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Checks to run" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
@@ -981,6 +987,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Workflow not found");
+        expect(screen.queryByRole("region", { name: "Read-only workflow rail" })).not.toBeInTheDocument();
     });
 
     it("shows checks, results, and one clear review decision", async () => {

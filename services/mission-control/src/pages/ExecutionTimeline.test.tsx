@@ -135,21 +135,24 @@ describe("ExecutionTimeline", () => {
                 { name: "Planning Session", status: "completed" },
                 { name: "Candidate Plan", status: "completed" },
                 { name: "Workflow", status: "completed" },
-                { name: "Operational Action Approval", status: "current" },
+                { name: "Implementation Approval", status: "current" },
                 { name: "Execution", status: "waiting" },
                 { name: "Verification", status: "waiting" },
+                { name: "Review", status: "waiting" },
+                { name: "Commit", status: "waiting" },
             ],
         }));
 
         expect(screen.getByRole("heading", { name: "Maintenance progress" })).toBeInTheDocument();
         const stages = screen.getByRole("list", { name: "Maintenance workflow stages" });
-        for (const name of ["Proposal", "Planning", "Maintenance plan", "Workflow", "Maintenance approval", "Run maintenance", "Verify result"]) {
+        for (const name of ["Proposal", "Planning", "Maintenance plan", "Workflow", "Maintenance request approval", "Run maintenance", "Verify result"]) {
             expect(within(stages).getByText(name, { exact: true })).toBeInTheDocument();
         }
+        expect(within(stages).getAllByRole("listitem")).toHaveLength(7);
         expect(screen.getByText("Waiting for maintenance request approval.")).toBeInTheDocument();
         expect(screen.getByText("Check the Operational lifecycle section above for the maintenance outcome and verification.")).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Change progress" })).not.toBeInTheDocument();
-        for (const internalName of ["Execution Candidate", "Planning Session", "Candidate Plan", "Operational Action Approval", "Execution", "Verification"]) {
+        for (const internalName of ["Execution Candidate", "Planning Session", "Candidate Plan", "Implementation Approval", "Execution", "Verification", "Review", "Commit"]) {
             expect(within(stages).queryByText(internalName, { exact: true })).not.toBeInTheDocument();
         }
         expect(screen.queryByText(/exact action/i)).not.toBeInTheDocument();

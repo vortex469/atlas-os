@@ -311,7 +311,7 @@ function maintenanceWorkflow(phase: Phase, approved: boolean, request: ReturnTyp
             { approval_id: "approval-browser-implementation", purpose: "operational_action", decision_status: complete || approved ? "approved" : "pending",
                 presentation_state: complete || approved ? "resolved" : "actionable", actionable: !complete && !approved, reason: "Exact action approval is separate from preparation." },
         ],
-        timeline: ["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Operational Action Approval", "Execution", "Verification"].map((name, index) => ({
+        timeline: ["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Implementation Approval", "Execution", "Verification", "Review", "Commit"].map((name, index) => ({
             name, status: complete || index < 4 || (index === 4 && approved) ? "completed" : index === 4 ? "current" : "waiting",
         })),
         execution: { execution_status: null, started_at: null, completed_at: null, result: null, changed_files_count: 0,

@@ -109,6 +109,22 @@ layout and structural tests pass (37 tests), the application-shell browser
 checks pass (8 tests), and Mission Control lint and build pass. No routes,
 backend contracts, or operator permissions changed.
 
+## Maintenance workflow timeline follow-up — 2026-10-28
+
+Atlas Agent supplies the same nine stage names for repository and maintenance
+workflows. Mission Control now keeps the repository stage rail on repository
+workflows only. Maintenance progress translates the server's
+`Implementation Approval` stage to “Maintenance request approval” and omits the
+repository-only Review and Commit stages. Loading, unavailable, and not-found
+screens no longer show a generic repository stage rail without a known
+repository workflow. The maintenance browser fixture now uses the nine-stage
+Agent response, so the seven-step operator view is checked against that contract.
+
+The focused workflow/timeline component tests pass (93 tests), the maintenance
+journey passes at 320, 390, and 1280 pixels, and Mission Control lint and build
+pass. The change is presentational; it does not change backend contracts,
+approval decisions, execution, or audit behavior.
+
 ## Workflow directory simplification follow-up — 2026-10-28
 
 Workflow cards now lead with the stage, latest result and approval status.
