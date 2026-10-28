@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { WorkflowRecoveryDiagnostic } from "../types/atlasAgent";
@@ -27,21 +27,57 @@ describe("OperationalRecoverySummary", () => {
     });
 
     it.each([
-        ["none", "No recovery action is required."],
-        ["wait_for_verification", "Wait for Atlas verification to complete; do not replay the operation."],
-        ["restore_core_availability", "Restore Atlas Core availability and refresh the read-only lifecycle."],
-        ["inspect_target_read_only", "Inspect the target using read-only status information."],
-        ["preserve_evidence", "Preserve the current lifecycle and support evidence before changing system state."],
-        ["operator_review_required", "Operator review is required before any new maintenance request."],
-        ["new_request_only_after_terminal", "Do not create a replacement request until the current lifecycle is terminal."],
+        ["none", "No further action is needed."],
+        ["wait_for_verification", "Wait for Atlas to finish checking the service. Do not run the request again."],
+        ["restore_core_availability", "Restore Atlas Core, then refresh this page."],
+        ["inspect_target_read_only", "Check the current service status without changing it."],
+        ["preserve_evidence", "Keep the current request details. Ask an operator to review them before making changes."],
+        ["operator_review_required", "Ask an operator to review this before creating a new maintenance request."],
+        ["new_request_only_after_terminal", "Wait for this request to finish before creating another one."],
     ] as Array<[WorkflowRecoveryDiagnostic["safe_next_action"], string]>)("maps safe action %s", (safe_next_action, expected) => {
         render(<OperationalRecoverySummary diagnostic={diagnostic({ safe_next_action })} supportEvidenceAvailable={false} />);
         expect(screen.getByText((content) => content.includes(expected))).toBeInTheDocument();
     });
 
-    it("keeps a diagnostic fetch failure distinct from an operational failure", () => {
-        render(<OperationalRecoverySummary diagnostic={null} error="Mission Control could not read the recovery diagnostic." supportEvidenceAvailable={false} />);
-        expect(screen.getByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
+    it.each([
+        ["missing_core_record", "The request is recorded, but no matching service run was found."],
+        ["dispatch_outcome_unknown", "The request was sent, but the service result is unknown."],
+        ["terminal_state_disagreement", "Atlas has conflicting records about whether the request is finished."],
+    ] as const)("explains %s in plain language", (controlled_reason, reason) => {
+        render(<OperationalRecoverySummary diagnostic={diagnostic({ controlled_reason })} supportEvidenceAvailable={false} />);
+        expect(screen.getByText(reason)).toBeInTheDocument();
+    });
+
+    it("keeps technical evidence closed until an operator asks to see it", () => {
+        render(<OperationalRecoverySummary diagnostic={diagnostic()} supportEvidenceAvailable />);
+
+        const summary = screen.getByRole("region", { name: "Maintenance status summary" });
+        const evidence = within(summary).getByText("Diagnostic evidence").closest("details");
+        expect(evidence).not.toHaveAttribute("open");
+        expect(within(summary).getByText("Target fingerprint")).not.toBeVisible();
+        expect(within(summary).getByText("Healthy")).toBeVisible();
+        expect(within(summary).getByText(/Safe next action:/)).toBeVisible();
+
+        fireEvent.click(within(summary).getByText("Diagnostic evidence"));
+
+        expect(within(summary).getByText("Target fingerprint")).toBeVisible();
+        expect(within(summary).getByText("unchanged")).toBeVisible();
+    });
+
+    it("keeps the compact history summary focused on status and next steps", () => {
+        render(<OperationalRecoverySummary diagnostic={diagnostic()} supportEvidenceAvailable compact />);
+
+        expect(screen.getByRole("region", { name: "Maintenance status summary" })).toBeInTheDocument();
+        expect(screen.getByText("Healthy")).toBeVisible();
+        expect(screen.getByText(/Safe next action:/)).toBeVisible();
+        expect(screen.queryByText("Diagnostic evidence")).not.toBeInTheDocument();
+        expect(screen.queryByText("Target fingerprint")).not.toBeInTheDocument();
+    });
+
+    it("keeps a status read failure distinct from the maintenance outcome", () => {
+        render(<OperationalRecoverySummary diagnostic={null} error="Mission Control could not check the latest recovery status." supportEvidenceAvailable={false} />);
+        expect(screen.getByRole("heading", { name: "Maintenance status details unavailable" })).toBeInTheDocument();
+        expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });
 
     it("renders no forbidden secret or provider-native fields", () => {

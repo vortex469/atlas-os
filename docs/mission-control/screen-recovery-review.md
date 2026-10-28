@@ -2235,3 +2235,16 @@ matching the exact approval control and the later approved status. The focused
 workflow page suite passes (82 tests), and the synthetic maintenance journey
 passes at 320px, 390px, and 1280px (3 checks); lint and the production build
 pass. Approval and run steps remain separate.
+
+## Maintenance status summary simplification — 2026-10-28
+
+The maintenance workflow now leads with a plain-language status, explanation,
+and safe next step. Recovery reasons and suggested actions use operator terms;
+record consistency, target identity, dispatch, verification and support fields
+are under a closed “Diagnostic evidence” disclosure. Maintenance history keeps
+the compact status and guidance without exposing that technical disclosure.
+Focused workflow, history and summary tests pass (124 tests). Synthetic browser
+coverage passes for the workflow at 320px, 390px and 1280px; history recovery
+at those widths; and unavailable status at 390px and 1280px (8 checks total).
+Mission Control lint and build pass. Browser requests use synthetic fixtures;
+approval and execution boundaries are unchanged.

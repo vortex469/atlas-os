@@ -945,7 +945,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Additional filters are applied")).toBeVisible();
         await page.getByRole("combobox", { name: "Latest result", exact: true }).selectOption("unavailable");
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
-        await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
+        await expect(page.getByText("A problem checking status does not mean the maintenance request failed.")).toBeVisible();
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
         await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
         await page.getByText("Request details", { exact: true }).click();
@@ -1242,8 +1242,8 @@ for (const width of [390, 1280]) {
 
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         await expect(page.getByText("Status unavailable", { exact: false })).toBeVisible();
-        await expect(page.getByText("Recovery diagnostic unavailable")).toBeVisible();
-        await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
+        await expect(page.getByText("Maintenance status details unavailable")).toBeVisible();
+        await expect(page.getByText("A problem checking status does not mean the maintenance request failed.")).toBeVisible();
         await expect(page.getByText("execution confirmed", { exact: false })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);

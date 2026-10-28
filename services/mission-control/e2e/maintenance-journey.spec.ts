@@ -99,11 +99,16 @@ for (const width of [320, 390, 1280]) {
         expect(fixture.writes).toHaveLength(6);
         await page.getByRole("button", { name: "Run approved maintenance", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
+        const statusSummary = page.getByRole("region", { name: "Maintenance status summary" });
+        await expect(statusSummary.getByRole("heading", { name: "Healthy", exact: true })).toBeVisible();
+        const diagnosticEvidence = statusSummary.locator("details");
+        await expect(diagnosticEvidence).not.toHaveAttribute("open");
+        await expect(diagnosticEvidence.getByText("Target fingerprint", { exact: true })).toBeHidden();
         await expect(page.getByRole("heading", { name: "Maintenance progress", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Execution timeline", exact: true })).toHaveCount(0);
         const maintenanceStatus = page.getByRole("region", { name: "Maintenance status" });
         await expect(maintenanceStatus.getByText("Technical evidence", { exact: true })).toBeVisible();
-        const technicalEvidence = maintenanceStatus.locator("details");
+        const technicalEvidence = maintenanceStatus.locator("details").filter({ hasText: "Technical evidence" });
         await expect(technicalEvidence).not.toHaveAttribute("open");
         await expect(technicalEvidence.getByText("Workflow ID", { exact: true })).toBeHidden();
         const maintenanceStages = page.getByRole("list", { name: "Maintenance workflow stages" });
@@ -125,6 +130,7 @@ for (const width of [320, 390, 1280]) {
         const auditTechnicalEvidence = auditMaintenanceStatus.locator("details");
         await expect(auditTechnicalEvidence).not.toHaveAttribute("open");
         await expect(auditTechnicalEvidence.getByText("Workflow ID", { exact: true })).toBeHidden();
+        await expect(auditMaintenanceStatus.getByText("Diagnostic evidence", { exact: true })).toHaveCount(0);
         await expect(page.getByText(/Maintenance status:/)).toContainText("Maintenance workflow completed.");
         await expect(page.getByRole("heading", { name: "Commit Request", exact: true })).toHaveCount(0);
         const auditPadding = await auditHeading.evaluate((element) => {

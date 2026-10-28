@@ -76,7 +76,7 @@ describe("OperationalHistoryPage", () => {
         mockedDiagnostic.mockRejectedValue(new Error("native secret exception"));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        expect(await screen.findByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
+        expect(await screen.findByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
         expect(document.body.textContent).not.toContain("native secret exception");
     });
 
@@ -271,6 +271,6 @@ describe("maintenance history recovery", () => {
         await screen.findByText("unreadable-target");
         fireEvent.change(screen.getByRole("combobox", { name: "Latest result" }), { target: { value: "unavailable" } });
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/history-unreadable");
-        expect(screen.getByText("A diagnostic network failure is not an operational failure.")).toBeInTheDocument();
+        expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });
 });

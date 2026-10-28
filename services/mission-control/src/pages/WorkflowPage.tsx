@@ -128,9 +128,9 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     if (nextLifecycle === null) nextLifecycleError = "The operational lifecycle is no longer available for this workflow.";
                 }
                 if (diagnosticResult.status === "rejected") {
-                    nextDiagnosticError = "Mission Control could not read the recovery diagnostic.";
+                    nextDiagnosticError = "Mission Control could not check the latest recovery status.";
                 } else if (diagnosticResult.value && diagnosticResult.value.correlation?.workflow_id !== workflowId) {
-                    nextDiagnosticError = "The recovery diagnostic response does not match this workflow.";
+                    nextDiagnosticError = "The returned status does not match this workflow.";
                 } else {
                     nextDiagnostic = diagnosticResult.value;
                 }

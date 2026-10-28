@@ -214,7 +214,7 @@ describe("WorkflowPage", () => {
         expect(screen.getByRole("button", { name: "Approve maintenance request" })).toBeDisabled();
         await act(async () => resolveDiagnostic(null));
         expect(screen.queryByRole("button", { name: "Approve maintenance request" })).not.toBeInTheDocument();
-        expect(screen.queryByText("Loading recovery diagnostic...")).not.toBeInTheDocument();
+        expect(screen.queryByText("Checking maintenance status…")).not.toBeInTheDocument();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
     });
 
@@ -223,7 +223,7 @@ describe("WorkflowPage", () => {
         if (kind === "lifecycle") mockedGetWorkflowOperationalLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "different-workflow" }));
         else mockedGetWorkflowRecoveryDiagnostic.mockResolvedValue(operationalDiagnostic());
         renderPage();
-        const message = kind === "lifecycle" ? "The operational lifecycle response does not match this workflow." : "The recovery diagnostic response does not match this workflow.";
+        const message = kind === "lifecycle" ? "The operational lifecycle response does not match this workflow." : "The returned status does not match this workflow.";
         const messageElement = await screen.findByText(message);
         if (kind === "lifecycle") {
             expect(messageElement.closest("details")).not.toHaveAttribute("open");
@@ -232,7 +232,7 @@ describe("WorkflowPage", () => {
             expect(messageElement).toBeVisible();
         }
         expect(screen.queryByText("different-workflow")).not.toBeInTheDocument();
-        expect(screen.queryByText("Loading recovery diagnostic...")).not.toBeInTheDocument();
+        expect(screen.queryByText("Checking maintenance status…")).not.toBeInTheDocument();
     });
 
     it.each(["implementation", "verification", "commit"] as const)("disables %s approval while current status is being checked", async (stage) => {
@@ -971,7 +971,7 @@ describe("WorkflowPage", () => {
         expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
         expect(screen.queryByRole("heading", { name: "Maintenance status" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Support evidence" })).not.toBeInTheDocument();
-        expect(screen.queryByLabelText("Recovery summary")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Maintenance status summary")).not.toBeInTheDocument();
     });
 
     it("deterministically refreshes workflow and operational lifecycle together", async () => {
