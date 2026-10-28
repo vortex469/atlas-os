@@ -47,10 +47,10 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
                 <p className="text-xs text-mc-text-muted">Source status: {raw}</p>
             )}
             {message && <p className="text-mc-text-secondary">{message}</p>}
-            {state === "Unknown" && !message && <p className="text-mc-text-muted">No recognized health evidence.</p>}
+            {state === "Unknown" && !message && <p className="text-mc-text-muted">A clear health status was not reported.</p>}
             <p className="text-xs text-mc-text-muted">
                 {validTime ? <>{isStale ? "Last checked" : "Current evidence · Checked"} <time dateTime={timestamp!}>{formatLocalTimestamp(parsed)}</time></>
-                    : "Update time unknown"}
+                    : timestamp ? "Update time could not be confirmed." : "Update time not reported."}
             </p>
         </div>
     );

@@ -18,7 +18,7 @@ describe("authoritative health presentation", () => {
     ])("presents %j as %s without treating operational states as health", (status, label) => {
         render(<HealthEvidence status={status} />);
         expect(screen.getByText(label)).toBeInTheDocument();
-        expect(screen.getByText(/Update time unknown/)).toBeInTheDocument();
+        expect(screen.getByText("Update time not reported.")).toBeInTheDocument();
     });
 
     it("retains source critical severity and renders reasons as plain text", () => {
@@ -26,6 +26,13 @@ describe("authoritative health presentation", () => {
         expect(screen.getByText("Source status: critical")).toBeInTheDocument();
         expect(screen.getByText("<script>bad()</script>")).toBeInTheDocument();
         expect(document.querySelector("script")).toBeNull();
+    });
+
+    it("explains missing health evidence in plain language while retaining the reported status", () => {
+        render(<HealthEvidence status="needs_attention" />);
+        expect(screen.getByText("Source status: needs_attention")).toBeInTheDocument();
+        expect(screen.getByText("A clear health status was not reported.")).toBeInTheDocument();
+        expect(screen.queryByText(/recognized health evidence/)).not.toBeInTheDocument();
     });
 
     it("ages current timestamped evidence without changing the authoritative status", () => {
@@ -45,9 +52,18 @@ describe("authoritative health presentation", () => {
         expect(time).not.toHaveTextContent("2026-09-13T12:00:00Z");
     });
 
-    it.each([null, "yesterday", "2026-09-13", {}, "2099-01-01T00:00:00Z", "2026-02-30T00:00:00Z", "2026-09-13T24:00:00Z", "2026-09-13T12:00Z"])("does not claim freshness for timestamp %j", (checkedAt) => {
+    it.each([
+        [null, "Update time not reported."],
+        ["yesterday", "Update time could not be confirmed."],
+        ["2026-09-13", "Update time could not be confirmed."],
+        [{}, "Update time not reported."],
+        ["2099-01-01T00:00:00Z", "Update time could not be confirmed."],
+        ["2026-02-30T00:00:00Z", "Update time could not be confirmed."],
+        ["2026-09-13T24:00:00Z", "Update time could not be confirmed."],
+        ["2026-09-13T12:00Z", "Update time could not be confirmed."],
+    ])("does not claim freshness for timestamp %j", (checkedAt, expectedMessage) => {
         render(<HealthEvidence status="healthy" checkedAt={checkedAt} reason={{ unsafe: true }} />);
-        expect(screen.getByText(/Update time unknown/)).toBeInTheDocument();
+        expect(screen.getByText(expectedMessage as string)).toBeInTheDocument();
         expect(screen.queryByText(/Current evidence/)).not.toBeInTheDocument();
     });
 
