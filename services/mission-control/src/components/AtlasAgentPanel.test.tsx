@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -75,6 +75,7 @@ describe("AtlasAgentPanel", () => {
             approvals: [],
             isLoading: false,
             error: null,
+            retry: vi.fn(),
         });
 
         render(<AtlasAgentPanel />);
@@ -115,6 +116,7 @@ describe("AtlasAgentPanel", () => {
             approvals: [],
             isLoading: false,
             error: null,
+            retry: vi.fn(),
         });
 
         render(<AtlasAgentPanel />);
@@ -182,6 +184,7 @@ describe("AtlasAgentPanel", () => {
             ],
             isLoading: false,
             error: null,
+            retry: vi.fn(),
         });
 
         render(<MemoryRouter><AtlasAgentPanel /></MemoryRouter>);
@@ -197,6 +200,7 @@ describe("AtlasAgentPanel", () => {
     });
 
     it("shows only the panel unavailable state after a request failure", () => {
+        const retry = vi.fn();
         mockedUseAtlasAgent.mockReturnValue({
             info: null,
             repository: null,
@@ -206,18 +210,20 @@ describe("AtlasAgentPanel", () => {
             approvals: [],
             isLoading: false,
             error: "Atlas Agent unavailable.",
+            retry,
         });
 
         render(<AtlasAgentPanel />);
 
-        expect(screen.getByRole("alert")).toHaveTextContent(
-            "Atlas Agent unavailable.",
-        );
+        expect(screen.getByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
         expect(
             screen.queryByText("Repository"),
         ).not.toBeInTheDocument();
         expect(
             screen.queryByText("Not published yet"),
         ).not.toBeInTheDocument();
+        expect(screen.getByText(/Mission Control could not load repository and workflow status/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Retry status" }));
+        expect(retry).toHaveBeenCalledOnce();
     });
 });

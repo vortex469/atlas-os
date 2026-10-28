@@ -1118,3 +1118,9 @@ A failed diagnostic read now says that no new report is available and points to
 Run Doctor as the read-only retry. The raw request error remains available
 under collapsed Technical details; a previous healthy report is still cleared
 while a rerun is pending or unavailable.
+
+## Atlas Agent status recovery — 2026-10-28
+
+The dashboard's Atlas Agent status panel now offers an in-place retry after a
+failed read. Retry repeats only the status and pending-approval reads; it does
+not submit or change approval state.

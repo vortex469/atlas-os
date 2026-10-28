@@ -36,6 +36,7 @@ export function AtlasAgentPanel() {
         approvals,
         isLoading,
         error,
+        retry,
     } = useAtlasAgent();
 
     const pendingApprovals = approvals.filter(
@@ -69,8 +70,11 @@ export function AtlasAgentPanel() {
                         Atlas Agent unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error}
+                        Mission Control could not load repository and workflow status. Try again to check the latest information.
                     </p>
+                    <button type="button" onClick={retry} disabled={isLoading} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
+                        Retry status
+                    </button>
                 </div>
             )}
 
