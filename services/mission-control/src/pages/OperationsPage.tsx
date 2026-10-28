@@ -26,6 +26,11 @@ import type {
 } from "../types/actionHistory";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
+type OperationError = {
+    kind: "export" | "prune";
+    message: string;
+    details: string | null;
+};
 const PAGE_SIZE = 25;
 
 function formatTimestamp(timestamp: string): string {
@@ -78,8 +83,9 @@ export function OperationsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isPruning, setIsPruning] = useState(false);
+    const [pruneNeedsRefresh, setPruneNeedsRefresh] = useState(false);
     const [historyError, setHistoryError] = useState<string | null>(null);
-    const [operationError, setOperationError] = useState<string | null>(null);
+    const [operationError, setOperationError] = useState<OperationError | null>(null);
     const [operationMessage, setOperationMessage] = useState<
         string | null
     >(null);
@@ -131,6 +137,11 @@ export function OperationsPage() {
                 setSummary(summaryResult.value);
             } else {
                 console.error("Unable to load provider action history retention details:", summaryResult.reason);
+            }
+
+            if (summaryResult.status === "fulfilled" && historyResult.status === "fulfilled") {
+                setPruneNeedsRefresh(false);
+                setOperationError((current) => current?.kind === "prune" ? null : current);
             }
 
             if (providersResult.status === "fulfilled") {
@@ -204,12 +215,13 @@ export function OperationsPage() {
                     "Unable to export provider action history:",
                     requestError,
                 );
-                setOperationError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not export action history.",
-                    ),
-                );
+                const fallback = "Mission Control could not export action history.";
+                const details = getAtlasErrorMessage(requestError, fallback);
+                setOperationError({
+                    kind: "export",
+                    message: "Action history could not be exported. Try exporting again.",
+                    details: details === fallback ? null : details,
+                });
             } finally {
                 setIsExporting(false);
             }
@@ -218,7 +230,7 @@ export function OperationsPage() {
     );
 
     const pruneHistory = useCallback(async () => {
-        if (!summary || historyError) return;
+        if (!summary || historyError || pruneNeedsRefresh) return;
         const retentionDays = summary.retention_days;
         const confirmed = window.confirm(
             `Delete history records older than ${retentionDays} days? This does not undo provider actions.`,
@@ -249,16 +261,18 @@ export function OperationsPage() {
                 "Unable to prune provider action history:",
                 requestError,
             );
-            setOperationError(
-                getAtlasErrorMessage(
-                    requestError,
-                    "Mission Control could not prune action history.",
-                ),
-            );
+            const fallback = "Mission Control could not prune action history.";
+            const details = getAtlasErrorMessage(requestError, fallback);
+            setPruneNeedsRefresh(true);
+            setOperationError({
+                kind: "prune",
+                message: "Atlas could not confirm whether expired entries were deleted. Refresh history before trying again.",
+                details: details === fallback ? null : details,
+            });
         } finally {
             setIsPruning(false);
         }
-    }, [historyError, loadHistory, offset, summary]);
+    }, [historyError, loadHistory, offset, pruneNeedsRefresh, summary]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -474,7 +488,8 @@ export function OperationsPage() {
                     </div>
                 </div>
                 {historyError && <p role="status" className="text-sm text-amber-200">Expired entries cannot be deleted until action history loads successfully.</p>}
-                {operationError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">{operationError}</p>}
+                {operationError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100"><p>{operationError.message}</p>{operationError.details && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{operationError.details}</p></details>}</div>}
+                {pruneNeedsRefresh && <p role="status" className="text-sm text-amber-200">Deleting expired entries is paused until Refresh history confirms the latest records and retention details.</p>}
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -501,7 +516,7 @@ export function OperationsPage() {
                         <button
                             type="button"
                             onClick={() => void pruneHistory()}
-                            disabled={isPruning || !summary || Boolean(historyError)}
+                            disabled={isPruning || !summary || Boolean(historyError) || pruneNeedsRefresh}
                             className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isPruning ? "Deleting..." : "Delete expired entries"}

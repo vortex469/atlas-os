@@ -304,7 +304,11 @@ describe("OperationsPage", () => {
         await user.click(screen.getByText("Export or delete history"));
         await user.click(screen.getByRole("button", { name: "Export JSON" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Export failed");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action history could not be exported. Try exporting again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        expect(within(technicalDetails as HTMLElement).getByText("Export failed")).not.toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
         expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
@@ -346,10 +350,23 @@ describe("OperationsPage", () => {
         await user.click(screen.getByText("Export or delete history"));
         await user.click(screen.getByRole("button", { name: "Delete expired entries" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Delete failed");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas could not confirm whether expired entries were deleted. Refresh history before trying again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        expect(within(technicalDetails as HTMLElement).getByText("Delete failed")).not.toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
+        expect(screen.getByRole("status")).toHaveTextContent("Deleting expired entries is paused until Refresh history confirms the latest records and retention details.");
         expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(1);
+        await user.click(screen.getByRole("button", { name: "Refresh history" }));
+        expect(await screen.findByText("Unload Model")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled();
+        await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
+        expect(mockedPruneProviderActionHistory).toHaveBeenCalledOnce();
         expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
     });
 

@@ -1574,3 +1574,13 @@ that the record is unavailable and that retrying only reloads the record. The
 service response stays under collapsed Technical details. Tests cover both a
 transient read failure and a missing record; the retry continues to call only
 the record-read endpoint. No provider action behavior changed.
+
+## Action history export and cleanup errors — 2026-10-28
+
+Export and expired-entry deletion failures now use plain messages with backend
+responses under collapsed Technical details. If deletion returns an uncertain
+result, Mission Control pauses another delete until Refresh history successfully
+reloads both the records and retention summary. The page test verifies that
+refresh only reads and that deletion becomes available again after both reads
+succeed. The recovery refresh performs only reads and never invokes a provider
+action.
