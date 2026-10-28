@@ -5,7 +5,7 @@ const routes = [
         label: "Mission Control",
         path: "/",
         assertion: async (page) => {
-            await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+            await expect(page.getByRole("main", { name: "Mission Control overview" })).toBeVisible();
         },
     },
     {

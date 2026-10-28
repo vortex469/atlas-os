@@ -133,7 +133,7 @@ describe("ProspectiveDestinationReview", () => {
         expect(blockers).toHaveTextContent("Installation plan missing deployment artifact");
         expect(blockers).toHaveTextContent("has not established in-guest installability, runtime, transport, or readiness");
         expect(blockers).toHaveTextContent("Atlas Agent cannot plan this install intent yet");
-        expect(screen.getByRole("status")).toHaveTextContent("Assessment blocked: some requirements remain unresolved.");
+        expect(await screen.findByText("Assessment blocked: some requirements remain unresolved.")).toHaveAttribute("role", "status");
         expect(screen.getByText(/Candidate eligibility was not assessed/)).toBeInTheDocument();
         expect(within(blockers).queryByText("agent_install_container_unsupported")).not.toBeInTheDocument();
     });

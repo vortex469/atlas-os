@@ -10,15 +10,15 @@ function inventory(data: Record<string, unknown>, key: "installed" | "running"):
     const errors = record(data.errors);
     const error = errors[`${key}_models`];
     if ((data.errors !== undefined && (data.errors === null || typeof data.errors !== "object" || Array.isArray(data.errors)))
-        || (error !== undefined && error !== null) || !Array.isArray(models)) return "Unknown — inventory unavailable";
+        || (error !== undefined && error !== null) || !Array.isArray(models)) return "Could not load list";
     if (models.length === 0) return "None reported";
     const names = models.map(model => {
         const row = record(model);
         return safeText(row.name ?? row.model).trim();
     });
     const valid = names.filter(Boolean);
-    if (valid.length === 0) return "Unknown — inventory malformed or incomplete";
-    return `${valid.slice(0, 3).join(", ")}${valid.length > 3 ? ` (showing 3 of ${valid.length} reported identities)` : ""}${valid.length !== names.length ? " · Some model identities unknown" : ""}`;
+    if (valid.length === 0) return "Model names could not be read";
+    return `${valid.slice(0, 3).join(", ")}${valid.length > 3 ? ` (showing 3 of ${valid.length})` : ""}${valid.length !== names.length ? " · Some model names could not be read" : ""}`;
 }
 
 export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
@@ -28,27 +28,26 @@ export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
     const path = providerDetailPath(provider.id);
     const lastKnown = Boolean(evidence?.stale || (evidence?.unavailable && evidence.data !== undefined));
     const latency = typeof health.latency_ms === "number" && Number.isFinite(health.latency_ms) && health.latency_ms >= 0
-        ? `${health.latency_ms} ms` : "Unknown — not exposed";
+        ? `${health.latency_ms} ms` : "Not reported";
     return <>
         <p>Configured AI provider: {publicLabel(provider.name) ?? publicLabel(provider.id) ?? "Unknown"}</p>
-        <p>Configured provider health</p>
+        <p>Configured provider status</p>
         <HealthEvidence status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
-        <p>Local AI availability is unknown; locality is not reported.</p>
-        {lastKnown && <p>Last-known runtime observations below; current version, latency, and model inventory unknown.</p>}
-        {evidence?.unavailable && !lastKnown && <p>AI status observation unavailable; runtime availability is unknown.</p>}
+        <p>The configured provider's status does not confirm that AI is available on this computer.</p>
+        {lastKnown && <p>The details below are from the last successful refresh. Current version, response time, and model lists are not confirmed.</p>}
         {path && <Link to={path}>Inspect AI provider →</Link>}
         <details>
-            <summary className="mc-focusable cursor-pointer text-mc-primary">Runtime observations</summary>
+            <summary className="mc-focusable cursor-pointer text-mc-primary">AI details</summary>
             <div className="mt-3 space-y-3">
-                <p>Locality and dedicated Local AI Runtime capabilities are not exposed. This is configured AI provider health only.</p>
-                <p>Configured model identity: Unknown.</p>
+                <p>This screen shows the configured provider's status. It does not show whether that provider runs locally.</p>
+                <p>Selected model: Not reported.</p>
                 <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div><dt>Reported runtime version</dt><dd>{safeText(record(health.details).version).trim() || "Unknown — not exposed"}</dd></div>
-                    <div><dt>Reported health latency</dt><dd>{latency}</dd></div>
+                    <div><dt>Runtime version</dt><dd>{safeText(record(health.details).version).trim() || "Not reported"}</dd></div>
+                    <div><dt>Health check response time</dt><dd>{latency}</dd></div>
                 </dl>
-                <p>{lastKnown ? "Last-known installed models" : "Reported installed models"}: {inventory(data, "installed")}</p>
-                <p>{lastKnown ? "Last-known running models" : "Reported running models"}: {inventory(data, "running")}</p>
-                <p>Reported models do not establish which model is selected or ready to use.</p>
+                <p>Installed models: {inventory(data, "installed")}</p>
+                <p>Running models: {inventory(data, "running")}</p>
+                <p>These lists do not show which model is selected or ready to use.</p>
             </div>
         </details>
     </>;
