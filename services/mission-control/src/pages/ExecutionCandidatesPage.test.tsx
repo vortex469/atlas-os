@@ -241,6 +241,37 @@ describe("ExecutionCandidatesPage", () => {
         );
     });
 
+    it("explains when edited filters have not been searched and pauses paging", async () => {
+        const user = userEvent.setup();
+        mockedListExecutionCandidates
+            .mockResolvedValueOnce(page([candidate()], { total: 50, has_more: true }))
+            .mockResolvedValueOnce(page([candidate()], { total: 50, has_more: true }));
+
+        renderPage();
+        await screen.findByText("candidate-1");
+        await user.selectOptions(screen.getByLabelText("Eligibility"), "expired");
+
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "These filter changes haven't been searched yet. Select Search proposals to update the results.",
+        );
+        expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
+        expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(1);
+
+        await user.click(screen.getByRole("button", { name: "Search proposals" }));
+
+        await waitFor(() => expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith({
+            status: "expired",
+            category: undefined,
+            intent: undefined,
+            sourceSubsystem: undefined,
+            targetId: undefined,
+            limit: 25,
+            offset: 0,
+        }));
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeEnabled();
+    });
+
     it("distinguishes empty, filtered empty, and error states", async () => {
         const user = userEvent.setup();
         mockedListExecutionCandidates.mockResolvedValueOnce(page([]));

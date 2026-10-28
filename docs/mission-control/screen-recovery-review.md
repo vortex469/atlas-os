@@ -1349,3 +1349,11 @@ repeated error notes while preserving the specific reason. The overview suite
 passes (58 tests), the focused dashboard outage browser test passes, and lint
 and production build pass. Known attention items remain visible, and no source
 or approval behavior changes.
+
+## Change proposal filter clarity — 2026-10-28
+
+The proposal list now says when edited filters have not been applied, and
+temporarily disables page navigation until the operator searches. This keeps
+the displayed results and paging aligned with the submitted filters. A focused
+component regression verifies the notice, disabled paging, and recovery after
+search; this changes only list presentation and navigation state.

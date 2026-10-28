@@ -140,6 +140,7 @@ export function ExecutionCandidatesPage() {
 
     const hasActiveFilters = Object.values(submittedFilters).some((value) => value.length > 0);
     const hasAdvancedFilters = submittedFilters.category.length > 0 || submittedFilters.sourceSubsystem.length > 0;
+    const hasUnappliedFilters = !filtersEqual(normalizeFilters(filters), submittedFilters);
 
     return (
         <main className="mx-auto max-w-7xl space-y-8 p-8">
@@ -199,13 +200,18 @@ export function ExecutionCandidatesPage() {
             </section>
 
             <section aria-label="Change proposal results" className="space-y-4">
+                {hasUnappliedFilters && (
+                    <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                        These filter changes haven&apos;t been searched yet. Select Search proposals to update the results.
+                    </p>
+                )}
                 <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
                     {!error && <p>{isLoading ? "Loading change proposals…" : `${result.total} proposal${result.total === 1 ? "" : "s"}`}</p>}
                     <div className="flex gap-2">
-                        <button type="button" aria-label="Previous change proposals page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" aria-label="Previous change proposals page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || hasUnappliedFilters || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Previous
                         </button>
-                        <button type="button" aria-label="Next change proposals page" onClick={goToNextPage} disabled={isLoading || Boolean(error) || !result.hasMore} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" aria-label="Next change proposals page" onClick={goToNextPage} disabled={isLoading || Boolean(error) || hasUnappliedFilters || !result.hasMore} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Next
                         </button>
                     </div>
@@ -317,6 +323,14 @@ function normalizeFilters(filters: FilterState): FilterState {
         sourceSubsystem: filters.sourceSubsystem.trim(),
         targetId: filters.targetId.trim(),
     };
+}
+
+function filtersEqual(left: FilterState, right: FilterState): boolean {
+    return left.status === right.status
+        && left.category === right.category
+        && left.intent === right.intent
+        && left.sourceSubsystem === right.sourceSubsystem
+        && left.targetId === right.targetId;
 }
 
 function statusText(status: string): string {
