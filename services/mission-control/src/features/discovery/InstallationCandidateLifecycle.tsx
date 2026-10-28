@@ -179,7 +179,7 @@ export function InstallationCandidateLifecycle({
         {!loading && !listError && records.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No saved candidate records.</p>}
         {!loading && !listError && records.length > 0 && <ul aria-label="Saved candidate records" className="mt-4 space-y-3">
             {records.map((record) => <li key={record.candidate_record_id} className="rounded-md border border-slate-700 p-3">
-                <p className="font-semibold text-slate-200">{record.candidate_record.item_id} · {record.lifecycle_state}</p>
+                <p className="font-semibold text-slate-200">{record.candidate_record.item_id} · {record.lifecycle_state === "active" ? "Source facts current" : "Source facts expired"}</p>
                 <p className="mt-1 break-all text-xs text-slate-400">Record ID: {record.candidate_record_id}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" disabled={reviewingId !== null || mutation !== null || reviewError?.candidateRecordId === record.candidate_record_id} onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 disabled:opacity-50">Review saved record</button>
@@ -218,26 +218,30 @@ export function InstallationCandidateLifecycle({
 function RecordDetails({ record }: { record: InstallationCandidateRecordEnvelopeV1 }) {
     const candidate = record.candidate_record;
     return <section aria-labelledby="saved-record-detail-heading" className="mt-5 rounded-md border border-slate-700 p-3">
-        <h6 id="saved-record-detail-heading" className="font-semibold text-slate-100">Saved non-executable candidate record</h6>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-            <Value name="Lifecycle state" value={record.lifecycle_state} />
-            <Value name="Candidate record ID" value={record.candidate_record_id} />
-            <Value name="Item ID" value={candidate.item_id} />
-            <Value name="Catalog entry ID" value={candidate.catalog_entry_id} />
-            <Value name="Created at" value={record.created_at} />
-            <Value name="Evaluated at" value={candidate.evaluated_at} />
-            <Value name="Valid until" value={candidate.valid_until} />
-            <Value name="Admission fingerprint" value={record.admission_fingerprint} />
-            <Value name="Candidate fingerprint" value={candidate.record_fingerprint} />
-            <Value name="Envelope fingerprint" value={record.envelope_fingerprint} />
-            <Value name="Plan fingerprint" value={candidate.plan_fingerprint} />
-            <Value name="Selection ID" value={candidate.selection_id} />
-        </dl>
-        <dl aria-label="Saved candidate record authority flags" className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-            <Value name="Approved" value="false" /><Value name="Executable" value="false" />
-            <Value name="Deployable" value="false" /><Value name="Dispatchable" value="false" />
-            <Value name="Agent execution supported" value="false" />
-        </dl>
+        <h6 id="saved-record-detail-heading" className="font-semibold text-slate-100">Saved candidate record</h6>
+        <p className="mt-2 text-sm text-slate-300">Source facts {record.lifecycle_state === "active" ? "have not expired" : "have expired"}. This record is not approval to install or run anything.</p>
+        <details className="mt-3 text-sm text-slate-300">
+            <summary className="mc-focusable cursor-pointer text-blue-200">Record details</summary>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Value name="Lifecycle state" value={record.lifecycle_state} />
+                <Value name="Candidate record ID" value={record.candidate_record_id} />
+                <Value name="Item ID" value={candidate.item_id} />
+                <Value name="Catalog entry ID" value={candidate.catalog_entry_id} />
+                <Value name="Created at" value={record.created_at} />
+                <Value name="Evaluated at" value={candidate.evaluated_at} />
+                <Value name="Valid until" value={candidate.valid_until} />
+                <Value name="Admission fingerprint" value={record.admission_fingerprint} />
+                <Value name="Candidate fingerprint" value={candidate.record_fingerprint} />
+                <Value name="Envelope fingerprint" value={record.envelope_fingerprint} />
+                <Value name="Plan fingerprint" value={candidate.plan_fingerprint} />
+                <Value name="Selection ID" value={candidate.selection_id} />
+            </dl>
+            <dl aria-label="Saved candidate record authority flags" className="mt-4 grid gap-2 sm:grid-cols-2">
+                <Value name="Approved" value="false" /><Value name="Executable" value="false" />
+                <Value name="Deployable" value="false" /><Value name="Dispatchable" value="false" />
+                <Value name="Agent execution supported" value="false" />
+            </dl>
+        </details>
     </section>;
 }
 

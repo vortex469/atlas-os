@@ -1687,3 +1687,13 @@ repeats only the same GET. The lifecycle suite passes (9 tests), the full
 Mission Control suite passes (2,783 tests across 181 files), lint and
 production build pass. Mutation, approval, and execution behavior is
 unchanged.
+
+## Saved candidate record summary — 2026-10-28
+
+Saved records now label whether their source facts are still current or have
+expired. Reviewing a record leads with that plain-language state and its
+non-approval boundary; IDs, fingerprints, timestamps, and explicit authority
+flags remain available under collapsed Record details. The lifecycle suite
+passes (9 tests), the full Mission Control suite passes (2,783 tests across
+181 files), lint and production build pass. No backend contract or action
+changed.

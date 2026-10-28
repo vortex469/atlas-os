@@ -68,13 +68,19 @@ describe("installation candidate lifecycle", () => {
         vi.mocked(getInstallationCandidateRecord).mockResolvedValueOnce(envelope("expired"));
         const user = userEvent.setup();
         const { container } = render(<InstallationCandidateLifecycle admission={admission()} itemId="example" selectionId="selection-1" csrfToken="csrf" />);
-        expect(await screen.findByText("example · active")).toBeInTheDocument();
-        expect(screen.getByText("example · expired")).toBeInTheDocument();
+        expect(await screen.findByText("example · Source facts current")).toBeInTheDocument();
+        expect(screen.getByText("example · Source facts expired")).toBeInTheDocument();
         await user.click(screen.getAllByRole("button", { name: "Review saved record" })[1]);
         expect(await screen.findByText("candidate-fingerprint")).toBeInTheDocument();
         const flags = container.querySelector<HTMLElement>('[aria-label="Saved candidate record authority flags"]');
         expect(flags).not.toBeNull();
         expect(within(flags!).getAllByText("false")).toHaveLength(5);
+        const recordDetails = screen.getByText("Record details").closest("details");
+        expect(recordDetails).not.toHaveAttribute("open");
+        expect(flags).not.toBeVisible();
+        await user.click(screen.getByText("Record details"));
+        expect(recordDetails).toHaveAttribute("open");
+        expect(flags).toBeVisible();
     });
 
     it("keeps the saved-record list visible after a review read fails and retries that read", async () => {
@@ -95,8 +101,8 @@ describe("installation candidate lifecycle", () => {
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Installation candidate record was not found.")).toBeInTheDocument();
-        expect(screen.getByText("example · active")).toBeInTheDocument();
-        expect(screen.getByText("example · expired")).toBeInTheDocument();
+        expect(screen.getByText("example · Source facts current")).toBeInTheDocument();
+        expect(screen.getByText("example · Source facts expired")).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Retry record review" }));
         expect(await screen.findByText("candidate-fingerprint")).toBeInTheDocument();
@@ -134,7 +140,7 @@ describe("installation candidate lifecycle", () => {
         expect(within(technicalDetails as HTMLElement).getByText("Installation candidate record request conflicts with current state.")).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Retry preservation" }));
-        expect(await screen.findByText("example · active")).toBeInTheDocument();
+        expect(await screen.findByText("example · Source facts current")).toBeInTheDocument();
         expect(preserveInstallationCandidateRecord).toHaveBeenNthCalledWith(1, { item_id: "example", selection_id: "selection-1" }, "csrf", "preserve-key");
         expect(preserveInstallationCandidateRecord).toHaveBeenNthCalledWith(2, { item_id: "example", selection_id: "selection-1" }, "csrf", "preserve-key");
         expect(candidateRecordIdempotencyKey).toHaveBeenCalledTimes(1);
