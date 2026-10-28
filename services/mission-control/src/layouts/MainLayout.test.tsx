@@ -62,7 +62,7 @@ describe("MainLayout", () => {
         it("lets keyboard users skip navigation without changing the route", async () => {
             const user = userEvent.setup();
             renderAt();
-            await screen.findByText("Foundry");
+            await screen.findByText("Release label: Foundry");
             await user.tab();
             const skip = screen.getByRole("link", { name: "Skip to page content" });
             expect(skip).toHaveFocus();
@@ -70,13 +70,15 @@ describe("MainLayout", () => {
             expect(screen.getByText("Dashboard content").closest("#mc-page-content")).toHaveFocus();
         });
 
-        it("renders branding, the primary content region, and the release", async () => {
+        it("renders branding, Core API status, and its configured release label", async () => {
             renderAt();
 
             expect(screen.getAllByText("ATLAS").length).toBeGreaterThan(0);
             expect(screen.getAllByText("Mission Control 2.0").length).toBeGreaterThan(0);
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
-            expect(await screen.findByText("Foundry")).toBeInTheDocument();
+            expect(await screen.findByText("Core API online")).toBeInTheDocument();
+            expect(screen.getByText("Atlas Core API")).toBeInTheDocument();
+            expect(screen.getByText("Release label: Foundry")).toBeInTheDocument();
             expect(atlas.get).toHaveBeenCalledWith("");
         });
 
@@ -89,14 +91,14 @@ describe("MainLayout", () => {
             expect(
                 container.querySelector(".mc-focusable"),
             ).not.toBeNull();
-            await screen.findByText("Foundry");
-            // StatusBadge is the Task 3 shared primitive for the release area.
+            await screen.findByText("Release label: Foundry");
+            // The shared status primitive shows API availability.
             expect(container.querySelector(".mc-status-badge")).not.toBeNull();
             expect(
                 container.querySelector(".mc-status-badge")?.getAttribute(
                     "data-mc-status",
                 ),
-            ).toBe("neutral");
+            ).toBe("success");
         });
     });
 
@@ -299,14 +301,13 @@ describe("MainLayout", () => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });
 
-    describe("release unavailable fallback", () => {
+    describe("Core API and release-label states", () => {
         it("shows a safe unavailable state when Atlas Core does not respond", async () => {
             vi.mocked(atlas.get).mockRejectedValue(new Error("boom"));
             renderAt();
 
-            expect(await screen.findByText("Release unavailable")).toBeInTheDocument();
-            expect(screen.getAllByText("Release unavailable").length).toBeGreaterThan(0);
-            // The release badge degrades to the Task 3 unavailable treatment.
+            expect(await screen.findByText("API unavailable")).toBeInTheDocument();
+            expect(screen.getByText("Release label: Unavailable")).toBeInTheDocument();
             const badges = document.querySelectorAll(".mc-status-badge");
             expect(Array.from(badges).some((badge) => badge.getAttribute("data-mc-status") === "disabled")).toBe(true);
         });
@@ -315,7 +316,8 @@ describe("MainLayout", () => {
             vi.mocked(atlas.get).mockResolvedValue({ data: { release } });
             renderAt();
 
-            expect(await screen.findByText("Release unavailable")).toBeInTheDocument();
+            expect(await screen.findByText("Core API online")).toBeInTheDocument();
+            expect(screen.getByText("Release label: Not reported")).toBeInTheDocument();
         });
     });
 

@@ -116,16 +116,17 @@ test.describe("Mobile navigation", () => {
     });
 });
 
-test.describe("Atlas Core unavailable", () => {
+test.describe("Atlas Core API unavailable", () => {
     test.use({ mockMode: "core-unavailable" });
 
     test("renders the unavailable state safely", async ({ page }) => {
         await page.goto("/");
 
-        await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Current information could not be loaded.");
-        await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Unknown");
+        await expect(page.getByRole("region", { name: "System health" })).toContainText("Current information could not be loaded.");
+        await expect(page.getByRole("region", { name: "System health" })).toContainText("Unknown");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
-        await expect(page.getByText("Release unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("API unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("Release label: Unavailable", { exact: true })).toBeVisible();
     });
 });
 

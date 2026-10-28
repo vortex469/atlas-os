@@ -16,14 +16,15 @@ import { StatusBadge } from "../components/StatusBadge";
  * - Compact mobile top bar with an openable navigation drawer that never
  *   consumes desktop-sidebar width at narrow viewports.
  * - Shared branding header with the current route/page context and the
- *   Atlas Core release status.
+ *   Atlas Core API connection status.
  * - A single `NavigationList` renders both the desktop sidebar and the
  *   mobile drawer from the shared metadata in `app/navigation.ts`, so the
  *   two surfaces cannot drift apart.
  *
  * Presentation-only: no authority, admission, or execution semantics are
- * decided here. The release value comes from the existing authoritative
- * Atlas Core API and degrades to "Release unavailable" when it is missing.
+ * decided here. API discovery supplies the configured release label. A
+ * successful response means the API is responding, not that GitHub published
+ * a release.
  */
 
 type NavigationListProps = {
@@ -101,17 +102,46 @@ function Brand() {
     );
 }
 
-function ReleaseFooter({ release }: { release: string | null }) {
+type ApiAvailability = "checking" | "online" | "unavailable";
+
+const API_STATUS_TEXT: Record<ApiAvailability, string> = {
+    checking: "Checking",
+    online: "Online",
+    unavailable: "Unavailable",
+};
+const API_STATUS_KEY: Record<ApiAvailability, string> = {
+    checking: "pending",
+    online: "online",
+    unavailable: "unavailable",
+};
+const API_HEADER_TEXT: Record<ApiAvailability, string> = {
+    checking: "Checking API",
+    online: "Core API online",
+    unavailable: "API unavailable",
+};
+
+function ApiStatusBadge({ availability, header = false }: { availability: ApiAvailability; header?: boolean }) {
+    const label = header ? API_HEADER_TEXT[availability] : API_STATUS_TEXT[availability];
+    return <StatusBadge status={API_STATUS_KEY[availability]} label={label} />;
+}
+
+function CoreApiFooter({ availability, releaseLabel }: { availability: ApiAvailability; releaseLabel: string | null }) {
+    const missingReleaseText: Record<ApiAvailability, string> = {
+        checking: "Checking…",
+        online: "Not reported",
+        unavailable: "Unavailable",
+    };
+    const releaseText = releaseLabel ?? missingReleaseText[availability];
     return (
         <div className="border-t border-mc-divider px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col items-start gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-mc-text-muted">
-                    Atlas Core
+                    Atlas Core API
                 </span>
-                <StatusBadge status={release ? "Release available" : "unavailable"} />
+                <ApiStatusBadge availability={availability} />
             </div>
             <p className="mt-2 truncate text-xs text-mc-text-secondary">
-                {release ?? "Release unavailable"}
+                Release label: {releaseText}
             </p>
         </div>
     );
@@ -119,7 +149,8 @@ function ReleaseFooter({ release }: { release: string | null }) {
 
 export function MainLayout({ navigationPending = false }: { navigationPending?: boolean }) {
     const pageContentRef = useRef<HTMLDivElement>(null);
-    const [release, setRelease] = useState<string | null>(null);
+    const [apiAvailability, setApiAvailability] = useState<ApiAvailability>("checking");
+    const [releaseLabel, setReleaseLabel] = useState<string | null>(null);
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
     const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -147,13 +178,14 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
         let active = true;
 
         void atlas
-            .get<{ release: string }>("")
+            .get<{ release?: unknown }>("")
             .then((response) => {
                 if (!active) {
                     return;
                 }
+                setApiAvailability("online");
                 const candidate = response.data?.release;
-                setRelease(
+                setReleaseLabel(
                     typeof candidate === "string" && candidate.trim().length > 0
                         ? candidate
                         : null,
@@ -161,7 +193,8 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
             })
             .catch(() => {
                 if (active) {
-                    setRelease(null);
+                    setApiAvailability("unavailable");
+                    setReleaseLabel(null);
                 }
             });
 
@@ -284,9 +317,7 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
                     )}
 
                     <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex sm:gap-3">
-                        <StatusBadge
-                            status={release ? "Release available" : "unavailable"}
-                        />
+                        <ApiStatusBadge availability={apiAvailability} header />
                     </div>
                 </div>
             </header>
@@ -341,7 +372,7 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
                             />
                         </nav>
 
-                        <ReleaseFooter release={release} />
+                        <CoreApiFooter availability={apiAvailability} releaseLabel={releaseLabel} />
                     </div>
                 </div>
             )}
@@ -358,7 +389,7 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
                         >
                             <NavigationList />
                         </nav>
-                        <ReleaseFooter release={release} />
+                        <CoreApiFooter availability={apiAvailability} releaseLabel={releaseLabel} />
                     </div>
                 </aside>
 

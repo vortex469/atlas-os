@@ -909,3 +909,12 @@ An empty catalog no longer suggests changing filters, while no-match and empty
 later-page states offer relevant next steps. Search requests and read-only
 behavior are unchanged. The Discovery page suite, responsive catalog browser
 checks, lint, production build, and `git diff --check` pass.
+
+## Core API status and release label — 2026-10-28
+
+The shell now shows whether Atlas Core's API discovery endpoint responded and
+labels its configured `Foundry` value as a release label. “Release available”
+could be mistaken for a published GitHub release, so availability now describes
+the API connection separately from the label. No Core contract or runtime
+behavior changed. Focused shell tests, shell browser checks, lint, production
+build, and `git diff --check` pass.
