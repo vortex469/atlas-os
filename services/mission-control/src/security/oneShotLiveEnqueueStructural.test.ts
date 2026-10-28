@@ -26,9 +26,10 @@ describe("v0.42 one-shot live enqueue Mission Control boundary", () => {
     });
 
     it("presents only the authorized inert item and denies all downstream authority", () => {
-        expect(component).toMatch(/inert and reference-only/i);
-        expect(component).toMatch(/not dequeue, queue polling, worker contact, worker start, Agent invocation, workflow start, process execution/i);
-        expect(component).toMatch(/Permanent one-shot subject reservation: true/);
+        expect(component).toMatch(/Core saved a reference for a possible queue item/i);
+        expect(component).toMatch(/does not send work or start a worker/i);
+        expect(component).toMatch(/Queue item and earlier reviews/);
+        expect(component).toMatch(/Exact safety limits and record details/);
         expect(component).toMatch(/One-shot live enqueue fixed-false authority fields/);
         expect(component).not.toMatch(/process\.env|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /one-shot-live-enqueues|OneShotLiveEnqueue/.test(source)).map(([path]) => path).sort();
