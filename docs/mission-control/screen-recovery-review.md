@@ -568,6 +568,14 @@ browser’s local time, matching the explanation on the history filter screen.
 The combined action and maintenance history suites pass (16 tests), and
 Mission Control lint/build pass.
 
+## Action history summary — 2026-10-28
+
+The Action History introduction now describes provider actions and results in
+plain language, with local time explained while timestamps are visible. The
+advanced date filter clarifies that selected dates cover full UTC days. The
+focused page suite passes (8 tests), responsive browser checks pass at 390px
+and 1280px (2 tests), and lint/build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

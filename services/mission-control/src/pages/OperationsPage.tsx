@@ -262,8 +262,8 @@ export function OperationsPage() {
                         Action History
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                        Recent provider operations, outcomes, and request
-                        correlation from Atlas Core.
+                        Provider actions and their results. Times are shown in
+                        your browser’s local time.
                     </p>
                 </div>
 
@@ -417,7 +417,7 @@ export function OperationsPage() {
                             />
                         </div>
                         <p id="audit-date-filter-help" className="text-xs text-slate-500 sm:col-span-2 xl:col-span-3">
-                            Dates cover UTC days. Entry times use your browser’s local time.
+                            Selected dates cover full UTC days.
                         </p>
                     </div>
                 </details>

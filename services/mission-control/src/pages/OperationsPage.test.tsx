@@ -260,11 +260,12 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
+        expect(screen.getByText("Provider actions and their results. Times are shown in your browser’s local time.")).toBeVisible();
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
         expect(screen.getByLabelText("From date")).not.toBeVisible();
         await user.click(moreFilters);
-        expect(screen.getByText("Dates cover UTC days. Entry times use your browser’s local time.", { exact: true })).toBeVisible();
+        expect(screen.getByText("Selected dates cover full UTC days.", { exact: true })).toBeVisible();
         expect(screen.getByLabelText("From date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
         expect(screen.getByLabelText("To date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
         await user.selectOptions(
