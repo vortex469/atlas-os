@@ -1,5 +1,6 @@
 import { discoveryItemsPage, executionCandidates, expect, providers, test } from "./mission-control-fixtures";
 import { operationalDiagnostic, operationalLifecycle } from "../src/test/operationalLifecycle";
+import { workflowAudit } from "../src/test/workflowAudit";
 
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
     let reads = 0;
@@ -111,7 +112,10 @@ test("audit recovery refuses another workflow without losing navigation", async 
         reads += 1;
         return reads === 1
             ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
-            : route.fulfill({ json: { workflow_id: "other", workflow: { workflow_id: "other" } } });
+            : route.fulfill({ json: workflowAudit({
+                workflow_id: "other",
+                workflow: { ...workflowAudit().workflow, workflow_id: "other" },
+            }) });
     });
     await page.goto("/workflows/audit-recovery/audit");
     await expect(page.getByRole("heading", { name: "Workflow audit unavailable" })).toBeVisible();
@@ -704,6 +708,34 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Recovery diagnostic unavailable")).toBeVisible();
         await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
         await expect(page.getByText("execution confirmed", { exact: false })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`malformed workflow audit can recover with a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows/audit-recovery/audit", (route) => {
+            reads += 1;
+            return reads === 1
+                ? route.fulfill({ json: { ...workflowAudit(), workflow_id: "audit-recovery", timeline: [null] } })
+                : route.fulfill({ json: workflowAudit({
+                    workflow_id: "audit-recovery",
+                    workflow: { ...workflowAudit().workflow, workflow_id: "audit-recovery" },
+                }) });
+        });
+        await page.goto("/workflows/audit-recovery/audit");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Workflow audit unavailable");
+        await expect(alert).toContainText("Malformed workflow audit payload.");
+        await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toHaveCount(0);
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();
+        await expect(page.getByText("candidate-123", { exact: true })).toHaveCount(1);
+        expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

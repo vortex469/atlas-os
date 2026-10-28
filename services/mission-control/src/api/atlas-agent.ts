@@ -212,6 +212,157 @@ function parseWorkflowRecoveryDiagnostic(value: unknown): WorkflowRecoveryDiagno
     return value as unknown as WorkflowRecoveryDiagnostic;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return isRecord(value) && !Array.isArray(value);
+}
+
+function hasNullableStringFields(value: Record<string, unknown>, fields: readonly string[]): boolean {
+    return fields.every((field) => isNullableString(value[field]));
+}
+
+function hasStringArrayFields(value: Record<string, unknown>, fields: readonly string[]): boolean {
+    return fields.every((field) => isStringArray(value[field]));
+}
+
+function isWorkflowAuditApproval(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && isNullableString(value.approval_id);
+}
+
+function isWorkflowAuditSection(value: unknown): boolean {
+    return isPlainRecord(value)
+        && isOneOf(value.name, [
+            "candidate", "planning", "plan", "workflow", "implementation", "approvals",
+            "execution", "verification", "review", "commit",
+        ])
+        && isOneOf(value.status, ["completed", "current", "not_reached", "missing", "invalid", "inconsistent"]);
+}
+
+function isWorkflowAuditValidation(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.valid === "boolean"
+        && isNullableString(value.failure_code)
+        && isNullableString(value.failure_stage);
+}
+
+function isWorkflowAuditCandidate(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, [
+            "candidate_id", "candidate_fingerprint", "source_recommendation_id", "target_id", "target_type",
+        ]);
+}
+
+function isWorkflowAuditPlanning(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, [
+            "planning_session_id", "planning_state", "planning_status", "candidate_plan_id",
+            "candidate_plan_fingerprint",
+        ])
+        && isNullableDateTime(value.created_at)
+        && isNullableDateTime(value.planning_completed_at);
+}
+
+function isWorkflowAuditPlan(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, ["plan_id", "candidate_plan_fingerprint"])
+        && hasStringArrayFields(value, ["likely_affected_files"]);
+}
+
+function isWorkflowAuditWorkflow(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && isSafeRouteId(value.workflow_id)
+        && typeof value.workflow_source === "string"
+        && typeof value.workflow_state === "string";
+}
+
+function isWorkflowAuditImplementation(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, [
+            "implementation_request_id", "execution_intent", "tool", "repository_root", "repository_head",
+            "repository_branch", "working_directory", "translator_version",
+        ])
+        && hasStringArrayFields(value, ["affected_files"]);
+}
+
+function isWorkflowAuditApprovals(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && isWorkflowAuditApproval(value.shell)
+        && isWorkflowAuditApproval(value.implementation)
+        && isWorkflowAuditApproval(value.verification)
+        && isWorkflowAuditApproval(value.commit);
+}
+
+function isWorkflowAuditExecution(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, ["execution_request_id", "execution_status", "tool", "repository"])
+        && isNonNegativeSafeInteger(value.changed_files_count)
+        && hasStringArrayFields(value, ["changed_files"]);
+}
+
+function isWorkflowAuditVerification(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, [
+            "verification_plan_id", "verification_evidence_id", "verification_status", "changed_files_digest",
+            "repository_head",
+        ])
+        && hasStringArrayFields(value, ["verification_check_ids"])
+        && isNullableDateTime(value.verification_started_at)
+        && isNullableDateTime(value.verification_completed_at);
+}
+
+function isWorkflowAuditReview(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, [
+            "review_result_id", "review_report_id", "review_status", "reviewed_content_fingerprint",
+        ])
+        && hasStringArrayFields(value, ["changed_files"]);
+}
+
+function isWorkflowAuditCommit(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.status === "string"
+        && hasNullableStringFields(value, [
+            "commit_request_id", "reviewed_content_fingerprint", "expected_branch", "expected_head",
+            "commit_message", "commit_sha",
+        ])
+        && hasStringArrayFields(value, ["reviewed_files", "committed_files"]);
+}
+
+function parseWorkflowAuditResponse(value: unknown): WorkflowAuditResponse {
+    if (!isPlainRecord(value)
+        || !isSafeRouteId(value.workflow_id)
+        || !isOneOf(value.effect_kind, ["repository_change", "operational_action"])
+        || typeof value.workflow_state !== "string"
+        || typeof value.workflow_source !== "string"
+        || !(value.blocked_reason === undefined || isNullableString(value.blocked_reason))
+        || !isWorkflowAuditValidation(value.validation)
+        || !Array.isArray(value.timeline) || !value.timeline.every(isWorkflowAuditSection)
+        || !isWorkflowAuditCandidate(value.candidate)
+        || !isWorkflowAuditPlanning(value.planning)
+        || !isWorkflowAuditPlan(value.plan)
+        || !isWorkflowAuditWorkflow(value.workflow)
+        || !isWorkflowAuditImplementation(value.implementation)
+        || !isWorkflowAuditApprovals(value.approvals)
+        || !isWorkflowAuditExecution(value.execution)
+        || !isWorkflowAuditVerification(value.verification)
+        || !isWorkflowAuditReview(value.review)
+        || !isWorkflowAuditCommit(value.commit)) {
+        throw new Error("Malformed workflow audit payload.");
+    }
+
+    return value as unknown as WorkflowAuditResponse;
+}
+
 function parseAgentInfo(value: unknown): AgentInfo {
     if (!isRecord(value) || !isRecord(value.install_container)) {
         throw new Error("Malformed Atlas Agent information payload.");
@@ -570,7 +721,7 @@ export async function getWorkflowAudit(
             `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/audit`,
         );
 
-        return response.data;
+        return parseWorkflowAuditResponse(response.data);
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
             return null;

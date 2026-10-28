@@ -1204,3 +1204,14 @@ imply that maintenance failed. Browser fixtures reject mutations. The full
 component suite (2,714 tests), lint, build, 118 development-browser checks, and
 68 built-app journeys pass. These simulated checks do not establish real
 Agent/Core integration or operator acceptance.
+
+## Workflow audit response validation — 2026-10-28
+
+Agent audit responses are checked across the workflow identity, stage timeline,
+validation summary, and nested evidence before the audit screen renders them.
+Malformed audit evidence gets the existing unavailable state and a read-only
+retry. A structurally valid audit for a different workflow still reaches the
+page's identity check and is refused. The full component suite (2,716 tests),
+lint, build, 120 development-browser checks, and 68 built-app journeys pass.
+Simulated responses do not establish real Agent integration or operator
+acceptance.

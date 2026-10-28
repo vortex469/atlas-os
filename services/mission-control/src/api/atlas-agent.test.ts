@@ -18,12 +18,14 @@ import {
     getReviewReport,
     getSprintStatus,
     getVerificationReport,
+    getWorkflowAudit,
     getWorkflowOperationalLifecycle,
     getWorkflowRecoveryDiagnostic,
     getWorkflowSupportBundle,
     listWorkflows,
 } from "./atlas-agent";
 import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
+import { workflowAudit } from "../test/workflowAudit";
 
 function axiosError(status: number): unknown {
     const error = new Error(`Request failed with status code ${status}`) as unknown as {
@@ -215,6 +217,24 @@ describe("Atlas Agent optional summary endpoints", () => {
 
         await expect(getWorkflowRecoveryDiagnostic("workflow/one")).rejects.toThrow(
             "Malformed workflow recovery diagnostic payload.",
+        );
+    });
+
+    it("reads a complete workflow audit response", async () => {
+        const audit = workflowAudit();
+        mockGet.mockResolvedValueOnce({ data: audit });
+
+        await expect(getWorkflowAudit("workflow/one")).resolves.toBe(audit);
+        expect(mockGet).toHaveBeenCalledWith(
+            "/api/v1/agent/workflows/workflow%2Fone/audit",
+        );
+    });
+
+    it("rejects malformed workflow audit stage data", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...workflowAudit(), timeline: [null] } });
+
+        await expect(getWorkflowAudit("workflow/one")).rejects.toThrow(
+            "Malformed workflow audit payload.",
         );
     });
 

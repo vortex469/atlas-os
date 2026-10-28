@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getWorkflowAudit, getWorkflowOperationalLifecycle } from "../api/atlas-agent";
 import { operationalLifecycle } from "../test/operationalLifecycle";
+import { workflowAudit as audit } from "../test/workflowAudit";
 import type { WorkflowAuditResponse } from "../types/atlasAgent";
 import { WorkflowAuditPage } from "./WorkflowAuditPage";
 
@@ -15,130 +16,6 @@ vi.mock("../api/atlas-agent", () => ({
 }));
 
 const mockedGetWorkflowAudit = vi.mocked(getWorkflowAudit);
-
-function audit(overrides: Partial<WorkflowAuditResponse> = {}): WorkflowAuditResponse {
-    return {
-        effect_kind: "repository_change",
-        workflow_id: "workflow-123",
-        workflow_state: "completed",
-        workflow_source: "candidate",
-        validation: {
-            valid: true,
-            failure_code: null,
-            failure_stage: null,
-        },
-        timeline: [
-            { name: "candidate", status: "completed" },
-            { name: "planning", status: "completed" },
-            { name: "plan", status: "completed" },
-            { name: "workflow", status: "completed" },
-            { name: "implementation", status: "completed" },
-            { name: "approvals", status: "completed" },
-            { name: "execution", status: "completed" },
-            { name: "verification", status: "completed" },
-            { name: "review", status: "completed" },
-            { name: "commit", status: "completed" },
-        ],
-        candidate: {
-            status: "completed",
-            candidate_id: "candidate-123",
-            candidate_fingerprint: "cand-fingerprint",
-            source_recommendation_id: "rec-123",
-            target_id: "target-1",
-            target_type: "service",
-        },
-        planning: {
-            status: "completed",
-            planning_session_id: "plan-session-123",
-            planning_state: "completed",
-            planning_status: "approved",
-            created_at: "2026-08-01T10:00:00Z",
-            planning_completed_at: "2026-08-01T10:00:30Z",
-            candidate_plan_id: "candidate-plan-123",
-            candidate_plan_fingerprint: "plan-fingerprint",
-        },
-        plan: {
-            status: "completed",
-            plan_id: "plan-123",
-            candidate_plan_fingerprint: "plan-fingerprint",
-            likely_affected_files: ["compose.yaml", "services/demo/Dockerfile"],
-        },
-        workflow: {
-            status: "completed",
-            workflow_id: "workflow-123",
-            workflow_source: "candidate",
-            workflow_state: "completed",
-        },
-        implementation: {
-            status: "completed",
-            implementation_request_id: "impl-123",
-            execution_intent: "compose up",
-            tool: "docker-compose",
-            repository_root: "/opt/atlas",
-            repository_head: "abc123",
-            repository_branch: "feature/atlas-agent",
-            working_directory: "/opt/atlas/services/demo",
-            affected_files: ["compose.yaml", "services/demo/Dockerfile"],
-            translator_version: "translator-v1",
-        },
-        approvals: {
-            shell: { status: "approved", approval_id: "approval-preparation-123" },
-            status: "completed",
-            implementation: {
-                status: "approved",
-                approval_id: "approval-impl-123",
-            },
-            verification: {
-                status: "approved",
-                approval_id: "approval-verif-123",
-            },
-            commit: {
-                status: "approved",
-                approval_id: "approval-commit-123",
-            },
-        },
-        execution: {
-            status: "completed",
-            execution_request_id: "exec-123",
-            execution_status: "succeeded",
-            changed_files_count: 2,
-            changed_files: ["compose.yaml", "services/demo/Dockerfile"],
-            tool: "docker-compose",
-            repository: "/opt/atlas",
-        },
-        verification: {
-            status: "completed",
-            verification_plan_id: "ver-plan-123",
-            verification_evidence_id: "ver-evidence-123",
-            verification_status: "passed",
-            changed_files_digest: "digest-123",
-            verification_check_ids: ["check-a", "check-b"],
-            repository_head: "abc123",
-            verification_started_at: "2026-08-01T10:01:00Z",
-            verification_completed_at: "2026-08-01T10:02:00Z",
-        },
-        review: {
-            status: "completed",
-            review_result_id: "rev-123",
-            review_report_id: "rep-123",
-            review_status: "approved",
-            reviewed_content_fingerprint: "review-fingerprint",
-            changed_files: ["compose.yaml"],
-        },
-        commit: {
-            status: "completed",
-            commit_request_id: "commit-req-123",
-            reviewed_files: ["compose.yaml"],
-            reviewed_content_fingerprint: "review-fingerprint",
-            expected_branch: "feature/atlas-agent",
-            expected_head: "abc123",
-            commit_message: "feat(compose): update",
-            commit_sha: "def456",
-            committed_files: ["compose.yaml"],
-        },
-        ...overrides,
-    };
-}
 
 function renderAuditPage(path = "/workflows/workflow-123/audit") {
     return render(
