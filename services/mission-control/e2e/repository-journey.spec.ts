@@ -29,7 +29,7 @@ for (const width of [390, 1280]) {
 
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
         const workflowSummary = page.getByRole("region", { name: "Workflow summary" });
-        await expect(workflowSummary.getByText("Implementation approval: Pending", { exact: true })).toBeVisible();
+        await expect(workflowSummary.getByText("Implementation needs approval.", { exact: true })).toBeVisible();
         await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeHidden();
         await workflowSummary.getByText("Workflow details", { exact: true }).click();
         await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
@@ -90,7 +90,7 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     await expect(page.getByText("Approval rejected.", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Resume Approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
     await page.reload();
-    await expect(page.getByRole("heading", { name: `Workflow ${journey.workflow}`, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Resume Approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);

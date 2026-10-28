@@ -188,11 +188,24 @@ function renderPage(path = "/workflows/workflow-123") {
 }
 
 describe("WorkflowPage", () => {
+    it.each([
+        ["executing", workflow({ workflow_state: "executing" }), "Implementation is running."],
+        ["commit approval", workflow({ workflow_state: "awaiting_commit_approval" }), "Commit needs approval."],
+        ["completed", workflow({ workflow_state: "completed" }), "Workflow completed."],
+        ["unknown", workflow({ workflow_state: "unexpected_state" }), "Current workflow status is unavailable. Review Workflow details."],
+    ])("summarizes the %s state in plain language", async (_name, fixture, message) => {
+        mockedGetWorkflowDetail.mockResolvedValue(fixture);
+        renderPage();
+
+        const summary = within(await screen.findByRole("region", { name: "Workflow summary" }));
+        expect(summary.getByText(message, { exact: true })).toBeVisible();
+    });
+
     it("shows the exact maintenance request before offering action approval", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage();
         await screen.findByRole("heading", { name: "Exact action request" });
-        expect(screen.getByText("Action approval: Pending", { exact: true })).toBeVisible();
+        expect(screen.getByText("Maintenance action needs approval.", { exact: true })).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
@@ -454,6 +467,7 @@ describe("WorkflowPage", () => {
 
         const check = await screen.findByRole("button", { name: "Check worker result" });
         expect(screen.getByRole("heading", { name: "Worker outcome unknown" })).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("The worker result is unknown. Check the original result before taking another action.")).toBeVisible();
         expect(screen.getByText(/Original request: original-worker-request/)).toBeInTheDocument();
         const record = screen.getByText("Worker request record").closest("details");
         expect(record).not.toHaveAttribute("open");
@@ -513,7 +527,7 @@ describe("WorkflowPage", () => {
     it("does not show resume action when implementation is pending", async () => {
         renderPage();
 
-        expect(await screen.findByText("Implementation approval: Pending", { exact: true })).toBeVisible();
+        expect(await screen.findByText("Implementation needs approval.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
     });
 
@@ -524,7 +538,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect(await screen.findByText("Implementation approval: Rejected", { exact: true })).toBeVisible();
+        expect(await screen.findByText("Implementation approval was rejected.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
     });
 
@@ -590,7 +604,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Implementation" }));
 
-        expect(await screen.findByText("Awaiting Verification Approval")).toBeInTheDocument();
+        expect(await screen.findByText("Verification needs approval.")).toBeInTheDocument();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
     });
 
@@ -660,21 +674,24 @@ describe("WorkflowPage", () => {
         );
         renderPage();
 
-        expect(await screen.findByText("Implementation approval: Pending", { exact: true })).toBeVisible();
+        expect(await screen.findByText("Workflow completed.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
     });
 
     it("renders workflow and immutable implementation request details", async () => {
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: /Workflow workflow-123/i })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Review workflow" })).toBeInTheDocument();
         const summary = within(screen.getByRole("region", { name: "Workflow summary" }));
-        expect(summary.getByText("Implementation approval: Pending", { exact: true })).toBeVisible();
-        expect(summary.queryByText("Workflow State", { exact: true })).not.toBeInTheDocument();
+        expect(summary.getByText("Implementation needs approval.", { exact: true })).toBeVisible();
         const details = summary.getByText("Workflow details", { exact: true });
         expect(details.closest("details")).not.toHaveAttribute("open");
+        expect(summary.getByText("workflow-123")).not.toBeVisible();
+        expect(summary.getByText("Awaiting Implementation Approval")).not.toBeVisible();
         expect(summary.getByText("Candidate ID", { exact: true })).not.toBeVisible();
         fireEvent.click(details);
+        expect(summary.getByText("workflow-123")).toBeVisible();
+        expect(summary.getByText("Awaiting Implementation Approval")).toBeVisible();
         expect(screen.getByText("candidate-plan-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-fingerprint-123")).toBeInTheDocument();
@@ -772,7 +789,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect((await screen.findAllByText(/Approval controls are unavailable/i)).length).toBeGreaterThan(0);
+        expect(await screen.findByText("Implementation approval is not available at this step.")).toBeVisible();
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
     });

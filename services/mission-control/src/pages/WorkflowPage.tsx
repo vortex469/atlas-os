@@ -334,27 +334,27 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow</p>
-                    <h1 className="mt-3 break-all text-3xl font-bold text-white">Workflow {workflow.workflow_id}</h1>
+                    <h1 className="mt-3 text-3xl font-bold text-white">Review workflow</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         {workflow.effect_kind === "operational_action"
-                            ? "Review the maintenance request, its approval and current result. Use Resume to advance an approved stage."
-                            : "Review this workflow and its exact approval requests. Use Resume to advance an approved stage. Implementation, verification and commit each need their own approval."}
+                            ? "Review the exact maintenance request below. Approval and running it are separate steps."
+                            : "Review each stage below. Implementation, verification and commit each need separate approval and a separate Resume step."}
                     </p>
                 </div>
                 <WorkflowRail workflow={workflow} />
             </header>
 
             <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
-                        <p className="mt-1 text-sm text-slate-400">{isOperational ? "Action approval" : "Implementation approval"}: {formatLabel(workflow.implementation_approval_status)}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{formatLabel(workflow.workflow_state)}</span>
-                </div>
+                <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
+                <p className="mt-1 text-sm text-slate-300">{workflowStatusMessage(workflow)}</p>
                 <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
                     <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Workflow ID" value={workflow.workflow_id} />
+                        <Detail label="Workflow state" value={formatLabel(workflow.workflow_state)} />
+                        <Detail label="Implementation approval" value={formatLabel(workflow.implementation_approval_status)} />
+                        <Detail label="Verification approval" value={formatLabel(workflow.verification_approval_status)} />
+                        <Detail label="Commit approval" value={formatLabel(workflow.commit_approval_status)} />
                         <Detail label="Workflow source" value={workflow.workflow_source} />
                         <Detail label="Planning session" value={workflow.planning_session_id ?? "Not available"} />
                         <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not available"} />
@@ -473,7 +473,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         ? "Exact action approval is recorded."
                         : isOperational && workflow.workflow_state === "awaiting_implementation_approval" && !operationalApprovalReady
                         ? "Exact action approval is unavailable. Refresh to check the request and its approval status."
-                        : `Approval controls are unavailable because this workflow is ${formatLabel(workflow.workflow_state)}.`}</p>
+                        : "Implementation approval is not available at this step."}</p>
                 )}
                 {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">Submitting approval...</p>}
                 {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && !controlsBusy && (
@@ -651,7 +651,7 @@ function VerificationReviewSection({
                         <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Verification</button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Verification approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
+                    <p className="mt-4 text-sm text-slate-300">Verification approval is not available at this step.</p>
                 )}
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
                 {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
@@ -720,7 +720,7 @@ function CommitSection({
                         <button type="button" onClick={() => void onCommitDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Commit approval controls are unavailable because this workflow is {formatLabel(workflow.workflow_state)}.</p>
+                    <p className="mt-4 text-sm text-slate-300">Commit approval is not available at this step.</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
                 {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
@@ -754,6 +754,48 @@ function WorkflowRail({ workflow }: { workflow?: WorkflowDetailResponse }) {
 
 function Detail({ label, value }: { label: string; value: string }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value}</dd></div>;
+}
+
+function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
+    const action = workflow.effect_kind === "operational_action" ? "Maintenance action" : "Implementation";
+    switch (workflow.workflow_state) {
+        case "planned":
+            return "Workflow is ready for review.";
+        case "awaiting_approval":
+            return "Workflow is waiting for review.";
+        case "awaiting_implementation_approval":
+            if (workflow.implementation_approval_status === "approved") return `${action} is approved. ${workflow.effect_kind === "operational_action" ? "Run it when ready." : "Resume to run it."}`;
+            if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;
+            return `${action} needs approval.`;
+        case "awaiting_execution":
+            return `${action} is approved and ready to run.`;
+        case "executing":
+            return `${action} is running.`;
+        case "patch_applied_pending_verification":
+            return "Implementation is complete. Verification is next.";
+        case "awaiting_verification_approval":
+            if (workflow.verification_approval_status === "approved") return "Verification is approved. Resume to run the checks.";
+            if (workflow.verification_approval_status === "rejected") return "Verification approval was rejected.";
+            return "Verification needs approval.";
+        case "verifying":
+            return "Verification checks are running.";
+        case "awaiting_commit_approval":
+            if (workflow.commit_approval_status === "approved") return "Commit is approved. Resume to finish it.";
+            if (workflow.commit_approval_status === "rejected") return "Commit approval was rejected.";
+            return "Commit needs approval.";
+        case "committing":
+            return "The commit is being recorded.";
+        case "blocked":
+            return workflow.worker_reconciliation?.outcome === "unknown"
+                ? "The worker result is unknown. Check the original result before taking another action."
+                : "Workflow is blocked. Review the request and latest result below.";
+        case "implementation_rejected":
+            return "Implementation approval was rejected.";
+        case "completed":
+            return "Workflow completed.";
+        default:
+            return "Current workflow status is unavailable. Review Workflow details.";
+    }
 }
 
 function formatLabel(value: string): string {

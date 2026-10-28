@@ -634,6 +634,17 @@ labeled read-only. The page suite passes (32 tests), repository and maintenance
 browser journeys pass at 390px and 1280px (6 tests), and lint and production
 build pass.
 
+## Workflow review status — 2026-10-28
+
+Workflow review now has a stable “Review workflow” title and a plain-language
+summary for approval, running, blocked, completed, and unknown states. The
+workflow ID and raw state are available under “Workflow details.” Approval
+controls still require the exact pending stage, and each approved stage still
+requires its separate Resume action. The focused workflow page suite passes
+(72 tests), repository and maintenance journeys pass at 390px and 1280px, and
+the reject and pending-refresh protections pass (6 browser tests). Lint and
+production build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact
