@@ -40,6 +40,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     const [implementationOutcomeUnknown, setImplementationOutcomeUnknown] = useState(false);
     const [implementationErrorDetails, setImplementationErrorDetails] = useState<string | null>(null);
     const [successorError, setSuccessorError] = useState<string | null>(null);
+    const [successorErrorDetails, setSuccessorErrorDetails] = useState<string | null>(null);
     const [successorResult, setSuccessorResult] = useState<CandidatePlanningResponse | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
 
@@ -210,6 +211,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         const generation = viewGeneration.current;
         setIsCreatingSuccessor(true);
         setSuccessorError(null);
+        setSuccessorErrorDetails(null);
         setSuccessorResult(null);
         try {
             const response = await createSuccessorCandidatePlanningSession(
@@ -228,12 +230,10 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             navigate(`/candidate-planning/${encodeURIComponent(response.session_id)}`);
         } catch (error) {
             if (generation !== viewGeneration.current) return;
-            setSuccessorError(
-                getAtlasAgentErrorMessage(
-                    error,
-                    "Could not open a new planning session against the current repository.",
-                ),
-            );
+            const fallback = "Successor planning request failed without additional details.";
+            const details = getAtlasAgentErrorMessage(error, fallback);
+            setSuccessorError("Mission Control could not confirm whether the successor planning session was created. Check the earlier planning session for a newer session before trying again.");
+            setSuccessorErrorDetails(details === fallback ? null : details);
         } finally {
             if (generation === viewGeneration.current) setIsCreatingSuccessor(false);
         }
@@ -380,9 +380,11 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     </details>
                 )}
                 {successorError && (
-                    <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
-                        {successorError}
-                    </p>
+                    <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+                        <p>{successorError}</p>
+                        {workflow.candidate_planning_session_id && <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}`} className="mt-3 inline-flex font-semibold text-blue-200 underline underline-offset-2">Check the earlier planning session</Link>}
+                        {successorErrorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary><p className="mt-2 break-words">{successorErrorDetails}</p></details>}
+                    </div>
                 )}
                 {successorResult && (
                     <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">

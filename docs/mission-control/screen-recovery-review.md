@@ -1608,3 +1608,11 @@ Maintenance history hides requested-action, provider, and resource-type filters
 when each has only one value on the current page. It shows a filter when the
 page contains multiple values. This removes controls that could not narrow the
 results while retaining the current-page filter boundary.
+
+## Successor planning response recovery — 2026-10-28
+
+If a successor planning request returns no usable response, Workflow setup now
+says its result is unconfirmed and links to the source planning session, which
+can show whether a newer session exists. The service response stays under
+collapsed Technical details. The workflow-shell test covers this recovery
+path; successor creation and execution behavior are unchanged.

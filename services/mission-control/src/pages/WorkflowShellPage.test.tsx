@@ -372,7 +372,7 @@ describe("WorkflowShellPage", () => {
 			expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		});
 
-		it("does not navigate when successor call errors", async () => {
+		it("keeps successor creation errors plain and links to the source session", async () => {
 			const user = userEvent.setup();
 			mockedCreateCandidateImplementationRequest.mockResolvedValue(
 				implementationTranslationResponse({
@@ -395,7 +395,13 @@ describe("WorkflowShellPage", () => {
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
-			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent === "Successor failed")).toBe(true);
+			const successorAlert = (await screen.findAllByRole("alert")).find((alert) => alert.textContent?.includes("Mission Control could not confirm whether the successor planning session was created."));
+			expect(successorAlert).toBeDefined();
+			expect(successorAlert).toHaveTextContent("Check the earlier planning session for a newer session before trying again.");
+			expect(within(successorAlert as HTMLElement).getByRole("link", { name: "Check the earlier planning session" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+			const technicalDetails = within(successorAlert as HTMLElement).getByText("Technical details").closest("details");
+			expect(technicalDetails).not.toHaveAttribute("open");
+			expect(within(technicalDetails as HTMLElement).getByText("Successor failed")).not.toBeVisible();
 			expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		});
 
