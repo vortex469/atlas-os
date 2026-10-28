@@ -1057,36 +1057,64 @@ export async function submitWorkflowImplementationApproval(
     workflowId: string,
     decision: WorkflowImplementationDecision,
 ): Promise<WorkflowImplementationApprovalResponse> {
-    const response = await atlasAgent.post<WorkflowImplementationApprovalResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/implementation-approval`,
         { workflow_id: workflowId, decision },
     );
 
-    return response.data;
+    return parseWorkflowApprovalResponse<WorkflowImplementationApprovalResponse>(
+        response.data, workflowId, decision, "implementation_approval_status",
+    );
 }
 
 export async function submitWorkflowVerificationApproval(
     workflowId: string,
     decision: WorkflowImplementationDecision,
 ): Promise<WorkflowVerificationApprovalResponse> {
-    const response = await atlasAgent.post<WorkflowVerificationApprovalResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/verification-approval`,
         { workflow_id: workflowId, decision },
     );
 
-    return response.data;
+    return parseWorkflowApprovalResponse<WorkflowVerificationApprovalResponse>(
+        response.data, workflowId, decision, "verification_approval_status",
+    );
 }
 
 export async function submitWorkflowCommitApproval(
     workflowId: string,
     decision: WorkflowImplementationDecision,
 ): Promise<WorkflowCommitApprovalResponse> {
-    const response = await atlasAgent.post<WorkflowCommitApprovalResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/commit-approval`,
         { workflow_id: workflowId, decision },
     );
 
-    return response.data;
+    return parseWorkflowApprovalResponse<WorkflowCommitApprovalResponse>(
+        response.data, workflowId, decision, "commit_approval_status",
+    );
+}
+
+function parseWorkflowApprovalResponse<T extends {
+    workflow_id: string;
+    workflow_state: string;
+    message: string | null;
+}>(
+    value: unknown,
+    workflowId: string,
+    decision: WorkflowImplementationDecision,
+    statusField: "implementation_approval_status" | "verification_approval_status" | "commit_approval_status",
+): T {
+    const expectedStatus = decision === "approve" ? "approved" : "rejected";
+    if (!isRecord(value)
+        || value.workflow_id !== workflowId
+        || !isNonEmptyString(value.workflow_state)
+        || value[statusField] !== expectedStatus
+        || !isNullableString(value.message)) {
+        throw new Error("Malformed workflow approval response.");
+    }
+
+    return value as T;
 }
 
 export async function resumeWorkflow(workflowId: string): Promise<void> {

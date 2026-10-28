@@ -31,6 +31,9 @@ import {
     getWorkflowRecoveryDiagnostic,
     getWorkflowSupportBundle,
     listWorkflows,
+    submitWorkflowCommitApproval,
+    submitWorkflowImplementationApproval,
+    submitWorkflowVerificationApproval,
 } from "./atlas-agent";
 import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
 import { workflowAudit } from "../test/workflowAudit";
@@ -240,6 +243,31 @@ describe("Atlas Agent optional summary endpoints", () => {
             "Approval failed.",
         )).toBe("Request failed with status code 409");
         expect(getAtlasAgentErrorMessage(new Error(""), "Atlas Agent unavailable.")).toBe("Atlas Agent unavailable.");
+    });
+
+    it.each([
+        ["implementation", submitWorkflowImplementationApproval, "implementation_approval_status"],
+        ["verification", submitWorkflowVerificationApproval, "verification_approval_status"],
+        ["commit", submitWorkflowCommitApproval, "commit_approval_status"],
+    ] as const)("checks the %s approval response against its workflow and decision", async (_stage, submit, statusField) => {
+        const approved = {
+            workflow_id: "workflow/one",
+            workflow_state: "awaiting_execution",
+            [statusField]: "approved",
+            message: null,
+        };
+        mockPost.mockResolvedValueOnce({ data: approved });
+        await expect(submit("workflow/one", "approve")).resolves.toEqual(approved);
+
+        const rejected = { ...approved, [statusField]: "rejected" };
+        mockPost.mockResolvedValueOnce({ data: rejected });
+        await expect(submit("workflow/one", "reject")).resolves.toEqual(rejected);
+
+        mockPost.mockResolvedValueOnce({ data: { ...approved, workflow_id: "different-workflow" } });
+        await expect(submit("workflow/one", "approve")).rejects.toThrow("Malformed workflow approval response.");
+
+        mockPost.mockResolvedValueOnce({ data: { ...approved, [statusField]: "rejected" } });
+        await expect(submit("workflow/one", "approve")).rejects.toThrow("Malformed workflow approval response.");
     });
 
     it("returns valid workflow list entries with the requested effect kind", async () => {
