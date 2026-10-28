@@ -18,6 +18,15 @@ export function timestamp(value: unknown): Date | null {
     return Number.isFinite(date.getTime()) ? date : null;
 }
 export const status = (value: unknown) => mapServiceStatusToHealthState(value);
+export function healthPriority(value: unknown): number {
+    switch (status(value)) {
+        case "blocked": return 0;
+        case "unavailable": return 1;
+        case "degraded": return 2;
+        case "unknown": return 3;
+        default: return 4;
+    }
+}
 export function detailPath(prefix: string, id: unknown): string | null {
     if (typeof id !== "string" || !id || id === "." || id === "..") return null;
     try {

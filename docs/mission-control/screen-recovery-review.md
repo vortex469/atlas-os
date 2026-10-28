@@ -2286,8 +2286,10 @@ URL credentials or query values and explains that Atlas Core checks from its
 own machine, so browser reachability alone does not establish Core reachability.
 The disclosure also shows a reported HTTP response or explains that no response
 was received, plus response time when Core reports one. When more than four
-checks are reported, blocked and offline services appear before degraded,
-unknown, and healthy checks. The Overview component suite passes (66 tests),
-all Overview browser checks pass (22 tests, including 320px and 1280px layouts),
-and lint and production build pass. The UI displays reported configuration only;
-it does not change probe behavior or establish live network reachability.
+service checks or providers are reported, blocked and offline entries appear
+before degraded, unknown, and healthy entries. The provider list uses a singular
+label when one additional provider is hidden. The Overview and provider
+component suites pass (79 tests across two files), all Overview browser checks
+pass (23 tests, including 320px and 1280px layouts), and lint and production
+build pass. The UI displays reported configuration only; it does not change
+probe behavior or establish live network reachability.

@@ -30,6 +30,8 @@ export function AgentOverviewContent({ evidence, loading = false }: { evidence?:
 
 export function ProviderOverviewContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
     const providers = providerObservations(evidence?.data);
+    const additionalProviders = providers ? Math.max(0, providers.length - 4) : 0;
+    const additionalProviderNoun = additionalProviders === 1 ? "provider" : "providers";
     const hasData = evidence?.data !== undefined;
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && evidence.data !== undefined));
     const unavailableMessage = !hasData
@@ -49,7 +51,10 @@ export function ProviderOverviewContent({ evidence, loading = false }: { evidenc
         {providers === null && <p>{unavailableMessage}</p>}
         {providers?.length === 0 && <p>{stale ? "No providers were in the last available list; the current list is unknown." : evidence?.unavailable ? "Provider configuration unknown." : "No providers configured."}</p>}
         {providers?.slice(0, 4).map(renderProvider)}
-        {providers && providers.length > 4 && <details><summary>{providers.length - 4} more providers</summary>{providers.slice(4).map(renderProvider)}</details>}
+        {providers && additionalProviders > 0 && <details>
+            <summary>{additionalProviders} more {additionalProviderNoun}</summary>
+            {providers.slice(4).map(renderProvider)}
+        </details>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">About provider status</summary>
             <p className="mt-2">A reported healthy status does not guarantee that the connection works or that actions are allowed.</p>

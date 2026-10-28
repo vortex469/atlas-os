@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -12,6 +12,25 @@ function show(evidence: OverviewEvidence, loading = false) {
 const registry = () => within(screen.getByRole("region", { name: "Providers" }));
 
 describe("integrated agent/provider evidence", () => {
+    it("puts the most urgent providers in the preview and labels one additional provider correctly", () => {
+        show({ providers: { data: [
+            { id: "degraded", name: "Degraded", health: { status: "degraded" } },
+            { id: "healthy", name: "Healthy", health: { status: "healthy" } },
+            { id: "offline", name: "Offline", health: { status: "offline" } },
+            { id: "blocked", name: "Blocked", health: { status: "blocked" } },
+            { id: "unknown", name: "Unknown", health: { status: "future_state" } },
+        ] } });
+        const rows = registry().getAllByRole("article")
+            .filter(row => row.closest("details") === null);
+
+        expect(rows.map(row => row.getAttribute("aria-label"))).toEqual([
+            "Blocked", "Offline", "Degraded", "Unknown",
+        ]);
+        const additional = registry().getByText("1 more provider");
+        fireEvent.click(additional);
+        expect(registry().getByRole("article", { name: "Healthy" })).toBeVisible();
+    });
+
     it("distinguishes first-load, unavailable, and missing states", () => {
         const view = show({}, true);
         const agent = within(screen.getByRole("region", { name: "Agent details" }));

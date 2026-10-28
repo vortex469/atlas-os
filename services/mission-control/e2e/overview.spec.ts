@@ -65,6 +65,28 @@ test('overview separates initial loading from unavailable data across dashboard 
     await expect(healthReports.getByRole('article', { name: 'Policy settings check' }).getByText('Last report: Healthy.')).toBeVisible();
 });
 
+test('provider preview prioritizes problems and uses a singular extra-provider label', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.route('**/api/v1/providers', route => route.fulfill({ json: [
+        { id: 'degraded', name: 'Degraded', health: { status: 'degraded' } },
+        { id: 'healthy', name: 'Healthy', health: { status: 'healthy' } },
+        { id: 'offline', name: 'Offline', health: { status: 'offline' } },
+        { id: 'blocked', name: 'Blocked', health: { status: 'blocked' } },
+        { id: 'unknown', name: 'Unknown', health: { status: 'future_state' } },
+    ] }));
+    await page.goto('/');
+
+    const providers = page.getByRole('region', { name: 'Providers', exact: true });
+    const visibleNames = await providers.getByRole('article').evaluateAll(items =>
+        items.map(item => item.getAttribute('aria-label')));
+    expect(visibleNames).toEqual(['Blocked', 'Offline', 'Degraded', 'Unknown']);
+    const additional = providers.getByText('1 more provider', { exact: true });
+    await additional.click();
+    await expect(providers.getByRole('article', { name: 'Healthy' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 for (const width of [320, 768, 1440]) {
     test(`overview fits ${width}px and links to existing detail routes`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
