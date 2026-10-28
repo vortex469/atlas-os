@@ -31,18 +31,18 @@ describe("QueueObservationEvidence", () => {
         let resolve!: (value: QueueObservationReceiptCollectionV1) => void;
         vi.mocked(listQueueObservations).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading queue observation evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading queue observation/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByText(/state: pending or blocked/i)).toBeInTheDocument());
-        expect(screen.getByRole("status")).toHaveTextContent(/no observation receipt evidence/i);
+        await waitFor(() => expect(screen.getByText(/status: not yet recorded/i)).toBeInTheDocument());
+        expect(screen.getByRole("status")).toHaveTextContent(/no observation is saved/i);
         unmount();
 
         vi.mocked(listQueueObservations).mockResolvedValue(queueObservationCollectionFixture);
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        await waitFor(() => expect(screen.getAllByText(/state: observed/i).length).toBeGreaterThan(0));
-        expect(screen.getByText(/observed queued item/i)).toBeInTheDocument();
-        expect(screen.getByText("Advanced queue observation details")).toBeInTheDocument();
-        expect(screen.getByLabelText(/ordered queue observation blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
+        await waitFor(() => expect(screen.getAllByText(/status: recorded/i).length).toBeGreaterThan(0));
+        expect(screen.getByText("Observation recorded")).toBeInTheDocument();
+        expect(screen.getByText("Receipt and queue reference details")).toBeInTheDocument();
+        expect(screen.getByLabelText("Why an observation cannot allow work to start")).toHaveTextContent(/safe way to take work from a queue.*safe way to check a queue.*safe way to start a worker.*safe way to start installation/i);
         expect(screen.getByLabelText(/queue observation fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
         expect(document.body.textContent).not.toMatch(/amqp|secret|internal\/path|10\.0\.0\.1/i);
     });
@@ -50,10 +50,10 @@ describe("QueueObservationEvidence", () => {
     it("uses the exact two-step confirmation and dedicated permission before creating evidence", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        expect(await screen.findByText(/state: pending or blocked/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Review queue observation evidence statement" }));
-        expect(screen.getByLabelText("Queue observation evidence confirmation")).toHaveTextContent("Record bounded queue observation evidence only. This does not dequeue, poll as a consumer, claim, lease, acknowledge, contact or start a worker, invoke Agent or a workflow, dispatch, retry, resend, install, deploy, roll back, mutate, or execute anything.");
-        fireEvent.click(screen.getByRole("button", { name: "Record observation evidence" }));
+        expect(await screen.findByText(/status: not yet recorded/i)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Review what will be recorded" }));
+        expect(screen.getByLabelText("Queue observation evidence confirmation")).toHaveTextContent("Record evidence that this saved queue reference was checked. This does not read or remove queue work, contact or start a worker, or run anything.");
+        fireEvent.click(screen.getByRole("button", { name: "Record observation" }));
         await waitFor(() => expect(createQueueObservation).toHaveBeenCalled());
         expect(getOneShotLiveEnqueue).toHaveBeenCalledWith(oneShotLiveEnqueueFixture.candidate_record_id, oneShotLiveEnqueueFixture.enqueue_id);
         expect(createQueueObservation).toHaveBeenCalledWith(oneShotLiveEnqueueFixture.candidate_record_id, expect.objectContaining({
@@ -70,10 +70,10 @@ describe("QueueObservationEvidence", () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         vi.mocked(createQueueObservation).mockResolvedValue(ambiguousQueueObservationResultFixture);
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        expect(await screen.findByText(/state: pending or blocked/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Review queue observation evidence statement" }));
-        fireEvent.click(screen.getByRole("button", { name: "Record observation evidence" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent(/ambiguous state/i);
+        expect(await screen.findByText(/status: not yet recorded/i)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Review what will be recorded" }));
+        fireEvent.click(screen.getByRole("button", { name: "Record observation" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(/could not confirm the observation result/i);
         expect(document.body.textContent).not.toMatch(/dequeue now|retry now|resend now|start worker|execute now|install now|deploy now|roll back now/i);
     });
 });
