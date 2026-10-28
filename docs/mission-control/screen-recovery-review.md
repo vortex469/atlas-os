@@ -369,7 +369,8 @@ information, and they stay hidden while the first read is pending. Recent
 activity has its own checking, failed-read and last-available messages. Core
 health no longer says no subsystem status was reported when its read failed.
 Freshness rules and health calculations are unchanged. The focused health and
-dashboard suites pass 191 tests, 24 responsive browser checks pass across the
+dashboard suites pass 191 tests; the complete Mission Control component suite
+passes 2,635 tests. Twenty-four responsive browser checks pass across the
 overview, health, unavailable-state and app-shell screens, and lint/build pass.
 
 ## AI provider overview wording — 2026-10-28

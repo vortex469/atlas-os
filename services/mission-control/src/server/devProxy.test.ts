@@ -5,6 +5,20 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createServer } from "vite";
 import type { ViteDevServer } from "vite";
 
+async function unusedLoopbackPort(): Promise<number> {
+    const probe = createHttpServer();
+    await new Promise<void>((resolve, reject) => {
+        probe.once("error", reject);
+        probe.listen(0, "127.0.0.1", () => resolve());
+    });
+    const address = probe.address();
+    if (!address || typeof address === "string") throw new Error("Port probe did not bind");
+    await new Promise<void>((resolve, reject) => {
+        probe.close((error) => error ? reject(error) : resolve());
+    });
+    return address.port;
+}
+
 // Exercise the actual development proxy against an isolated HTTP stub.
 // No Atlas service is started or contacted, and every request is a GET.
 describe("development API proxies", () => {
@@ -22,12 +36,13 @@ describe("development API proxies", () => {
         const address = backend.address();
         if (!address || typeof address === "string") throw new Error("Stub did not bind");
         const target = `http://127.0.0.1:${address.port}`;
+        const vitePort = await unusedLoopbackPort();
         vite = await createServer({
             root: fileURLToPath(new URL("../../", import.meta.url)),
             configFile: fileURLToPath(new URL("../../vite.config.ts", import.meta.url)),
             logLevel: "silent",
             optimizeDeps: { noDiscovery: true, include: [] },
-            server: { host: "127.0.0.1", port: 0, strictPort: true,
+            server: { host: "127.0.0.1", port: vitePort, strictPort: true,
                 proxy: { "/api/v1": { target }, "/agent-api": { target } } },
         });
         await vite.listen();
