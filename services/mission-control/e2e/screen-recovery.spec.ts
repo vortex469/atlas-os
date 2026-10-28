@@ -154,19 +154,32 @@ test("audit recovery refuses another workflow without losing navigation", async 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test("discovery refuses another catalog item's details", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.route("**/api/v1/discovery/items/requested-item", (route) => route.fulfill({ json: { item: { id: "other" } } }));
+test("discovery refuses another catalog item's details", async ({ page, rejectedMutationRequests }) => {
+    let reads = 0;
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.route("**/api/v1/discovery/items/requested-item", (route) => {
+        reads += 1;
+        if (reads <= 2) return route.fulfill({ json: { item: { id: "other" } } });
+        const entry = discoveryItemsPage.entries[0];
+        return route.fulfill({ json: {
+            ...entry,
+            item: { ...entry.item, id: "requested-item", name: "Requested Item" },
+        } });
+    });
     await page.route("**/api/v1/discovery/items/requested-item/relationships", (route) => route.fulfill({ json: { item_id: "requested-item", incoming: [], outgoing: [] } }));
     await page.goto("/discovery/items/requested-item");
-    await expect(page.getByRole("alert")).toContainText("does not match this item");
-    await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+    const itemError = page.locator("main > div[role=alert]");
+    await expect(itemError).toContainText("does not match this item");
+    await page.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("heading", { name: "Requested Item" })).toBeVisible();
+    expect(reads).toBe(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("link", { name: "← Catalog" }).click();
     await expect(page.getByRole("heading", { name: "Browse the catalog", exact: true })).toBeVisible();
+    expect(rejectedMutationRequests).toEqual([]);
 });
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`missing catalog item gives a simple recovery path at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         const dependentReads: string[] = [];
         await page.setViewportSize({ width, height: 900 });

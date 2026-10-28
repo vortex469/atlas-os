@@ -53,6 +53,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [compatibility, setCompatibility] =
         useState<DiscoveryCompatibilityAssessment | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [itemLoadAttempt, setItemLoadAttempt] = useState(0);
     const [compatibilityLoading, setCompatibilityLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -84,6 +85,14 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const compatibilityRequestId = useRef(0);
     const compatibilityLoadHandle = useRef<number | null>(null);
     const hasCatalogItem = state.entry?.item.id === itemId;
+
+    function retryItem() {
+        setIsLoading(true);
+        setError(null);
+        setErrorDetails(null);
+        setNotFound(false);
+        setItemLoadAttempt((attempt) => attempt + 1);
+    }
 
     const loadCompatibility = useCallback(() => {
         const requestId = ++compatibilityRequestId.current;
@@ -193,7 +202,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     return;
                 }
                 if (entry.item.id !== itemId) {
-                    setError("The catalog response does not match this item. Reload to check again.");
+                    setError("The catalog response does not match this item. Try again.");
                     return;
                 }
                 setState((current) => ({ ...current, entry }));
@@ -220,7 +229,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         return () => {
             cancelled = true;
         };
-    }, [itemId]);
+    }, [itemId, itemLoadAttempt]);
 
     useEffect(() => {
         if (!hasCatalogItem) return;
@@ -364,7 +373,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-5xl p-8">
+            <main className="mx-auto max-w-5xl p-4 sm:p-8">
                 <Link
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -380,7 +389,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     if (notFound) {
         return (
-            <main className="mx-auto max-w-5xl space-y-6 p-8">
+            <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -405,7 +414,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     if (error || state.entry === null) {
         return (
-            <main className="mx-auto max-w-5xl space-y-6 p-8">
+            <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
                     to="/discovery"
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -423,7 +432,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                         {error ?? "Mission Control could not load this catalog item."}
                     </p>
                     {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
-                    <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
+                    <button type="button" onClick={retryItem} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </div>
             </main>
         );
@@ -433,7 +442,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const { item } = entry;
 
     return (
-        <main className="mx-auto max-w-5xl space-y-8 p-8">
+        <main className="mx-auto max-w-5xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <Link
                     to="/discovery"

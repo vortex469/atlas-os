@@ -319,11 +319,15 @@ describe("DiscoveryItemPage", () => {
     });
 
     it("refuses catalog data for a different item", async () => {
-        mockedGetDiscoveryItem.mockResolvedValue({ ...entry(), item: { ...entry().item, id: "other" } });
+        mockedGetDiscoveryItem
+            .mockResolvedValueOnce({ ...entry(), item: { ...entry().item, id: "other" } })
+            .mockResolvedValueOnce(entry());
         renderPage();
         expect(await screen.findByRole("alert")).toHaveTextContent("does not match this item");
         expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(2);
     });
 
     it("does not show relationships returned for a different catalog item", async () => {

@@ -1,6 +1,6 @@
 import { discoveryItemsPage, expect, test } from "./mission-control-fixtures";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`catalog keeps common filters visible and details optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/discovery/items?**", (route) => route.fulfill({ json: { ...discoveryItemsPage, total: 26, has_more: true } }));

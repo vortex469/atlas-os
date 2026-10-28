@@ -2080,3 +2080,12 @@ will appear here,” removing an unnecessary Core implementation detail. All 12
 browser checks pass at 320px, 390px, and 1280px; the page suite passes (14
 tests), as do lint and the production build. History filters and actions are
 unchanged.
+
+## Catalog detail retry and phone layout — 2026-10-28
+
+The catalog list and item detail states now use compact phone padding while
+keeping desktop spacing. If a detail response belongs to a different catalog
+item, the screen refuses it and offers an in-page retry for the requested item.
+Browser checks cover catalog filtering and recovery at 320px, 390px, and 1280px
+(20 checks); the focused catalog page suites pass (50 tests), as do lint and the
+production build. Catalog reads and all action/approval behavior are unchanged.
