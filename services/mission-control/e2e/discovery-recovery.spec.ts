@@ -279,7 +279,7 @@ for (const width of [320, 390, 1280]) {
         expect(initialReads).toBeGreaterThan(0);
         recovered = true;
         await page.reload();
-        await expect(page.getByText("5 unresolved blockers; 4 required operator confirmations; this plan is not executable.", { exact: true })).toBeVisible();
+        await expect(page.getByText("5 issues block this plan; 4 review notes. Installation cannot start.", { exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Home Assistant", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Prospective installation destination", exact: true })).toBeVisible();
         await expect.poll(() => destinationReads).toBeGreaterThan(0);
@@ -287,25 +287,30 @@ for (const width of [320, 390, 1280]) {
         const fingerprint = planPanel.getByText(plan.fingerprint.value, { exact: true });
         await expect(fingerprint).toHaveCount(1);
         await expect(fingerprint).toBeHidden();
-        const disclosure = planPanel.getByText("Plan identity and evidence", { exact: true });
-        for (const name of ["Blockers", "Required operator confirmations", "Risks", "Missing facts"]) {
+        const detailsDisclosure = planPanel.getByText("More plan details", { exact: true });
+        const identityDisclosure = planPanel.getByText("Plan identity and evidence", { exact: true });
+        for (const name of ["What blocks this plan", "Items to review", "Risks to review"]) {
             const heading = planPanel.getByRole("heading", { name, exact: true });
             await expect(heading).toBeVisible();
-            expect((await heading.boundingBox())!.y).toBeLessThan((await disclosure.boundingBox())!.y);
+            expect((await heading.boundingBox())!.y).toBeLessThan((await detailsDisclosure.boundingBox())!.y);
         }
-        await expect(planPanel.getByText(/Missing Prerequisite Fact — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
-        await expect(planPanel.getByText(/Missing Prerequisite Fact — Requires capability container-orchestration/)).toBeVisible();
-        await expect(planPanel.getByText(/Accept Assumption — Review this informational assumption: Target environment must be checked\. Related prerequisite: Requires capability container-orchestration/)).toBeVisible();
-        await expect(planPanel.getByText(/Accept Assumption — Review this informational assumption: Target environment must be checked\. Related prerequisite: Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
-        await expect(planPanel.getByText(/Confirm Prerequisite — Review this informational prerequisite: Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
-        await expect(planPanel.getByText(/Confirm Prerequisite — Review this informational prerequisite: Requires capability container-orchestration/)).toBeVisible();
+        await expect(planPanel.getByText(/A required fact is not available — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        await expect(planPanel.getByText(/A required fact is not available — Requires capability container-orchestration/)).toBeVisible();
+        await expect(planPanel.getByText(/Review assumption — Target environment must be checked\. Related prerequisite: Requires capability container-orchestration/)).toBeVisible();
+        await expect(planPanel.getByText(/Review assumption — Target environment must be checked\. Related prerequisite: Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        await expect(planPanel.getByText(/Review prerequisite — Requires port 8123\/tcp in the inbound direction/)).toBeVisible();
+        await expect(planPanel.getByText(/Review prerequisite — Requires capability container-orchestration/)).toBeVisible();
         const rawBlocker = planPanel.getByText(/Blocker code: missing_prerequisite_fact · Subject ID: 833c8f05ff5931f984ba64333f4414d2d509b6e57c315889a1b045828982e305/);
         const exactPrompt = planPanel.getByText(/Exact prompt: Review the informational prerequisite 833c8f05ff5931f984ba64333f4414d2d509b6e57c315889a1b045828982e305/);
         await expect(rawBlocker).toBeHidden();
         await expect(exactPrompt).toBeHidden();
+        await detailsDisclosure.click();
+        for (const name of ["Missing facts", "Compatibility", "Prerequisites", "Relationships", "Assumptions"]) {
+            await expect(planPanel.getByRole("heading", { name, exact: true })).toBeVisible();
+        }
         const readsBeforeDetails = reads;
         const destinationsBeforeDetails = destinationReads;
-        await disclosure.focus();
+        await identityDisclosure.focus();
         await page.keyboard.press("Enter");
         await expect(fingerprint).toBeVisible();
         await expect(planPanel.getByRole("heading", { name: "Accepted evidence", exact: true })).toBeVisible();

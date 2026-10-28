@@ -1,4 +1,4 @@
-import { executionCandidates, expect, providers, test } from "./mission-control-fixtures";
+import { discoveryItemsPage, executionCandidates, expect, providers, test } from "./mission-control-fixtures";
 
 test("switching provider routes clears action parameters before the next catalog arrives", async ({ page }) => {
     const action = { id: "review-model", label: "Review model", description: "Mock action for form isolation.",
@@ -189,19 +189,26 @@ test("workflows recover from an initial outage without reloading", async ({ page
     expect(attempts).toBe(2);
 });
 
-test("a broken page keeps navigation and hides raw error details", async ({ page }) => {
-    await page.route("**/api/v1/discovery/items?**", (route) => route.fulfill({
-        status: 200, contentType: "application/json",
-        body: JSON.stringify({ entries: [null], total: 1, offset: 0, limit: 25, has_more: false }),
-    }));
+test("a malformed catalog response keeps navigation and recovers without raw error details", async ({ page }) => {
+    let reads = 0;
+    await page.route("**/api/v1/discovery/items?**", (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ json: { entries: [null], total: 1, offset: 0, limit: 25, has_more: false } })
+            : route.fulfill({ json: discoveryItemsPage });
+    });
     await page.goto("/discovery");
-    await expect(page.getByRole("heading", { name: "This page could not load" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Browse the catalog", exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+    await expect(page.getByText("Discovery catalog unavailable", { exact: true })).toBeVisible();
+    await expect(page.getByText("Results unavailable", { exact: true })).toBeVisible();
+    await expect(page.getByText("These counts describe the catalog; the current item results could not be read.", { exact: true })).toBeVisible();
     await expect(page.getByText("Unexpected Application Error!")).toHaveCount(0);
     await expect(page.getByText(/TypeError:|Cannot read properties/)).toHaveCount(0);
-    await page.getByRole("link", { name: "Return to Mission Control" }).click();
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await page.getByRole("button", { name: "Retry catalog request" }).click();
+    await expect(page.getByRole("link", { name: "Fixture Application", exact: true })).toBeVisible();
+    await expect(page.getByText("Discovery catalog unavailable", { exact: true })).toHaveCount(0);
+    expect(reads).toBe(2);
 });
 
 test("maintenance history keeps unavailable requests findable and details optional", async ({ page }) => {

@@ -139,6 +139,7 @@ describe("DiscoveryPage", () => {
         expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
         expect(screen.queryByText("1 item found")).not.toBeInTheDocument();
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.getByText("These counts describe the catalog; the current item results could not be read.", { exact: true })).toBeInTheDocument();
         await user.clear(screen.getByLabelText("Keyword search"));
         await user.type(screen.getByLabelText("Keyword search"), "draft-change");
         mockedSearchDiscoveryItems.mockResolvedValue(searchPage([entry({ item: { ...entry().item, id: "redis", name: "Redis" } })]));
