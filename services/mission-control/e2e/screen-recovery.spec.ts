@@ -221,6 +221,40 @@ for (const width of [390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`installation plan details stay collapsed until requested at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        const entry = discoveryItemsPage.entries[0];
+        const plan = {
+            schema_version: "installation-plan-v1",
+            fingerprint: { algorithm: "sha256", canonicalization: "atlas-jcs-nfc-v1", value: "a".repeat(64) },
+            application: { item_id: "fixture-app", catalog_entry_id: "fixture-app", display_name: "Fixture Application", release_version: null },
+            status: "missing_deployment_artifact",
+            deployment_artifact: { state: "missing", kind: "docker-compose", repository_path: null, service: null, content_digest: null },
+            image: { state: "missing", reference: null, digest: null, release_version: null },
+            accepted_evidence: [], provenance: [], compatibility: [], prerequisites: [], relationships: [], assumptions: [],
+            blockers: [{ code: "missing_deployment_artifact", subject: "fixture-app" }],
+            risks: [], missing_facts: [{ code: "deployment_artifact", subject: "fixture-app" }], required_operator_confirmations: [],
+        };
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items/fixture-app", (route) => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/relationships", (route) => route.fulfill({ json: {
+            item_id: "fixture-app", incoming: [], outgoing: [],
+        } }));
+        await page.route("**/api/v1/discovery/items/fixture-app/installation-plan", (route) => route.fulfill({ json: plan }));
+        await page.goto("/discovery/items/fixture-app");
+
+        const panel = page.getByRole("region", { name: "Installation plan review" });
+        await expect(panel.getByText("1 unresolved blocker; this plan is not executable.")).toBeVisible();
+        const details = panel.locator("details").filter({ hasText: "Plan details" });
+        expect(await details.evaluate((element) => (element as HTMLDetailsElement).open)).toBe(false);
+        await expect(panel.getByText("a".repeat(64))).toBeHidden();
+        await panel.getByText("Plan details", { exact: true }).click();
+        await expect(panel.getByText("a".repeat(64))).toBeVisible();
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
+
 test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
     let reads = 0;
     await page.setViewportSize({ width: 390, height: 844 });

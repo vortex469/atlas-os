@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import type { InstallationPlan, InstallationPlanBlockerCode, InstallationPlanStatus } from "../../types/installationPlan";
@@ -104,6 +105,22 @@ function homeAssistantGoldenPlan(): InstallationPlan {
 }
 
 describe("InstallationPlanReview", () => {
+    it("keeps the plan status visible and collapses detailed evidence by default", async () => {
+        const user = userEvent.setup();
+        render(<InstallationPlanReview plan={genericPlan()} isLoading={false} unavailable={false} />);
+
+        expect(screen.getByText("Missing Deployment Artifact")).toBeVisible();
+        expect(screen.getByText("1 unresolved blocker; this plan is not executable.")).toBeVisible();
+        const details = screen.getByText("Plan details").closest("details");
+        expect(details).not.toBeNull();
+        expect(details).not.toHaveAttribute("open");
+        expect(screen.getByText(FINGERPRINT)).not.toBeVisible();
+
+        await user.click(screen.getByText("Plan details"));
+        expect(screen.getByText(FINGERPRINT)).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Blockers" })).toBeVisible();
+    });
+
     it.each<InstallationPlanStatus>([
         "conflicted",
         "missing_deployment_artifact",

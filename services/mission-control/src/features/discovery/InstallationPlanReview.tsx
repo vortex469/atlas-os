@@ -39,36 +39,41 @@ function PlanDetails({ plan }: { plan: InstallationPlan }) {
                         : `${plan.blockers.length} unresolved blocker${plan.blockers.length === 1 ? "" : "s"}; this plan is not executable.`}
                 </p>
             </div>
-            <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <Value name="Fingerprint algorithm" value={plan.fingerprint.algorithm} />
-                <Value name="Fingerprint canonicalization" value={plan.fingerprint.canonicalization} />
-                <Value name="Plan fingerprint" value={plan.fingerprint.value} />
-                <Value name="Fingerprint purpose" value="Integrity linkage only — not approval" />
-                <Value name="Application item" value={plan.application.item_id} />
-                <Value name="Application catalog entry ID" value={plan.application.catalog_entry_id} />
-                <Value name="Application display name" value={plan.application.display_name} />
-                <Value name="Application release version" value={nullable(plan.application.release_version)} />
-                <Value name="Deployment artifact state" value={label(plan.deployment_artifact.state)} />
-                <Value name="Deployment artifact kind" value={plan.deployment_artifact.kind} />
-                <Value name="Deployment repository path" value={nullable(plan.deployment_artifact.repository_path)} />
-                <Value name="Deployment artifact service" value={nullable(plan.deployment_artifact.service)} />
-                <Value name="Deployment artifact content digest" value={nullable(plan.deployment_artifact.content_digest)} />
-                <Value name="Image state" value={label(plan.image.state)} />
-                <Value name="Image reference" value={nullable(plan.image.reference)} />
-                <Value name="Image digest" value={nullable(plan.image.digest)} />
-                <Value name="Image release version" value={nullable(plan.image.release_version)} />
-                <Value name="Schema" value={plan.schema_version} />
-            </dl>
-            <ReviewList title="Compatibility" empty="No compatibility records." rows={plan.compatibility.map((row) => `Environment: ${row.environment} · Result: ${label(row.result)} · Reason code: ${row.reason_code}`)} />
-            <ReviewList title="Accepted evidence" empty="No accepted evidence records." rows={plan.accepted_evidence.map((row) => `Evidence ID: ${row.evidence_id} · Source class: ${row.source_class} · Source ID: ${row.source_id} · Subject: ${row.subject} · Claim: ${row.claim} · Immutable identity: ${row.immutable_identity} · Observed at: ${nullable(row.observed_at)} · Attested at: ${row.attested_at} · Freshness window seconds: ${row.freshness_window_seconds} · Trust: ${row.trust}`)} />
-            <ReviewList title="Relationships" empty="No relationships listed." rows={plan.relationships.map((row) => `Kind: ${row.kind} · Item: ${row.item_id} · Required: ${row.required ? "Yes" : "No"} · Minimum version: ${nullable(row.minimum_version)} · Maximum version: ${nullable(row.maximum_version)}`)} />
-            <ReviewList title="Blockers" empty="No unresolved blockers." rows={plan.blockers.map((row) => `${label(row.code)} — ${row.subject}`)} />
-            <ReviewList title="Required operator confirmations" empty="No operator confirmations required." rows={plan.required_operator_confirmations.map((row) => `${label(row.code)} — ${row.prompt} (${row.subject})`)} />
-            <ReviewList title="Risks" empty="No risks reported." rows={plan.risks.map((row) => `${label(row.severity)} · ${label(row.code)} — ${row.subject}`)} />
-            <ReviewList title="Missing facts" empty="No missing facts." rows={plan.missing_facts.map((row) => `${label(row.code)} — ${row.subject}`)} />
-            <ReviewList title="Prerequisites" empty="No prerequisites listed." rows={plan.prerequisites.map((row) => `Prerequisite ID: ${row.prerequisite_id} · Kind: ${row.kind} · State: ${row.state} · Description: ${row.description}`)} />
-            <ReviewList title="Assumptions" empty="No assumptions listed." rows={plan.assumptions.map((row) => `Assumption ID: ${row.assumption_id} · Kind: ${row.kind} · Statement: ${row.statement}`)} />
-            <ReviewList title="Provenance" empty="No provenance records." rows={plan.provenance.map((row) => `Claim: ${row.claim} · Source class: ${row.source_class} · Source ID: ${row.source_id} · Immutable identity: ${row.immutable_identity} · Observed at: ${nullable(row.observed_at)} · Attested at: ${nullable(row.attested_at)}`)} />
+            <details className="rounded-lg border border-slate-800 px-4 py-3">
+                <summary className="cursor-pointer text-sm font-medium text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Plan details</summary>
+                <div className="mt-4 space-y-5">
+                    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                        <Value name="Fingerprint algorithm" value={plan.fingerprint.algorithm} />
+                        <Value name="Fingerprint canonicalization" value={plan.fingerprint.canonicalization} />
+                        <Value name="Plan fingerprint" value={plan.fingerprint.value} />
+                        <Value name="Fingerprint purpose" value="Integrity linkage only — not approval" />
+                        <Value name="Application item" value={plan.application.item_id} />
+                        <Value name="Application catalog entry ID" value={plan.application.catalog_entry_id} />
+                        <Value name="Application display name" value={plan.application.display_name} />
+                        <Value name="Application release version" value={nullable(plan.application.release_version)} />
+                        <Value name="Deployment artifact state" value={label(plan.deployment_artifact.state)} />
+                        <Value name="Deployment artifact kind" value={plan.deployment_artifact.kind} />
+                        <Value name="Deployment repository path" value={nullable(plan.deployment_artifact.repository_path)} />
+                        <Value name="Deployment artifact service" value={nullable(plan.deployment_artifact.service)} />
+                        <Value name="Deployment artifact content digest" value={nullable(plan.deployment_artifact.content_digest)} />
+                        <Value name="Image state" value={label(plan.image.state)} />
+                        <Value name="Image reference" value={nullable(plan.image.reference)} />
+                        <Value name="Image digest" value={nullable(plan.image.digest)} />
+                        <Value name="Image release version" value={nullable(plan.image.release_version)} />
+                        <Value name="Schema" value={plan.schema_version} />
+                    </dl>
+                    <ReviewList title="Compatibility" empty="No compatibility records." rows={plan.compatibility.map((row) => `Environment: ${row.environment} · Result: ${label(row.result)} · Reason code: ${row.reason_code}`)} />
+                    <ReviewList title="Accepted evidence" empty="No accepted evidence records." rows={plan.accepted_evidence.map((row) => `Evidence ID: ${row.evidence_id} · Source class: ${row.source_class} · Source ID: ${row.source_id} · Subject: ${row.subject} · Claim: ${row.claim} · Immutable identity: ${row.immutable_identity} · Observed at: ${nullable(row.observed_at)} · Attested at: ${row.attested_at} · Freshness window seconds: ${row.freshness_window_seconds} · Trust: ${row.trust}`)} />
+                    <ReviewList title="Relationships" empty="No relationships listed." rows={plan.relationships.map((row) => `Kind: ${row.kind} · Item: ${row.item_id} · Required: ${row.required ? "Yes" : "No"} · Minimum version: ${nullable(row.minimum_version)} · Maximum version: ${nullable(row.maximum_version)}`)} />
+                    <ReviewList title="Blockers" empty="No unresolved blockers." rows={plan.blockers.map((row) => `${label(row.code)} — ${row.subject}`)} />
+                    <ReviewList title="Required operator confirmations" empty="No operator confirmations required." rows={plan.required_operator_confirmations.map((row) => `${label(row.code)} — ${row.prompt} (${row.subject})`)} />
+                    <ReviewList title="Risks" empty="No risks reported." rows={plan.risks.map((row) => `${label(row.severity)} · ${label(row.code)} — ${row.subject}`)} />
+                    <ReviewList title="Missing facts" empty="No missing facts." rows={plan.missing_facts.map((row) => `${label(row.code)} — ${row.subject}`)} />
+                    <ReviewList title="Prerequisites" empty="No prerequisites listed." rows={plan.prerequisites.map((row) => `Prerequisite ID: ${row.prerequisite_id} · Kind: ${row.kind} · State: ${row.state} · Description: ${row.description}`)} />
+                    <ReviewList title="Assumptions" empty="No assumptions listed." rows={plan.assumptions.map((row) => `Assumption ID: ${row.assumption_id} · Kind: ${row.kind} · Statement: ${row.statement}`)} />
+                    <ReviewList title="Provenance" empty="No provenance records." rows={plan.provenance.map((row) => `Claim: ${row.claim} · Source class: ${row.source_class} · Source ID: ${row.source_id} · Immutable identity: ${row.immutable_identity} · Observed at: ${nullable(row.observed_at)} · Attested at: ${nullable(row.attested_at)}`)} />
+                </div>
+            </details>
         </div>
     );
 }

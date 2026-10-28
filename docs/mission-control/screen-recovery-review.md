@@ -977,3 +977,12 @@ Temporary image-grounding read failures now offer an in-place retry. A genuine
 404 remains an unavailable projection without a retry control. Focused component
 and page tests plus mobile and desktop browser checks verify both the transient
 recovery and the separate missing state. No deployment action is introduced.
+
+## Installation plan detail density — 2026-10-28
+
+The Installation Plan panel now keeps the plan status and blocker count visible
+while placing its long fingerprint, provenance, evidence, and blocker record
+under a collapsed “Plan details” section. Operators can expand the complete
+record when needed. Focused component coverage and mobile and desktop browser
+checks verify the default summary and expanded details; installation authority
+and controls are unchanged.
