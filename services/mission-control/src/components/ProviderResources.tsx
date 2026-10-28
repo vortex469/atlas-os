@@ -71,7 +71,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const loadManagement = useCallback(async (): Promise<boolean> => {
         setManagementLoading(true); setManagementError(null);
         try { setManagement(await getProviderManagement(provider.id)); return true; }
-        catch (error) { setManagementError(getAtlasErrorMessage(error, "Provider Intent authority could not be read.")); return false; }
+        catch (error) { setManagementError(getAtlasErrorMessage(error, "Atlas could not load monitoring settings.")); return false; }
         finally { setManagementLoading(false); }
     }, [provider.id]);
 
@@ -81,7 +81,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         try { setOperator(await getAuthenticatedProviderManagement(provider.id)); return true; }
         catch (error) {
             if (isAxiosError(error) && error.response?.status === 401) session.invalidate();
-            setOperator(null); setOperatorError("Operator edit readiness could not be loaded. Public monitoring state remains available."); return false;
+            setOperator(null); setOperatorError("Atlas could not check your edit access. Public monitoring state remains available."); return false;
         } finally { setOperatorLoading(false); }
     }, [provider.id, session]);
 
@@ -92,7 +92,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         catch (error) {
             if (isAxiosError(error) && error.response?.status === 401) session.invalidate();
             setSuggestions([]);
-            setSuggestionError("Advisory monitoring suggestions could not be loaded. Current monitoring state remains authoritative.");
+            setSuggestionError("Suggested monitoring choices could not be loaded. Your current monitoring settings have not changed.");
             return false;
         }
     }, [provider.id, session]);
@@ -138,7 +138,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
             || publicResource.record_version !== null
         )) {
             clearReviewed(key);
-            setRowErrors((current) => ({ ...current, [key]: "The reviewed suggestion is stale. Review current monitoring state before saving." }));
+            setRowErrors((current) => ({ ...current, [key]: "This suggestion is out of date. Review the current monitoring setting before saving." }));
             await Promise.all([loadManagement(), loadOperator(), loadSuggestions()]);
             return;
         }
@@ -157,7 +157,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
             committed = true; invalidateReviewed(key);
             const [publicReloaded, operatorReloaded, suggestionsReloaded] = await Promise.all([loadManagement(), loadOperator(), loadSuggestions()]);
             if (suggestionsReloaded) clearReviewed(key);
-            if (!publicReloaded || !operatorReloaded) setRowErrors((current) => ({ ...current, [key]: "Provider Intent was saved, but refreshed server state could not be loaded." }));
+            if (!publicReloaded || !operatorReloaded) setRowErrors((current) => ({ ...current, [key]: "Monitoring expectation saved, but Atlas could not reload the latest settings." }));
             else setRowStatuses((current) => ({ ...current, [key]: suggestionsReloaded ? "Monitoring expectation saved and confirmed by Atlas Core." : "Monitoring expectation saved and confirmed. Advisory suggestions could not be refreshed." }));
         } catch (error) {
             if (committed) return;
@@ -165,13 +165,13 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
             const detail = isAxiosError<{ detail?: string }>(error) ? error.response?.data?.detail : undefined;
             let message = "Atlas Core could not save the monitoring expectation.";
             if (status === 401) { session.invalidate(); message = "Operator session expired. Sign in again."; }
-            else if (status === 403) message = "Your operator session does not permit Provider Intent updates.";
-            else if (status === 409 && detail === "cas_conflict") message = "Provider Intent changed. Review the current state and make a fresh decision.";
-            else if (status === 409 && detail === "fingerprint_mismatch") message = "The resource identity changed. Review the replacement before saving.";
-            else if (status === 409 && detail === "request_conflict") message = "This save request is stale. Start a new Save action.";
-            else if (status === 429) message = "Provider Intent saves are rate limited. Wait before trying again.";
-            else if (status === 422) message = "The Provider Intent request is invalid. Review the current state and choose again.";
-            else if (status === 503) message = "Provider Intent editing is temporarily unavailable or awaiting migration.";
+            else if (status === 403) message = "Your account does not have permission to edit monitoring expectations.";
+            else if (status === 409 && detail === "cas_conflict") message = "Monitoring settings changed. Review the current state and choose again.";
+            else if (status === 409 && detail === "fingerprint_mismatch") message = "This VM's identity changed. Review the current resource before saving again.";
+            else if (status === 409 && detail === "request_conflict") message = "This save request is out of date. Review the current setting and choose again.";
+            else if (status === 429) message = "Too many monitoring updates were sent. Wait before trying again.";
+            else if (status === 422) message = "Atlas could not accept this monitoring change. Review the setting and try again.";
+            else if (status === 503) message = "Monitoring edits are temporarily unavailable.";
             setRowErrors((current) => ({ ...current, [key]: message }));
             if (status === 409 && (detail === "cas_conflict" || detail === "fingerprint_mismatch")) { invalidateReviewed(key); await Promise.all([loadManagement(), loadOperator(), loadSuggestions()]); }
         } finally { setUpdatingCoordinate(null); }
@@ -186,28 +186,46 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     ), [suggestions]);
     if (!supported) return null;
     const refreshedAt = inventory ? new Date(inventory.refreshed_at).toLocaleString() : "Not refreshed yet";
+    const operatorState = !session.authenticated
+        ? "anonymous"
+        : operatorLoading || managementLoading
+          ? "loading"
+          : operator
+            ? "available"
+            : operatorError
+              ? "unavailable"
+              : "loading";
+    const showEmptyInventory = !inventoryError
+        && !composition.error
+        && composition.resources.length === 0;
+    const showResources = !composition.error && composition.resources.length > 0;
+    const loadingResources = inventoryLoading
+        && inventory === null
+        && managementLoading
+        && management === null;
 
     return (
         <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg shadow-slate-950/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><SectionHeader title="Resources and monitoring" description="Observed provider facts, identity assurance, and monitoring policy are shown separately." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed: {refreshedAt}</p></div>
+                <div><SectionHeader title="Resources and monitoring" description="See what Atlas observes, whether it can identify each resource, and what monitoring expects." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed: {refreshedAt}</p></div>
                 <button type="button" onClick={() => void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()])} disabled={inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">
                 {inventoryError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{inventoryError}</p>}
                 {managementError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Monitoring unavailable — {managementError} Observed inventory remains visible.</p>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
+                {operatorState === "loading" && !loadingResources && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-300">Checking monitoring settings and edit access...</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
-                {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Resource coordinates could not be composed safely. Monitoring and editing are unavailable.</p>}
+                {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Atlas found conflicting resource records. Monitoring and editing are unavailable until it can match them safely.</p>}
             </div>
-            {inventoryLoading && inventory === null && managementLoading && management === null ? <p role="status" className="mt-6 text-sm text-slate-400">Loading observed resources and monitoring state...</p> : composition.resources.length === 0 ? <p className="mt-6 text-sm text-slate-400">No provider resources are available.</p> : (
-                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} metadataColumns={metadataColumns} managementUnavailable={management === null} operatorState={session.authenticated ? (operator ? "available" : "unavailable") : "anonymous"} saving={updatingCoordinate === resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
-            )}
+            {loadingResources ? <p role="status" className="mt-6 text-sm text-slate-400">Loading observed resources and monitoring state...</p> : showEmptyInventory ? <p className="mt-6 text-sm text-slate-400">No provider resources are available.</p> : showResources ? (
+                <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} metadataColumns={metadataColumns} managementUnavailable={management === null} operatorState={operatorState} saving={updatingCoordinate === resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
+            ) : null}
         </section>
     );
 }
 
-function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, metadataColumns, managementUnavailable, operatorState, saving, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; metadataColumns: MetadataColumn[]; managementUnavailable: boolean; operatorState: "anonymous" | "available" | "unavailable"; saving: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
+function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, metadataColumns, managementUnavailable, operatorState, saving, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; metadataColumns: MetadataColumn[]; managementUnavailable: boolean; operatorState: "anonymous" | "loading" | "available" | "unavailable"; saving: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
     const observed = resource.inventory;
     const managed = resource.inconsistent ? null : resource.management;
     const displayName = observed?.display_name ?? managed?.display_name ?? "Unknown resource";

@@ -108,7 +108,7 @@ export function monitoringPresentation(
         return {
             identity: "Unable to verify",
             expectation: "Monitoring unavailable",
-            status: "Monitoring unavailable — Provider Intent authority could not be read",
+            status: "Monitoring unavailable — Atlas could not load monitoring settings",
         };
     }
     const identity = identityLabel(managed.identity_assurance);
@@ -134,13 +134,13 @@ export function monitoringPresentation(
         };
     }
     const statuses: Record<string, string> = {
-        no_active_intent: "Needs Review — monitoring expectation not configured",
-        legacy_unbound_evidence: "Needs Review — historical expectation available for review",
-        incarnation_mismatch: "Needs Review — resource incarnation changed",
-        identity_unavailable: "Needs Review — authoritative identity unavailable",
-        authority_store_unavailable: "Monitoring unavailable — Provider Intent authority could not be read",
-        resource_missing: "Resource missing — retained expectation does not describe a current live identity",
-        resource_type_unsupported: "Unsupported for identity-bound monitoring",
+        no_active_intent: "Needs review — no monitoring expectation is set",
+        legacy_unbound_evidence: "Needs review — an older monitoring setting is available for reference",
+        incarnation_mismatch: "Needs review — this VM was replaced",
+        identity_unavailable: "Needs review — Atlas cannot verify this VM's identity",
+        authority_store_unavailable: "Monitoring unavailable — Atlas could not load monitoring settings",
+        resource_missing: "Resource missing — its saved monitoring setting does not apply to a current instance",
+        resource_type_unsupported: "Monitoring is not supported for this resource type",
     };
     return {
         identity,
