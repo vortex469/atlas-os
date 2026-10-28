@@ -670,3 +670,17 @@ production build pass.
 Mission Control completion remains open while these applicable journey and
 operator acceptance requirements are unverified. Deferred execution capabilities
 and the successor control plane are not made available by this work.
+
+## Workflow audit review — 2026-10-28
+
+The repository audit now opens with a stable title, plain-language workflow
+status, audit validity, and the stage progress grid. Workflow IDs, recorded
+state, source, and validation codes are available under Technical details;
+individual stage evidence is collapsed under its stage. Missing and inconsistent
+stage warnings remain visible, and invalid audit records still identify that
+review is needed. The maintenance audit uses plain-language workflow status and
+inconsistency messaging. Audit remains read-only, with no approval or execution
+controls added. Stage sections now have valid accessible names. The focused page
+suite passes (20 tests), repository and maintenance journeys pass at 390px and
+1280px (6 browser tests), and lint, production build, and `git diff --check`
+pass.

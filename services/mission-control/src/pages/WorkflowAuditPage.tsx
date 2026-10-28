@@ -228,7 +228,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                 <Link to="/workflows" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow Dashboard</Link>
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
-                    <p className="mt-2 text-sm text-slate-300">Atlas Agent did not find workflow {workflowId}.</p>
+                    <p className="mt-2 text-sm text-slate-300">This workflow could not be found. Check the link or return to the workflow list.</p>
                 </section>
             </main>
         );
@@ -241,33 +241,40 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
-                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Audit</p>
-                <h1 className="text-3xl font-bold text-white">Workflow {audit.workflow_id}</h1>
+                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Read-only record</p>
+                <h1 className="text-3xl font-bold text-white">Workflow audit</h1>
                 <p className="max-w-3xl text-sm leading-6 text-slate-400">
-                    Review the recorded steps, approvals and results for this workflow. This page only reads information.
+                    Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.
                 </p>
             </header>
 
             <section aria-labelledby="audit-overview-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="audit-overview-heading" className="text-lg font-semibold text-white">Overview</h2>
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-3">
-                    <Detail label="Workflow ID" value={audit.workflow_id} />
-                    <Detail label="Workflow status" value={formatStatusLabel(audit.workflow_state)} />
-                    <Detail label="Workflow Source" value={audit.workflow_source} />
+                    <Detail label="Workflow status" value={formatWorkflowAuditStatus(audit)} />
                     {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
                     <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
-                    <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
                 </dl>
                 {audit.validation.failure_code !== null && (
                     <p role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                        Inconsistent audit: {audit.validation.failure_code}
-                        {audit.validation.failure_stage ? ` at ${audit.validation.failure_stage}` : ""}
+                        This audit record is inconsistent. Review the flagged stage below and its recorded details.
                     </p>
                 )}
+                <details className="mt-4 border-t border-slate-800 pt-4">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Workflow ID" value={audit.workflow_id} />
+                        <Detail label="Recorded workflow state" value={formatStatusLabel(audit.workflow_state)} />
+                        <Detail label="Workflow source" value={audit.workflow_source} />
+                        <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
+                        <Detail label="Audit failure stage" value={audit.validation.failure_stage ?? "None"} />
+                    </dl>
+                </details>
             </section>
 
             <section aria-labelledby="audit-stage-list-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="audit-stage-list-heading" className="text-lg font-semibold text-white">Stage status</h2>
+                <p className="mt-2 text-sm text-slate-400">Open a stage below to inspect its recorded details.</p>
                 <ol className="mt-4 grid gap-2 text-sm md:grid-cols-3 lg:grid-cols-4">
                     {AUDIT_STAGE_ORDER.map(({ title, stage }) => (
                         <TimelineStage
@@ -282,27 +289,30 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             {AUDIT_STAGE_ORDER.map(({ stage, title, details }) => {
                 const status = normalizeStageStatus(findStageStatus(timeline, stage));
                 const isIssue = status === "missing" || status === "inconsistent";
+                const headingId = `audit-stage-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
                 return (
-                    <section key={title} aria-labelledby={`audit-${title}-heading`} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                        <h2 id={`audit-${title}-heading`} className="text-lg font-semibold text-white">{title}</h2>
-                        <p className="mt-2 text-sm text-slate-300">Status: {formatStatusLabel(status)}</p>
+                    <section key={title} aria-labelledby={headingId} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <h2 id={headingId} className="text-lg font-semibold text-white">{title}</h2>
                         {isIssue && (
                             <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
                                 {status === "missing" ? "Required artifact is missing." : "This stage is inconsistent with audit-chain validation."}
                             </p>
                         )}
-                        <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                            {details(audit).map((detail) => (
-                                <Detail key={detail.label} label={detail.label} value={detail.value} />
-                            ))}
-                        </dl>
+                        <details className="mt-4 border-t border-slate-800 pt-4">
+                            <summary className="mc-focusable cursor-pointer text-sm font-medium text-blue-200">Recorded details</summary>
+                            <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                                {details(audit).map((detail) => (
+                                    <Detail key={detail.label} label={detail.label} value={detail.value} />
+                                ))}
+                            </dl>
+                        </details>
                     </section>
                 );
             })}
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 className="text-lg font-semibold text-white">How to read this audit</h2>
-                <p className="mt-2 text-sm text-slate-300">Stage statuses come from the recorded workflow timeline and audit validation. The fields above show what Atlas received.</p>
+                <p className="mt-2 text-sm text-slate-300">Stage statuses come from the recorded workflow timeline and audit validation. Open a stage to see the evidence Atlas received.</p>
                 <p className="mt-3 text-sm text-slate-400">This page is read-only.</p>
             </section>
 
@@ -348,10 +358,20 @@ function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
             <Link to={`/workflows/${encodeURIComponent(audit.workflow_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
         </header>
         <section aria-label="Audit validation" className="rounded-xl border border-slate-800 p-5 text-slate-300">
-            <p>Workflow state: {formatStatusLabel(audit.workflow_state)}</p>
+            <p>Workflow status: {formatWorkflowAuditStatus(audit)}</p>
             <p>Audit validation: {audit.validation.valid ? "Valid" : "Invalid"}</p>
             {audit.blocked_reason && <p>Blocked reason: {audit.blocked_reason}</p>}
-            {audit.validation.failure_code && <p role="alert">Inconsistent audit: {audit.validation.failure_code}</p>}
+            {audit.validation.failure_code && <p role="alert">This audit record is inconsistent. Review its technical details.</p>}
+            <details className="mt-4 border-t border-slate-800 pt-4">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    <Detail label="Workflow ID" value={audit.workflow_id} />
+                    <Detail label="Recorded workflow state" value={formatStatusLabel(audit.workflow_state)} />
+                    <Detail label="Workflow source" value={audit.workflow_source} />
+                    <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
+                    <Detail label="Audit failure stage" value={audit.validation.failure_stage ?? "None"} />
+                </dl>
+            </details>
         </section>
         <OperationalLifecyclePanel lifecycle={lifecycle} isLoading={loading && !lifecycle} isRefreshing={loading} error={error} onRefresh={() => void load()} />
         {error && <button type="button" disabled={loading} onClick={() => void load()} className="mc-control mc-focusable px-4 py-2 text-sm">Refresh maintenance evidence</button>}
@@ -422,4 +442,45 @@ function formatStatusLabel(value: string): string {
         .replace("invalid", "Inconsistent")
         .replace("inconsistent", "Inconsistent")
         .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
+    const action = audit.effect_kind === "operational_action" ? "Maintenance action" : "Implementation";
+    switch (audit.workflow_state) {
+        case "planned":
+            return "Workflow is ready for review.";
+        case "awaiting_approval":
+            return "Workflow is waiting for review.";
+        case "awaiting_implementation_approval":
+            return approvalStatusMessage(action, audit.approvals.implementation.status, "Resume to run it.");
+        case "awaiting_execution":
+            return action + " is approved and ready to run.";
+        case "executing":
+            return action + " is running.";
+        case "patch_applied_pending_verification":
+            return "Implementation is complete. Verification is next.";
+        case "awaiting_verification_approval":
+            return approvalStatusMessage("Verification", audit.approvals.verification.status, "Resume to run the checks.");
+        case "verifying":
+            return "Verification checks are running.";
+        case "awaiting_commit_approval":
+            return approvalStatusMessage("Commit", audit.approvals.commit.status, "Resume to finish it.");
+        case "committing":
+            return "The commit is being recorded.";
+        case "blocked":
+            return "Workflow is blocked. Review the recorded stages and results below.";
+        case "implementation_rejected":
+            return action + " approval was rejected.";
+        case "completed":
+            return "Workflow completed.";
+        default:
+            return "Workflow status is unavailable.";
+    }
+}
+
+function approvalStatusMessage(action: string, status: string, approvedNextStep: string): string {
+    if (status === "approved") return action + " is approved. " + approvedNextStep;
+    if (status === "rejected") return action + " approval was rejected.";
+    if (status === "pending") return action + " needs approval.";
+    return action + " approval status is unavailable.";
 }

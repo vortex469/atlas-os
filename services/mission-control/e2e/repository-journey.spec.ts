@@ -76,6 +76,9 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "How to read this audit", exact: true })).toBeVisible();
         await expect(page.getByText("This page is read-only.", { exact: true })).toBeVisible();
+        const commitResult = page.getByRole("region", { name: "Commit Result" });
+        await expect(commitResult.getByText(journey.commit, { exact: true })).toBeHidden();
+        await commitResult.getByText("Recorded details", { exact: true }).click();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await fitsViewport(page);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
