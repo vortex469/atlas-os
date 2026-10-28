@@ -208,6 +208,20 @@ when the catalog does not supply check times. Health state and reported reason
 remain visible. The focused registry test and 390px and 1280px browser checks
 cover the summary; provider reads and actions are unchanged.
 
+## Workflow action response recovery — 2026-10-28
+
+Implementation, verification, commit approval, and workflow resume failures now
+say that Mission Control could not confirm the result, that workflow status was
+refreshed, and which current status the operator should review before taking
+another step. Backend error text stays under collapsed Technical details. The
+existing server status refresh, approval controls, separate Resume step, and
+request contracts are unchanged; Mission Control adds no retry or automatic
+action. Workflow page tests cover all approval stages and resume recovery. Four
+focused suites pass (107 tests). The full Mission Control suite passes (2,777
+tests across 181 files), and lint, build, and `git diff --check` pass. Stale
+dashboard and structural assertions were aligned with the current collapsed
+source details, plain-language blocker label, and local-only list expansion.
+
 ## Provider detail information hierarchy — 2026-10-28
 
 The provider detail card leads with health, available response time, workspace,

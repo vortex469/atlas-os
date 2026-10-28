@@ -49,6 +49,7 @@ describe("v0.34 installation readiness review release boundary", () => {
     it("states the complete non-authorizing boundary and Home Assistant blocker", () => {
         expect(page).toMatch(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
         expect(page).toContain("installation_capability_unsupported");
-        expect(page).toContain("Installation capability unsupported");
+        expect(page).toContain("Atlas cannot install this type of item yet.");
+        expect(page).not.toContain("Installation capability unsupported");
     });
 });

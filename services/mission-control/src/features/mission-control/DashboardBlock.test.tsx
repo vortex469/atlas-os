@@ -19,8 +19,9 @@ describe("integrated attention and activity", () => {
     it("labels only authoritative approval waits as human action required, deduplicates, and navigates", async () => {
         const items = ["blocked", "awaiting_approval", "awaiting_implementation_approval", "awaiting_verification_approval", "awaiting_commit_approval", "completed", "executing", "mystery"].map(state => ({ workflow_id: state, workflow_state: state }));
         render(dashboard({ workflows: { data: { items: [...items, items[1], null] } } }));
-        expect(attention().getAllByRole("listitem")).toHaveLength(5);
-        expect(attention().getAllByRole("listitem")[0]).toHaveTextContent("Blocked");
+        const conditions = within(attention().getByRole("list", { name: "Reported attention conditions" }));
+        expect(conditions.getAllByRole("listitem")).toHaveLength(5);
+        expect(conditions.getAllByRole("listitem")[0]).toHaveTextContent("Blocked");
         expect(attention().getAllByText("Human action required", { exact: true })).toHaveLength(4);
         expect(attention().queryByRole("link", { name: "mystery" })).not.toBeInTheDocument();
         await userEvent.click(attention().getByRole("link", { name: "Workflow · Waiting for approval" }));
@@ -28,20 +29,22 @@ describe("integrated attention and activity", () => {
     });
     it.each([" ", "", "..", "\ud800", {}])("rejects malformed workflow identity %j without requiring human action", id => {
         render(dashboard({ workflows: { data: { items: [{ workflow_id: id, workflow_state: "awaiting_approval" }] } } }));
-        expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText("Workflow results are incomplete.")).toBeVisible();
+        expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
+        const sourceStatus = attention().getByText("Source status").closest("details");
+        expect(sourceStatus).not.toHaveAttribute("open");
+        expect(sourceStatus).toHaveTextContent(/workflow results are incomplete/i);
     });
     it("keeps stale approval requirements historical and clears them on recovery", () => {
         const view = render(dashboard({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: "w", workflow_state: "awaiting_approval" }] } } }));
         expect(attention().getByText("Last-known human action required; current requirement unknown.")).toBeVisible();
         expect(attention().queryByText("Human action required", { exact: true })).not.toBeInTheDocument();
         view.rerender(dashboard({ workflows: { data: { items: [], total: 0, limit: 200, offset: 0 } } }));
-        expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
+        expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
     });
     it("never creates action requirements from absent or malformed evidence or historical failures", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
-        expect(attention().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText(/Atlas cannot confirm whether attention is needed/)).toBeVisible();
+        expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
+        expect(attention().getByText("Some information is missing. Atlas cannot confirm this list includes everything that needs attention.")).toBeVisible();
         expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
     it("orders and deduplicates source history with provider context and safe detail navigation", async () => {

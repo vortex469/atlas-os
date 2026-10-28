@@ -256,20 +256,24 @@ describe("WorkflowPage", () => {
         let initial: WorkflowDetailResponse;
         let decided: WorkflowDetailResponse;
         let buttonName: string;
+        let expectedFailureMessage: string;
         if (stage === "implementation") {
             initial = workflow();
             decided = workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" });
             buttonName = "Approve Implementation";
+            expectedFailureMessage = "Mission Control could not confirm the implementation approval decision.";
             mockedSubmitWorkflowImplementationApproval.mockRejectedValueOnce(new Error("Approval already decided"));
         } else if (stage === "verification") {
             initial = workflowAwaitingVerification({ verification_approval_status: "pending" });
             decided = workflowAwaitingVerification({ verification_approval_status: "approved" });
             buttonName = "Approve Verification";
+            expectedFailureMessage = "Mission Control could not confirm the verification approval decision.";
             mockedSubmitWorkflowVerificationApproval.mockRejectedValueOnce(new Error("Approval already decided"));
         } else {
             initial = workflowAwaitingCommit();
             decided = workflowAwaitingCommit({ workflow_state: "committing", commit_approval_status: "approved" });
             buttonName = "Approve Commit";
+            expectedFailureMessage = "Mission Control could not confirm the commit approval decision.";
             mockedSubmitWorkflowCommitApproval.mockRejectedValueOnce(new Error("Approval already decided"));
         }
         mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockResolvedValueOnce(decided);
@@ -277,7 +281,10 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: buttonName }));
 
-        expect(await screen.findByText("Approval already decided.")).toBeVisible();
+        expect(await screen.findByText(new RegExp(expectedFailureMessage))).toBeVisible();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(technicalDetails).toHaveTextContent("Approval already decided");
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
         expect(screen.queryByRole("button", { name: buttonName })).not.toBeInTheDocument();
     });
@@ -598,8 +605,11 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Verification" }));
 
-        await screen.findByRole("alert");
-        expect(screen.getByRole("alert")).toHaveTextContent("Workflow blocked");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not confirm the workflow result.");
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(technicalDetails).toHaveTextContent("Workflow blocked");
         expect(screen.getByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
     });
@@ -1110,12 +1120,16 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: /roll back|rollback/i })).not.toBeInTheDocument();
     });
 
-    it("maps approval error states", async () => {
+    it("shows approval failures in plain language with the backend message collapsed", async () => {
         mockedSubmitWorkflowImplementationApproval.mockRejectedValue(new Error("approval already approved"));
         renderPage();
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Approval already approved.");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not confirm the implementation approval decision.");
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(technicalDetails).toHaveTextContent("approval already approved");
     });
 });

@@ -32,6 +32,35 @@ import { fallbackWorkflowRailStages, workflowRailStages } from "../utils/workflo
 
 type LoadMode = "initial" | "refresh";
 
+type WorkflowActionFailure = {
+    message: string;
+    details: string | null;
+};
+
+const actionFailureFallback = "No additional technical details were provided.";
+
+function workflowActionFailure(error: unknown, message: string): WorkflowActionFailure {
+    const details = getAtlasAgentErrorMessage(error, actionFailureFallback);
+    return {
+        message,
+        details: details === actionFailureFallback ? null : details,
+    };
+}
+
+function WorkflowActionError({ failure }: { failure: WorkflowActionFailure }) {
+    return (
+        <div role="alert" className="mt-3 text-sm text-red-100">
+            <p>{failure.message}</p>
+            {failure.details && (
+                <details className="mt-2">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                    <p className="mt-2 break-words text-sm text-slate-400">{failure.details}</p>
+                </details>
+            )}
+        </div>
+    );
+}
+
 export function WorkflowPage() {
     const { workflowId = "" } = useParams<{ workflowId: string }>();
     return <WorkflowDetail key={workflowId} workflowId={workflowId} />;
@@ -44,16 +73,16 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [loadErrorDetails, setLoadErrorDetails] = useState<string | null>(null);
-    const [approvalError, setApprovalError] = useState<string | null>(null);
+    const [approvalError, setApprovalError] = useState<WorkflowActionFailure | null>(null);
     const [approvalResult, setApprovalResult] = useState<WorkflowImplementationApprovalResponse | null>(null);
     const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
-    const [verificationApprovalError, setVerificationApprovalError] = useState<string | null>(null);
+    const [verificationApprovalError, setVerificationApprovalError] = useState<WorkflowActionFailure | null>(null);
     const [verificationApprovalResult, setVerificationApprovalResult] = useState<WorkflowVerificationApprovalResponse | null>(null);
     const [isSubmittingCommit, setIsSubmittingCommit] = useState(false);
-    const [commitApprovalError, setCommitApprovalError] = useState<string | null>(null);
+    const [commitApprovalError, setCommitApprovalError] = useState<WorkflowActionFailure | null>(null);
     const [commitApprovalResult, setCommitApprovalResult] = useState<WorkflowCommitApprovalResponse | null>(null);
     const [isResuming, setIsResuming] = useState(false);
-    const [resumeError, setResumeError] = useState<string | null>(null);
+    const [resumeError, setResumeError] = useState<WorkflowActionFailure | null>(null);
     const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
     const [recoveryDiagnostic, setRecoveryDiagnostic] = useState<WorkflowRecoveryDiagnostic | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
@@ -195,7 +224,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setApprovalResult(result);
             await loadWorkflow("refresh");
         } catch (error) {
-            setApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Approval failed." : "Rejection failed."));
+            setApprovalError(workflowActionFailure(
+                error,
+                workflow.effect_kind === "operational_action"
+                    ? "Mission Control could not confirm the maintenance approval decision. The workflow status was refreshed; check its current status before taking another step."
+                    : "Mission Control could not confirm the implementation approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+            ));
             await loadWorkflow("refresh");
         } finally {
             setIsSubmitting(false);
@@ -211,7 +245,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setVerificationApprovalResult(result);
             await loadWorkflow("refresh");
         } catch (error) {
-            setVerificationApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Verification approval failed." : "Verification rejection failed."));
+            setVerificationApprovalError(workflowActionFailure(
+                error,
+                "Mission Control could not confirm the verification approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+            ));
             await loadWorkflow("refresh");
         } finally {
             setIsSubmittingVerification(false);
@@ -227,7 +264,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setCommitApprovalResult(result);
             await loadWorkflow("refresh");
         } catch (error) {
-            setCommitApprovalError(getAtlasAgentErrorMessage(error, decision === "approve" ? "Commit approval failed." : "Commit rejection failed."));
+            setCommitApprovalError(workflowActionFailure(
+                error,
+                "Mission Control could not confirm the commit approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+            ));
             await loadWorkflow("refresh");
         } finally {
             setIsSubmittingCommit(false);
@@ -339,7 +379,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             await resumeWorkflow(workflow.workflow_id);
             await loadWorkflow("refresh");
         } catch (error) {
-            setResumeError(getAtlasAgentErrorMessage(error, "Workflow resume failed."));
+            setResumeError(workflowActionFailure(
+                error,
+                "Mission Control could not confirm the workflow result. The workflow status was refreshed; review its current stage before taking another step.",
+            ));
             await loadWorkflow("refresh");
         } finally {
             setIsResuming(false);
@@ -502,7 +545,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
                     <p role="status" className="mt-3 text-sm text-red-100">{isOperational ? "Maintenance request rejected." : "Implementation request rejected."}</p>
                 )}
-                {approvalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(approvalError)}</p>}
+                {approvalError && <WorkflowActionError failure={approvalError} />}
             </section>
 
             {canResume && (
@@ -520,7 +563,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         </button>
                     </div>
                     {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting the approved maintenance request..." : "Resuming workflow..."}</p>}
-                    {resumeError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(resumeError)}</p>}
+                    {resumeError && <WorkflowActionError failure={resumeError} />}
                 </section>
             )}
 
@@ -608,7 +651,7 @@ function VerificationReviewSection({
     isSubmittingVerification: boolean;
     actionsDisabled: boolean;
     verificationApprovalResult: WorkflowVerificationApprovalResponse | null;
-    verificationApprovalError: string | null;
+    verificationApprovalError: WorkflowActionFailure | null;
     onVerificationDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
 }) {
     const plan = workflow.verification_plan;
@@ -676,7 +719,7 @@ function VerificationReviewSection({
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
                 {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
                 {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
-                {verificationApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(verificationApprovalError)}</p>}
+                {verificationApprovalError && <WorkflowActionError failure={verificationApprovalError} />}
             </section>
 
         </section>
@@ -697,7 +740,7 @@ function CommitSection({
     isSubmittingCommit: boolean;
     actionsDisabled: boolean;
     commitApprovalResult: WorkflowCommitApprovalResponse | null;
-    commitApprovalError: string | null;
+    commitApprovalError: WorkflowActionFailure | null;
     onCommitDecision: (decision: WorkflowImplementationDecision) => Promise<void>;
 }) {
     const request = workflow.commit_request;
@@ -745,7 +788,7 @@ function CommitSection({
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
                 {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
                 {commitApprovalResult?.commit_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Commit approval rejected.</p>}
-                {commitApprovalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(commitApprovalError)}</p>}
+                {commitApprovalError && <WorkflowActionError failure={commitApprovalError} />}
             </section>
 
             {isCompleted && (
@@ -820,17 +863,4 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
 
 function formatLabel(value: string): string {
     return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function approvalMessage(message: string): string {
-    const lower = message.toLowerCase();
-    if (lower.includes("completed")) return "Workflow completed.";
-    if (lower.includes("blocked")) return "Workflow blocked.";
-    if (lower.includes("already rejected")) return "Commit already rejected.";
-    if (lower.includes("already approved")) return "Approval already approved.";
-    if (lower.includes("already") || lower.includes("conflict")) return "Approval already decided.";
-    if (lower.includes("stale")) return "Stale workflow.";
-    if (lower.includes("persistence")) return "Persistence failure.";
-    if (lower.includes("unavailable")) return "Atlas Agent unavailable.";
-    return message;
 }
