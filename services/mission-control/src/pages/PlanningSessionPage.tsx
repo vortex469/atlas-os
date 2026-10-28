@@ -278,7 +278,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     )}
                     {workflow && <WorkflowCreationResult workflow={workflow} />}
                     {hasPlan && session.planning_allowed !== true && (
-                        <p className="mt-4 text-sm text-slate-300">This plan is available for review, but this session cannot create a workflow. Check Technical details for its status.</p>
+                        <p className="mt-4 text-sm text-slate-300">You can review this plan, but this session cannot create a workflow.</p>
                     )}
                 </section>
             )}
@@ -424,7 +424,7 @@ function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boo
     if (session.status === "planning_failed") return "Atlas could not create a plan. Review Technical details above for the recorded reason.";
     if (session.status === "planning") return "Atlas is still creating the plan. Refresh this page to check the result.";
     if (session.status === "ready_for_planning" && session.planning_allowed === true) return "Generate a plan for review. It will not apply changes or grant approval.";
-    return "Planning is not available in this session. Review Technical details above for its status.";
+    return "Planning is unavailable for this session.";
 }
 
 function formatLabel(value: string): string {

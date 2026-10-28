@@ -846,3 +846,16 @@ action list is loading, and names retention details in its unavailable state.
 This clarifies why the expired-entry control is disabled without repeating the
 action-list loading message. The focused Operations page suite, action-history
 browser checks, lint, production build, and `git diff --check` pass.
+
+## Retry and unavailable-state wording — 2026-10-28
+
+Provider, workflow, workflow-audit, and action-audit errors now rely on their
+visible retry buttons instead of repeating retry instructions in the error
+copy. Provider server details remain hidden, and retry still performs only the
+provider-list read. Planning-unavailable states no longer direct operators to
+technical details for a generic status; saved plans now say plainly when they
+remain reviewable but cannot create a workflow. The action-history browser
+fixture now matches Core's retention-summary contract, preventing undefined
+counts in the screen. These changes do not alter read, planning, approval, or
+workflow behavior. Focused page tests, screen-recovery browser checks, lint,
+production build, and `git diff --check` pass.

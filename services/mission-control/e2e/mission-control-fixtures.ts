@@ -291,9 +291,8 @@ const actionHistoryPage = {
 };
 
 const actionHistorySummary = {
-    total_entries: 0,
-    succeeded_entries: 0,
-    failed_entries: 0,
+    entry_count: 0,
+    max_entries: 5000,
     oldest_entry_at: null,
     newest_entry_at: null,
     retention_days: 90,

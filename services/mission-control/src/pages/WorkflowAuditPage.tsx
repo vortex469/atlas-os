@@ -184,7 +184,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             const detail = await getWorkflowAudit(workflowId);
             if (detail && (detail.workflow_id !== workflowId || detail.workflow.workflow_id !== workflowId)) {
                 setAudit(null);
-                setLoadError("The returned audit does not match this workflow. Try loading it again.");
+                setLoadError("The returned audit does not match this workflow.");
                 return;
             }
             setAudit(detail);

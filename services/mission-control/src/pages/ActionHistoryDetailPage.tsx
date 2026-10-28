@@ -58,7 +58,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                 .then((result) => {
                     if (active) {
                         if (result.id !== auditId) {
-                            setError("The returned record does not match this audit link. Try again.");
+                            setError("The returned record does not match this audit link.");
                             return;
                         }
                         setEntry(result);

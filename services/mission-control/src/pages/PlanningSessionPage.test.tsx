@@ -459,6 +459,8 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ planning_allowed: false }));
         renderPage();
         await screen.findByRole("heading", { name: "Plan this change" });
+        expect(screen.getByText("Planning is unavailable for this session.")).toBeInTheDocument();
+        expect(screen.queryByText(/Review Technical details above/)).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
     });
@@ -468,7 +470,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
         await screen.findByText("Update Home Assistant compose stack");
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
-        expect(screen.getByText("This plan is available for review, but this session cannot create a workflow. Check Technical details for its status.")).toBeInTheDocument();
+        expect(screen.getByText("You can review this plan, but this session cannot create a workflow.")).toBeInTheDocument();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
 

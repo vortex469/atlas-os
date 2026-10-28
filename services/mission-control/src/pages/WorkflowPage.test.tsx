@@ -398,7 +398,9 @@ describe("WorkflowPage", () => {
     it("refuses workflow details for a different route identity", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_id: "wrong-workflow" }));
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this page");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The returned workflow does not match this page.");
+        expect(alert).not.toHaveTextContent("Try loading it again.");
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
     });

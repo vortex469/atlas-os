@@ -75,7 +75,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             if (sequence !== readSequence.current) return;
             if (detail && detail.workflow_id !== workflowId) {
                 setWorkflow(null);
-                setLoadError("The returned workflow does not match this page. Try loading it again.");
+                setLoadError("The returned workflow does not match this page.");
                 return;
             }
             let nextLifecycle: WorkflowOperationalLifecycle | null = null;

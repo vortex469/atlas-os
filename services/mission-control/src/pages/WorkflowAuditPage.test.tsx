@@ -170,7 +170,9 @@ describe("WorkflowAuditPage", () => {
         else response.workflow.workflow_id = "other";
         mockedGetWorkflowAudit.mockResolvedValue(response);
         renderAuditPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this workflow");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The returned audit does not match this workflow.");
+        expect(alert).not.toHaveTextContent("Try loading it again.");
         expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
     });
 

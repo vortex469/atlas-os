@@ -39,7 +39,9 @@ describe("ProvidersPage", () => {
         get.mockRejectedValueOnce(new Error("PRIVATE_SERVER_BODY"))
             .mockResolvedValueOnce({ data: [] });
         show();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Providers could not load");
+        const alert = await screen.findByRole("alert");
+        expect(within(alert).getByRole("heading", { name: "Providers could not load" })).toBeInTheDocument();
+        expect(within(alert).queryByText("Try again to get the latest provider list.")).not.toBeInTheDocument();
         expect(document.body.textContent).not.toContain("PRIVATE_SERVER_BODY");
         fireEvent.click(screen.getByRole("button", { name: "Try again" }));
         expect(await screen.findByText("No providers are listed yet.")).toBeInTheDocument();

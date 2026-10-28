@@ -3,6 +3,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -63,7 +64,10 @@ describe("ActionHistoryDetailPage", () => {
     it("refuses an action record for a different audit link", async () => {
         mockedGetProviderActionHistoryEntry.mockResolvedValue(auditEntry("other"));
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this audit link");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The returned record does not match this audit link.");
+        expect(alert).not.toHaveTextContent("Try again.");
+        expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
     });
 

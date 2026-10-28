@@ -61,11 +61,12 @@ test("action history recovers a read without showing another record", async ({ p
     await page.goto("/operations/actions/record-recovery");
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("alert")).toContainText("does not match this audit link");
+    await expect(page.getByRole("alert")).not.toContainText("Try again.");
     await expect(page.getByRole("heading", { name: "Audit details" })).toBeVisible();
     expect(reads).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("link", { name: "← Back to action history" }).click();
-    await expect(page.getByRole("heading", { name: "Action History", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
 });
 
 test("readiness reload stays redacted for invalid review data", async ({ page }) => {
@@ -100,6 +101,7 @@ test("audit recovery refuses another workflow without losing navigation", async 
     await expect(page.getByRole("heading", { name: "Workflow audit unavailable" })).toBeVisible();
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("alert")).toContainText("does not match this workflow");
+    await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
     await expect(page.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute("href", "/workflows/audit-recovery");
     expect(reads).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -130,6 +132,7 @@ test("workflow recovery retries only the read and keeps a way back", async ({ pa
     await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("alert")).toContainText("does not match this page");
+    await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
     expect(reads).toBe(2);
     await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -152,7 +155,7 @@ for (const wrongIdentity of [false, true]) {
             await expect(page.getByRole("heading", { name: "Planning unavailable" })).toBeVisible();
             await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
         } else {
-            await expect(page.getByText("Planning is not available for this session.")).toBeVisible();
+            await expect(page.getByText("Planning is unavailable for this session.")).toBeVisible();
         }
         await expect(page.getByRole("button", { name: "Generate Plan" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Create Workflow" })).toHaveCount(0);
@@ -309,7 +312,8 @@ test("provider registry retries an unavailable read", async ({ page }) => {
         await route.fallback();
     });
     await page.goto("/providers");
-    await expect(page.getByRole("alert")).toHaveText("Providers could not loadTry again to get the latest provider list.Try again");
+    await expect(page.getByRole("heading", { name: "Providers could not load" })).toBeVisible();
+    await expect(page.getByText("Try again to get the latest provider list.")).toHaveCount(0);
     await expect(page.getByText("PRIVATE_SERVER_ERROR")).toHaveCount(0);
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("link", { name: "Open Proxmox provider" })).toBeVisible();
