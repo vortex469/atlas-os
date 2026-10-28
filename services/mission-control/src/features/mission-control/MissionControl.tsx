@@ -21,10 +21,10 @@ function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }
     if (evidence?.data === undefined) return <p>{prefix}Evidence unknown.</p>;
     return null;
 }
-function Card({ title, children, evidence }: { title: string; children: ReactNode; evidence?: Evidence }) {
+function Card({ title, children, evidence, showSourceNote = true }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean }) {
     return <section aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
         <h2 className="mb-3 text-lg font-semibold text-mc-text-primary">{title}</h2>
-        <div className="space-y-3 text-sm text-mc-text-secondary"><SourceNote evidence={evidence} />{children}</div>
+        <div className="space-y-3 text-sm text-mc-text-secondary">{showSourceNote && <SourceNote evidence={evidence} />}{children}</div>
     </section>;
 }
 function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
@@ -143,7 +143,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <Link to="/operations">Inspect operations →</Link>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
-            <Card title="Agent state">
+            <Card title="Agent state" showSourceNote={false}>
                 <AgentOverviewContent evidence={evidence.agent} />
             </Card>
             <Card title="AI provider" evidence={evidence.ai}>

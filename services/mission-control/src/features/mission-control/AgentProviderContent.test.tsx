@@ -20,6 +20,8 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.getByText("Agent details do not include health or workflow status.")).toBeInTheDocument();
         expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
         expect(agent.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+        expect(agent.queryByText("Evidence unknown.")).not.toBeInTheDocument();
+        expect(agent.queryByText("Evidence unavailable.")).not.toBeInTheDocument();
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
         expect(registry().getByText("Saved providers and their reported status. A saved provider may still be unavailable.")).toBeInTheDocument();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
@@ -39,6 +41,7 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.getByText("Agent details are unavailable. Workflow availability is unknown.")).toBeInTheDocument();
         expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
         expect(agent.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+        expect(agent.queryByText("Evidence unavailable.")).not.toBeInTheDocument();
     });
     it("labels retained Agent identity as last-known", () => {
         show({ agent: { data: { app_name: "Development Agent" }, unavailable: true, stale: true } });

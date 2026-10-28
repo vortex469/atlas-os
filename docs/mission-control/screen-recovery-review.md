@@ -444,9 +444,10 @@ responsive dashboard checks pass.
 
 The Agent card no longer shows an “Unknown” health badge or missing check time
 for information that does not report health. It summarizes loaded, unavailable,
-and last-known Agent details in plain language and keeps the same read-only
-links. The focused suite passes 10 tests; lint/build and all 8 built responsive
-overview browser checks pass. No Agent or execution capability was added.
+and last-known Agent details in plain language without repeating the generic
+source-state message. Existing read-only links remain. The focused suite passes
+10 tests; lint/build and all 8 built responsive overview browser checks pass.
+No Agent or execution capability was added.
 
 ## Health check times — 2026-10-28
 
