@@ -1,6 +1,6 @@
 import { expect, test } from "./mission-control-fixtures";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`workflow cards keep approval status visible and reference details optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/workflows");
@@ -43,7 +43,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`workflow empty state explains the result without a duplicate count at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
@@ -56,7 +56,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`malformed workflow data offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 900 });

@@ -151,7 +151,7 @@ export function WorkflowDashboardPage() {
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-7xl p-8">
+            <main className="mx-auto max-w-7xl p-4 sm:p-8">
                 <p role="status" aria-live="polite" className="text-slate-300">Loading workflows...</p>
             </main>
         );
@@ -159,7 +159,7 @@ export function WorkflowDashboardPage() {
 
     if (loadError) {
         return (
-            <main className="mx-auto max-w-7xl p-8">
+            <main className="mx-auto max-w-7xl p-4 sm:p-8">
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflows unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">Mission Control could not load the workflow list. Try again to request the latest workflows.</p>
@@ -176,7 +176,7 @@ export function WorkflowDashboardPage() {
     }
 
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white">Workflows</h1>

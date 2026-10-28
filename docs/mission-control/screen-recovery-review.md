@@ -2055,3 +2055,11 @@ instead of saying “this page does not start work,” which was unclear beside 
 link to review workflows. The focused Work activity suite passes (28 tests),
 all 14 overview browser checks pass, and lint and production build pass. No
 workflow action, approval, or API behavior changed.
+
+## Workflow directory phone spacing — 2026-10-28
+
+The workflow list, loading, and recovery screens now use compact page padding
+on phones and retain the existing desktop spacing. Browser checks cover all
+three states at 320px, 390px, and 1280px (9 checks); the workflow directory
+component suite passes (10 tests), as do lint and the production build. Workflow
+data, navigation, and approval behavior are unchanged.
