@@ -1111,3 +1111,10 @@ collapsed, and an unavailable result is not reported as zero matches.
 Workflow-list refresh failures now identify that the visible cards and counts
 are the last successfully loaded state. The Refresh control remains available
 to retry the read; raw Agent errors stay under collapsed Technical details.
+
+## Atlas Doctor request recovery — 2026-10-28
+
+A failed diagnostic read now says that no new report is available and points to
+Run Doctor as the read-only retry. The raw request error remains available
+under collapsed Technical details; a previous healthy report is still cleared
+while a rerun is pending or unavailable.

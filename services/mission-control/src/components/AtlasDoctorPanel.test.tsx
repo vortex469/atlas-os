@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -74,9 +74,14 @@ describe("AtlasDoctorPanel", () => {
             screen.getByRole("button", { name: "Run Doctor" }),
         );
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-            "Doctor unavailable.",
-        );
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas Doctor could not complete the check");
+        expect(alert).toHaveTextContent("No new health report is available. Run Doctor again to check current health.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Doctor unavailable.")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Doctor unavailable.")).toBeVisible();
     });
 
     it("clears the previous health report while rerunning and after failure", async () => {
@@ -96,7 +101,9 @@ describe("AtlasDoctorPanel", () => {
         expect(screen.queryByText("healthy")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Running Doctor..." })).toBeDisabled();
         await act(async () => { rejectRead(new Error("Doctor unavailable.")); });
-        expect(await screen.findByRole("alert")).toHaveTextContent("Doctor unavailable.");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas Doctor could not complete the check");
+        expect(alert).toHaveTextContent("No new health report is available.");
         expect(screen.queryByText("No critical issues or warnings detected.")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Run Doctor" })).toBeEnabled();
     });

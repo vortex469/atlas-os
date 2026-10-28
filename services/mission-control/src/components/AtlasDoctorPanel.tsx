@@ -79,9 +79,14 @@ export function AtlasDoctorPanel() {
             {isRunning && <p role="status" className="mt-4 text-sm text-slate-300">Checking the latest health...</p>}
 
             {error && (
-                <p role="alert" className="mt-4 text-sm text-red-300">
-                    {error}
-                </p>
+                <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+                    <p className="font-semibold text-red-300">Atlas Doctor could not complete the check</p>
+                    <p className="mt-1 text-sm text-red-200/80">No new health report is available. Run Doctor again to check current health.</p>
+                    <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
+                    </details>
+                </div>
             )}
 
             {report && (
