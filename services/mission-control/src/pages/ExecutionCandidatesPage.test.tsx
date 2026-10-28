@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -126,9 +126,12 @@ describe("ExecutionCandidatesPage", () => {
         await screen.findByText("candidate-1");
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Current search failed"));
         fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
-        await screen.findByRole("alert");
+        const alert = await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent("Current search failed");
+        expect(alert).toHaveTextContent("Mission Control could not load the latest proposal results.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Current search failed")).not.toBeVisible();
         expect(screen.queryByText("Results unavailable")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
     });
@@ -232,7 +235,7 @@ describe("ExecutionCandidatesPage", () => {
 
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Core unavailable"));
         await user.click(screen.getByRole("button", { name: "Reset filters" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Core unavailable");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Mission Control could not load the latest proposal results.");
     });
 
     it("keeps unsupported or not eligible candidates visible", async () => {

@@ -373,11 +373,34 @@ describe("ExecutionCandidateDetailPage", () => {
 
         renderPage();
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Core unavailable");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Change proposal unavailable");
+        expect(alert).toHaveTextContent("Mission Control could not load this proposal. Its current details are unknown.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        const readError = within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable");
+        expect(readError).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(readError).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Retry loading proposal" }));
 
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears old read details when a retry returns a mismatched proposal", async () => {
+        const user = userEvent.setup();
+        mockedGetExecutionCandidate.mockRejectedValueOnce(new Error("Previous read failed"))
+            .mockResolvedValueOnce(candidate({ id: "different-candidate" }));
+        renderPage();
+
+        await screen.findByRole("alert");
+        await user.click(screen.getByRole("button", { name: "Retry loading proposal" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The returned proposal does not match this page.");
+        expect(within(alert).queryByText("Previous read failed")).not.toBeInTheDocument();
+        expect(within(alert).queryByText("Technical details")).not.toBeInTheDocument();
     });
 
 });

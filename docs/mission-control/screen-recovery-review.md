@@ -1136,3 +1136,9 @@ the provider action; technical error text is optional.
 When Mission Control cannot read a planning session, the page now says its
 current status is unknown. Backend error text is available under collapsed
 Technical details, and Reload page remains the recovery action.
+
+## Change proposal read failures — 2026-10-28
+
+Unavailable proposal lists and proposal details now lead with plain-language
+read-failure messages. Backend error text stays under collapsed Technical
+details; the existing retry controls repeat only the corresponding read.
