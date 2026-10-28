@@ -69,18 +69,23 @@ describe("ExecutionCandidatesPage", () => {
         mockedListExecutionCandidates.mockResolvedValue(page([candidate()]));
     });
 
-    it("renders candidate cards, workflow rail, and no execution controls", async () => {
+    it("leads candidate cards with the change and keeps technical details collapsed", async () => {
+        const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByText("candidate-1")).toBeInTheDocument();
+        expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeInTheDocument();
         expect(screen.getByText("Eligible for planning consideration")).toBeInTheDocument();
-        expect(screen.getByText("stack-home-assistant")).toBeInTheDocument();
-        expect(screen.getByText("Update Compose Stack")).toBeInTheDocument();
-        expect(screen.getByText("2 references")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "candidate-1" })).toHaveAttribute(
+        expect(screen.getByText("stack-home-assistant")).toBeVisible();
+        expect(screen.getByText("Compatible With Warnings")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
             "href",
             "/execution-candidates/candidate-1",
         );
+        expect(screen.getByText("candidate-1")).not.toBeVisible();
+        expect(screen.getByText("2 references")).not.toBeVisible();
+        await user.click(screen.getByText("More proposal details"));
+        expect(screen.getByText("candidate-1")).toBeVisible();
+        expect(screen.getByText("2 references")).toBeVisible();
         expect(screen.getByText("Planning")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
     });
@@ -207,8 +212,7 @@ describe("ExecutionCandidatesPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("candidate-unsupported")).toBeInTheDocument();
+        expect(await screen.findByRole("link", { name: "Review Restart Service proposal" })).toBeInTheDocument();
         expect(screen.getByText("Not eligible for planning")).toBeInTheDocument();
-        expect(screen.getByText("Restart Service")).toBeInTheDocument();
     });
 });

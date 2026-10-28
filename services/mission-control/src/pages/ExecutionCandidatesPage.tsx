@@ -203,25 +203,30 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <Link to={`/execution-candidates/${encodeURIComponent(candidate.id)}`} className="break-all text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                        {candidate.id}
+                    <Link to={`/execution-candidates/${encodeURIComponent(candidate.id)}`} className="text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Review {formatLabel(candidate.execution_intent)} proposal
                     </Link>
                     <p className="mt-1 text-sm text-slate-400">
-                        Target: <span className="text-slate-200">{candidate.target_id}</span> ({candidate.target_type})
+                        Target: <span className="text-slate-200">{candidate.target_id}</span> ({formatLabel(candidate.target_type)})
                     </p>
                 </div>
                 <StatusBadge status={candidate.status} />
             </div>
-            <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <Field label="Category" value={formatLabel(candidate.execution_category)} />
-                <Field label="Intent" value={formatLabel(candidate.execution_intent)} />
-                <Field label="Approval level" value={formatLabel(candidate.required_approval_level)} />
-                <Field label="Source" value={candidate.source_subsystem} />
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <Field label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
-                <Field label="Evidence" value={`${candidate.evidence_ids.length} reference${candidate.evidence_ids.length === 1 ? "" : "s"}`} />
-                <Field label="Created" value={formatTimestamp(candidate.created_at)} />
                 <Field label="Expires" value={candidate.expires_at ? formatTimestamp(candidate.expires_at) : "No expiry"} />
             </dl>
+            <details className="mt-4 border-t border-slate-800 pt-3">
+                <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">More proposal details</summary>
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
+                    <Field label="Candidate ID" value={candidate.id} />
+                    <Field label="Category" value={formatLabel(candidate.execution_category)} />
+                    <Field label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
+                    <Field label="Source" value={candidate.source_subsystem} />
+                    <Field label="Evidence" value={`${candidate.evidence_ids.length} reference${candidate.evidence_ids.length === 1 ? "" : "s"}`} />
+                    <Field label="Created" value={formatTimestamp(candidate.created_at)} />
+                </dl>
+            </details>
         </article>
     );
 }
