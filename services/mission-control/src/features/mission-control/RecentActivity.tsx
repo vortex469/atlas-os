@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { detailPath, record, rows, safeText, timestamp } from "./overviewEvidence";
 import type { Evidence } from "./useOverviewEvidence";
@@ -6,11 +5,6 @@ import type { Evidence } from "./useOverviewEvidence";
 // A view of Core's returned history only; fetching and freshness belong to the
 // shared evidence hook. No local history is accumulated between snapshots.
 export function RecentActivity({ evidence }: { evidence?: Evidence }) {
-    const [now, setNow] = useState(Date.now);
-    useEffect(() => {
-        const timer = window.setInterval(() => setNow(Date.now()), 30_000);
-        return () => window.clearInterval(timer);
-    }, []);
     const page = record(evidence?.data);
     const returned = rows(page.items);
     const inspectable = returned.filter(event => detailPath("/operations/actions", event.id)
@@ -30,16 +24,18 @@ export function RecentActivity({ evidence }: { evidence?: Evidence }) {
             ? (returned.length === 0 && (page.total === undefined || page.total === 0) && (page.has_more === undefined || page.has_more === false) ? "No recent actions recorded." : "Activity evidence malformed or incomplete.")
             : "Activity evidence unknown."}</p>}
         {activity.length > 0 && incomplete && <p>Some activity records are malformed or incomplete.</p>}
-        <ol className="space-y-3">{activity.slice(0, 5).map(event => {
+        <ol className="grid gap-3 md:grid-cols-2">{activity.slice(0, 5).map(event => {
             const date = timestamp(event.completed_at);
             const outcome = event.status === "failed" ? "Failed" : event.status === "succeeded" ? "Succeeded" : "Outcome unknown";
-            return <li key={String(event.id)}>
-                <p>{outcome} · {safeText(event.action_label)}</p>
-                <p>{safeText(event.provider_name) || "Provider unknown."}</p>
-                <p>{safeText(event.message)}</p>
-                <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>
-                {date ? <time dateTime={date.toISOString()} title={`UTC ${date.toISOString()}`}>Completed {date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : <p>Completion time unknown.</p>}
-                <p>{date && now - date.getTime() > 300_000 ? "Historical evidence (older than 5 minutes)." : "Past actions do not show current system health."}</p>
+            const message = safeText(event.message);
+            return <li key={String(event.id)} className="min-w-0 rounded-lg border border-mc-border-subtle p-3">
+                <p className="font-medium">{outcome} · {safeText(event.action_label)}</p>
+                <p className="mt-1 text-xs text-mc-text-muted">{safeText(event.provider_name) || "Provider unknown."}</p>
+                {message && <p className="mt-2 text-sm">{message}</p>}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>
+                    {date ? <time dateTime={date.toISOString()} title={`UTC ${date.toISOString()}`} className="text-mc-text-muted">Completed {date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : <span className="text-mc-text-muted">Completion time unknown.</span>}
+                </div>
             </li>;
         })}</ol>
         {activity.length > 5 && <p>Showing 5 of {activity.length} returned actions.</p>}

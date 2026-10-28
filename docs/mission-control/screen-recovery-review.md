@@ -431,6 +431,15 @@ screen still explains that past actions do not show current health. The focused
 dashboard suites pass (68 tests), lint/build pass, and all 3 built responsive
 browser checks pass.
 
+## Recent Activity cards — 2026-10-28
+
+Recent actions are now grouped into outlined cards, one column on phones and
+two columns on wider screens. The per-row history warning was removed because
+the section already states that past actions do not show current health or
+alerts. Ordering, result, time and action-detail links are unchanged. The
+focused dashboard suites pass (68 tests), lint/build pass, and all 3 built
+responsive dashboard checks pass.
+
 ## Health check times — 2026-10-28
 
 Shared health summaries now show check times as readable UTC dates instead of

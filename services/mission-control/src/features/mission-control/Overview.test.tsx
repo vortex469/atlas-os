@@ -5,6 +5,7 @@ import { Overview } from "./MissionControl";
 import { safeText, timestamp, status, detailPath } from "./overviewEvidence";
 import type { OverviewEvidence } from "./useOverviewEvidence";
 const show = (evidence: OverviewEvidence = {}) => render(<MemoryRouter><Overview evidence={evidence} /></MemoryRouter>);
+const activity = () => within(screen.getByRole('region', { name: 'Recent Activity' }));
 
 describe("MC overview evidence", () => {
     it.each(['awaiting_implementation_approval', 'awaiting_verification_approval', 'awaiting_commit_approval'])("shows %s as a workflow decision rather than degraded health", workflow_state => {
@@ -77,7 +78,8 @@ describe("MC overview evidence", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getAllByText(/Stale evidence/).length).toBeGreaterThan(0);
-        expect(screen.getByText(/Historical evidence/)).toBeInTheDocument();
+        expect(activity().getByText(/Past provider actions and their recorded results\. These do not show current system health or alerts\./)).toBeVisible();
+        expect(activity().queryByText(/Historical evidence/)).not.toBeInTheDocument();
     });
     it("handles empty lists and links to existing routes", () => {
         show({ providers: { data: [] }, activity: { data: { items: [] } }, workflows: { data: { items: [] } } });

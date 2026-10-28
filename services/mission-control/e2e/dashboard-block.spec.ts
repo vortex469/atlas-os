@@ -15,6 +15,8 @@ for (const width of [320, 390, 1280]) {
         await expect(activity.getByRole("listitem")).toHaveCount(1);
         await expect(activity.getByText(`Failed · ${label.slice(0, 240)}`)).toBeVisible();
         await expect(activity.getByText(/^Completed /)).toBeVisible();
+        const activityColumns = await activity.getByRole("list").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length);
+        expect(activityColumns).toBe(width >= 768 ? 2 : 1);
         await expect(page.getByTestId("overview-grid").locator(":scope > section")).toHaveCount(6);
         for (const card of [attention, activity]) {
             const box = await card.evaluate(node => ({ left: node.getBoundingClientRect().left, right: node.getBoundingClientRect().right, scroll: node.scrollWidth, client: node.clientWidth }));
