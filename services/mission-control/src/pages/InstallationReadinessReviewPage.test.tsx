@@ -42,7 +42,7 @@ describe("InstallationReadinessReviewPage", () => {
         response[field].candidate_record_id = "00000000-0000-4000-8000-000000000002";
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Review unavailable");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Could not load this review");
         expect(listExecutionPermissionGrants).not.toHaveBeenCalled();
         expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
         expect(screen.queryByText("operator-a")).not.toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("InstallationReadinessReviewPage", () => {
     it("renders redacted error and empty states without leaked details", async () => {
         vi.mocked(getInstallationReadinessReview).mockRejectedValue(new Error("secret token at /internal/path 10.0.0.1"));
         const { unmount } = renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Installation readiness review is unavailable.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Sensitive details are hidden.");
         expect(document.body).not.toHaveTextContent(/secret token|internal\/path|10\.0\.0\.1/i);
         unmount();
         renderPage("/empty");
@@ -175,6 +175,7 @@ describe("InstallationReadinessReviewPage", () => {
     it("contains explicit non-authorizing copy and no effect controls or action navigation", async () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
         renderPage();
+        expect(await screen.findByText("These checks are saved for your account. Reading this page does not update or use them.")).toBeVisible();
         await waitFor(() => expect(screen.getByRole("heading", { name: "Evidence check complete" })).toBeInTheDocument());
         const boundary = screen.getByLabelText("Read-only authority boundary");
         expect(boundary).toHaveTextContent(/does not install anything or start work/i);

@@ -34,13 +34,13 @@ for (const width of [390, 1280]) {
         });
         await page.setViewportSize({ width, height: 844 });
         await page.goto(`/installation/candidate-records/${uuid4}/readiness-review`);
-        await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Could not load this review", exact: true })).toBeVisible();
         await page.getByRole("button", { name: "Reload review", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Evidence check complete", exact: true })).toBeVisible();
         await page.getByText("Evidence chain (14 records)", { exact: true }).click();
         await expect(page.getByRole("list", { name: "Installation evidence chain" }).getByRole("listitem")).toHaveCount(14);
         await expect(page.getByText("No permission records saved yet.", { exact: true })).toBeVisible();
-        await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Could not load this review", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /record|approve|install|execute|start|deploy/i })).toHaveCount(0);
         await expect(page.getByRole("complementary", { name: "Read-only authority boundary" })).toBeVisible();
         expect(evidenceReads).toContain("execution-permission-grants");
