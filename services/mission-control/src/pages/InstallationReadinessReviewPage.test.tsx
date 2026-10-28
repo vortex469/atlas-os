@@ -180,4 +180,15 @@ describe("InstallationReadinessReviewPage", () => {
         await waitFor(() => expect(createExecutionPermissionGrant).toHaveBeenCalled());
         expect(createExecutionPermissionGrant).toHaveBeenCalledWith(uuid4, expect.objectContaining({ confirmation_text: expect.stringContaining("This does not install or execute anything."), execution_authorized: false, mutation_allowed: false }), "csrf", "stable-key");
     });
+
+    it("withholds permission-evidence controls when the signed-in session has no CSRF token", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: null };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        renderPage();
+
+        expect(await screen.findByText(/permission evidence cannot be recorded yet/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review permission evidence statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Permission evidence confirmation")).not.toBeInTheDocument();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
 });

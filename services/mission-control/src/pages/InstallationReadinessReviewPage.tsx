@@ -209,7 +209,8 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
     };
 
     const mayCreate = response.review.readiness === "readiness_gated" && session.authenticated &&
-        session.principal?.permissions.includes("installation.execution.permission.grant");
+        session.principal?.permissions.includes("installation.execution.permission.grant") &&
+        Boolean(session.csrfToken);
     return <><section aria-labelledby="permission-grants-heading" className="rounded border border-slate-700 p-4">
         <h2 id="permission-grants-heading" className="font-semibold">Execution permission evidence</h2>
         <p className="mt-2 text-sm">This records permission evidence for later review. It does not authorize installation, execution, or system changes.</p>

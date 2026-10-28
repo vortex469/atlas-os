@@ -1357,3 +1357,12 @@ temporarily disables page navigation until the operator searches. This keeps
 the displayed results and paging aligned with the submitted filters. A focused
 component regression verifies the notice, disabled paging, and recovery after
 search; this changes only list presentation and navigation state.
+
+## Readiness review session gating — 2026-10-28
+
+Permission-evidence confirmation now appears only when the signed-in operator
+has the required permission and a CSRF token. Previously, an unusual session
+missing that token could open the confirmation even though submission would
+silently return without making a request. A focused regression verifies the
+control remains unavailable in that state; backend permission and approval
+contracts are unchanged.
