@@ -137,7 +137,7 @@ describe("ServiceHealthSection", () => {
         const { rerender } = render(<ServiceHealthSection {...props} services={{ Containers: service("docker", 8) }} />);
         await user.click(screen.getByRole("button", { name: "View details for Containers" }));
         rerender(<ServiceHealthSection {...props} services={{ Other: service("podman", 10) }} />);
-        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.getByText("This service is absent from the latest health response.")).toBeInTheDocument();
         expect(screen.queryByText("Operations for Docker")).not.toBeInTheDocument();
     });

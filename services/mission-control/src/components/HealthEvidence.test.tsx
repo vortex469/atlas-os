@@ -12,9 +12,9 @@ describe("authoritative health presentation", () => {
         ["healthy", "Healthy"], ["online", "Healthy"],
         ["warning", "Degraded"], ["critical", "Degraded"], ["degraded", "Degraded"],
         ["offline", "Unavailable"], ["unavailable", "Unavailable"],
-        ["blocked", "Blocked"], ["unknown", "Unknown"],
-        [null, "Unknown"], [42, "Unknown"], [{}, "Unknown"],
-        ["success", "Unknown"], ["running", "Unknown"], ["constructor", "Unknown"],
+        ["blocked", "Blocked"], ["unknown", "Status unknown"],
+        [null, "Status unknown"], [42, "Status unknown"], [{}, "Status unknown"],
+        ["success", "Status unknown"], ["running", "Status unknown"], ["constructor", "Status unknown"],
     ])("presents %j as %s without treating operational states as health", (status, label) => {
         render(<HealthEvidence status={status} />);
         expect(screen.getByText(label)).toBeInTheDocument();
@@ -66,7 +66,8 @@ describe("authoritative health presentation", () => {
         expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(Date.parse("2026-09-13T12:00:00Z")));
         expect(time).not.toHaveTextContent("2026-09-13T");
         act(() => vi.advanceTimersByTime(90_000));
-        expect(screen.getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
+        expect(screen.getByText("Last report: Healthy.")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText(/Last checked \(UTC\)/)).toBeInTheDocument();
         expect(document.querySelector("time")).toHaveAttribute("dateTime", "2026-09-13T12:00:00Z");
@@ -132,9 +133,9 @@ describe("authoritative health presentation", () => {
 
     it("marks retained dashboard evidence stale until refresh recovers", () => {
         const { rerender } = render(<HealthEvidenceContext.Provider value={{ stale: true }}><HealthEvidence status="online" /></HealthEvidenceContext.Provider>);
-        expect(screen.getByText(/Current status unknown/)).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         rerender(<HealthEvidenceContext.Provider value={{ stale: false }}><HealthEvidence status="offline" reason="Connection refused" /></HealthEvidenceContext.Provider>);
-        expect(screen.queryByText(/Current status unknown/)).not.toBeInTheDocument();
+        expect(screen.queryByText("Status unknown")).not.toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
         expect(screen.getByText("Connection refused")).toBeInTheDocument();
     });
@@ -150,12 +151,12 @@ describe("authoritative health presentation", () => {
             expect(service.details).toEqual({});
         });
         render(<SystemHealthSummary evidence={{ health: { data: payload }, policyHealth: { data: { checked_at: {}, error: [] } } }} />);
-        expect(screen.getAllByText("Unknown")).toHaveLength(3);
+        expect(screen.getAllByText("Status unknown")).toHaveLength(3);
     });
 
     it("does not manufacture an aggregate from healthy services", () => {
         render(<SystemHealthSummary evidence={{ health: { data: { services: { core: { status: "healthy" } } } } }} />);
-        expect(screen.getAllByText("Unknown")).toHaveLength(3);
+        expect(screen.getAllByText("Status unknown")).toHaveLength(3);
         expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
     });
 });

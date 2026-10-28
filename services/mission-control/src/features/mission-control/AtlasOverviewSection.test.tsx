@@ -68,7 +68,7 @@ describe("AtlasOverviewSection", () => {
                 lastUpdated={new Date()}
             />,
         );
-        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
     });
 
     it("displays service latency details when available", () => {

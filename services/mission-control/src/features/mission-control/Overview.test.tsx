@@ -311,7 +311,8 @@ describe("MC overview evidence", () => {
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
         show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: value } } } });
         const card = screen.getByRole('region', { name: 'AI provider' });
-        expect(within(card).getAllByText(value[0].toUpperCase() + value.slice(1)).length).toBeGreaterThan(0);
+        const label = value === "unknown" ? "Status unknown" : value[0].toUpperCase() + value.slice(1);
+        expect(within(card).getAllByText(label).length).toBeGreaterThan(0);
         expect(within(card).getByText(/Atlas does not report where this provider runs/)).toBeInTheDocument();
     });
     it("marks failed refresh evidence stale and never displays cached health as current", () => {
@@ -423,7 +424,7 @@ it('deduplicates configured AI and provider evidence and preserves freshness', (
 it('keeps stale AI conditions explicitly unknown', () => {
     show({ ai: { stale: true, data: { health: { status: 'offline', message: 'Last connection failed' } } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Last report: Unavailable. Current status unknown.')).toBeInTheDocument();
+    expect(attention.getByText('Last report: Unavailable.')).toBeInTheDocument();
     expect(attention.getByText('Last-known condition; current state unknown.')).toBeInTheDocument();
 });
 
@@ -467,7 +468,7 @@ it('integrates one health summary with independent source freshness and safe rea
     expect(core.getByText('Healthy')).toBeInTheDocument();
     const ace = within(screen.getByRole('article', { name: 'System findings' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();
-    expect(ace.getByText('Last report: Healthy. Current status unknown.')).toBeInTheDocument();
+    expect(ace.getByText('Last report: Healthy.')).toBeInTheDocument();
     expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     const policy = within(screen.getByRole('article', { name: 'Policy settings check' }));
@@ -478,7 +479,7 @@ it('integrates one health summary with independent source freshness and safe rea
 it('does not promote operational success or malformed summary evidence to health', () => {
     show({ health: { data: { atlas: 'success' } }, summary: { data: { status: {}, summary: [] } }, policyHealth: { data: [] } });
     expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: 'System health' })).getAllByText('Unknown')).toHaveLength(3);
+    expect(within(screen.getByRole('region', { name: 'System health' })).getAllByText('Status unknown')).toHaveLength(3);
 });
 
 it('integrates execution outcomes and stale attention without duplicating health or workflow state', () => {

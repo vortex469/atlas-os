@@ -52,9 +52,9 @@ const stateConfig: Record<
         description: "System is operational but blocked from proceeding",
     },
     unknown: {
-        label: "Unknown",
+        label: "Status unknown",
         variant: "mc-status-neutral",
-        description: "No authoritative evidence available",
+        description: "The current status is not confirmed",
     },
 };
 
@@ -106,7 +106,7 @@ export function HealthStatusBadge({
 
             {isStale && (
                 <span className="text-xs text-mc-text-secondary">
-                    Last report: {reportedConfig.label}. Current status unknown.
+                    Last report: {reportedConfig.label}.
                 </span>
             )}
 

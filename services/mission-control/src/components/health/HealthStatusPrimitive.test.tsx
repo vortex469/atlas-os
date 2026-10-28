@@ -103,7 +103,7 @@ describe("HealthStatusBadge", () => {
                 state="unknown"
             />,
         );
-        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
     });
 
     it("renders last updated timestamp", () => {
@@ -131,7 +131,8 @@ describe("HealthStatusBadge", () => {
                 isStale={true}
             />,
         );
-        expect(screen.getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
+        expect(screen.getByText("Last report: Healthy.")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.getByText("Last checked 10m ago")).toBeInTheDocument();
     });
 });
@@ -216,9 +217,9 @@ import { isEvidenceStale, mapServiceStatusToHealthState } from "./healthPresenta
 describe('stale status authority', () => {
     it.each(['healthy', 'degraded', 'unavailable', 'blocked', 'unknown'] as const)('does not present stale %s as current', state => {
         const { container } = render(<HealthStatusBadge state={state} isStale lastUpdated={new Date(Date.now() - 120_000)} />);
-        const reported = state[0].toUpperCase() + state.slice(1);
-        expect(screen.getByText('Unknown')).toBeInTheDocument();
-        expect(screen.getByText(`Last report: ${reported}. Current status unknown.`)).toBeInTheDocument();
+        const reported = state === "unknown" ? "Status unknown" : state[0].toUpperCase() + state.slice(1);
+        expect(screen.getByText('Status unknown')).toBeInTheDocument();
+        expect(screen.getByText(`Last report: ${reported}.`)).toBeInTheDocument();
         expect(screen.getByText('Last checked 2m ago')).toBeInTheDocument();
         expect(screen.queryByText(/Stale evidence/)).not.toBeInTheDocument();
         expect(container.querySelector('[data-mc-status="success"]')).toBeNull();

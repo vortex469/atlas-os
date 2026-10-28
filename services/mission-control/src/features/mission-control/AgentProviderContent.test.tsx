@@ -52,7 +52,7 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
         expect(registry().queryByText("Reported status: offline")).not.toBeInTheDocument();
         expect(registry().queryByText("Check time unavailable.")).not.toBeInTheDocument();
-        expect(registry().getByText("Unknown")).toBeInTheDocument();
+        expect(registry().getByText("Status unknown")).toBeInTheDocument();
         expect(registry().getByRole("link", { name: "View alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
         expect(registry().getByText(/actions are allowed/)).not.toBeVisible();
         expect(registry().queryByText(/which model an Agent uses/)).not.toBeInTheDocument();
@@ -92,7 +92,7 @@ describe("integrated agent/provider evidence", () => {
     it("retains stale observations without presenting cached success as current", () => {
         const view = show({ providers: { data: [provider("alpha", "healthy")], stale: true, unavailable: true }, agent: { unavailable: true } });
         expect(registry().queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(registry().getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
+        expect(registry().getByText("Last report: Healthy.")).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
         expect(registry().getByText(/current list is unknown/)).toBeInTheDocument();

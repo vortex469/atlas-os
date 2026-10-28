@@ -75,7 +75,7 @@ describe("ProvidersPage", () => {
         expect(within(list).getByText("Healthy", { exact: true })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(screen.getByRole("status")).toHaveTextContent("Refreshing providers. Showing the last loaded information.");
-        expect(within(list).getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
+        expect(within(list).getByText("Last report: Healthy.")).toBeInTheDocument();
         expect(within(list).queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
 
         await act(async () => rejectRefresh(new Error("offline")));
@@ -84,7 +84,7 @@ describe("ProvidersPage", () => {
         expect(alert).toHaveTextContent("Provider refresh failed");
         expect(alert).toHaveTextContent("Current provider information is unknown.");
         expect(screen.getByRole("region", { name: "Provider list" })).toBeInTheDocument();
-        expect(within(list).getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
+        expect(within(list).getByText("Last report: Healthy.")).toBeInTheDocument();
     });
 
     it("keeps duplicate identities unavailable and withholds sensitive reasons", async () => {

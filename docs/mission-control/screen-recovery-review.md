@@ -2267,3 +2267,13 @@ evidence “malformed.” Counts remain hidden unless the full list and statuses
 can be checked. The focused overview and work-activity suites pass (91 tests),
 the responsive browser check passes at 320px and 1280px (2 checks), and lint
 and build pass. No workflow or execution state is changed.
+
+## Health status unknown wording — 2026-10-28
+
+Health badges now say “Status unknown” instead of the context-free “Unknown.”
+When showing an older report after refresh fails, the badge names the current
+status as unknown and the accompanying line only states the last reported
+status. Core health evidence and status mapping are unchanged. The full
+Mission Control component suite passes (2,830 tests), the full synthetic
+browser suite passes (212 tests), and lint and production build pass. These
+fixtures do not establish live backend connectivity or operator acceptance.
