@@ -597,31 +597,37 @@ function CompatibilityPanel({
 
     return (
         <section className="grid gap-4 lg:grid-cols-2">
-            <InfoPanel title="Compatibility status">
+            <InfoPanel title="Compatibility summary">
                 <dl className="grid gap-2 text-sm">
-                    <KeyValue label="Item" value={compatibility.item_id} />
-                    <KeyValue label="Target" value={compatibility.target_type} />
-                    <KeyValue label="Target ID" value={compatibility.target_id} />
+                    <KeyValue label="Target" value={`${formatLabel(compatibility.target_type)} · ${compatibility.target_id}`} />
                     <KeyValue label="Status" value={compatibilityStatusLabel(compatibility.status)} />
-                    <KeyValue label="Checked at" value={compatibility.checked_at} />
+                    <KeyValue label="Checked (local time)" value={formatLocalTimestamp(compatibility.checked_at)} />
                     <KeyValue label="Findings" value={String(compatibility.findings.length)} />
-                    <KeyValue label="Evidence" value={String(compatibility.evidence.length)} />
                     <KeyValue
-                        label="Unknown facts"
-                        value={compatibility.unknown_facts.length === 0 ? "None" : `${compatibility.unknown_facts.length}`}
+                        label="Information not confirmed"
+                        value={compatibility.unknown_facts.length === 0 ? "None" : String(compatibility.unknown_facts.length)}
                     />
                 </dl>
+                <details className="mt-4 border-t border-slate-800 pt-3">
+                    <summary className="mc-focusable cursor-pointer text-sm text-slate-300">Technical details</summary>
+                    <dl className="mt-3 grid gap-2 text-sm">
+                        <KeyValue label="Catalog item ID" value={compatibility.item_id} />
+                        <KeyValue label="Target ID" value={compatibility.target_id} />
+                        <KeyValue label="Evidence records" value={String(compatibility.evidence.length)} />
+                        <KeyValue label="Recorded check time" value={compatibility.checked_at} />
+                    </dl>
+                </details>
             </InfoPanel>
 
-            <InfoPanel title="Compatibility details">
+            <InfoPanel title="What the check found">
                 <div className="space-y-4">
                     {compatibility.findings.length === 0 ? (
                         <p className="text-sm text-slate-500">No findings were reported.</p>
                     ) : (
                         Object.entries(findingsBySeverity).map(([severity, findings]) => (
                             <div key={`${targetItemId}-${severity}`}>
-                                <p className="text-xs uppercase tracking-wider text-slate-500">
-                                    {formatLabel(`findings_${severity}`)}
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                    {severityHeading(severity)}
                                 </p>
                                 <div className="mt-2 space-y-3">
                                     {findings.map((finding) => (
@@ -631,45 +637,48 @@ function CompatibilityPanel({
                                         >
                                             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-slate-400">
                                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
-                                                    {finding.severity}
+                                                    {formatLabel(finding.severity)}
                                                 </span>
                                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
                                                     {formatLabel(finding.check_type)}
                                                 </span>
                                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
-                                                    {finding.status}
+                                                    {compatibilityStatusLabel(finding.status)}
                                                 </span>
                                             </div>
                                             <p className="mt-2 text-sm text-slate-300">{finding.message}</p>
-                                            <p className="mt-1 text-xs text-slate-500">Code: {finding.id}</p>
-                                            <p className="mt-1 text-xs text-slate-500">Subject: {finding.subject}</p>
-                                            {finding.evidence_ids.length > 0 ? (
-                                                <ul className="mt-3 space-y-2 text-xs text-slate-400">
-                                                    {finding.evidence_ids.map((evidenceId) => {
-                                                        const evidence = evidenceById.get(evidenceId);
-                                                        return (
-                                                            <li
-                                                                key={`${finding.id}-${evidenceId}`}
-                                                                className="rounded-md border border-slate-800 bg-slate-900 p-2"
-                                                            >
-                                                                {evidence ? (
-                                                                    <div>
-                                                                        <p>Evidence {evidence.id}</p>
-                                                                        <p>Source: {evidence.source}</p>
-                                                                        <p>Message: {evidence.message}</p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p>Evidence {evidenceId}</p>
-                                                                )}
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-                                            ) : (
-                                                <p className="mt-2 text-xs text-slate-500">
-                                                    No evidence IDs were attached.
-                                                </p>
-                                            )}
+                                            <details className="mt-3 border-t border-slate-800 pt-2">
+                                                <summary className="mc-focusable cursor-pointer text-xs font-medium text-slate-400">Evidence and technical details</summary>
+                                                <div className="mt-2 space-y-2 text-xs text-slate-400">
+                                                    <p>Finding code: {finding.id}</p>
+                                                    <p>Checked field: {finding.subject}</p>
+                                                    {finding.evidence_ids.length > 0 ? (
+                                                        <ul className="space-y-2">
+                                                            {finding.evidence_ids.map((evidenceId) => {
+                                                                const evidence = evidenceById.get(evidenceId);
+                                                                return (
+                                                                    <li
+                                                                        key={`${finding.id}-${evidenceId}`}
+                                                                        className="rounded-md border border-slate-800 bg-slate-900 p-2"
+                                                                    >
+                                                                        {evidence ? (
+                                                                            <div>
+                                                                                <p>Evidence {evidence.id}</p>
+                                                                                <p>Source: {evidence.source}</p>
+                                                                                <p>Message: {evidence.message}</p>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p>Evidence {evidenceId}</p>
+                                                                        )}
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    ) : (
+                                                        <p>No supporting evidence was attached.</p>
+                                                    )}
+                                                </div>
+                                            </details>
                                         </article>
                                     ))}
                                 </div>
@@ -679,10 +688,10 @@ function CompatibilityPanel({
 
                     {compatibility.unknown_facts.length > 0 && (
                         <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-500">Unknown facts</p>
+                            <p className="text-xs uppercase tracking-wider text-slate-500">Information Atlas could not confirm</p>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-400">
                                 {compatibility.unknown_facts.map((item) => (
-                                    <li key={item}>{item}</li>
+                                    <li key={item}>{formatUnknownFact(item)}</li>
                                 ))}
                             </ul>
                         </div>
@@ -912,4 +921,34 @@ function formatLabel(value: string): string {
         .split("_")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+function severityHeading(severity: string): string {
+    switch (severity) {
+        case "blocker": return "Blockers";
+        case "warning": return "Warnings";
+        case "info": return "Information";
+        case "unknown": return "Severity unknown";
+        default: return `${formatLabel(severity)} findings`;
+    }
+}
+
+function formatUnknownFact(value: string): string {
+    const separator = value.indexOf(":");
+    const field = separator < 0 ? value : value.slice(0, separator);
+    const labels: Record<string, string> = {
+        capabilities: "Capabilities",
+        gpu_available: "GPU availability",
+        installed_services: "Installed services",
+        installed_version: "Installed version",
+        memory_mb: "Memory",
+        open_ports: "Open ports",
+    };
+    const label = labels[field] ?? formatLabel(field);
+    return separator < 0 ? label : `${label}: ${formatLabel(value.slice(separator + 1))}`;
+}
+
+function formatLocalTimestamp(value: string): string {
+    const timestamp = new Date(value);
+    return Number.isNaN(timestamp.getTime()) ? "Time unavailable" : timestamp.toLocaleString();
 }

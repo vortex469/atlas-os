@@ -408,12 +408,20 @@ describe("DiscoveryItemPage", () => {
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
 
         expect(
-            await screen.findByRole("heading", { name: "Compatibility status" }),
+            await screen.findByRole("heading", { name: "Compatibility summary" }),
         ).toBeInTheDocument();
-        expect(screen.getByText("Compatible")).toBeInTheDocument();
+        const summary = screen.getByRole("heading", { name: "Compatibility summary" }).closest("section");
+        expect(within(summary as HTMLElement).getByText("Compatible")).toBeInTheDocument();
         expect(screen.getByText("Catalog item status is active.")).toBeInTheDocument();
-        expect(screen.getByText("Code: f0001")).toBeInTheDocument();
-        expect(screen.getByText("Evidence e0001")).toBeInTheDocument();
+        expect(screen.getByText("Checked (local time)")).toBeInTheDocument();
+        expect(screen.queryByText("2026-08-05T18:00:00.000Z")).not.toBeVisible();
+        const finding = screen.getByText("Catalog item status is active.").closest("article");
+        const technicalDetails = within(finding as HTMLElement).getByText("Evidence and technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence and technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
         expect(await screen.findByRole("heading", { name: "Image grounding" })).toBeInTheDocument();
         expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledWith("frigate");
@@ -625,8 +633,8 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Compatibility status" })).toBeInTheDocument();
-        expect(await screen.findByText(expected)).toBeInTheDocument();
+        const summary = await screen.findByRole("heading", { name: "Compatibility summary" });
+        expect(within(summary.closest("section") as HTMLElement).getByText(expected)).toBeInTheDocument();
     });
 
     it("shows findings grouped by backend severity and unknown facts", async () => {
@@ -676,14 +684,24 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Findings Warning")).toBeInTheDocument();
-        expect(await screen.findByText("Findings Blocker")).toBeInTheDocument();
+        expect(await screen.findByText("Warnings")).toBeInTheDocument();
+        expect(await screen.findByText("Blockers")).toBeInTheDocument();
         expect(screen.getByText("Memory is borderline.")).toBeInTheDocument();
         expect(screen.getByText("Required port is missing.")).toBeInTheDocument();
-        expect(screen.getAllByText("Evidence e0002")).toHaveLength(2);
-        expect(screen.getAllByText((content) => content.includes("Port check"))).toHaveLength(2);
-        expect(screen.getByText("open_ports")).toBeInTheDocument();
-        expect(screen.getByText("installed_services")).toBeInTheDocument();
+        const warning = screen.getByText("Memory is borderline.").closest("article");
+        const blocker = screen.getByText("Required port is missing.").closest("article");
+        expect(within(warning as HTMLElement).getByText("Compatible with warnings")).toBeInTheDocument();
+        expect(within(blocker as HTMLElement).getByText("Not compatible")).toBeInTheDocument();
+        expect(screen.getByText("Open ports")).toBeInTheDocument();
+        expect(screen.getByText("Installed services")).toBeInTheDocument();
+        expect(screen.queryByText(/Checked field: requirements\.resources\.memory_mb_min/)).not.toBeVisible();
+        const technicalDetails = within(warning as HTMLElement).getByText("Evidence and technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).queryByText("Evidence e0002")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence and technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0002")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Checked field: requirements.resources.memory_mb_min")).toBeVisible();
     });
 
     it("renders compatibility loading state independently", async () => {
@@ -705,7 +723,8 @@ describe("DiscoveryItemPage", () => {
         expect(compatibilityPromise).toBeDefined();
         expect(resolveCompatibility).toBeDefined();
         resolveCompatibility!(compatibilityAssessment());
-        expect(await screen.findByText("Compatible")).toBeInTheDocument();
+        const summary = await screen.findByRole("heading", { name: "Compatibility summary" });
+        expect(within(summary.closest("section") as HTMLElement).getByText("Compatible")).toBeInTheDocument();
     });
 
     it("shows compatibility failure without replacing the full item page", async () => {
@@ -729,8 +748,8 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByText("No findings were reported.")).toBeInTheDocument();
-        expect(screen.getByText("Target ID")).toBeInTheDocument();
-        expect(screen.getByText("atlas_environment")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Environment · atlas")).toBeInTheDocument();
+        expect(screen.getByText("Information not confirmed")).toBeInTheDocument();
     });
 
     it("renders incoming and outgoing relationships separately with links and labels", async () => {

@@ -141,6 +141,80 @@ test("discovery refuses another catalog item's details", async ({ page }) => {
 });
 
 for (const width of [390, 1280]) {
+    test(`compatibility findings use clear labels and keep references optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        const entry = discoveryItemsPage.entries[0];
+        const checkedAt = "2026-10-28T12:00:00.000Z";
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items/fixture-app", route => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/relationships", route => route.fulfill({ json: {
+            item_id: "fixture-app", incoming: [], outgoing: [],
+        } }));
+        await page.route("**/api/v1/discovery/items/fixture-app/compatibility", route => route.fulfill({ json: {
+            item_id: "fixture-app",
+            target_id: "atlas",
+            target_type: "atlas_environment",
+            status: "compatible_with_warnings",
+            checked_at: checkedAt,
+            findings: [{
+                id: "finding-browser-1",
+                check_type: "resource",
+                severity: "warning",
+                status: "compatible_with_warnings",
+                subject: "requirements.resources.memory_mb_min",
+                message: "Memory is borderline.",
+                evidence_ids: ["evidence-browser-1"],
+            }],
+            evidence: [{
+                id: "evidence-browser-1",
+                check_type: "resource",
+                subject: "requirements.resources.memory_mb_min",
+                status: "compatible_with_warnings",
+                message: "Memory check.",
+                source: "compatibility_context",
+            }],
+            unknown_facts: ["installed_services"],
+        } }));
+        await page.route("**/api/v1/discovery/items/fixture-app/evidence", route => route.fulfill({ json: {
+            schema_version: "discovery-merged-item-v1",
+            catalog_item_id: "fixture-app",
+            curated: entry,
+            dynamic_claims: [],
+            source_states: [],
+            conflict_state: "none",
+        } }));
+        await page.route("**/api/v1/discovery/items/fixture-app/image-grounding", route => route.fulfill({ json: {
+            schema_version: "discovery-image-grounding-projection-v1",
+            catalog_item_id: "fixture-app",
+            status: "no_deployment_binding",
+            release_version: null,
+            deployment_binding: null,
+            observed_image: null,
+            accepted_evidence: [],
+        } }));
+        await page.route("**/api/v1/discovery/proposals**", route => route.fulfill({ json: {
+            proposals: [], total: 0, limit: 25,
+        } }));
+        await page.goto("/discovery/items/fixture-app");
+
+        const summary = page.getByRole("heading", { name: "Compatibility summary" }).locator("xpath=..");
+        const findings = page.getByRole("heading", { name: "What the check found" }).locator("xpath=..");
+        await expect(summary.getByText("Compatible with warnings", { exact: true })).toBeVisible();
+        await expect(summary.getByText("Checked (local time)", { exact: true })).toBeVisible();
+        await expect(summary.getByText(checkedAt, { exact: true })).toBeHidden();
+        await expect(findings.getByText("Warnings", { exact: true })).toBeVisible();
+        await expect(findings.getByText("Compatible with warnings", { exact: true })).toBeVisible();
+        await expect(findings.getByText("Memory is borderline.", { exact: true })).toBeVisible();
+        await expect(findings.getByText("Installed services", { exact: true })).toBeVisible();
+        await expect(findings.getByText("Finding code: finding-browser-1", { exact: true })).toBeHidden();
+        await findings.getByText("Evidence and technical details", { exact: true }).click();
+        await expect(findings.getByText("Finding code: finding-browser-1", { exact: true })).toBeVisible();
+        await expect(findings.getByText("Checked field: requirements.resources.memory_mb_min", { exact: true })).toBeVisible();
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate(maxWidth => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`related proposals can retry without leaving the catalog item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         const entry = discoveryItemsPage.entries[0];

@@ -1934,3 +1934,13 @@ avoids both a disappearing list and a stale health value that looks current.
 The full Mission Control suite passes (2,792 tests across 181 files), provider
 registry browser checks pass (5 checks, including 390px and 1280px recovery),
 and lint and production build pass. Browser reads use synthetic fixtures.
+
+## Compatibility finding labels — 2026-10-28
+
+The catalog item compatibility screen now translates finding statuses and
+severity into readable labels, describes unconfirmed facts in plain language,
+and keeps finding codes, checked fields, evidence records, and raw timestamps
+under optional technical details. The full Mission Control suite passes (2,792
+tests across 181 files), focused compatibility browser checks pass at 390px
+and 1280px, and lint and production build pass. All browser API reads use
+synthetic fixtures; no assessment or authorization behavior changed.
