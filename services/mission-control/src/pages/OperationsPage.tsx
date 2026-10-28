@@ -205,7 +205,7 @@ export function OperationsPage() {
         if (!summary || isLoading || error) return;
         const retentionDays = summary.retention_days;
         const confirmed = window.confirm(
-            `Delete audit entries older than ${retentionDays} days?`,
+            `Delete action history entries older than ${retentionDays} days?`,
         );
 
         if (!confirmed) {
@@ -219,11 +219,9 @@ export function OperationsPage() {
         try {
             const result = await pruneProviderActionHistory();
             setOperationMessage(
-                `${result.deleted_entries} expired audit ${
-                    result.deleted_entries === 1
-                        ? "entry"
-                        : "entries"
-                } pruned.`,
+                `Deleted ${result.deleted_entries} expired action history ${
+                    result.deleted_entries === 1 ? "entry" : "entries"
+                }.`,
             );
             setOffset(0);
             setReadAttempt((attempt) => attempt + 1);
@@ -322,13 +320,13 @@ export function OperationsPage() {
                 </div>
 
                 <p className="text-xs text-slate-500">
-                    Persistent audit history · retention managed by Atlas Core
+                    History is saved by Atlas Core. Its settings control how long entries stay.
                 </p>
             </div>
 
             <details className="rounded-lg border border-slate-800 bg-slate-900 p-4">
                 <summary className="cursor-pointer text-sm font-medium text-slate-200">Search and filters</summary>
-                <p className="mt-3 text-sm text-slate-400">Dates use UTC. Results below show the current search.</p>
+                <p className="mt-3 text-sm text-slate-400">Date filters use UTC (Coordinated Universal Time). Results below reflect your current search.</p>
                 {providersUnavailable && <p role="status" className="mt-3 text-sm text-amber-200">Provider choices are unavailable. Existing filters still apply. Refresh history to try again.</p>}
                 <section className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <form
@@ -643,8 +641,8 @@ export function OperationsPage() {
                         </h2>
                         <p className="mt-1 text-sm text-slate-400">
                             {summary
-                                ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
-                                : summaryLoading ? "Loading retention policy..." : "Retention policy unavailable."}
+                                ? `Saved entries: ${summary.entry_count} of ${summary.max_entries}. History is kept for ${summary.retention_days} days.`
+                                : summaryLoading ? "Loading cleanup settings…" : "Cleanup settings could not be loaded. Choose Refresh history to try again."}
                         </p>
                     </div>
 
@@ -676,8 +674,8 @@ export function OperationsPage() {
                             className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isPruning
-                                ? "Pruning..."
-                                : "Prune expired"}
+                                ? "Deleting…"
+                                : "Delete expired entries"}
                         </button>
                     </div>
                 </div>

@@ -11,7 +11,7 @@ const READ_ERRORS = {
     record: "This audit record is incomplete or inconsistent. Try loading it again.",
     identity: "The returned record does not match this audit link. Try again.",
     page: "The action history report is incomplete or inconsistent. Refresh history to try again.",
-    summary: "Retention policy unavailable. Refresh history to try again.",
+    summary: "Cleanup settings could not be loaded. Choose Refresh history to try again.",
     providers: "Provider choices are unavailable. Refresh history to try again.",
 } as const;
 
