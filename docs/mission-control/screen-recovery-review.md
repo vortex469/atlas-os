@@ -311,6 +311,13 @@ under collapsed “Technical details.” Focused overview tests, lint, build and
 responsive browser checks cover the wording and keyboard access; provider
 evidence and action boundaries are unchanged.
 
+## Forge findings wording — 2026-10-28
+
+Forge labels the analyzer output “Findings.” An empty list says only that no
+findings were reported for the Compose file; it no longer claims that the
+deployment has no security or operational concerns. The Forge test checks the
+scoped empty state; analysis and deployment authority are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

@@ -13,7 +13,7 @@ export function DiagnosticsPanel({
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-lg font-semibold text-slate-100">
-                Diagnostics
+                Findings
             </h2>
 
             {diagnostics.length === 0 ? (
@@ -24,10 +24,10 @@ export function DiagnosticsPanel({
 
                     <div>
                         <p className="font-medium text-emerald-300">
-                            No issues detected
+                            No findings
                         </p>
                         <p className="mt-1 text-sm text-slate-500">
-                            Atlas found no security or operational concerns.
+                            No findings were reported for this Compose file.
                         </p>
                     </div>
                 </div>

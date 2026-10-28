@@ -111,4 +111,13 @@ describe("Forge analysis freshness", () => {
         expect(screen.queryByText("0 minutes")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|deploy now/i })).not.toBeInTheDocument();
     });
+
+    it("limits the empty findings message to what the analysis reported", async () => {
+        render(<Forge />);
+        submit();
+        await screen.findByRole("heading", { name: "Deployment Brief" });
+        expect(screen.getByRole("heading", { name: "Findings" })).toBeInTheDocument();
+        expect(screen.getByText("No findings were reported for this Compose file.")).toBeInTheDocument();
+        expect(screen.queryByText(/security or operational concerns/)).not.toBeInTheDocument();
+    });
 });
