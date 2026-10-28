@@ -192,7 +192,7 @@ describe("PlanningSessionPage", () => {
             intake_status: {}, intake_reason_codes: null, future_metadata: { extra: true } } as unknown as Partial<CandidatePlanningResponse>));
         renderPage();
         expect(await screen.findByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/proposal%2F%C3%A9");
-        if (successor_session_id) expect(screen.getByRole("link", { name: successor_session_id })).toHaveAttribute("href", "/candidate-planning/next%2F%C3%A9");
+        if (successor_session_id) expect(screen.getByRole("link", { name: "Open newer session" })).toHaveAttribute("href", "/candidate-planning/next%2F%C3%A9");
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
@@ -411,7 +411,8 @@ describe("PlanningSessionPage", () => {
         const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByText("candidate-plan-1", { exact: true })).toBeInTheDocument();
+        expect(await screen.findByText("Planning Session ID", { exact: true })).toBeInTheDocument();
+        expect(screen.getByText("candidate-plan-1", { exact: true })).not.toBeVisible();
         expect(screen.getByRole("heading", { name: "Plan this change" })).toBeVisible();
         expect(screen.getByText("candidate-1")).toBeInTheDocument();
         expect(screen.getAllByText("Ready For Planning").length).toBeGreaterThan(0);
@@ -428,6 +429,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("fingerprint-1")).not.toBeVisible();
         expect(screen.getByRole("button", { name: "Generate Plan" })).toBeVisible();
         await user.click(disclosure);
+        expect(screen.getByText("candidate-plan-1", { exact: true })).toBeVisible();
         expect(screen.getByText("fingerprint-1")).toBeVisible();
         expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
@@ -443,10 +445,17 @@ describe("PlanningSessionPage", () => {
         );
         renderPage("/candidate-planning/candidate-plan-2");
 
-        expect(await screen.findByText("Successor of")).toBeInTheDocument();
-        expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
-        const link = screen.getByRole("link", { name: "candidate-plan-3" });
-        expect(link).toHaveAttribute("href", "/candidate-planning/candidate-plan-3");
+        expect(await screen.findByText("This session follows an earlier planning session.")).toBeInTheDocument();
+        const earlierLink = screen.getByRole("link", { name: "Open earlier session" });
+        expect(earlierLink).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+        expect(screen.getByText("A newer planning session is available.")).toBeInTheDocument();
+        const newerLink = screen.getByRole("link", { name: "Open newer session" });
+        expect(newerLink).toHaveAttribute("href", "/candidate-planning/candidate-plan-3");
+        expect(screen.getByText("candidate-plan-1", { exact: true })).not.toBeVisible();
+        expect(screen.getByText("candidate-plan-3", { exact: true })).not.toBeVisible();
+        await userEvent.setup().click(screen.getByText("Technical details", { exact: true }));
+        expect(screen.getByText("candidate-plan-1", { exact: true })).toBeVisible();
+        expect(screen.getByText("candidate-plan-3", { exact: true })).toBeVisible();
     });
 
     it("generates a plan and renders the read-only plan viewer", async () => {

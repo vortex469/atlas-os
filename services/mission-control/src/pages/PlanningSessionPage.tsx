@@ -313,14 +313,17 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 </div>
                 {session.predecessor_session_id && (
                     <p className="mt-3 text-sm text-slate-300">
-                        Successor of <span className="font-mono">{session.predecessor_session_id}</span>
+                        This session follows an earlier planning session.{" "}
+                        <Link to={`/candidate-planning/${encodeURIComponent(session.predecessor_session_id)}`} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            Open earlier session
+                        </Link>
                     </p>
                 )}
                 {session.successor_session_id && (
                     <p className="mt-2 text-sm text-slate-300">
-                        <span>Successor planning session: </span>
+                        A newer planning session is available.{" "}
                         <Link to={`/candidate-planning/${encodeURIComponent(session.successor_session_id)}`} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            {session.successor_session_id}
+                            Open newer session
                         </Link>
                     </p>
                 )}
@@ -331,6 +334,8 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         <Detail label="Candidate ID" value={session.candidate_id} />
                         <Detail label="Planning status" value={formatLabel(session.status)} />
                         <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
+                        {session.predecessor_session_id && <Detail label="Earlier planning session ID" value={session.predecessor_session_id} />}
+                        {session.successor_session_id && <Detail label="Newer planning session ID" value={session.successor_session_id} />}
                     </dl>
                 </details>
                 <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Review original proposal</Link>
