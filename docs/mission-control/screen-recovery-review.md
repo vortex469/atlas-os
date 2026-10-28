@@ -872,3 +872,11 @@ Planning screens also keep the reload instruction on the visible control rather
 than repeating it in errors for missing or conflicting plans. A missing plan
 does not offer another generation request. The planning page tests, lint, and
 production build pass.
+
+## Missing provider recovery — 2026-10-28
+
+The missing-provider screen now uses one status heading and a short catalog
+message. Its existing “All providers” navigation remains the recovery route,
+and the message does not repeat refresh instructions. It does not label a
+successfully loaded catalog as unavailable. Provider page and responsive
+browser recovery checks, lint, production build, and `git diff --check` pass.

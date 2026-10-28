@@ -148,25 +148,13 @@ export function ProviderPage() {
                 !error &&
                 !provider && (
                     <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-8">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-400">
-                            Provider unavailable
-                        </p>
-
                         <h1 className="mt-3 text-2xl font-bold text-slate-100">
                             Provider not found
                         </h1>
 
                         <p className="mt-3 text-sm leading-6 text-slate-300">
-                            This provider is not in the current catalog. Refresh
-                            to check again, or return to Mission Control.
+                            This provider is not in the current catalog.
                         </p>
-
-                        <Link
-                            to="/"
-                            className="mt-6 inline-flex text-sm font-medium text-blue-400 hover:text-blue-300"
-                        >
-                            Return to Mission Control
-                        </Link>
                     </section>
                 )}
 

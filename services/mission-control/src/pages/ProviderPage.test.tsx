@@ -51,7 +51,9 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [] }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.getByRole("heading", { name: "Provider not found" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Return to Mission Control" })).toHaveAttribute("href", "/");
+        expect(screen.getByText("This provider is not in the current catalog.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "← All providers" })).toHaveAttribute("href", "/providers");
+        expect(screen.queryByText(/Refresh to check again/)).not.toBeInTheDocument();
     });
 
     it("keeps provider details usable when supported-feature data is missing", () => {

@@ -179,16 +179,21 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     });
 }
 
-test("an empty provider catalog has a clear way back", async ({ page }) => {
-    await page.route("**/api/v1/providers", (route) => route.fulfill({
-        status: 200, contentType: "application/json", body: "[]",
-    }));
-    await page.goto("/providers/proxmox");
-    await expect(page.getByRole("heading", { name: "Provider not found" })).toBeVisible();
-    await expect(page.getByText("Not updated yet")).not.toBeVisible();
-    await page.getByRole("link", { name: "Return to Mission Control" }).click();
-    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
-});
+for (const width of [390, 1280]) {
+    test(`an empty provider catalog has a clear way back at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/providers", (route) => route.fulfill({
+            status: 200, contentType: "application/json", body: "[]",
+        }));
+        await page.goto("/providers/proxmox");
+        await expect(page.getByRole("heading", { name: "Provider not found" })).toBeVisible();
+        await expect(page.getByText("Not updated yet")).not.toBeVisible();
+        await expect(page.getByText("This provider is not in the current catalog.")).toBeVisible();
+        await page.getByRole("link", { name: "← All providers" }).click();
+        await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
 
 test("workflows recover from an initial outage without reloading", async ({ page }) => {
     let attempts = 0;
