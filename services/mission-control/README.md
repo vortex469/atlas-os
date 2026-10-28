@@ -104,6 +104,9 @@ submitted actions remain associated with their original provider and its
 recorded action history. Confirmation and backend permission checks remain
 in their existing controls.
 
+Action-history date filters cover whole UTC days; timestamps in the results
+use the browser's local time zone.
+
 Browser acceptance covers the repository-change journey from a current
 proposal through planning, implementation approval, verification approval,
 local commit approval and the completed audit. A separate synthetic backend

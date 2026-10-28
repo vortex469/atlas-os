@@ -260,6 +260,9 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
+        expect(screen.getByText("Dates cover UTC days. Entry times use your browser’s local time.", { exact: true })).toBeVisible();
+        expect(screen.getByLabelText("From date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
+        expect(screen.getByLabelText("To date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
         await user.selectOptions(
             screen.getByLabelText("Provider"),
             "ollama",

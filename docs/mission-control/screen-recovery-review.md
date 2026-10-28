@@ -21,7 +21,7 @@ runtime, tag, or publish a release.
 | Repository workflow | Preparation and detail summaries show current state and approval status first; reference metadata is optional; exact requests remain reviewable; each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
 | Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
-| Provider action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results | `src/pages/OperationsPage.test.tsx` includes delayed-response and failure regressions |
+| Provider action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results; UTC date filters are explained beside local display times | `src/pages/OperationsPage.test.tsx`, `e2e/action-history-dates.spec.ts` |
 | Atlas Doctor | Rerunning clears the previous report; pending and failed reads cannot retain an old healthy score | `src/components/AtlasDoctorPanel.test.tsx` includes healthy-to-pending-to-unavailable coverage |
 | Provider connection tests | Editing inputs or reloading settings clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` uses synthetic secret canaries, checks stale-result invalidation, and mocks every test/save request |
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
@@ -124,6 +124,14 @@ workflow page suites pass (95 tests); the complete repository journey passes at
 390px and 1280px (4 tests), with lint/build passing. The exact request remains
 visible before approval, and each approval and Resume request remains separate;
 browser writes are intercepted by the synthetic journey fixture.
+
+## Action-history time-zone clarification — 2026-10-28
+
+Action-history date filters now explain that the selected dates cover UTC days
+while entry times use the browser's local time. The explanation is associated
+with both date fields for assistive technology. The focused history suite passes
+(8 tests), responsive browser checks pass at 390px and 1280px (2 tests), and
+lint/build pass. The existing UTC query bounds are unchanged.
 
 ## Acceptance status and remaining gaps
 

@@ -384,6 +384,7 @@ export function OperationsPage() {
                     <input
                         id="audit-from-filter"
                         type="date"
+                        aria-describedby="audit-date-filter-help"
                         value={completedFrom}
                         max={completedTo || undefined}
                         onChange={(event) => {
@@ -404,6 +405,7 @@ export function OperationsPage() {
                     <input
                         id="audit-to-filter"
                         type="date"
+                        aria-describedby="audit-date-filter-help"
                         value={completedTo}
                         min={completedFrom || undefined}
                         onChange={(event) => {
@@ -439,6 +441,9 @@ export function OperationsPage() {
                         Clear filters
                     </button>
                 </div>
+                <p id="audit-date-filter-help" className="text-xs text-slate-500 sm:col-span-2 xl:col-span-5">
+                    Dates cover UTC days. Entry times use your browser’s local time.
+                </p>
             </section>
 
             <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
