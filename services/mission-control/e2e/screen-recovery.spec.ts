@@ -1,4 +1,4 @@
-import { executionCandidates, expect, providers, test } from "./mission-control-fixtures";
+import { discoveryItemsPage, executionCandidates, expect, providers, test } from "./mission-control-fixtures";
 import { operationalLifecycle } from "../src/test/operationalLifecycle";
 
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
@@ -118,6 +118,35 @@ test("discovery refuses another catalog item's details", async ({ page }) => {
     await page.getByRole("link", { name: "← Catalog" }).click();
     await expect(page.getByRole("heading", { name: "Browse the catalog", exact: true })).toBeVisible();
 });
+
+for (const width of [390, 1280]) {
+    test(`related proposals can retry without leaving the catalog item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        const entry = discoveryItemsPage.entries[0];
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items/fixture-app", (route) => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/relationships", (route) => route.fulfill({ json: {
+            item_id: "fixture-app", incoming: [], outgoing: [],
+        } }));
+        await page.route("**/api/v1/discovery/proposals**", (route) => {
+            reads += 1;
+            return reads <= 2
+                ? route.fulfill({ status: 503, json: { detail: "PRIVATE_PROPOSAL_ERROR" } })
+                : route.fulfill({ json: { proposals: [], total: 0, limit: 25 } });
+        });
+        await page.goto("/discovery/items/fixture-app");
+
+        const proposals = page.getByRole("region", { name: "Operator proposals" });
+        await expect(proposals.getByRole("alert")).toContainText("Related proposals are temporarily unavailable");
+        await expect(proposals.getByRole("alert")).not.toContainText("PRIVATE_PROPOSAL_ERROR");
+        await proposals.getByRole("button", { name: "Retry related proposals" }).click();
+        await expect(proposals.getByText("No related proposals are available.")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
+        expect(reads).toBe(3);
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
 
 test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
     let reads = 0;

@@ -73,6 +73,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
+    const [proposalLoadAttempt, setProposalLoadAttempt] = useState(0);
     const compatibilityRequestId = useRef(0);
     const compatibilityLoadHandle = useRef<number | null>(null);
 
@@ -292,7 +293,14 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 if (!cancelled) setProposalsLoading(false);
             });
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, proposalLoadAttempt]);
+
+    function retryRelatedProposals() {
+        setProposals([]);
+        setProposalsLoading(true);
+        setProposalsError(null);
+        setProposalLoadAttempt((attempt) => attempt + 1);
+    }
 
     if (isLoading) {
         return (
@@ -436,7 +444,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     <p className="mt-1 text-sm text-slate-400">Suggestions based on this item. They do not authorize actions.</p>
                 </div>
                 {proposalsLoading && <p className="text-sm text-slate-400">Loading related proposals…</p>}
-                {proposalsError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{proposalsError}</p>}
+                {proposalsError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><p>{proposalsError}</p><button type="button" onClick={retryRelatedProposals} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200">Retry related proposals</button></div>}
                 {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No related proposals are available.</p>}
                 {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} />)}
             </section>

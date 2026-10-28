@@ -955,3 +955,11 @@ HTTP 404 still uses the separate missing-proposal screen. The focused component
 test and responsive browser checks verify recovery and confirm the backend
 detail remains hidden at 390px and 1280px. Planning and approval behavior are
 unchanged.
+
+## Discovery related-proposal recovery — 2026-10-28
+
+If related proposals fail to load on a catalog item, the section now offers a
+retry without reloading the item or its other evidence. The proposal list stays
+read-only, and the catalog context remains visible. Focused component coverage
+and responsive browser checks verify the recovery at 390px and 1280px; no
+proposal or installation action is introduced.

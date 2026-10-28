@@ -1,4 +1,5 @@
 import { act, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -537,6 +538,21 @@ describe("DiscoveryItemPage", () => {
         renderPage();
         expect(await screen.findByRole("alert")).toHaveTextContent("Related proposals are temporarily unavailable");
         expect(screen.getByText(/catalog information is still available/i)).toBeInTheDocument();
+    });
+
+    it("retries the related proposal read without reloading the catalog item", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryProposals.mockRejectedValueOnce(new Error("Proposal service unavailable"))
+            .mockResolvedValueOnce({ proposals: [], total: 0, limit: 25 });
+
+        renderPage();
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Related proposals are temporarily unavailable");
+        await user.click(screen.getByRole("button", { name: "Retry related proposals" }));
+
+        expect(await screen.findByText("No related proposals are available.")).toBeInTheDocument();
+        expect(mockedListDiscoveryProposals).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });
 
     it.each([
