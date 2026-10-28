@@ -89,8 +89,10 @@ describe("ExecutionCandidatesPage", () => {
         expect(screen.getByText("Technical details", { exact: true }).closest("details")).not.toHaveAttribute("open");
         expect(screen.getByText("candidate-1")).not.toBeVisible();
         expect(screen.getByText("Compatible With Warnings")).toBeVisible();
-        expect(screen.getByText("Standard")).toBeVisible();
+        expect(screen.getByText("Standard")).not.toBeVisible();
         expect(screen.getByText("No expiry")).toBeVisible();
+        fireEvent.click(screen.getByText("Technical details", { exact: true }));
+        expect(screen.getByText("Standard")).toBeVisible();
     });
 
     it.each(["", "2999-02-30T00:00:00Z"])("keeps malformed expiry %s visible as unverified", async (expires_at) => {
