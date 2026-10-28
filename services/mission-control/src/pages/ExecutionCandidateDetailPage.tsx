@@ -342,17 +342,17 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
 }
 
 function planningMessage(response: CandidatePlanningResponse): string {
-    if (response.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable during authoritative revalidation.";
-    if (response.planning_failure?.code === "persistence_failed") return "Planning session could not be persisted.";
+    if (response.planning_failure?.code === "atlas_core_unavailable") return "Atlas could not confirm that this proposal is still current. Choose Refresh proposal before trying again.";
+    if (response.planning_failure?.code === "persistence_failed") return "Atlas could not save the planning information. Choose Refresh proposal to check the latest status before trying again.";
     if (hasExistingWorkflow(response)) return "A workflow already exists for this proposal. Review its progress and any remaining approvals.";
-    if (response.status === "plan_ready" && response.session_id) return "A saved plan is available to review.";
+    if (response.status === "plan_ready" && response.session_id) return "A saved change plan is ready to review.";
     if (response.status === "ready_for_planning" && response.session_id && response.planning_allowed) {
-        return "Planning session created. Next step: generate a candidate plan.";
+        return "Planning is ready. Next, create a change plan.";
     }
-    if (response.status === "unsupported_intent") return "Unsupported intent. Atlas Agent cannot plan this candidate yet.";
-    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "This proposal changed or expired. Choose Refresh proposal to check its latest state.";
-    if (response.status === "intake_rejected") return "Planning intake rejected by Atlas Core.";
-    return "Atlas Agent returned a planning intake response.";
+    if (response.status === "unsupported_intent") return "Atlas cannot plan this kind of change yet.";
+    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "This proposal changed or expired. Choose Refresh proposal to check its latest details.";
+    if (response.status === "intake_rejected") return "Atlas could not start planning for this proposal. Review the planning details to see why.";
+    return "Planning did not start. Review the planning details to see what happened.";
 }
 
 function formatExpiry(value: string | null | undefined): string {

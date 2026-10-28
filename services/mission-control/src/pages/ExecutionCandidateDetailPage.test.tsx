@@ -199,7 +199,7 @@ describe("ExecutionCandidateDetailPage", () => {
             }),
         );
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
-        expect(await screen.findByText("Planning session created. Next step: generate a candidate plan.")).toBeInTheDocument();
+        expect(await screen.findByText("Planning is ready. Next, create a change plan.")).toBeInTheDocument();
         const details = screen.getByText("Planning details", { exact: true });
         expect(screen.getByText("Planning session ID: candidate-plan-1")).not.toBeVisible();
         await user.click(details);
@@ -327,23 +327,28 @@ describe("ExecutionCandidateDetailPage", () => {
             unsupported_reason: "Only update-compose-stack is supported.",
         }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("Unsupported intent. Atlas Agent cannot plan this candidate yet.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas cannot plan this kind of change yet.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "policy_denied", intake_reason_codes: ["policy_denied"] }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("Planning intake rejected by Atlas Core.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas could not start planning for this proposal. Review the planning details to see why.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "stale_before_planning", planning_allowed: false, intake_status: "stale" }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("This proposal changed or expired. Choose Refresh proposal to check its latest state.")).toBeInTheDocument();
+        expect(await screen.findByText("This proposal changed or expired. Choose Refresh proposal to check its latest details.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("Atlas Core unavailable during authoritative revalidation.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas could not confirm that this proposal is still current. Choose Refresh proposal before trying again.")).toBeInTheDocument();
+        const details = screen.getByText("Planning details", { exact: true });
+        expect(details.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByText(/atlas_core_unavailable/)).not.toBeVisible();
+        await user.click(details);
+        expect(screen.getByText(/atlas_core_unavailable/)).toBeVisible();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "persistence_failed", message: "Persistence failed" } }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("Planning session could not be persisted.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas could not save the planning information. Choose Refresh proposal to check the latest status before trying again.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
