@@ -222,7 +222,7 @@ tests across 181 files), and lint, build, and `git diff --check` pass. Stale
 dashboard and structural assertions were aligned with the current collapsed
 source details, plain-language blocker label, and local-only list expansion.
 The repository journey and overview browser suites also pass (21 tests across
-390px–1440px viewports); their API calls use synthetic fixtures.
+320px–1440px viewports); their API calls use synthetic fixtures.
 
 ## Provider detail information hierarchy — 2026-10-28
 
