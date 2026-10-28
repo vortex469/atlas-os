@@ -30,6 +30,11 @@ describe("WorkerAdmissionStubs", () => {
         render(<WorkerAdmissionStubs candidateId="candidate" bindingPlan={runnerBindingPlanResultFixture} homeAssistantBlocked={false} />);
         expect(await screen.findByRole("heading", { name: "Saved worker review record" })).toBeInTheDocument();
         expect(screen.getByText("This record has not started a worker or queued work. It does not authorize installation or execution.")).toBeInTheDocument();
+        const savedAt = document.querySelector(`time[datetime="${workerAdmissionStubResultFixture.stub!.recorded_at}"]`);
+        const expiresAt = document.querySelector(`time[datetime="${workerAdmissionStubResultFixture.stub!.valid_until}"]`);
+        expect(savedAt).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(workerAdmissionStubResultFixture.stub!.recorded_at)));
+        expect(expiresAt).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(workerAdmissionStubResultFixture.stub!.valid_until)));
+        expect(savedAt).not.toHaveTextContent(workerAdmissionStubResultFixture.stub!.recorded_at);
         const blockers = screen.getByRole("list", { name: "What still needs to be in place" });
         expect(blockers).toHaveTextContent(/A worker has not been started.*A safe way to create or use a work queue is not defined.*A safe way to start installation is not defined/i);
         expect(screen.getByLabelText("Planned worker safety limits")).toHaveTextContent(/no network access.*no access to host, repository, or guest files/i);
