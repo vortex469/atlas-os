@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -280,7 +280,7 @@ describe("WorkflowShellPage", () => {
 		expect(await screen.findByText("Workflow detail")).toBeInTheDocument();
 	});
 
-		it("does not navigate on repository_stale translation failure and renders structured failure details", async () => {
+		it("explains a stale repository failure and keeps its code in collapsed request details", async () => {
 		const user = userEvent.setup();
 		mockedCreateCandidateImplementationRequest.mockResolvedValue(
 			implementationTranslationResponse({
@@ -302,10 +302,17 @@ describe("WorkflowShellPage", () => {
 
 		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-		expect(await screen.findByText("Translation status: implementation_translation_failed")).toBeInTheDocument();
-		expect(screen.getByText("Failure code: repository_stale")).toBeInTheDocument();
-		expect(screen.getByText("Failure message: Trusted repository HEAD differs from the reviewed candidate plan.")).toBeInTheDocument();
-		expect(screen.getByText("Reason codes: repository_stale")).toBeInTheDocument();
+		const alert = await screen.findByRole("alert");
+		expect(alert).toHaveTextContent("The repository changed after review. Re-plan against the current repository before preparing this request again.");
+		expect(alert).not.toHaveTextContent("repository_stale");
+		const details = screen.getByText("Request technical details", { exact: true });
+		expect(details.closest("details")).not.toHaveAttribute("open");
+		expect(screen.getByText("Failure code: repository_stale")).not.toBeVisible();
+		await user.click(details);
+		expect(screen.getByText("Translation status: implementation_translation_failed")).toBeVisible();
+		expect(screen.getByText("Failure code: repository_stale")).toBeVisible();
+		expect(screen.getByText("Failure message: Trusted repository HEAD differs from the reviewed candidate plan.")).toBeVisible();
+		expect(screen.getByText("Reason codes: repository_stale")).toBeVisible();
 		expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
@@ -332,10 +339,9 @@ describe("WorkflowShellPage", () => {
 
 			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-			expect(await screen.findByText("Failure code: plan_fingerprint_mismatch")).toBeInTheDocument();
+			expect(await screen.findByText("Failure code: plan_fingerprint_mismatch")).not.toBeVisible();
 			expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
 		});
-
 		it("re-plans from stale failure and navigates to successor planning session", async () => {
 			const user = userEvent.setup();
 			mockedCreateCandidateImplementationRequest.mockResolvedValue(
@@ -393,7 +399,16 @@ describe("WorkflowShellPage", () => {
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
-			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent?.includes("Unable to create successor planning session: conflicting_active_session: No successor."))).toBe(true);
+			const message = await screen.findByText("A planning session is already active for this proposal. Refresh the planning page before trying again.");
+			const alert = message.closest<HTMLElement>('[role="alert"]');
+			expect(alert).not.toBeNull();
+			expect(alert!).toHaveTextContent("A planning session is already active for this proposal. Refresh the planning page before trying again.");
+			const scopedAlert = within(alert!);
+			const technicalDetails = scopedAlert.getByText("Technical details", { exact: true });
+			expect(scopedAlert.getByText("Failure code: conflicting_active_session", { exact: true })).not.toBeVisible();
+			await user.click(technicalDetails);
+			expect(scopedAlert.getByText("Failure code: conflicting_active_session", { exact: true })).toBeVisible();
+			expect(scopedAlert.getByText("No successor.", { exact: true })).toBeVisible();
 			expect(screen.getByText("workflow-1", { exact: true })).toBeInTheDocument();
 		});
 
@@ -527,8 +542,7 @@ describe("WorkflowShellPage", () => {
 		const button = await screen.findByRole("button", { name: /prepare exact request/i });
 		await user.click(button);
 
-		expect(await screen.findByText("Implementation request failed with repository_stale: Trusted repository HEAD differs from the reviewed candidate plan."))
-			.toBeInTheDocument();
+		expect(await screen.findByRole("alert")).toHaveTextContent("The repository changed after review. Re-plan against the current repository before preparing this request again.");
 		expect(button).not.toBeDisabled();
 		expect(screen.getByText(/Trusted repository state changed after plan review/)).toBeInTheDocument();
 	});
