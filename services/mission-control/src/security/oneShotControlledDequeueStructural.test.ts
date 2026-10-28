@@ -35,12 +35,12 @@ describe("v0.45 one-shot controlled dequeue Mission Control boundary", () => {
     });
 
     it("keeps technical evidence in details and omits prohibited downstream controls", () => {
-        expect(component).toMatch(/State: \{state\}/);
-        expect(component).toMatch(/exact admitted inert item only/);
-        expect(component).toMatch(/<details className="mt-3">/);
+        expect(component).toMatch(/Core will attempt to remove only the exact empty queue reference admitted here/i);
+        expect(component).toMatch(/If the result is uncertain, do not repeat this action/i);
+        expect(component).toMatch(/Queue and receipt details/);
+        expect(component).toMatch(/Exact safety and authority details/);
         expect(component).toMatch(/Queue observation receipt fingerprint/);
         expect(component).toMatch(/Adapter receipt fingerprint/);
-        expect(component).toMatch(/Permanent dequeue subject reservation: true/);
         expect(component).toMatch(/One-shot controlled dequeue fixed-false authority fields/);
         expect(component).not.toMatch(/queue selector|worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token/i);
         expect(component).not.toMatch(/>\s*(poll|claim|lease|ack|consume|remove|start worker|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
