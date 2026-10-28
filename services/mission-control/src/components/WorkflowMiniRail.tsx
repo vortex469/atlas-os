@@ -1,4 +1,5 @@
 import type { WorkflowRailStage } from "../utils/workflowState";
+import { workflowStageStatusLabel } from "../utils/workflowState";
 
 interface WorkflowMiniRailProps {
     stages: WorkflowRailStage[];
@@ -11,6 +12,7 @@ const STATUS_CLASSES: Record<WorkflowRailStage["status"], string> = {
     waiting: "border-slate-700 bg-slate-900 text-slate-400",
     blocked: "border-amber-400/60 bg-amber-500/10 text-amber-100",
     failed: "border-red-400/60 bg-red-500/10 text-red-100",
+    unknown: "border-slate-700 bg-slate-900 text-slate-400",
 };
 
 const STATUS_MARK: Record<WorkflowRailStage["status"], string> = {
@@ -19,6 +21,7 @@ const STATUS_MARK: Record<WorkflowRailStage["status"], string> = {
     waiting: "○",
     blocked: "!",
     failed: "×",
+    unknown: "?",
 };
 
 export function WorkflowMiniRail({ stages, labelledBy }: WorkflowMiniRailProps) {
@@ -35,7 +38,7 @@ export function WorkflowMiniRail({ stages, labelledBy }: WorkflowMiniRailProps) 
                     <span className="font-medium">{stage.label}</span>
                     <span className="sr-only">:</span>
                     <span className="ml-2 text-xs uppercase tracking-wide">
-                        {stage.status}
+                        {workflowStageStatusLabel(stage.status)}
                     </span>
                 </li>
             ))}

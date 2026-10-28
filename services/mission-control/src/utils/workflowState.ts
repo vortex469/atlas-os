@@ -1,6 +1,6 @@
 import type { WorkflowTimelineStage } from "../types/atlasAgent";
 
-export type WorkflowRailStatus = "completed" | "current" | "waiting" | "blocked" | "failed";
+export type WorkflowRailStatus = "completed" | "current" | "waiting" | "blocked" | "failed" | "unknown";
 
 export interface WorkflowRailStage {
     label: string;
@@ -74,19 +74,20 @@ export function formatWorkflowLabel(value: string | null | undefined): string {
 }
 
 const EMPTY_RAIL: WorkflowRailStage[] = [
-    { label: "Candidate", status: "waiting" },
+    { label: "Proposal", status: "waiting" },
     { label: "Plan", status: "waiting" },
     { label: "Workflow", status: "waiting" },
-    { label: "Implementation", status: "waiting" },
-    { label: "Execution", status: "waiting" },
-    { label: "Verification", status: "waiting" },
-    { label: "Review", status: "waiting" },
+    { label: "Change approval", status: "waiting" },
+    { label: "Apply change", status: "waiting" },
+    { label: "Verify change", status: "waiting" },
+    { label: "Review results", status: "waiting" },
     { label: "Commit", status: "waiting" },
 ];
 
 const STATUS_PRIORITY: WorkflowRailStatus[] = [
     "failed",
     "blocked",
+    "unknown",
     "current",
     "waiting",
     "completed",
@@ -95,14 +96,14 @@ const STATUS_PRIORITY: WorkflowRailStatus[] = [
 export function workflowStageLabel(state: string): string {
     switch (state) {
         case "awaiting_approval":
-            return "Workflow";
+            return "Workflow approval";
         case "awaiting_implementation_approval":
-            return "Implementation";
+            return "Change approval";
         case "executing":
-            return "Execution";
+            return "Apply change";
         case "awaiting_verification_approval":
         case "verifying":
-            return "Verification";
+            return "Verify change";
         case "awaiting_commit_approval":
         case "committing":
             return "Commit";
@@ -112,6 +113,17 @@ export function workflowStageLabel(state: string): string {
             return "Completed";
         default:
             return formatWorkflowLabel(state);
+    }
+}
+
+export function workflowStageStatusLabel(status: string): string {
+    switch (status) {
+        case "completed": return "Done";
+        case "current": return "Current step";
+        case "waiting": return "Not started";
+        case "blocked": return "Blocked";
+        case "failed": return "Failed";
+        default: return "Status unavailable";
     }
 }
 
@@ -155,7 +167,7 @@ function normalizeStatus(status: string): WorkflowRailStatus {
     if (["completed", "current", "waiting", "blocked", "failed"].includes(status)) {
         return status as WorkflowRailStatus;
     }
-    return "waiting";
+    return "unknown";
 }
 
 function pickCombinedStatus(stages: Array<WorkflowTimelineStage | undefined>): WorkflowRailStatus {
@@ -175,7 +187,7 @@ export function workflowRailStages(input: WorkflowStateInput | null | undefined)
     const stageByName = new Map(input.timeline.map((stage) => [stage.name, stage]));
     return [
         {
-            label: "Candidate",
+            label: "Proposal",
             status: normalizeStatus(stageByName.get("Execution Candidate")?.status ?? "waiting"),
         },
         {
@@ -190,19 +202,19 @@ export function workflowRailStages(input: WorkflowStateInput | null | undefined)
             status: normalizeStatus(stageByName.get("Workflow")?.status ?? "waiting"),
         },
         {
-            label: "Implementation",
+            label: "Change approval",
             status: normalizeStatus(stageByName.get("Implementation Approval")?.status ?? "waiting"),
         },
         {
-            label: "Execution",
+            label: "Apply change",
             status: normalizeStatus(stageByName.get("Execution")?.status ?? "waiting"),
         },
         {
-            label: "Verification",
+            label: "Verify change",
             status: normalizeStatus(stageByName.get("Verification")?.status ?? "waiting"),
         },
         {
-            label: "Review",
+            label: "Review results",
             status: normalizeStatus(stageByName.get("Review")?.status ?? "waiting"),
         },
         {

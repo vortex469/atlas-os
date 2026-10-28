@@ -94,7 +94,7 @@ describe("WorkflowDashboardPage", () => {
         const card = screen.getAllByRole("heading", { name: "Update Compose Stack" })[0].closest("article");
         expect(card).not.toBeNull();
         const details = within(card as HTMLElement);
-        expect(details.getByText("Stage: Implementation")).toBeVisible();
+        expect(details.getByText("Stage: Change approval")).toBeVisible();
         expect(details.getByText("Latest result")).toBeVisible();
         expect(details.getByText("Your approval is needed")).toBeVisible();
         expect(details.queryByText("Current State")).not.toBeInTheDocument();

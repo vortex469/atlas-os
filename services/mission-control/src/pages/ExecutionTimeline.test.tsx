@@ -93,18 +93,36 @@ function renderTimeline(workflowDetail: WorkflowDetailResponse, options: { isRef
 }
 
 describe("ExecutionTimeline", () => {
-    it("renders all authoritative timeline stages", () => {
+    it("renders timeline stages with plain-language labels and statuses", () => {
         renderTimeline(workflow());
 
-        for (const stage of ["Execution Candidate", "Planning Session", "Candidate Plan", "Workflow", "Implementation Approval", "Execution", "Verification", "Review", "Commit"]) {
-            expect(screen.getAllByText(stage).length).toBeGreaterThan(0);
+        const stages = screen.getByRole("list", { name: "Change stages" });
+        for (const stage of ["Change proposal", "Planning", "Change plan", "Workflow created", "Change approval", "Apply change", "Verify change", "Review results", "Commit"]) {
+            expect(within(stages).getByText(stage, { exact: true })).toBeInTheDocument();
         }
+        for (const internalName of ["Execution Candidate", "Planning Session", "Candidate Plan", "Implementation Approval", "Execution"]) {
+            expect(within(stages).queryByText(internalName, { exact: true })).not.toBeInTheDocument();
+        }
+        expect(within(stages).getByText("Current step")).toBeInTheDocument();
+        expect(within(stages).getAllByText("Not started").length).toBeGreaterThan(0);
     });
 
     it("renders waiting state", () => {
         renderTimeline(workflow());
 
         expect(screen.getAllByText("Waiting for implementation approval.").length).toBeGreaterThan(0);
+        expect(within(screen.getByRole("list", { name: "Change stages" })).getAllByText("Not started").length).toBeGreaterThan(0);
+    });
+
+    it("does not present an unrecognized server stage status as not started", () => {
+        renderTimeline(workflow({
+            timeline: workflow().timeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "unexpected" } : stage),
+        }));
+
+        const applyChange = screen.getByText("Apply change").closest("li");
+        const stage = within(applyChange as HTMLElement);
+        expect(stage.getByText("Status unavailable")).toBeInTheDocument();
+        expect(stage.queryByText("Not started")).not.toBeInTheDocument();
     });
 
     it("uses maintenance terms for an operational workflow", () => {
@@ -130,7 +148,7 @@ describe("ExecutionTimeline", () => {
         }
         expect(screen.getByText("Waiting for maintenance request approval.")).toBeInTheDocument();
         expect(screen.getByText("Check the Operational lifecycle section above for the maintenance outcome and verification.")).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Execution timeline" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Change progress" })).not.toBeInTheDocument();
         for (const internalName of ["Execution Candidate", "Planning Session", "Candidate Plan", "Operational Action Approval", "Execution", "Verification"]) {
             expect(within(stages).queryByText(internalName, { exact: true })).not.toBeInTheDocument();
         }

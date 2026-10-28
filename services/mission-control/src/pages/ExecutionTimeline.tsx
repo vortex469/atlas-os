@@ -1,4 +1,5 @@
 import type { WorkflowDetailResponse, WorkflowExecutionSummary, WorkflowTimelineStage } from "../types/atlasAgent";
+import { workflowStageStatusLabel } from "../utils/workflowState";
 
 interface ExecutionTimelineProps {
     workflow: WorkflowDetailResponse;
@@ -15,7 +16,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
         <section aria-labelledby="execution-timeline-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h2 id="execution-timeline-heading" className="text-lg font-semibold text-white">{isOperational ? "Maintenance progress" : "Execution timeline"}</h2>
+                    <h2 id="execution-timeline-heading" className="text-lg font-semibold text-white">{isOperational ? "Maintenance progress" : "Change progress"}</h2>
                     <p aria-live="polite" role="status" className="mt-1 text-sm text-slate-300">{executionState}</p>
                 </div>
                 <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-blue-400 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60">
@@ -23,7 +24,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
                 </button>
             </div>
 
-            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label={isOperational ? "Maintenance workflow stages" : "Execution stages"}>
+            <ol className="mt-5 grid gap-2 text-sm md:grid-cols-3 xl:grid-cols-9" aria-label={isOperational ? "Maintenance workflow stages" : "Change stages"}>
                 {workflow.timeline.map((stage) => (
                     <TimelineStage key={stage.name} stage={stage} isOperational={isOperational} />
                 ))}
@@ -39,10 +40,24 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
 function TimelineStage({ stage, isOperational }: { stage: WorkflowTimelineStage; isOperational: boolean }) {
     return (
         <li className={["rounded-lg border px-3 py-2", stageClass(stage.status)].join(" ")}>
-            <span className="block font-medium">{isOperational ? operationalStageLabel(stage.name) : stage.name}</span>
-            <span className="text-xs">{formatLabel(stage.status)}</span>
+            <span className="block font-medium">{isOperational ? operationalStageLabel(stage.name) : repositoryStageLabel(stage.name)}</span>
+            <span className="text-xs">{workflowStageStatusLabel(stage.status)}</span>
         </li>
     );
+}
+
+function repositoryStageLabel(name: string): string {
+    switch (name) {
+        case "Execution Candidate": return "Change proposal";
+        case "Planning Session": return "Planning";
+        case "Candidate Plan": return "Change plan";
+        case "Workflow": return "Workflow created";
+        case "Implementation Approval": return "Change approval";
+        case "Execution": return "Apply change";
+        case "Verification": return "Verify change";
+        case "Review": return "Review results";
+        default: return name;
+    }
 }
 
 function operationalStageLabel(name: string): string {

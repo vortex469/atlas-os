@@ -64,6 +64,15 @@ for (const width of [390, 1280]) {
         await workflowSummary.getByText("Workflow details", { exact: true }).click();
         await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
         await fitsViewport(page);
+        const changeProgress = page.getByRole("region", { name: "Change progress" });
+        const changeStages = changeProgress.getByRole("list", { name: "Change stages" });
+        for (const label of ["Change proposal", "Planning", "Change plan", "Workflow created", "Change approval", "Apply change", "Verify change", "Review results", "Commit"]) {
+            await expect(changeStages.getByText(label, { exact: true })).toBeVisible();
+        }
+        await expect(changeStages.getByText("Current step", { exact: true })).toBeVisible();
+        await expect(changeStages.getByText("Not started", { exact: true })).toHaveCount(4);
+        await expect(changeStages.getByText("Implementation Approval", { exact: true })).toHaveCount(0);
+        await fitsViewport(page);
         expect(fixture.writes).toHaveLength(5);
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);
         await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();

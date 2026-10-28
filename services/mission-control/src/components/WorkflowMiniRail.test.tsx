@@ -26,13 +26,25 @@ describe("WorkflowMiniRail", () => {
     it("renders compact rail stages with text statuses", () => {
         render(<WorkflowMiniRail stages={workflowRailStages({ workflow_state: "blocked", timeline: fullTimeline })} />);
 
-        expect(screen.getByText("Candidate")).toBeInTheDocument();
+        expect(screen.getByText("Proposal")).toBeInTheDocument();
         expect(screen.getByText("Plan")).toBeInTheDocument();
-        expect(screen.getByText("Execution")).toBeInTheDocument();
-        expect(screen.getByText("Verification")).toBeInTheDocument();
+        expect(screen.getByText("Apply change")).toBeInTheDocument();
+        expect(screen.getByText("Verify change")).toBeInTheDocument();
         const items = screen.getAllByRole("listitem");
-        expect(within(items[4]).getByText("failed")).toBeInTheDocument();
-        expect(within(items[5]).getByText("blocked")).toBeInTheDocument();
+        expect(within(items[4]).getByText("Failed")).toBeInTheDocument();
+        expect(within(items[5]).getByText("Blocked")).toBeInTheDocument();
+        expect(within(items[6]).getByText("Not started")).toBeInTheDocument();
+    });
+
+    it("keeps an unrecognized stage status unavailable instead of showing it as not started", () => {
+        const stages = workflowRailStages({
+            workflow_state: "blocked",
+            timeline: fullTimeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "unexpected" } : stage),
+        });
+        render(<WorkflowMiniRail stages={stages} />);
+
+        const applyChange = screen.getByText("Apply change").closest("li");
+        expect(within(applyChange as HTMLElement).getByText("Status unavailable")).toBeInTheDocument();
     });
 
     it("maps every backend workflow state deterministically", () => {
@@ -40,11 +52,11 @@ describe("WorkflowMiniRail", () => {
         const groups = WORKFLOW_STATES.map((state) => workflowStatusGroup(state));
 
         expect(labels).toEqual([
-            "Workflow",
-            "Implementation",
-            "Execution",
-            "Verification",
-            "Verification",
+            "Workflow approval",
+            "Change approval",
+            "Apply change",
+            "Verify change",
+            "Verify change",
             "Commit",
             "Commit",
             "Blocked",

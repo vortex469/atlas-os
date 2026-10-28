@@ -1832,3 +1832,14 @@ of both badges in the list and detail view. Component and responsive browser
 coverage verifies both labels. The focused list/detail suites pass (20 tests),
 the responsive browser suite passes (4 checks in development), and lint and
 production build pass. The audit data and action behavior are unchanged.
+
+## Workflow progress language — 2026-10-28
+
+Workflow rails and the repository change-progress timeline now use operator
+labels such as “Change proposal,” “Change approval,” “Apply change,” and “Verify
+change.” Raw statuses are presented as “Done,” “Current step,” and “Not
+started.” Unrecognized statuses stay marked “Status unavailable.” Workflow
+state values and approval controls are unchanged. The full Mission Control
+suite passes (2,790 tests across 181 files), responsive workflow/dashboard
+browser checks pass (14 tests), and lint and production build pass. Browser
+workflow mutations remain intercepted by synthetic fixtures.
