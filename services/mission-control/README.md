@@ -86,11 +86,13 @@ login; all operational mutations remain rejected. No real credentials or
 maintenance actions are used by these checks.
 
 The overview places operator attention before the six status cards and recent
-activity. Source failures remain visible and name the affected source. Runtime
-inventory and historical execution observations are expandable with the
-keyboard; provider health, unknown runtime readiness, active and blocked work,
-and freshness warnings stay in the main view. Expanding observations performs
-no requests and changes no execution or approval state.
+activity. Source failures remain visible and name the affected source. The Work
+activity card shows running and blocked workflow counts and states that worker
+availability is not reported. Queue size, recorded outcomes and data limits
+stay under keyboard-operable details. Runtime inventory and historical
+execution observations are expandable; provider health, unknown runtime
+readiness, work counts and freshness warnings stay in the main view. Expanding
+observations performs no requests and changes no execution or approval state.
 Approval waits use workflow-stage labels rather than degraded-health badges.
 Stale approval requirements remain explicitly last-known, and workflow stage
 update times remain unknown when the source does not supply them.

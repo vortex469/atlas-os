@@ -30,10 +30,10 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['Atlas overall state','Core health','Worker / Execution','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['Atlas overall state','Core health','Work activity','Agent state','Local AI / Runtime','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
-        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
+        expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
     });
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
@@ -45,7 +45,7 @@ describe("MC overview evidence", () => {
         expect(screen.getByRole('link', { name: 'Inspect Alpha →' })).toHaveAttribute('href', '/providers/alpha');
         expect(screen.getByRole('link', { name: 'w/1' })).toHaveAttribute('href', '/workflows/w%2F1');
         expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Beta')).toHaveLength(1);
-        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
+        expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
         expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
@@ -64,7 +64,7 @@ describe("MC overview evidence", () => {
         show({ providers: { data: [] }, activity: { data: { items: [] } }, workflows: { data: { items: [] } } });
         expect(screen.getByText('No providers configured.')).toBeInTheDocument();
         expect(screen.getByText('No recent actions recorded.')).toBeInTheDocument();
-        for (const [name, href] of [['Open operations →','/operations'], ['Inspect executions →','/workflows'], ['Open Forge →','/forge'], ['Open operational history →','/operations/history']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+        for (const [name, href] of [['Open operations →','/operations'], ['Review workflows →','/workflows'], ['Open Forge →','/forge'], ['Open operational history →','/operations/history']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
     });
     it("rejects bad timestamps, unsafe paths and sensitive free text", () => {
         expect(timestamp('bad')).toBeNull();
@@ -93,7 +93,7 @@ describe('operational activity and runtime evidence', () => {
 describe('overview fail-closed regressions', () => {
     it.each(['', 'idle', 'future_state', null, {}])('does not count malformed or unsupported workflow states: %s', state => {
         show({ workflows: { data: { items: [{ workflow_id: 'w', workflow_state: state }] } } });
-        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
+        expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
         expect(screen.queryByText(/Active: 0/)).not.toBeInTheDocument();
     });
     it('retains distinct conditions for the same provider and does not call approval waits blocked', () => {
@@ -120,10 +120,11 @@ describe('overview fail-closed regressions', () => {
     });
 });
 
-it('distinguishes executing workflows from verification and commit activity', () => {
+it('distinguishes running workflows from verification and commit activity', () => {
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
-    expect(screen.getByText("1 executing workflows")).toBeInTheDocument();
-    expect(screen.getByText(/Worker availability and queue depth are not exposed/)).toBeInTheDocument();
+    const activity = within(screen.getByRole('region', { name: 'Work activity' }));
+    expect(activity.getAllByText('Running workflows')[0].nextElementSibling).toHaveTextContent('1');
+    expect(activity.getByText('Worker availability is not reported.')).toBeInTheDocument();
 });
 
 it('preserves the most urgent duplicate condition at equal freshness', () => {
@@ -221,11 +222,11 @@ it('integrates execution outcomes and stale attention without duplicating health
             timeline: [{ name: 'Execution', status: 'completed' }],
         }] } },
     });
-    const worker = within(screen.getByRole('region', { name: 'Worker / Execution' }));
+    const worker = within(screen.getByRole('region', { name: 'Work activity' }));
     expect(worker.getByText('Execution completed')).toBeInTheDocument();
     expect(worker.queryByText('Commit failed')).not.toBeInTheDocument();
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
-    expect(worker.getByText(/current execution state unknown/)).toBeInTheDocument();
+    expect(worker.getByText(/Current status is unknown/)).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getAllByRole('link', { name: 'blocked/1' })).toHaveLength(1);
     expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();

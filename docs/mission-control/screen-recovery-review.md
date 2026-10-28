@@ -172,6 +172,17 @@ pass (15 tests), responsive browser checks pass at 390px and 1280px (2 tests),
 and lint/build pass. Permission-evidence confirmation and request contracts
 are unchanged.
 
+## Dashboard work activity simplification — 2026-10-28
+
+The dashboard's work card now uses running and blocked workflow counts. It
+states that worker availability is not reported, while queue size, outcome
+records and data limits remain under keyboard-operable details. Workflow status
+and freshness remain explicit, and the card still does not start work. The
+six-card attention-first layout is unchanged. The focused overview component
+suites pass (70 tests), responsive browser checks pass (6 tests across 320px,
+390px, 768px and 1440px), and Mission Control lint/build pass. The browser
+fixture rejects mutations; links and request behavior are unchanged.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

@@ -6,7 +6,6 @@ import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
 import type { Evidence } from "./useOverviewEvidence";
 import { detailPath, safeText } from "./overviewEvidence";
-import { HealthEvidence } from "../../components/HealthEvidence";
 
 function executionStage(workflow: WorkflowSummary): string | null {
     const stages = workflow.timeline.filter((stage) => stage.name === "Execution");
@@ -30,40 +29,39 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
     const fallback = unavailable ? "Unavailable" : "Unknown";
 
     return (
-        <section aria-labelledby="worker-execution-heading" className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
+        <section aria-labelledby="work-activity-heading" className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 id="worker-execution-heading" className="text-lg font-semibold text-mc-text-primary">Worker / Execution</h2>
-                <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Inspect executions →</Link>
+                <h2 id="work-activity-heading" className="text-lg font-semibold text-mc-text-primary">Work activity</h2>
+                <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Review workflows →</Link>
             </div>
             <p className="mt-2 text-sm text-mc-text-muted">
-                Recorded workflow progress. This view does not start work.
+                Counts and results come from recorded workflows. This page does not start work.
             </p>
-            <HealthEvidence status={null} stale={evidence?.stale} reason="Worker availability and queue depth are not exposed by this evidence." />
-            {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Stale evidence — last-known workflow observations; current execution state unknown.</p>}
-            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing execution evidence; displayed observations may be stale.</p>}
+            <p className="mt-2 text-sm text-mc-text-secondary">Worker availability is not reported.</p>
+            {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}
+            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing workflow information; displayed results may be stale.</p>}
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Metric label="Active execution" value={items && knownStates ? `${active.length} executing workflows` : fallback} />
-                <Metric label="Blocked execution / workflow" value={items && knownStates ? `${blocked.length} blocked workflows` : fallback} />
+                <Metric label="Running workflows" value={items && knownStates ? String(active.length) : fallback} />
+                <Metric label="Blocked workflows" value={items && knownStates ? String(blocked.length) : fallback} />
             </dl>
-            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No executing workflows observed. Worker idleness is unknown.</p>}
-            {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Unrecognized workflow state; activity totals are unknown.</p>}
+            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running workflows are listed. Worker availability is unknown.</p>}
+            {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Some workflow states are not recognized. Counts may be incomplete.</p>}
             <div className="mt-4 grid gap-4">
-                {active.length > 0 && <EvidenceList title="Active execution evidence" items={active} available={!!items} empty="Unknown" />}
-                {blocked.length > 0 && <EvidenceList title="Blocked workflow evidence" items={blocked} available={!!items} empty="Unknown" />}
+                {active.length > 0 && <EvidenceList title="Running workflows" items={active} available={!!items} empty="Unknown" />}
+                {blocked.length > 0 && <EvidenceList title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
             </div>
             <details className="mt-4 text-sm text-mc-text-secondary">
-                <summary className="mc-focusable cursor-pointer text-mc-primary">Execution observations</summary>
+                <summary className="mc-focusable cursor-pointer text-mc-primary">More about execution data</summary>
                 <div className="mt-3 space-y-4">
                     <dl className="grid gap-4 sm:grid-cols-2">
-                        <Metric label="Worker availability / state" value="Unknown — worker heartbeat not exposed" />
-                        <Metric label="Queued / admitted work" value="Unknown — aggregate queue and admission evidence not exposed" />
+                        <Metric label="Queue size" value="Not reported" />
                     </dl>
                     <EvidenceList title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
-                    <p className="text-xs text-mc-text-muted">Up to 3 records per group. Execution timestamps are not exposed: outcome recency is unavailable; records are shown in workflow ID order. Workflow blockers may precede execution.</p>
+                    <p className="text-xs text-mc-text-muted">Only the first 3 records are shown. Execution times are not available, so outcomes cannot be sorted by recency. A workflow may be blocked before it starts running.</p>
                 </div>
             </details>
-            {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution evidence is missing or malformed; outcomes are incomplete.</p>}
-            {!items && <p role="status" className="mt-3 text-sm text-amber-200">Execution evidence {unavailable ? "unavailable" : "unknown or incomplete"}. No idle or healthy state inferred.</p>}
+            {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
+            {!items && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Workflow status is unknown or incomplete."}</p>}
         </section>
     );
 }

@@ -9,7 +9,7 @@ for (const width of [320, 768, 1440]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(width < 768 ? 1 : width < 1280 ? 2 : 3);
-        await page.getByRole('link', { name: 'Inspect executions →' }).click();
+        await page.getByRole('link', { name: 'Review workflows →' }).click();
         await expect(page).toHaveURL(/\/workflows$/);
         await page.goBack();
         await page.getByRole('link', { name: 'Inspect Proxmox →' }).click();
@@ -78,11 +78,14 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await runtimeToggle.focus();
     await page.keyboard.press('Enter');
     await expect(runtime.getByText('Reported runtime version', { exact: true })).toBeVisible();
-    const worker = page.getByRole('region', { name: 'Worker / Execution' });
+    const worker = page.getByRole('region', { name: 'Work activity' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
-    const workerToggle = worker.locator('summary', { hasText: 'Execution observations' });
+    await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();
+    await expect(worker.getByText('Worker availability is not reported.', { exact: true })).toBeVisible();
+    const workerToggle = worker.locator('summary', { hasText: 'More about execution data' });
     await workerToggle.focus();
     await page.keyboard.press('Enter');
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeVisible();
+    await expect(worker.getByText('Queue size', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
