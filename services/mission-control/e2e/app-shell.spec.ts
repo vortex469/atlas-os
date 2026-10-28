@@ -4,11 +4,11 @@ test("Mission Control application shell renders with primary navigation", async 
     await page.goto("/");
 
     await expect(page.getByText("Mission Control 2.0").first()).toBeVisible();
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control overview" })).toBeVisible();
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
     await expect(page.getByText("Version reported", { exact: true })).toHaveCount(2);
     await expect(page.getByText("Release available", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Mission Control command center", { exact: true })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
 
     await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toHaveAttribute("href", "/");
     await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
@@ -68,7 +68,7 @@ test.describe("Mobile navigation", () => {
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
         // The main content stays reachable and unobstructed at narrow widths.
-        await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+        await expect(page.getByRole("main", { name: "Mission Control overview" })).toBeVisible();
         await expect(page.getByLabel("Current page: Mission Control")).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });

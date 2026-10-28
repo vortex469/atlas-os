@@ -166,7 +166,7 @@ test("an empty provider catalog has a clear way back", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Provider not found" })).toBeVisible();
     await expect(page.getByText("Not updated yet")).not.toBeVisible();
     await page.getByRole("link", { name: "Return to Mission Control" }).click();
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control overview" })).toBeVisible();
 });
 
 test("workflows recover from an initial outage without reloading", async ({ page }) => {

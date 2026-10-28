@@ -9,7 +9,7 @@ test("a delayed screen keeps navigation usable and pauses the previous page", as
         await route.continue();
     });
     await page.goto("/");
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control overview" })).toBeVisible();
     await page.getByRole("link", { name: "Forge", exact: true }).click();
     try {
         await expect(page.getByText("Loading page...", { exact: true })).toBeVisible();
@@ -59,6 +59,6 @@ test("leaving a pending screen ignores its late module", async ({ page }) => {
     }
     await completed;
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control overview" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Atlas Forge" })).toHaveCount(0);
 });
