@@ -82,14 +82,13 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
     return <main className="mx-auto max-w-6xl p-6 text-slate-200">
         <Link to="/discovery" className="text-sm text-blue-300">← Discovery</Link>
         <h1 className="mt-4 text-2xl font-semibold">Installation readiness review</h1>
-        <p className="mt-2 text-sm text-slate-300">Authenticated, operator-owned, Core-local evidence review. This read does not refresh or consume evidence.</p>
+        <p className="mt-2 text-sm text-slate-300">These checks are saved for your account. Reading this page does not update or use them.</p>
         <AuthorityNotice />
         {!candidateRecordId && <p role="status" className="mt-6">No candidate record selected.</p>}
         {loading && <p role="status" className="mt-6">Loading installation readiness review…</p>}
         {!loading && error && <section role="alert" className="mt-6 rounded border border-red-500/40 p-4">
-            <h2 className="font-semibold text-red-200">Review unavailable</h2>
-            <p className="mt-1 text-sm">Installation readiness review is unavailable.</p>
-            <p className="mt-1 text-xs text-slate-400">No candidate, operator, evidence, endpoint, credential, or internal source detail is disclosed.</p>
+            <h2 className="font-semibold text-red-200">Could not load this review</h2>
+            <p className="mt-1 text-sm">Sensitive details are hidden.</p>
             <button type="button" onClick={() => {
                 setResponse(null); setError(false); setLoading(true); setReadAttempt((attempt) => attempt + 1);
             }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload review</button>

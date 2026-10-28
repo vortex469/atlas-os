@@ -62,7 +62,7 @@ test("readiness reload stays redacted for invalid review data", async ({ page })
     });
     await page.goto(`/installation/candidate-records/${requestedId}/readiness-review`);
     await page.getByRole("button", { name: "Reload review" }).click();
-    await expect(page.getByRole("heading", { name: "Review unavailable" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Could not load this review" })).toBeVisible();
     await expect(page.getByText("private-review-canary", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Review permission evidence statement" })).toHaveCount(0);
     expect(reads).toBe(2);
