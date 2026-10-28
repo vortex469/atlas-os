@@ -17,7 +17,7 @@ describe("Mission Control 2.0 shell navigation boundary", () => {
         expect(navigationMetadata).toMatch(/label:\s*"Forge"/);
     });
 
-    it("keeps the enabled destination set and destinations unchanged", () => {
+    it("keeps only supported destinations in the visible menu", () => {
         expect(navigationMetadata).toMatch(/path:\s*"\//);
         expect(navigationMetadata).toMatch(/path:\s*"\/operations"/);
         expect(navigationMetadata).toMatch(/path:\s*"\/operations\/history"/);
@@ -26,13 +26,16 @@ describe("Mission Control 2.0 shell navigation boundary", () => {
         expect(navigationMetadata).toMatch(/path:\s*"\/execution-candidates"/);
         expect(navigationMetadata).toMatch(/path:\s*"\/workflows"/);
         expect(navigationMetadata).toMatch(/path:\s*"\/forge"/);
-        // Disabled placeholders remain disabled.
-        expect(navigationMetadata).toMatch(/label:\s*"Knowledge"[^}]*enabled:\s*false/);
-        expect(navigationMetadata).toMatch(/label:\s*"Developer"[^}]*enabled:\s*false/);
-        expect(navigationMetadata).toMatch(/label:\s*"Settings"[^}]*enabled:\s*false/);
+        expect(navigationMetadata).not.toMatch(/disabledNavigationItems|enabled:\s*false/);
+        expect(navigationMetadata).not.toMatch(/label:\s*"(Knowledge|Developer|Settings)"/);
         // The router is untouched by the shell refactor.
         expect(router).toMatch(/path:\s*"operations\/request"/);
         expect(router).toMatch(/path:\s*"operator\/login"/);
+    });
+
+    it("does not render nonfunctional future-destination placeholders", () => {
+        expect(navigation).not.toMatch(/disabledNavigationItems|Soon/);
+        expect(navigationMetadata).not.toMatch(/disabledNavigationItems|Soon/);
     });
 
     it("adds no authority-bearing navigation or browser storage to the shell", () => {

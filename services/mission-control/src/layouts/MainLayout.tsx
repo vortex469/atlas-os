@@ -3,7 +3,6 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { atlas } from "../api/atlas";
 import {
-    disabledNavigationItems,
     navigationItemForPath,
     primaryNavigationItems,
     routeContextForPath,
@@ -33,9 +32,8 @@ type NavigationListProps = {
 };
 
 function NavigationList({ onNavigate }: NavigationListProps) {
-    const enabledItems = primaryNavigationItems.filter((item) => item.enabled);
     const { pathname } = useLocation();
-    const owner = navigationItemForPath(enabledItems, pathname)?.path;
+    const owner = navigationItemForPath(primaryNavigationItems, pathname)?.path;
 
     return (
         <ul
@@ -44,7 +42,7 @@ function NavigationList({ onNavigate }: NavigationListProps) {
                 onNavigate ? "min-h-full" : "",
             ].join(" ")}
         >
-            {enabledItems.map((item) => (
+            {primaryNavigationItems.map((item) => (
                 <li key={item.path}>
                     <NavLink
                         to={item.path}
@@ -76,21 +74,6 @@ function NavigationList({ onNavigate }: NavigationListProps) {
                             </>
                         )}
                     </NavLink>
-                </li>
-            ))}
-            {disabledNavigationItems.map((item) => (
-                <li
-                    key={item.path}
-                    className="mc-disabled flex items-center gap-3 rounded-mc-md px-3 py-3 text-sm font-medium lg:py-2.5"
-                >
-                    <span
-                        aria-hidden="true"
-                        className="h-2 w-2 shrink-0 rounded-full bg-mc-disabled-muted"
-                    />
-                    <span className="min-w-0 truncate">{item.label}</span>
-                    <span className="ml-auto text-[10px] uppercase tracking-wider text-mc-text-disabled">
-                        Soon
-                    </span>
                 </li>
             ))}
         </ul>

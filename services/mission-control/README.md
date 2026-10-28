@@ -124,7 +124,8 @@ The menu separates Action history (recorded provider actions), Maintenance
 history (past maintenance requests), Request maintenance (start a request), and
 Change proposals (review proposed work). Existing addresses remain valid. Only
 the destination that owns the current page is highlighted; audit details remain
-under Action history.
+under Action history. The menu lists working destinations only; planned areas
+stay hidden until they have usable screens.
 
 Secondary screens load on demand. Navigation stays available while the next
 screen loads, and the previous screen's controls pause until navigation finishes.

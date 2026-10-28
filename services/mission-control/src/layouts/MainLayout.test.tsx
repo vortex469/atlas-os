@@ -4,10 +4,7 @@ import { createMemoryRouter, RouterProvider, MemoryRouter, Route, Routes } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atlas } from "../api/atlas";
-import {
-    disabledNavigationItems,
-    primaryNavigationItems,
-} from "../app/navigation";
+import { primaryNavigationItems } from "../app/navigation";
 import { MainLayout } from "./MainLayout";
 
 vi.mock("../api/atlas", () => ({
@@ -16,8 +13,7 @@ vi.mock("../api/atlas", () => ({
     },
 }));
 
-const enabledLabels = primaryNavigationItems.map((item) => item.label);
-const disabledLabels = disabledNavigationItems.map((item) => item.label);
+const navigationLabels = primaryNavigationItems.map((item) => item.label);
 
 function renderAt(
     path = "/",
@@ -105,7 +101,7 @@ describe("MainLayout", () => {
     });
 
     describe("desktop navigation", () => {
-        it("renders every enabled destination with its existing route", async () => {
+        it("renders every working destination with its existing route", async () => {
             renderAt();
 
             const nav = screen.getAllByRole("navigation", { name: "Primary" })[0];
@@ -119,18 +115,14 @@ describe("MainLayout", () => {
             ).toHaveAttribute("aria-current", "page");
         });
 
-        it("keeps disabled future destinations visible but inert", () => {
+        it("leaves unavailable future destinations out of the menu", () => {
             renderAt();
 
-            for (const label of disabledLabels) {
-                const placeholder = screen.getByText(label);
-                expect(placeholder.closest("a")).toBeNull();
-                expect(placeholder.closest("li")).toHaveClass("mc-disabled");
-                expect(within(placeholder.closest("li")!).getByText("Soon")).toBeInTheDocument();
+            const nav = screen.getAllByRole("navigation", { name: "Primary" })[0];
+            for (const label of ["Knowledge", "Developer", "Settings"]) {
+                expect(within(nav).queryByText(label)).not.toBeInTheDocument();
             }
-            expect(screen.queryByRole("link", { name: "Knowledge" })).toBeNull();
-            expect(screen.queryByRole("link", { name: "Developer" })).toBeNull();
-            expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+            expect(within(nav).queryByText("Soon")).not.toBeInTheDocument();
         });
     });
 
@@ -245,9 +237,7 @@ describe("MainLayout", () => {
                 const link = within(dialog).getByRole("link", { name: item.label });
                 expect(link).toHaveAttribute("href", item.path);
             }
-            for (const label of disabledLabels) {
-                expect(within(dialog).queryByRole("link", { name: label })).toBeNull();
-            }
+            expect(within(dialog).queryByText("Soon")).not.toBeInTheDocument();
         });
 
         it("navigates through the drawer and closes it", async () => {
@@ -330,8 +320,8 @@ describe("MainLayout", () => {
     });
 
     describe("route preservation", () => {
-        it("preserves the exact enabled destination set", () => {
-            expect(enabledLabels).toEqual([
+        it("preserves the exact working destination set", () => {
+            expect(navigationLabels).toEqual([
                 "Mission Control",
                 "Action history",
                 "Maintenance history",

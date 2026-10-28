@@ -17,9 +17,10 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByRole("link", { name: "Workflows", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("link", { name: "Forge", exact: true })).toHaveAttribute("href", "/forge");
 
-    await expect(page.getByText("Knowledge").locator("..")).toContainText("Soon");
-    await expect(page.getByText("Developer").locator("..")).toContainText("Soon");
-    await expect(page.getByText("Settings").locator("..")).toContainText("Soon");
+    const navigation = page.getByRole("navigation", { name: "Primary" }).first();
+    for (const unavailable of ["Knowledge", "Developer", "Settings", "Soon"]) {
+        await expect(navigation.getByText(unavailable)).toHaveCount(0);
+    }
 });
 
 test("Mission Control dashboard loads from controlled Core and Agent responses", async ({ page }) => {

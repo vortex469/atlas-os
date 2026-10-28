@@ -9,7 +9,7 @@ runtime, tag, or publish a release.
 
 | Surface | Required behavior | Current regression evidence |
 | --- | --- | --- |
-| Shared navigation | Plain menu labels distinguish action history, maintenance history, request creation and proposals; only the owning destination is highlighted; links, mobile drawer, focus, skip link and missing-page recovery work | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` includes maintenance/action-detail ownership |
+| Shared navigation | Plain menu labels distinguish action history, maintenance history, request creation and proposals; only working destinations appear; only the owning destination is highlighted; links, mobile drawer, focus, skip link and missing-page recovery work | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` includes maintenance/action-detail ownership and omitted future placeholders |
 | Screen loading | Secondary screens load on demand; pending navigation pauses the old page's controls while keeping navigation available; module failure offers reload and home recovery | `e2e/page-loading.spec.ts` covers delayed modules, leaving a pending screen, and direct-link failure/reload at phone and desktop widths |
 | Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` reuses 42 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
@@ -96,6 +96,15 @@ A read-only inspection of existing services found Agent advertising only
 `/health` and `/v1/jobs/{job_id}/code`, without the current workflow audit schema.
 Core's OpenAPI read timed out after five seconds. These services cannot establish
 current-branch integration acceptance; neither service was restarted or changed.
+
+## Navigation simplification follow-up — 2026-10-28
+
+The desktop sidebar and mobile drawer now list only destinations with working
+screens. The inert Knowledge, Developer and Settings placeholders were removed
+so operators do not encounter menu choices that cannot be opened. The focused
+layout and structural tests pass (37 tests), the application-shell browser
+checks pass (8 tests), and Mission Control lint and build pass. No routes,
+backend contracts, or operator permissions changed.
 
 ## Acceptance status and remaining gaps
 
