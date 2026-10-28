@@ -68,3 +68,33 @@ for (const width of [390, 1280]) {
         expect(fixture.entryUnexpected).toEqual([]);
     });
 }
+
+test("locks the request screen after an unconfirmed proposal response", async ({ page, baseURL }) => {
+    const fixture = await installMaintenanceRequestJourney(page, baseURL);
+    await page.setViewportSize({ width: 390, height: 844 });
+    let proposalRequests = 0;
+    await page.route("**/api/v1/execution-candidates/operator-intents", async (route) => {
+        if (route.request().method() === "POST") {
+            proposalRequests += 1;
+            return route.fulfill({ status: 503, json: { detail: "fixture-only unavailable" } });
+        }
+        return route.fallback();
+    });
+
+    await page.goto("/operations/request");
+    await page.getByLabel("Operator ID").fill("browser-operator");
+    await page.getByLabel("Password").fill("fixture-only-password");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByRole("radio", { name: /Browser fixture VM/ }).check();
+    await page.getByRole("button", { name: "Request restart proposal" }).click();
+
+    await expect(page.getByRole("alert")).toContainText("Check proposals before trying again.");
+    await expect(page.getByRole("link", { name: "Check whether a proposal was created" })).toHaveAttribute("href", "/execution-candidates");
+    await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Refresh" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+    expect(proposalRequests).toBe(1);
+    expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
+    expect(fixture.entryUnexpected).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+});
