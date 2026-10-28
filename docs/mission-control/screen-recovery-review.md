@@ -268,6 +268,14 @@ state no longer mentions ACE. Provider-page and advisory-card tests cover the
 suggestion label and empty state; recommendation data and action boundaries
 are unchanged.
 
+## Finding card simplification — 2026-10-28
+
+Finding cards keep the issue and severity visible, state plainly whether it
+affects system health, and place the category and score reduction under
+“Technical details.” A score reduction is shown only when Core includes that
+finding in health. Focused card and provider tests, lint and build cover the
+collapsed details and health-impact cases; Core scoring is unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

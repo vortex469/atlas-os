@@ -71,6 +71,9 @@ export function FindingCard({ finding }: FindingCardProps) {
     const visibleEntities = expanded
         ? unavailableEntities
         : unavailableEntities.slice(0, 5);
+    const healthScoreReduction = finding.affects_health
+        ? finding.score_penalty
+        : 0;
 
     return (
         <article
@@ -112,46 +115,47 @@ export function FindingCard({ finding }: FindingCardProps) {
                 {finding.message}
             </p>
 
-            <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-slate-800 pt-4">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Category
-                    </dt>
+            <p className="mt-4 text-sm leading-6 text-slate-300">
+                {finding.affects_health
+                    ? "Affects system health"
+                    : "Does not affect system health"}
+            </p>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {formatLabel(finding.category)}
-                    </dd>
-                </div>
+            <details className="mt-5 border-t border-slate-800 pt-4">
+                <summary className="cursor-pointer text-xs font-medium text-slate-400">
+                    Technical details
+                </summary>
+                <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Finding type
+                        </dt>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Health
-                    </dt>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {formatLabel(finding.category)}
+                        </dd>
+                    </div>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {finding.affects_health ? "Affected" : "Unaffected"}
-                    </dd>
-                </div>
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Health score reduction
+                        </dt>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Score Impact
-                    </dt>
-
-                    <dd
-                        className={[
-                            "mt-1 text-sm font-medium",
-                            finding.score_penalty > 0
-                                ? "text-amber-300"
-                                : "text-slate-200",
-                        ].join(" ")}
-                    >
-                        {finding.score_penalty > 0
-                            ? `−${finding.score_penalty}`
-                            : "None"}
-                    </dd>
-                </div>
-            </dl>
+                        <dd
+                            className={[
+                                "mt-1 text-sm font-medium",
+                                healthScoreReduction > 0
+                                    ? "text-amber-300"
+                                    : "text-slate-200",
+                            ].join(" ")}
+                        >
+                            {healthScoreReduction > 0
+                                ? `${healthScoreReduction} points`
+                                : "None"}
+                        </dd>
+                    </div>
+                </dl>
+            </details>
 
             {unavailableEntities.length > 0 && (
                 <div className="mt-5 border-t border-slate-800 pt-4">
