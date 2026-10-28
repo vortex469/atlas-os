@@ -91,9 +91,20 @@ describe("integrated Local AI runtime observations", () => {
         expect(card.queryByText(/user:password|token=private|private diagnostic/)).not.toBeInTheDocument();
         expect(card.queryByText("-1 ms")).not.toBeInTheDocument();
     });
-    it("bounds inventories while disclosing omitted identities", () => {
-        const card = show({ data: { ...data(), models: { running: Array.from({ length: 5 }, (_, i) => ({ name: `model-${i}` })) } } });
+    it("lets operators reveal all reported installed and running model names", async () => {
+        const user = userEvent.setup();
+        const card = show({ data: { ...data(), models: {
+            installed: Array.from({ length: 4 }, (_, i) => ({ name: `installed-${i}` })),
+            running: Array.from({ length: 5 }, (_, i) => ({ name: `model-${i}` })),
+        } } });
         expect(card.getByText(/first 3 of 5/)).toBeInTheDocument();
-        expect(card.queryByText(/model-4/)).not.toBeInTheDocument();
+        expect(card.getByText("model-4")).not.toBeVisible();
+        expect(card.getByText("installed-3")).not.toBeVisible();
+
+        await user.click(card.getByText("Technical details"));
+        await user.click(card.getByText("Show all 4 installed model names"));
+        await user.click(card.getByText("Show all 5 running model names"));
+        expect(card.getByText("installed-3")).toBeVisible();
+        expect(card.getByText("model-4")).toBeVisible();
     });
 });

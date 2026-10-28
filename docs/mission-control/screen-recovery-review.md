@@ -1321,3 +1321,12 @@ full returned list. The card still links to workflow review, and no approval,
 execution, or backend behavior changes. The focused Work activity suite passes
 (28 tests), as does a 320px browser regression covering all three lists and
 horizontal overflow. Lint and production build pass.
+
+## AI model inventory access — 2026-10-28
+
+The AI provider card still keeps model inventory under Technical details and
+shows a short three-name preview. When more names are reported, nested
+disclosures now reveal the full installed or running model-name list. The
+focused AI inventory suite passes (28 tests), along with lint and production
+build. The inventory remains observational and does not imply selection or
+readiness.
