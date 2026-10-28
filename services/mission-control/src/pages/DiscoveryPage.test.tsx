@@ -140,8 +140,10 @@ describe("DiscoveryPage", () => {
 
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
-        expect(screen.getByText("2")).toBeInTheDocument();
+        expect(screen.getByText("Catalog total").nextElementSibling).toHaveTextContent("2");
+        expect(screen.getByText("1 item listed")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Browse the catalog" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
         expect(screen.getByText(/Listings are reference information; compatibility, install support, and permission to make changes are checked separately/i)).toBeInTheDocument();
         expect(screen.getByText("Technical details")).toBeInTheDocument();
         expect(screen.getByText(/Catalog format version: v1/)).not.toBeVisible();
@@ -169,6 +171,9 @@ describe("DiscoveryPage", () => {
         await user.type(screen.getByLabelText("Capability"), "llm-inference");
         await user.click(screen.getByRole("button", { name: "Search" }));
         expect(screen.getByText("More filters · active")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+        expect(screen.getByText("1 matching item found")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
 
         await waitFor(() =>
             expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith({
@@ -202,7 +207,33 @@ describe("DiscoveryPage", () => {
                 capability: undefined,
             }),
         );
+        expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+        expect(screen.getByText("1 matching item found")).toBeInTheDocument();
         expect(mockedSearchDiscoveryItems).not.toHaveBeenCalled();
+    });
+
+    it("shows clear only while draft or submitted filters need clearing", async () => {
+        const user = userEvent.setup();
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        const query = screen.getByLabelText("Keyword search");
+        await user.type(query, "ollama");
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Search" }));
+        await screen.findByRole("heading", { name: "Search results" });
+        await user.click(screen.getByRole("button", { name: "Clear filters" }));
+
+        expect(query).toHaveValue("");
+        expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+        await waitFor(() => expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
+            limit: 25,
+            offset: 0,
+            type: undefined,
+            status: undefined,
+            tag: undefined,
+            capability: undefined,
+        }));
     });
 
     it("keeps the latest search results when an older request finishes later", async () => {
@@ -244,7 +275,7 @@ describe("DiscoveryPage", () => {
         expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(2, expect.objectContaining({ q: "postgres" }));
     });
 
-    it("resets offset when filters are cleared and respects pagination buttons", async () => {
+    it("supports previous-page navigation and respects pagination buttons", async () => {
         const user = userEvent.setup();
         mockedListDiscoveryItems
             .mockResolvedValueOnce({
@@ -276,7 +307,7 @@ describe("DiscoveryPage", () => {
             }),
         );
 
-        await user.click(screen.getByRole("button", { name: "Clear filters" }));
+        await user.click(screen.getByRole("button", { name: "Previous page" }));
         await waitFor(() =>
             expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
                 limit: 25,
@@ -295,10 +326,40 @@ describe("DiscoveryPage", () => {
 
         renderPage();
 
-        expect(
-            await screen.findByText("The catalog is loaded but empty."),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("No catalog items are available.")).toBeInTheDocument();
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
+        expect(screen.queryByText("Clear filters or broaden your search.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+    });
+
+    it("offers filter recovery when a search has no matches", async () => {
+        const user = userEvent.setup();
+        mockedSearchDiscoveryItems.mockResolvedValue(searchPage([]));
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        await user.type(screen.getByLabelText("Keyword search"), "not-in-catalog");
+        await user.click(screen.getByRole("button", { name: "Search" }));
+
+        expect(await screen.findByText("No items matched these filters.")).toBeInTheDocument();
+        expect(screen.getByText("0 matching items found")).toBeInTheDocument();
+        expect(screen.getByText("Clear filters or broaden your search.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+    });
+
+    it("points an empty later page back to earlier results", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryItems
+            .mockResolvedValueOnce({ ...page([entry()]), total: 30, offset: 0, has_more: true })
+            .mockResolvedValueOnce({ ...page([]), total: 30, offset: 25, has_more: false });
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        await user.click(screen.getByRole("button", { name: "Next page" }));
+
+        expect(await screen.findByText("No items are on this page.")).toBeInTheDocument();
+        expect(screen.getByText("Use Previous to check earlier results.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
     });
 
     it("shows a recoverable unavailable state", async () => {

@@ -889,3 +889,12 @@ blocker remains available in collapsed record details. Blocked reviews continue
 to list their evidence issues. Evidence review remains non-authorizing and does
 not refresh evidence. The readiness component suite, responsive browser checks,
 lint, production build, and `git diff --check` pass.
+
+## Discovery results and empty states — 2026-10-28
+
+Discovery now separates the overall catalog total from matching result counts.
+“Clear filters” appears only when a draft or applied filter can be cleared.
+An empty catalog no longer suggests changing filters, while no-match and empty
+later-page states offer relevant next steps. Search requests and read-only
+behavior are unchanged. The Discovery page suite, responsive catalog browser
+checks, lint, production build, and `git diff --check` pass.

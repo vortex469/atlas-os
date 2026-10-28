@@ -19,10 +19,31 @@ for (const width of [390, 1280]) {
         await page.getByLabel("Tag").fill("ai");
         await page.getByRole("button", { name: "Search", exact: true }).click();
         await expect(page.getByText("More filters · active")).toBeVisible();
+        await page.getByRole("button", { name: "Clear filters", exact: true }).click();
+        await expect(page.getByText("More filters · active")).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Clear filters", exact: true })).toHaveCount(0);
 
         await page.getByText("Technical details", { exact: true }).click();
         await expect(page.getByText("Catalog format version: v1")).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
+    });
+
+    test(`empty catalog has no filter recovery prompt at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery", (route) => route.fulfill({ json: {
+            catalog_loaded: true, entry_count: 0, schema_version: 1,
+        } }));
+        await page.route("**/api/v1/discovery/items?**", (route) => route.fulfill({ json: {
+            entries: [], total: 0, limit: 25, offset: 0, has_more: false,
+        } }));
+
+        await page.goto("/discovery");
+
+        await expect(page.getByText("No catalog items are available.")).toBeVisible();
+        await expect(page.getByText("Try clearing filters or using a broader keyword.")).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
+        await expect(page.getByText("Catalog total").locator("..").getByText("0")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }

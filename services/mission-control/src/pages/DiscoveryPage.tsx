@@ -124,8 +124,10 @@ export function DiscoveryPage() {
         };
     }, [loadCatalog]);
 
-    const isSearchMode = submittedFilters.query.trim().length > 0;
+    const hasSubmittedFilters = Object.values(submittedFilters).some((value) => value.trim().length > 0);
+    const hasFiltersToClear = hasSubmittedFilters || Object.values(filters).some((value) => value.trim().length > 0);
     const hasAdvancedFilters = Boolean(submittedFilters.tag || submittedFilters.capability);
+    const catalogIsEmpty = metadata?.catalog_loaded === true && metadata.entry_count === 0;
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const normalized = normalizeFilters(filters);
@@ -233,15 +235,16 @@ export function DiscoveryPage() {
                             >
                                 Search
                             </button>
-                            <button
-                                type="button"
-                                onClick={clearFilters}
-                                disabled={isLoading}
-                                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                                aria-label="Clear filters"
-                            >
-                                Clear
-                            </button>
+                            {hasFiltersToClear && (
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    disabled={isLoading}
+                                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
                         </div>
                     </div>
                     <details className="rounded-lg border border-slate-800 px-4 py-3">
@@ -274,10 +277,10 @@ export function DiscoveryPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-semibold text-white">
-                            {isSearchMode ? "Search results" : "Catalog items"}
+                            {hasSubmittedFilters ? "Search results" : "Catalog items"}
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            {result.total} item{result.total === 1 ? "" : "s"} found
+                            {result.total} {hasSubmittedFilters ? "matching " : ""}item{result.total === 1 ? "" : "s"} {hasSubmittedFilters ? "found" : "listed"}
                         </p>
                     </div>
 
@@ -310,13 +313,21 @@ export function DiscoveryPage() {
                 ) : result.entries.length === 0 && !error ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
-                            {metadata?.catalog_loaded && metadata.entry_count === 0
-                                ? "The catalog is loaded but empty."
-                                : "No items matched these filters."}
+                            {catalogIsEmpty
+                                ? "No catalog items are available."
+                                : hasSubmittedFilters
+                                  ? "No items matched these filters."
+                                  : result.offset > 0
+                                    ? "No items are on this page."
+                                    : "No catalog items were returned."}
                         </p>
-                        <p className="mt-2 text-sm text-slate-500">
-                            Try clearing filters or using a broader keyword.
-                        </p>
+                        {!catalogIsEmpty && <p className="mt-2 text-sm text-slate-500">
+                            {hasSubmittedFilters
+                                ? "Clear filters or broaden your search."
+                                : result.offset > 0
+                                  ? "Use Previous to check earlier results."
+                                  : "Use Search to check the catalog again."}
+                        </p>}
                     </div>
                 ) : (
                     <div className="grid gap-4 lg:grid-cols-2">
@@ -391,7 +402,7 @@ function DiscoveryStatus({
             <div className="grid gap-3 sm:grid-cols-2">
                 <StatusTile label="Status" value={label} />
                 <StatusTile
-                    label="Items"
+                    label="Catalog total"
                     value={metadata ? String(metadata.entry_count) : "…"}
                 />
             </div>
