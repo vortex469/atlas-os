@@ -1881,6 +1881,17 @@ the responsive fixture-backed repository journey passes (8 tests at 390px and
 and lint and production build pass. Browser workflow writes remain
 intercepted by synthetic fixtures.
 
+## Workflow audit stage labels — 2026-10-28
+
+The audit timeline uses the same operator language as the workflow journey:
+“Change proposal,” “Change plan,” “Change approval,” “Apply change,” “Checks
+to run,” and “Check results.” Stages that have not begun show “Not started.”
+The audit remains read-only, and detailed evidence stays collapsed. The focused
+WorkflowAuditPage suite passes (20 tests), the responsive fixture-backed
+repository journey passes (8 tests at 390px and 1280px), the full Mission
+Control suite passes (2,792 tests across 181 files), and lint and production
+build pass. Browser workflow writes remain intercepted by synthetic fixtures.
+
 ## Verification progress wording — 2026-10-28
 
 The workflow now labels the planned checks and their results in plain language.

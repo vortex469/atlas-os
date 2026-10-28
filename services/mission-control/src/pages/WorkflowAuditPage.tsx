@@ -18,9 +18,9 @@ interface AuditStageDefinition {
 const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "candidate",
-        title: "Candidate",
+        title: "Change proposal",
         details: (audit) => [
-            { label: "Candidate ID", value: audit.candidate.candidate_id ?? "Not reached" },
+            { label: "Candidate ID", value: audit.candidate.candidate_id ?? "Not started" },
             { label: "Candidate fingerprint", value: audit.candidate.candidate_fingerprint ?? "Not exposed" },
             { label: "Source recommendation ID", value: audit.candidate.source_recommendation_id ?? "Not exposed" },
             { label: "Target ID", value: audit.candidate.target_id ?? "Not exposed" },
@@ -29,9 +29,9 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "planning",
-        title: "Planning Session",
+        title: "Planning",
         details: (audit) => [
-            { label: "Planning session ID", value: audit.planning.planning_session_id ?? "Not reached" },
+            { label: "Planning session ID", value: audit.planning.planning_session_id ?? "Not started" },
             { label: "Planning state", value: audit.planning.planning_state ?? "Not exposed" },
             { label: "Planning status", value: audit.planning.planning_status ?? "Not exposed" },
             { label: "Created at", value: audit.planning.created_at ?? "Not available" },
@@ -40,16 +40,16 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "plan",
-        title: "Candidate Plan",
+        title: "Change plan",
         details: (audit) => [
-            { label: "Plan ID", value: audit.plan.plan_id ?? "Not reached" },
+            { label: "Plan ID", value: audit.plan.plan_id ?? "Not started" },
             { label: "Candidate plan fingerprint", value: audit.plan.candidate_plan_fingerprint ?? "Not exposed" },
             { label: "Likely affected files", value: audit.plan.likely_affected_files.length > 0 ? audit.plan.likely_affected_files.join(", ") : "None reported" },
         ],
     },
     {
         stage: "workflow",
-        title: "Workflow",
+        title: "Workflow setup",
         details: (audit) => [
             { label: "Workflow ID", value: audit.workflow.workflow_id },
             { label: "Workflow state", value: formatStatusLabel(audit.workflow.workflow_state) },
@@ -58,9 +58,9 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "implementation",
-        title: "Implementation Request",
+        title: "Change request",
         details: (audit) => [
-            { label: "Implementation request ID", value: audit.implementation.implementation_request_id ?? "Not reached" },
+            { label: "Implementation request ID", value: audit.implementation.implementation_request_id ?? "Not started" },
             { label: "Execution intent", value: audit.implementation.execution_intent ?? "Not exposed" },
             { label: "Tool", value: audit.implementation.tool ?? "Not exposed" },
             { label: "Repository root", value: audit.implementation.repository_root ?? "Not exposed" },
@@ -73,19 +73,19 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "approvals",
-        title: "Implementation Approval",
+        title: "Change approval",
         details: (audit) => [
             { label: "Workflow approval status", value: formatStatusLabel(audit.approvals.implementation.status) },
-            { label: "Implementation approval ID", value: audit.approvals.implementation.approval_id ?? "Not reached" },
+            { label: "Implementation approval ID", value: audit.approvals.implementation.approval_id ?? "Not started" },
             { label: "Overall approval decision", value: formatStatusLabel(audit.approvals.status) },
         ],
     },
     {
         stage: "execution",
-        title: "Execution Result",
+        title: "Apply change",
         details: (audit) => [
             { label: "Execution status", value: formatStatusLabel(audit.execution.execution_status ?? "not_reached") },
-            { label: "Execution request ID", value: audit.execution.execution_request_id ?? "Not reached" },
+            { label: "Execution request ID", value: audit.execution.execution_request_id ?? "Not started" },
             { label: "Changed files count", value: String(audit.execution.changed_files_count) },
             { label: "Changed files", value: audit.execution.changed_files.length > 0 ? audit.execution.changed_files.join(", ") : "None reported" },
             { label: "Tool", value: audit.execution.tool ?? "Not exposed" },
@@ -94,9 +94,9 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "verification",
-        title: "Verification Plan",
+        title: "Checks to run",
         details: (audit) => [
-            { label: "Verification plan ID", value: audit.verification.verification_plan_id ?? "Not reached" },
+            { label: "Verification plan ID", value: audit.verification.verification_plan_id ?? "Not started" },
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not exposed" },
             { label: "Verification check IDs", value: audit.verification.verification_check_ids.length > 0 ? audit.verification.verification_check_ids.join(", ") : "None reported" },
@@ -107,16 +107,16 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "verification",
-        title: "Verification Approval",
+        title: "Verification approval",
         details: (audit) => [
             { label: "Verification approval status", value: formatStatusLabel(audit.approvals.verification.status) },
-            { label: "Verification approval ID", value: audit.approvals.verification.approval_id ?? "Not reached" },
-            { label: "Verification evidence ID", value: audit.verification.verification_evidence_id ?? "Not reached" },
+            { label: "Verification approval ID", value: audit.approvals.verification.approval_id ?? "Not started" },
+            { label: "Verification evidence ID", value: audit.verification.verification_evidence_id ?? "Not started" },
         ],
     },
     {
         stage: "verification",
-        title: "Verification Evidence",
+        title: "Check results",
         details: (audit) => [
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not available" },
@@ -127,20 +127,20 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "review",
-        title: "Review Result",
+        title: "Review results",
         details: (audit) => [
             { label: "Review status", value: formatStatusLabel(audit.review.review_status ?? "not_reached") },
-            { label: "Review result ID", value: audit.review.review_result_id ?? "Not reached" },
-            { label: "Review report ID", value: audit.review.review_report_id ?? "Not reached" },
+            { label: "Review result ID", value: audit.review.review_result_id ?? "Not started" },
+            { label: "Review report ID", value: audit.review.review_report_id ?? "Not started" },
             { label: "Reviewed content fingerprint", value: audit.review.reviewed_content_fingerprint ?? "Not exposed" },
             { label: "Changed files", value: audit.review.changed_files.length > 0 ? audit.review.changed_files.join(", ") : "None reported" },
         ],
     },
     {
         stage: "commit",
-        title: "Commit Request",
+        title: "Commit details",
         details: (audit) => [
-            { label: "Commit request ID", value: audit.commit.commit_request_id ?? "Not reached" },
+            { label: "Commit request ID", value: audit.commit.commit_request_id ?? "Not started" },
             { label: "Expected branch", value: audit.commit.expected_branch ?? "Not exposed" },
             { label: "Expected HEAD", value: audit.commit.expected_head ?? "Not exposed" },
             { label: "Commit message", value: audit.commit.commit_message ?? "Not exposed" },
@@ -150,17 +150,17 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "commit",
-        title: "Commit Approval",
+        title: "Commit approval",
         details: (audit) => [
             { label: "Commit approval status", value: formatStatusLabel(audit.approvals.commit.status) },
-            { label: "Commit approval ID", value: audit.approvals.commit.approval_id ?? "Not reached" },
+            { label: "Commit approval ID", value: audit.approvals.commit.approval_id ?? "Not started" },
         ],
     },
     {
         stage: "commit",
-        title: "Commit Result",
+        title: "Commit result",
         details: (audit) => [
-            { label: "Commit SHA", value: audit.commit.commit_sha ?? "Not reached" },
+            { label: "Commit SHA", value: audit.commit.commit_sha ?? "Not started" },
             { label: "Commit message", value: audit.commit.commit_message ?? "Not available" },
             { label: "Committed files", value: audit.commit.committed_files.length > 0 ? audit.commit.committed_files.join(", ") : "None reported" },
         ],
@@ -442,13 +442,10 @@ function timelineClass(status: "completed" | "current" | "not_reached" | "missin
 }
 
 function formatStatusLabel(value: string): string {
-    return value
-        .replaceAll("_", " ")
-        .replaceAll("-", " ")
-        .replace("not_reached", "Not reached")
-        .replace("invalid", "Inconsistent")
-        .replace("inconsistent", "Inconsistent")
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    const normalized = value.replaceAll("_", " ").replaceAll("-", " ");
+    if (normalized === "not reached") return "Not started";
+    if (normalized === "invalid" || normalized === "inconsistent") return "Inconsistent";
+    return normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {

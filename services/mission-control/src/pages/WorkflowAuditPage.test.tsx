@@ -88,8 +88,8 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage();
         expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Maintenance audit" })).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Implementation Request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Commit details" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Change request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|run|resume/i })).not.toBeInTheDocument();
     });
 
@@ -143,13 +143,13 @@ describe("WorkflowAuditPage", () => {
         expect((technicalDetails as HTMLDetailsElement).open).toBe(true);
         expect(within(technicalDetails as HTMLElement).getByText("workflow-123")).toBeInTheDocument();
 
-        const candidateStage = screen.getByRole("region", { name: "Candidate" });
+        const candidateStage = screen.getByRole("region", { name: "Change proposal" });
         const candidateDetails = within(candidateStage).getByText("Recorded details").closest("details");
         expect((candidateDetails as HTMLDetailsElement).open).toBe(false);
         fireEvent.click(within(candidateStage).getByText("Recorded details"));
         expect(within(candidateStage).getByText("candidate-123")).toBeInTheDocument();
 
-        const commitStage = screen.getByRole("region", { name: "Commit Result" });
+        const commitStage = screen.getByRole("region", { name: "Commit result" });
         const commitDetails = within(commitStage).getByText("Recorded details").closest("details");
         expect((commitDetails as HTMLDetailsElement).open).toBe(false);
         fireEvent.click(within(commitStage).getByText("Recorded details"));
@@ -157,7 +157,7 @@ describe("WorkflowAuditPage", () => {
         expect(within(commitStage).getByText("Commit SHA")).toBeInTheDocument();
     });
 
-    it("shows in-progress stages as Not reached", async () => {
+    it("shows in-progress stages as Not started", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(audit({
             workflow_state: "awaiting_verification_approval",
             timeline: [
@@ -175,8 +175,9 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText("Stage status")).toBeInTheDocument();
-        expect(screen.getAllByText(/Not reached/i).length).toBeGreaterThan(0);
+        const stageStatus = within(await screen.findByRole("region", { name: "Stage status" }));
+        expect(stageStatus.getAllByText("Not started", { exact: true }).length).toBeGreaterThan(0);
+        expect(stageStatus.queryByText("Not reached", { exact: true })).not.toBeInTheDocument();
         expect(screen.getAllByText(/Review Result/i).length).toBeGreaterThan(0);
     });
 
@@ -332,7 +333,7 @@ describe("WorkflowAuditPage", () => {
     it("renders no mutation controls", async () => {
         renderAuditPage();
 
-        expect(await screen.findByRole("heading", { name: "Candidate" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Change proposal" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /reject/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();

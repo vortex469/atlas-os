@@ -142,7 +142,12 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "How to read this audit", exact: true })).toBeVisible();
         await expect(page.getByText("This page is read-only.", { exact: true })).toBeVisible();
-        const commitResult = page.getByRole("region", { name: "Commit Result" });
+        const auditStages = page.getByRole("region", { name: "Stage status" });
+        for (const label of ["Change proposal", "Planning", "Change plan", "Workflow setup", "Change request", "Change approval", "Apply change", "Checks to run", "Verification approval", "Check results", "Review results", "Commit details", "Commit approval", "Commit result"]) {
+            await expect(auditStages.getByText(label, { exact: true })).toBeVisible();
+        }
+        await expect(auditStages.getByText("Candidate Plan", { exact: true })).toHaveCount(0);
+        const commitResult = page.getByRole("region", { name: "Commit result" });
         await expect(commitResult.getByText(journey.commit, { exact: true })).toBeHidden();
         await commitResult.getByText("Recorded details", { exact: true }).click();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
