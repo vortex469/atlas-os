@@ -665,6 +665,19 @@ function VerificationReviewSection({
     const plan = workflow.verification_plan;
     const evidence = workflow.verification_evidence;
     const review = workflow.review;
+    const hasVerificationResults = evidence.verification_status !== null
+        || evidence.completed_time !== null
+        || evidence.executed_checks.length > 0
+        || evidence.check_results.length > 0
+        || evidence.repository_head !== null
+        || evidence.changed_files_digest !== null;
+    const hasReviewResults = review.review_result !== null
+        || review.review_status !== null
+        || review.approved !== null
+        || review.evidence_summary !== null
+        || review.changed_files.length > 0
+        || review.review_fingerprint !== null;
+    const awaitingVerificationApproval = workflow.workflow_state === "awaiting_verification_approval";
 
     return (
         <section aria-labelledby="verification-review-heading" className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -689,34 +702,46 @@ function VerificationReviewSection({
             </details>
 
             <section aria-labelledby="verification-plan-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="verification-plan-heading" className="text-base font-semibold text-white">Verification Plan</h3>
+                <h3 id="verification-plan-heading" className="text-base font-semibold text-white">Checks to run</h3>
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Command-backed checks" value={plan.command_backed_checks.length > 0 ? plan.command_backed_checks.join(", ") : "None reported"} />
-                    <Detail label="Verification status" value={formatLabel(plan.verification_status)} />
+                    <Detail label="Planned checks" value={plan.command_backed_checks.length > 0 ? plan.command_backed_checks.join(", ") : "None reported"} />
                 </dl>
             </section>
 
             <section aria-labelledby="verification-evidence-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="verification-evidence-heading" className="text-base font-semibold text-white">Verification Evidence</h3>
-                <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Verification status" value={evidence.verification_status ? formatLabel(evidence.verification_status) : "Not available"} />
-                    <Detail label="Completed time" value={evidence.completed_time ?? "Not available"} />
-                    <Detail label="Executed checks" value={evidence.executed_checks.length > 0 ? evidence.executed_checks.join(", ") : "None reported"} />
-                    <Detail label="Check results" value={evidence.check_results.length > 0 ? evidence.check_results.map((check) => `${String(check.identifier)}: ${String(check.status)}`).join(", ") : "None reported"} />
-                </dl>
+                <h3 id="verification-evidence-heading" className="text-base font-semibold text-white">Check results</h3>
+                {hasVerificationResults ? (
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Result" value={evidence.verification_status ? formatLabel(evidence.verification_status) : "Not available"} />
+                        <Detail label="Completed" value={evidence.completed_time ?? "Not available"} />
+                        <Detail label="Checks run" value={evidence.executed_checks.length > 0 ? evidence.executed_checks.join(", ") : "None reported"} />
+                        <Detail label="Results" value={evidence.check_results.length > 0 ? evidence.check_results.map((check) => `${String(check.identifier)}: ${String(check.status)}`).join(", ") : "None reported"} />
+                    </dl>
+                ) : (
+                    <p className="mt-3 text-sm text-slate-300">
+                        {awaitingVerificationApproval && workflow.verification_approval_status === "pending"
+                            ? "Review these checks, approve verification, then Resume to run them."
+                            : awaitingVerificationApproval && workflow.verification_approval_status === "approved"
+                                ? "Verification is approved. Resume to run these checks."
+                                : "Check results will appear after implementation and verification finish."}
+                    </p>
+                )}
             </section>
 
             <section aria-labelledby="review-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="review-heading" className="text-base font-semibold text-white">Review</h3>
-                <p className="mt-2 text-sm text-slate-300">Deterministic review</p>
-                <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Review result" value={review.review_result ? formatLabel(review.review_result) : "Not available"} />
-                    <Detail label="Review status" value={review.review_status ? formatLabel(review.review_status) : "Not available"} />
-                    <Detail label="Approved / Failed" value={review.approved === null ? "Not available" : review.approved ? "Approved" : "Failed"} />
-                    <Detail label="Evidence summary" value={review.evidence_summary ?? "Not available"} />
-                    <Detail label="Changed files" value={review.changed_files.length > 0 ? review.changed_files.join(", ") : "None reported"} />
-                    <Detail label="Model-assisted review" value={review.model_assisted_review} />
-                </dl>
+                {hasReviewResults ? (
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Review result" value={review.review_result ? formatLabel(review.review_result) : "Not available"} />
+                        <Detail label="Review status" value={review.review_status ? formatLabel(review.review_status) : "Not available"} />
+                        <Detail label="Decision" value={review.approved === null ? "Not available" : review.approved ? "Approved" : "Failed"} />
+                        <Detail label="Findings" value={review.evidence_summary ?? "Not available"} />
+                        <Detail label="Changed files" value={review.changed_files.length > 0 ? review.changed_files.join(", ") : "None reported"} />
+                        <Detail label="Model-assisted review" value={review.model_assisted_review} />
+                    </dl>
+                ) : (
+                    <p className="mt-3 text-sm text-slate-300">Review results will appear after verification runs.</p>
+                )}
             </section>
 
             <section aria-labelledby="verification-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">

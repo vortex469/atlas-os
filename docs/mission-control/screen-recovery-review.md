@@ -1880,3 +1880,15 @@ the responsive fixture-backed repository journey passes (8 tests at 390px and
 1280px), the full Mission Control suite passes (2,791 tests across 181 files),
 and lint and production build pass. Browser workflow writes remain
 intercepted by synthetic fixtures.
+
+## Verification progress wording — 2026-10-28
+
+The workflow now labels the planned checks and their results in plain language.
+Before verification runs, Mission Control shows the required next step and
+keeps empty result and review fields off the page. After verification runs, it
+shows the recorded results and review details. Separate verification approval
+and Resume controls remain unchanged. The focused WorkflowPage suite passes
+(82 tests), the responsive fixture-backed repository journey passes (8 tests
+at 390px and 1280px), the full Mission Control suite passes (2,792 tests
+across 181 files), and lint and production build pass. Browser workflow writes
+remain intercepted by synthetic fixtures.

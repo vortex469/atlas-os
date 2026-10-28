@@ -843,7 +843,7 @@ describe("WorkflowPage", () => {
         expect(screen.getByRole("button", { name: "Approve maintenance request" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reject maintenance request" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Implementation Request" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Verification Plan" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Checks to run" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Commit Request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Operational lifecycle" })).toBeInTheDocument();
@@ -986,7 +986,7 @@ describe("WorkflowPage", () => {
     it("renders verification plan, evidence, and deterministic review", async () => {
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Verification Plan" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Checks to run" })).toBeInTheDocument();
         const verificationReview = within(screen.getByRole("region", { name: "Verification and review" }));
         const technicalDetails = verificationReview.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
@@ -994,12 +994,13 @@ describe("WorkflowPage", () => {
         expect(verificationReview.getByText("verifier-v1")).not.toBeVisible();
         for (const digest of verificationReview.getAllByText("changed-digest-123")) expect(digest).not.toBeVisible();
         expect(verificationReview.getByText("/opt/atlas/services/demo")).not.toBeVisible();
-        expect(screen.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
-        expect(screen.getByRole("heading", { name: "Verification Evidence" })).toBeInTheDocument();
+        expect(verificationReview.getByText("Planned checks")).toBeVisible();
+        expect(verificationReview.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
+        expect(screen.getByRole("heading", { name: "Check results" })).toBeInTheDocument();
         expect(verificationReview.getByText("abc123")).not.toBeVisible();
         expect(verificationReview.getByText("compose-config: passed")).toBeVisible();
         expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
-        expect(verificationReview.getByText("Deterministic review")).toBeVisible();
+        expect(verificationReview.getByText("Decision")).toBeVisible();
         expect(verificationReview.getByText("0 findings, 0 recommendations")).toBeVisible();
         expect(verificationReview.getByText("compose.yaml")).toBeVisible();
         expect(verificationReview.getByText("review-fingerprint-123")).not.toBeVisible();
@@ -1014,6 +1015,40 @@ describe("WorkflowPage", () => {
         expect(verificationReview.getByText("/opt/atlas/services/demo")).toBeVisible();
         expect(verificationReview.getByText("abc123")).toBeVisible();
         expect(verificationReview.getByText("review-fingerprint-123")).toBeVisible();
+    });
+
+    it("shows the next verification step without empty result fields", async () => {
+        const empty = workflow();
+        mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({
+            verification_approval_status: "pending",
+            verification_evidence: {
+                ...empty.verification_evidence,
+                verification_status: null,
+                completed_time: null,
+                executed_checks: [],
+                check_results: [],
+                repository_head: null,
+                changed_files_digest: null,
+            },
+            review: {
+                ...empty.review,
+                review_result: null,
+                review_status: null,
+                approved: null,
+                evidence_summary: null,
+                changed_files: [],
+                review_fingerprint: null,
+                model_assisted_review: "Not applicable",
+            },
+        }));
+        renderPage();
+
+        const checkResults = within(await screen.findByRole("region", { name: "Check results" }));
+        expect(checkResults.getByText("Review these checks, approve verification, then Resume to run them.")).toBeVisible();
+        expect(checkResults.queryByText("Completed", { exact: true })).not.toBeInTheDocument();
+        const review = within(screen.getByRole("region", { name: "Review" }));
+        expect(review.getByText("Review results will appear after verification runs.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Approve Verification" })).toBeVisible();
     });
 
     it("submits verification approval with only workflow id and decision", async () => {

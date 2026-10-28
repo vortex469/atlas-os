@@ -96,6 +96,8 @@ for (const width of [390, 1280]) {
         const verificationReview = page.getByRole("region", { name: "Verification and review" });
         const plannedCheck = verificationReview.getByRole("definition").filter({ hasText: "compose-config" }).last();
         await expect(plannedCheck).toBeVisible();
+        await expect(page.getByRole("region", { name: "Check results" }).getByText("Review these checks, approve verification, then Resume to run them.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Review" }).getByText("Review results will appear after verification runs.", { exact: true })).toBeVisible();
         await expect(verificationReview.getByText("Verification check IDs", { exact: true })).toBeHidden();
         await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeHidden();
         await verificationReview.getByText("Technical details", { exact: true }).click();
@@ -109,6 +111,7 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Resume Approved Verification", exact: true }).click();
 
         await expect(page.getByRole("button", { name: "Approve Commit", exact: true })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Check results" }).getByText("compose-config: passed", { exact: true })).toBeVisible();
         await expect(page.getByText("Verification approved. Resume to run the checks.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(9);
