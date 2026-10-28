@@ -213,8 +213,13 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockReset();
         vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
         renderDashboard();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+        const unavailableAlert = await screen.findByRole("alert");
+        expect(unavailableAlert).toHaveTextContent("Workflows unavailable");
+        expect(unavailableAlert).toHaveTextContent("Mission Control could not load the workflow list.");
         expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
+        const initialErrorDetails = within(unavailableAlert).getByText("Technical details").closest("details");
+        expect(initialErrorDetails).not.toHaveAttribute("open");
+        expect(within(initialErrorDetails as HTMLDetailsElement).getByText("Atlas Agent unavailable")).not.toBeVisible();
     });
 
     it("lets an operator retry an initial failure without reloading the page", async () => {
@@ -222,13 +227,35 @@ describe("WorkflowDashboardPage", () => {
         let resolveRetry!: (value: WorkflowListResponse) => void;
         vi.mocked(listWorkflows).mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
         renderDashboard();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+        const initialAlert = await screen.findByRole("alert");
+        expect(initialAlert).toHaveTextContent("Mission Control could not load the workflow list.");
         expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Try again" }));
         expect(screen.getByRole("status")).toHaveTextContent("Loading workflows");
         expect(listWorkflows).toHaveBeenCalledTimes(2);
         resolveRetry(response([workflow({ workflow_state: "completed" })]));
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("labels stale workflow data after a failed refresh and keeps the error optional", async () => {
+        vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]))
+            .mockRejectedValueOnce(new Error("Atlas Agent unavailable"))
+            .mockResolvedValueOnce(response([workflow({ workflow_id: "workflow-refreshed", workflow_state: "completed", execution_intent: "restart-service" })]));
+        renderDashboard();
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+        const refreshAlert = await screen.findByRole("alert");
+        expect(refreshAlert).toHaveTextContent("Could not refresh workflows");
+        expect(refreshAlert).toHaveTextContent("The list and counts below show the last successfully loaded state.");
+        expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        const details = within(refreshAlert).getByText("Technical details").closest("details");
+        expect(details).not.toHaveAttribute("open");
+        expect(within(details as HTMLDetailsElement).getByText("Atlas Agent unavailable")).not.toBeVisible();
+
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(await screen.findByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 

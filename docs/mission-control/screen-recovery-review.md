@@ -1105,3 +1105,9 @@ If catalog metadata or results fail to load, Discovery now clears the previous
 cards, shows an unavailable state instead of an empty grid, and offers a
 read-only retry of the exact filters and page. Raw server details stay
 collapsed, and an unavailable result is not reported as zero matches.
+
+## Workflow list refresh recovery — 2026-10-28
+
+Workflow-list refresh failures now identify that the visible cards and counts
+are the last successfully loaded state. The Refresh control remains available
+to retry the read; raw Agent errors stay under collapsed Technical details.

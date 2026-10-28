@@ -161,10 +161,14 @@ export function WorkflowDashboardPage() {
             <main className="mx-auto max-w-7xl p-8">
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflows unavailable</h1>
-                    <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    <p className="mt-2 text-sm text-red-100">Mission Control could not load the workflow list. Try again to request the latest workflows.</p>
                     <button type="button" onClick={() => void loadDashboard()} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Try again
                     </button>
+                    <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{loadError}</p>
+                    </details>
                 </section>
             </main>
         );
@@ -190,7 +194,16 @@ export function WorkflowDashboardPage() {
             </header>
 
             {isRefreshing && <p role="status" aria-live="polite" className="text-sm text-blue-200">Refreshing workflows...</p>}
-            {refreshError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">Refresh failed: {refreshError}</p>}
+            {refreshError && (
+                <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                    <p className="font-semibold text-amber-100">Could not refresh workflows</p>
+                    <p className="mt-1 text-sm text-amber-100/80">The list and counts below show the last successfully loaded state. Use Refresh to check again before reviewing a workflow.</p>
+                    <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{refreshError}</p>
+                    </details>
+                </div>
+            )}
 
             <section aria-labelledby="workflow-counts-heading" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 <h2 id="workflow-counts-heading" className="sr-only">Workflow summary counts</h2>
