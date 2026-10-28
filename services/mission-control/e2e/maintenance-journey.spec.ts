@@ -3,7 +3,41 @@ import { journey } from "./repository-journey-fixture";
 import { installMaintenanceRequestJourney } from "./maintenance-request-journey-fixture";
 import { capability } from "./maintenance-selector-fixture";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 1280]) {
+    test(`maintenance request restores the operator session at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installMaintenanceRequestJourney(page, baseURL);
+        let releaseSessionRead!: () => void;
+        const sessionRead = new Promise<void>((resolve) => { releaseSessionRead = resolve; });
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/api/v1/operator-auth/session", async (route) => {
+            await sessionRead;
+            await route.fulfill({ status: 401, json: { detail: "Sign in required." } });
+        });
+        await page.goto("/operations/request");
+
+        const loadingMessage = page.getByText("Restoring operator session…", { exact: true });
+        await expect(loadingMessage).toBeVisible();
+        const padding = await loadingMessage.evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(padding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(padding ?? "0px")).toBeGreaterThan(16);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+        releaseSessionRead();
+        await page.waitForURL(/\/operator\/login$/);
+        expect(fixture.entryWrites).toEqual([]);
+        expect(fixture.writes).toEqual([]);
+        expect(fixture.unexpected).toEqual([]);
+        expect(fixture.entryUnexpected).toEqual([]);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
     test(`maintenance request through audit keeps approval and execution separate at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installMaintenanceRequestJourney(page, baseURL);
         await page.setViewportSize({ width, height: 844 });
@@ -11,7 +45,18 @@ for (const width of [390, 1280]) {
         await page.getByLabel("Operator ID").fill("browser-operator");
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
-        await expect(page.getByRole("heading", { name: "Request a restart proposal", exact: true })).toBeVisible();
+        const requestHeading = page.getByRole("heading", { name: "Request a restart proposal", exact: true });
+        await expect(requestHeading).toBeVisible();
+        const requestPadding = await requestHeading.evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(requestPadding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(requestPadding ?? "0px")).toBeGreaterThan(16);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         await expect(page.getByText("VM type", { exact: true })).toBeVisible();
         const target = page.getByRole("radio", { name: /Browser fixture VM/ });
         const targetCard = page.locator("label").filter({ has: target });
@@ -74,67 +119,73 @@ for (const width of [390, 1280]) {
     });
 }
 
-test("locks the request screen after an unconfirmed proposal response", async ({ page, baseURL }) => {
-    const fixture = await installMaintenanceRequestJourney(page, baseURL);
-    await page.setViewportSize({ width: 390, height: 844 });
-    let proposalRequests = 0;
-    await page.route("**/api/v1/execution-candidates/operator-intents", async (route) => {
-        if (route.request().method() === "POST") {
-            proposalRequests += 1;
-            return route.fulfill({ status: 503, json: { detail: "fixture-only unavailable" } });
-        }
-        return route.fallback();
+for (const width of [320, 390, 1280]) {
+    test(`locks the request screen after an unconfirmed proposal response at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installMaintenanceRequestJourney(page, baseURL);
+        await page.setViewportSize({ width, height: 844 });
+        let proposalRequests = 0;
+        await page.route("**/api/v1/execution-candidates/operator-intents", async (route) => {
+            if (route.request().method() === "POST") {
+                proposalRequests += 1;
+                return route.fulfill({ status: 503, json: { detail: "fixture-only unavailable" } });
+            }
+            return route.fallback();
+        });
+
+        await page.goto("/operations/request");
+        await page.getByLabel("Operator ID").fill("browser-operator");
+        await page.getByLabel("Password").fill("fixture-only-password");
+        await page.getByRole("button", { name: "Sign in", exact: true }).click();
+        await page.getByRole("radio", { name: /Browser fixture VM/ }).check();
+        await page.getByRole("button", { name: "Request restart proposal" }).click();
+
+        await expect(page.getByRole("alert")).toContainText("Check proposals before trying again.");
+        await expect(page.getByRole("link", { name: "Check whether a proposal was created" })).toHaveAttribute("href", "/execution-candidates");
+        await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Refresh" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(proposalRequests).toBe(1);
+        expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
+        expect(fixture.entryUnexpected).toEqual([]);
+        expect(fixture.unexpected).toEqual([]);
     });
+}
 
-    await page.goto("/operations/request");
-    await page.getByLabel("Operator ID").fill("browser-operator");
-    await page.getByLabel("Password").fill("fixture-only-password");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    await page.getByRole("radio", { name: /Browser fixture VM/ }).check();
-    await page.getByRole("button", { name: "Request restart proposal" }).click();
+for (const width of [320, 390, 1280]) {
+    test(`explains when the maintenance resource list is empty at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installMaintenanceRequestJourney(page, baseURL);
+        await page.setViewportSize({ width, height: 844 });
+        let resourceReads = 0;
+        await page.route(`**/api/v1/execution-candidates/operator-intents/capabilities/${capability.selector_id}/resources`, async (route) => {
+            if (route.request().method() === "GET") {
+                resourceReads += 1;
+                return route.fulfill({ json: {
+                    execution_intent: "restart-service",
+                    provider_id: "proxmox",
+                    resource_type: "qemu",
+                    generated_at: "2026-10-26T00:00:00Z",
+                    resources: [],
+                } });
+            }
+            return route.fallback();
+        });
 
-    await expect(page.getByRole("alert")).toContainText("Check proposals before trying again.");
-    await expect(page.getByRole("link", { name: "Check whether a proposal was created" })).toHaveAttribute("href", "/execution-candidates");
-    await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Refresh" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
-    expect(proposalRequests).toBe(1);
-    expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
-    expect(fixture.entryUnexpected).toEqual([]);
-    expect(fixture.unexpected).toEqual([]);
-});
+        await page.goto("/operations/request");
+        await page.getByLabel("Operator ID").fill("browser-operator");
+        await page.getByLabel("Password").fill("fixture-only-password");
+        await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
-test("explains when the maintenance resource list is empty", async ({ page, baseURL }) => {
-    const fixture = await installMaintenanceRequestJourney(page, baseURL);
-    await page.setViewportSize({ width: 390, height: 844 });
-    let resourceReads = 0;
-    await page.route(`**/api/v1/execution-candidates/operator-intents/capabilities/${capability.selector_id}/resources`, async (route) => {
-        if (route.request().method() === "GET") {
-            resourceReads += 1;
-            return route.fulfill({ json: {
-                execution_intent: "restart-service",
-                provider_id: "proxmox",
-                resource_type: "qemu",
-                generated_at: "2026-10-26T00:00:00Z",
-                resources: [],
-            } });
-        }
-        return route.fallback();
+        await expect(page.getByText("No VMs are available to select right now. Use Refresh to check again.")).toBeVisible();
+        await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled();
+        await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        await expect(page.getByRole("radio")).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await page.getByRole("button", { name: "Refresh" }).click();
+        await expect.poll(() => resourceReads).toBe(2);
+        expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
+        expect(fixture.writes).toEqual([]);
+        expect(fixture.entryUnexpected).toEqual([]);
+        expect(fixture.unexpected).toEqual([]);
     });
-
-    await page.goto("/operations/request");
-    await page.getByLabel("Operator ID").fill("browser-operator");
-    await page.getByLabel("Password").fill("fixture-only-password");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-
-    await expect(page.getByText("No VMs are available to select right now. Use Refresh to check again.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
-    await expect(page.getByRole("radio")).toHaveCount(0);
-    await page.getByRole("button", { name: "Refresh" }).click();
-    await expect.poll(() => resourceReads).toBe(2);
-    expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
-    expect(fixture.writes).toEqual([]);
-    expect(fixture.entryUnexpected).toEqual([]);
-    expect(fixture.unexpected).toEqual([]);
-});
+}

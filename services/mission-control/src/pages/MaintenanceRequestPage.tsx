@@ -151,7 +151,7 @@ export function MaintenanceRequestPage() {
         return () => { cancelled = true; };
     }, [proposalId, proposalLoadAttempt, session.authenticated]);
 
-    if (session.loading) return <main className="p-8 text-slate-400">Restoring operator session…</main>;
+    if (session.loading) return <main className="mx-auto max-w-6xl p-4 text-slate-400 sm:p-8">Restoring operator session…</main>;
     if (!session.authenticated) {
         return <Navigate to="/operator/login" state={proposalId ? { proposalId } : undefined} replace />;
     }
@@ -205,7 +205,7 @@ export function MaintenanceRequestPage() {
     }
 
     return (
-        <main className="mx-auto max-w-6xl space-y-6 p-8">
+        <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
             <header>
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Maintenance request</p>
                 <h1 className="mt-2 text-3xl font-bold text-white">Request a restart proposal</h1>

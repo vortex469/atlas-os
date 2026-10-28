@@ -2119,3 +2119,13 @@ it does not run generation again. Browser coverage includes loading, read
 recovery, malformed saved plans, and the synthetic approval journey at phone
 and desktop widths (10 checks). The focused page suite passes (35 tests), as do
 lint and the production build. No approval or infrastructure change was added.
+
+## Maintenance request phone layout — 2026-10-28
+
+The maintenance request and session-restoration screens now use compact phone
+spacing while retaining desktop spacing. Synthetic browser checks cover session
+loading, the full request-through-audit journey, uncertain proposal recovery,
+and the empty resource list at 320px, 390px, and 1280px (11 checks). The
+maintenance request page suite passes (32 tests), as do lint and the production
+build. Target selection, proposal submission, approval, and execution behavior
+are unchanged.
