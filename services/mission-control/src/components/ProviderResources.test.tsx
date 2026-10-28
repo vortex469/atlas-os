@@ -8,6 +8,7 @@ import {
     getProviderManagement,
     putProviderMonitoringIntent,
 } from "../api/providerManagement";
+import { getAtlasErrorMessage } from "../api/atlas";
 import { getProviderMonitoringIntentSuggestions } from "../api/providerIntentSuggestions";
 import { getProviderResources, refreshProviderResources } from "../api/resources";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
@@ -34,7 +35,7 @@ vi.mock("../api/providerIntentSuggestions", () => ({
 }));
 vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: vi.fn() }));
 vi.mock("../api/atlas", () => ({
-    getAtlasErrorMessage: (_error: unknown, fallback: string) => fallback,
+    getAtlasErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
 }));
 
 const fingerprint: ProviderMonitoringIntentSuggestionV1["management_fingerprint"] = `provider-management-fingerprint-v1:${"a".repeat(64)}`;
@@ -243,10 +244,17 @@ describe("ProviderResources Provider Intent flow", () => {
     it("does not describe failed inventory as an empty provider", async () => {
         vi.mocked(getProviderResources).mockRejectedValue(new Error("offline"));
         vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), resources: [] });
+        vi.mocked(getAtlasErrorMessage).mockReturnValueOnce("inventory service returned 503");
 
         render(<ProviderResources provider={provider} />);
 
-        expect(await screen.findByText(/could not load observed resources/i)).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Observed resources could not be loaded. Refresh resources to try again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("inventory service returned 503")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("inventory service returned 503")).toBeVisible();
         expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
     });
 
@@ -689,9 +697,14 @@ describe("ProviderResources Provider Intent flow", () => {
 
     it("preserves inventory and does not fall back to its expectation when v2 fails", async () => {
         vi.mocked(getProviderManagement).mockRejectedValue(new Error("offline"));
+        vi.mocked(getAtlasErrorMessage).mockReturnValueOnce("monitoring backend unavailable");
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
-        expect(screen.getByText("Monitoring unavailable", { selector: "p.font-semibold" })).toBeInTheDocument();
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("Monitoring settings could not be loaded. Observed inventory remains visible.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("monitoring backend unavailable")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     });
 

@@ -1548,3 +1548,12 @@ that no settings changed. The service error is under collapsed Technical
 details; Refresh settings continues to repeat only the read. The connection
 suite passes (16 tests), along with lint, build, and `git diff --check`. Test
 and save failures retain their existing secret-redacted messages.
+
+## Provider resource-read error wording — 2026-10-28
+
+Inventory failures now say that observed resources could not be loaded, while
+monitoring failures explain that settings are unavailable and observed
+inventory remains visible. Service errors are optional Technical details. The
+provider resources suite passes (54 tests), along with lint, build, and
+`git diff --check`. Resource and monitoring reads, edit permissions, and
+monitoring mutation rules are unchanged.

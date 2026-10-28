@@ -50,7 +50,9 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const [managementLoading, setManagementLoading] = useState(supported);
     const [operatorLoading, setOperatorLoading] = useState(false);
     const [inventoryError, setInventoryError] = useState<string | null>(null);
+    const [inventoryErrorDetails, setInventoryErrorDetails] = useState<string | null>(null);
     const [managementError, setManagementError] = useState<string | null>(null);
+    const [managementErrorDetails, setManagementErrorDetails] = useState<string | null>(null);
     const [operatorError, setOperatorError] = useState<string | null>(null);
     const [suggestionError, setSuggestionError] = useState<string | null>(null);
     const [updatingCoordinate, setUpdatingCoordinate] = useState<Coordinate | null>(null);
@@ -62,16 +64,28 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const metadataColumns = useMemo(() => metadataColumnsByProvider[provider.id] ?? [], [provider.id]);
 
     const loadInventory = useCallback(async (refresh = false): Promise<boolean> => {
-        setInventoryLoading(true); setInventoryError(null);
+        setInventoryLoading(true); setInventoryError(null); setInventoryErrorDetails(null);
         try { setInventory(refresh ? await refreshProviderResources(provider.id) : await getProviderResources(provider.id)); return true; }
-        catch (error) { setInventoryError(getAtlasErrorMessage(error, `Mission Control could not load observed resources for ${provider.name}.`)); return false; }
+        catch (error) {
+            const fallback = `Mission Control could not load observed resources for ${provider.name}.`;
+            const details = getAtlasErrorMessage(error, fallback);
+            setInventoryError("Observed resources could not be loaded. Refresh resources to try again.");
+            setInventoryErrorDetails(details === fallback ? null : details);
+            return false;
+        }
         finally { setInventoryLoading(false); }
     }, [provider.id, provider.name]);
 
     const loadManagement = useCallback(async (): Promise<boolean> => {
-        setManagementLoading(true); setManagementError(null);
+        setManagementLoading(true); setManagementError(null); setManagementErrorDetails(null);
         try { setManagement(await getProviderManagement(provider.id)); return true; }
-        catch (error) { setManagementError(getAtlasErrorMessage(error, "Atlas could not load monitoring settings.")); return false; }
+        catch (error) {
+            const fallback = "Atlas could not load monitoring settings.";
+            const details = getAtlasErrorMessage(error, fallback);
+            setManagementError("Monitoring settings could not be loaded. Observed inventory remains visible.");
+            setManagementErrorDetails(details === fallback ? null : details);
+            return false;
+        }
         finally { setManagementLoading(false); }
     }, [provider.id]);
 
@@ -211,8 +225,8 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
                 <button type="button" onClick={() => void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()])} disabled={inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">
-                {inventoryError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{inventoryError}</p>}
-                {managementError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Monitoring unavailable — {managementError} Observed inventory remains visible.</p>}
+                {inventoryError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"><p>{inventoryError}</p>{inventoryErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{inventoryErrorDetails}</p></details>}</div>}
+                {managementError && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"><p>{managementError}</p>{managementErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{managementErrorDetails}</p></details>}</div>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
                 {operatorState === "loading" && !loadingResources && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-300">Checking monitoring settings and edit access...</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
