@@ -97,5 +97,5 @@ export function routeContextForPath(pathname: string): string {
     if (pathname.startsWith("/installation/")) return "Installation readiness review";
     if (pathname.startsWith("/candidate-planning/")) return "Candidate planning";
     if (pathname === "/operator/login") return "Operator login";
-    return "Mission Control";
+    return "Page not found";
 }

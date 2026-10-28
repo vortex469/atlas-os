@@ -503,6 +503,8 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
         await page.setViewportSize(viewport);
         await page.goto("/page-that-does-not-exist");
         await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Page not found");
+        await expect(page).toHaveTitle("Page not found | Atlas Mission Control");
         if (viewport.width < 1024) {
             await page.getByRole("button", { name: "Open navigation" }).click();
         }

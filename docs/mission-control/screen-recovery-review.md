@@ -2018,3 +2018,12 @@ full Mission Control suite passes (2,793 tests across 181 files), all 8
 Mission Control shell browser checks pass, and lint and production build pass.
 The browser checks cover 390px and 1280px plus route changes and browser
 history. This is a presentation-only change.
+
+## Missing-page shell context — 2026-10-28
+
+Unknown routes now use “Page not found” in the shell announcement and browser
+tab, matching the recovery screen heading. The destination menu remains
+available so an operator can choose a working screen. The full Mission Control
+suite passes (2,794 tests across 181 files), both missing-page browser checks
+pass at 390px and 1280px, and lint and production build pass. Navigation and API
+behavior are unchanged.

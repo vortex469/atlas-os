@@ -34,6 +34,7 @@ function renderAt(
                             element={<p>{`${item.label} content`}</p>}
                         />
                     ))}
+                    <Route path="*" element={<p>Not found</p>} />
                 </Route>
             </Routes>
         </MemoryRouter>,
@@ -181,6 +182,13 @@ describe("MainLayout", () => {
             expect(screen.queryByTestId("mc-context")).not.toBeInTheDocument();
             expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(1);
             expect(document.title).toBe("Overview | Atlas Mission Control");
+        });
+
+        it("identifies unknown routes as missing pages in the shell and browser title", () => {
+            renderAt("/page-that-does-not-exist");
+
+            expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Page not found");
+            expect(document.title).toBe("Page not found | Atlas Mission Control");
         });
     });
 
