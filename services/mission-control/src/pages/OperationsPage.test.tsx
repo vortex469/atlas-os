@@ -198,12 +198,12 @@ describe("OperationsPage", () => {
         mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
         await user.click(screen.getByRole("button", { name: "Failed" }));
         await waitFor(() => expect(screen.queryByText("Unload Model")).not.toBeInTheDocument());
-        expect(screen.getByRole("button", { name: "Prune expired" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         expect(await screen.findByRole("alert")).toHaveTextContent("Filtered history unavailable");
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Prune expired" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {
@@ -277,19 +277,19 @@ describe("OperationsPage", () => {
         await user.click(screen.getByText("Export and cleanup", { exact: true }));
         await user.click(
             screen.getByRole("button", {
-                name: "Prune expired",
+                name: "Delete expired entries",
             }),
         );
 
         expect(window.confirm).toHaveBeenCalledWith(
-            "Delete audit entries older than 90 days?",
+            "Delete action history entries older than 90 days?",
         );
         expect(
             mockedPruneProviderActionHistory,
         ).toHaveBeenCalledOnce();
         expect(
             await screen.findByText(
-                "1 expired audit entry pruned.",
+                "Deleted 1 expired action history entry.",
             ),
         ).toBeInTheDocument();
     });
@@ -383,14 +383,14 @@ describe("OperationsPage", () => {
         const tools = screen.getByText("Export and cleanup", { exact: true });
         expect(action.compareDocumentPosition(tools) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         expect(screen.getByText("request-123")).not.toBeVisible();
-        expect(screen.getByRole("button", { name: "Prune expired" })).not.toBeVisible();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).not.toBeVisible();
         expect(screen.getByRole("button", { name: "Run Doctor" })).not.toBeVisible();
         for (const label of ["Search and filters", "Technical details", "Export and cleanup", "Check Atlas health"]) {
             const summary = screen.getByText(label, { exact: true });
             expect(summary.closest("details")).not.toHaveAttribute("open");
             await user.click(summary);
         }
-        expect(screen.getByText("Dates use UTC. Results below show the current search.")).toBeVisible();
+        expect(screen.getByText("Date filters use UTC (Coordinated Universal Time). Results below reflect your current search.")).toBeVisible();
         expect(screen.getByText("request-123")).toBeVisible();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(1);
         expect(mockedExportProviderActionHistory).not.toHaveBeenCalled();
@@ -404,8 +404,8 @@ describe("OperationsPage", () => {
         const view = renderPage();
         expect(await screen.findByText("Unload Model")).toBeVisible();
         await user.click(screen.getByText("Export and cleanup", { exact: true }));
-        expect(screen.getByText("Loading retention policy...")).toBeVisible();
-        expect(screen.getByRole("button", { name: "Prune expired" })).toBeDisabled();
+        expect(screen.getByText("Loading cleanup settings…")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         view.unmount();
     });
@@ -416,11 +416,11 @@ describe("OperationsPage", () => {
         renderPage();
         expect(await screen.findByText("Unload Model")).toBeVisible();
         await user.click(screen.getByText("Export and cleanup", { exact: true }));
-        expect(screen.getByText("Retention policy unavailable.")).toBeVisible();
-        expect(screen.getByRole("button", { name: "Prune expired" })).toBeDisabled();
+        expect(screen.getByText("Cleanup settings could not be loaded. Choose Refresh history to try again.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.queryByText("private retention exception")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Refresh history" }));
-        await waitFor(() => expect(screen.getByRole("button", { name: "Prune expired" })).toBeEnabled());
+        await waitFor(() => expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled());
         expect(screen.getByText("Unload Model")).toBeVisible();
         expect(mockedPruneProviderActionHistory).not.toHaveBeenCalled();
     });
@@ -454,7 +454,7 @@ describe("OperationsPage", () => {
         await user.click(screen.getByRole("button", { name: "Failed" }));
         await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
         await user.click(screen.getByText("Export and cleanup", { exact: true }));
-        await waitFor(() => expect(screen.getByRole("button", { name: "Prune expired" })).toBeEnabled());
+        await waitFor(() => expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled());
         await act(async () => {
             if (outcome === "resolve") {
                 resolveSummary({ ...originalSummary, retention_days: 999 });
@@ -464,8 +464,8 @@ describe("OperationsPage", () => {
                 rejectProviders(new Error("Old provider failure"));
             }
         });
-        expect(screen.getByText("1 of 5000 entries retained for 90 days.")).toBeVisible();
-        expect(screen.getByRole("button", { name: "Prune expired" })).toBeEnabled();
+        expect(screen.getByText("Saved entries: 1 of 5000. History is kept for 90 days.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled();
         await user.click(screen.getByText("Search and filters", { exact: true }));
         expect(screen.queryByText("Outdated provider")).not.toBeInTheDocument();
         expect(screen.queryByText(/Provider choices are unavailable/)).not.toBeInTheDocument();
@@ -492,7 +492,7 @@ describe("OperationsPage", () => {
         renderPage();
         await screen.findByText("Unload Model");
         await user.click(screen.getByText("Export and cleanup", { exact: true }));
-        await user.click(screen.getByRole("button", { name: "Prune expired" }));
+        await user.click(screen.getByRole("button", { name: "Delete expired entries" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Cleanup unavailable");
         expect(screen.getByText("Unload Model")).toBeVisible();
         expect(mockedPruneProviderActionHistory).toHaveBeenCalledTimes(1);
@@ -507,7 +507,7 @@ describe("OperationsPage", () => {
         renderPage();
         await screen.findByText("Unload Model");
         await user.click(screen.getByText("Export and cleanup", { exact: true }));
-        await user.click(screen.getByRole("button", { name: "Prune expired" }));
+        await user.click(screen.getByRole("button", { name: "Delete expired entries" }));
         await user.click(screen.getByRole("button", { name: "Failed" }));
         await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
         await act(async () => finish({ deleted_entries: 1, remaining_entries: 0, cutoff: "2026-01-01T00:00:00Z" }));

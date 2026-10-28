@@ -56,23 +56,23 @@ for (const width of [320, 390, 1280]) {
                         await expect(page.getByText(label, { exact: true }).locator("..")).not.toHaveAttribute("open");
                     }
                     await expect(page.getByText(entry.request_id, { exact: true })).toBeHidden();
-                    await expect(page.getByRole("button", { name: "Prune expired" })).toBeHidden();
+                    await expect(page.getByRole("button", { name: "Delete expired entries" })).toBeHidden();
                     await expect(page.getByRole("button", { name: "Run Doctor", exact: true })).toBeHidden();
                     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
                     if (metadata === "available") await page.screenshot({ path: `/tmp/atlas-action-history-${width}.png`, fullPage: true });
                     await page.getByText("Export and cleanup", { exact: true }).click();
-                    const cleanup = page.getByRole("button", { name: "Prune expired" });
+                    const cleanup = page.getByRole("button", { name: "Delete expired entries" });
                     if (metadata === "delayed") {
-                        await expect(page.getByText("Loading retention policy...")).toBeVisible();
+                        await expect(page.getByText("Loading cleanup settings…")).toBeVisible();
                         await expect(cleanup).toBeDisabled();
                         release();
                         await expect(cleanup).toBeEnabled();
                     } else if (metadata === "failed") {
-                        await expect(page.getByText("Retention policy unavailable.")).toBeVisible();
+                        await expect(page.getByText("Cleanup settings could not be loaded. Choose Refresh history to try again.")).toBeVisible();
                         await expect(cleanup).toBeDisabled();
                     } else await expect(cleanup).toBeEnabled();
                     await page.getByText("Search and filters", { exact: true }).click();
-                    await expect(page.getByText("Dates use UTC. Results below show the current search.")).toBeVisible();
+                    await expect(page.getByText("Date filters use UTC (Coordinated Universal Time). Results below reflect your current search.")).toBeVisible();
                     if (metadata === "failed") {
                         await expect(page.getByText(/Provider choices are unavailable/)).toBeVisible();
                         await page.getByRole("button", { name: "Refresh history", exact: true }).click();

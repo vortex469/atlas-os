@@ -40,10 +40,10 @@ for (const width of [320, 390, 1280]) {
                     await expect(page.getByRole("heading", { name: fixture.entry.action_label, exact: true })).toHaveCount(0);
                 }
                 await page.getByText("Export and cleanup", { exact: true }).click();
-                const cleanup = page.getByRole("button", { name: "Prune expired", exact: true });
+                const cleanup = page.getByRole("button", { name: "Delete expired entries", exact: true });
                 await expect(cleanup).toBeDisabled();
                 if (mode === "metadata") {
-                    await expect(page.getByText("Retention policy unavailable.", { exact: true })).toBeVisible();
+                    await expect(page.getByText("Cleanup settings could not be loaded. Choose Refresh history to try again.", { exact: true })).toBeVisible();
                     await page.getByText("Search and filters", { exact: true }).click();
                     await expect(page.getByText(/Provider choices are unavailable/)).toBeVisible();
                 }
