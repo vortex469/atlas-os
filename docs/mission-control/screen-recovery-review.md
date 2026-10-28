@@ -1015,3 +1015,13 @@ server state; generation remains available after the session is reloaded and
 reports that it is ready. The focused planning-page suite passes (32 tests), as
 do lint, production build, and `git diff --check`. No approval or execution
 behavior changed.
+
+## Installation admission summary — 2026-10-28
+
+The catalog's installation-admission panel now leads with a plain-language
+result and reasons. Fingerprints, exact reason codes, and the full non-executable
+candidate record are under collapsed Technical details. The page still states
+that the check cannot approve or start an installation; preservation and other
+authority controls are unchanged. Focused admission, lifecycle, and catalog
+page tests pass (45 tests), along with lint, production build, and
+`git diff --check`.

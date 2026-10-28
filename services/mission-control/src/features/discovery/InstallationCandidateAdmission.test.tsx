@@ -1,4 +1,5 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationCandidateAdmission } from "../../api/installationCandidateAdmission";
@@ -37,12 +38,19 @@ function fixture(admitted = false): InstallationCandidateAdmissionV1 {
 describe("installation candidate admission", () => {
     beforeEach(() => vi.resetAllMocks());
 
-    it("renders admitted_but_non_executable linkage and every candidate authority flag as false", async () => {
+    it("leads with a plain-language result and keeps exact linkage collapsed", async () => {
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(fixture(true));
         const { container } = render(<InstallationCandidateAdmission itemId="example" selectionId="selection-1" />);
-        expect(await screen.findByText(/admission status: admitted_but_non_executable/i)).toBeInTheDocument();
-        expect(screen.getByText(/admission is not approval, not execution, and not installation readiness/i)).toBeInTheDocument();
+        expect(await screen.findByText("Candidate record available for review only")).toBeInTheDocument();
+        expect(screen.getByText("This read-only check does not approve an installation or start work.")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
         for (const fingerprint of ["plan-fingerprint", "selection-fingerprint", "destination-fingerprint", "assessment-fingerprint", "fact-set-fingerprint"]) {
+            for (const value of within(technicalDetails as HTMLElement).getAllByText(fingerprint)) expect(value).not.toBeVisible();
+        }
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        for (const fingerprint of ["plan-fingerprint", "selection-fingerprint", "destination-fingerprint", "assessment-fingerprint", "fact-set-fingerprint"]) {
+            for (const value of within(technicalDetails as HTMLElement).getAllByText(fingerprint)) expect(value).toBeVisible();
             expect(screen.getAllByText(fingerprint).length).toBeGreaterThan(0);
         }
         const flags = container.querySelector<HTMLElement>('[aria-label="Candidate record authority flags"]');
@@ -52,13 +60,18 @@ describe("installation candidate admission", () => {
         expect(container.querySelectorAll("button, a, form")).toHaveLength(0);
     });
 
-    it("preserves Home Assistant as not_admitted with no candidate and server-ordered reasons", async () => {
+    it("shows plain-language reasons and keeps their exact codes collapsed", async () => {
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(fixture(false));
         render(<InstallationCandidateAdmission itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(/admission status: not_admitted/i)).toBeInTheDocument();
-        expect(screen.getByText(/candidate record: not present/i)).toBeInTheDocument();
+        expect(await screen.findByText("No candidate record was created")).toBeInTheDocument();
         const reasons = screen.getByRole("list", { name: /installation candidate admission reasons/i });
-        expect(reasons.textContent).toMatch(/plan is not ready for review.*capability assessment is not admissible/i);
+        expect(reasons.textContent).toMatch(/plan is not ready for review.*capability check did not confirm that requirements are met/i);
+        expect(reasons.textContent).not.toMatch(/installation_plan_not_review_ready|capability_assessment_not_admissible/);
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("installation_plan_not_review_ready")).not.toBeVisible();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("installation_plan_not_review_ready")).toBeVisible();
     });
 
     it("renders empty, loading, error, and no-response states with redacted errors", async () => {
