@@ -15,6 +15,15 @@ for (const width of [320, 390, 1280]) for (const mode of ['repository', 'approve
         });
         await page.goto(`/workflows/${journey.workflow}`);
         await expect(page.getByRole('heading', {name: maintenance ? 'Review maintenance' : 'Review repository change', exact: true})).toBeVisible();
+        if (maintenance) {
+            const lifecycle = page.getByRole('region', {name: 'Operational lifecycle', exact: true});
+            await expect(lifecycle.getByRole('heading', {name: 'Agent-only lifecycle', exact: true})).toBeVisible();
+            const technical = lifecycle.getByText('Technical details', {exact: true});
+            await expect(lifecycle.getByText(journey.workflow, {exact: true})).toBeHidden();
+            await technical.focus(); await page.keyboard.press('Enter');
+            await expect(lifecycle.getByText(journey.workflow, {exact: true})).toBeVisible();
+            await page.keyboard.press('Enter');
+        }
         const summary = page.getByRole('region', {name: 'Workflow summary', exact: true});
         await expect(summary.getByText(journey.workflow, {exact: true})).not.toBeVisible();
         const approvalLabel = maintenance ? 'Exact action' : mode === 'verification' ? 'Verification' : mode === 'commit' ? 'Commit' : 'Implementation';
