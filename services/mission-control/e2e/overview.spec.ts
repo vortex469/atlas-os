@@ -103,6 +103,28 @@ for (const width of [320, 768, 1440]) {
     });
 }
 
+for (const width of [320, 1280]) {
+    test(`work activity explains unrecognized workflow states at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route(/\/agent-api\/api\/v1\/agent\/workflows(?:\?.*)?$/, route => route.fulfill({ json: {
+            items: [{ workflow_id: "workflow-future-state", workflow_state: "future_state",
+                workflow_source: "candidate", effect_kind: "repository_change",
+                execution_intent: "update-compose-stack", candidate_id: null,
+                planning_session_id: null, repository: null, target_id: null,
+                last_result_summary: "Recorded result", timeline: [] }],
+            total: 1, offset: 0, limit: 200,
+        } }));
+        await page.goto("/");
+
+        const work = page.getByRole("region", { name: "Work activity" });
+        await expect(work.getByText("Some workflow statuses are not recognized. Running and blocked counts are hidden.")).toBeVisible();
+        await expect(work.getByText("Running workflows", { exact: true })).toHaveCount(0);
+        await expect(work.getByText("Blocked workflows", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 for (const width of [320, 390, 1280]) {
     test(`operator attention names the maintenance approval at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });

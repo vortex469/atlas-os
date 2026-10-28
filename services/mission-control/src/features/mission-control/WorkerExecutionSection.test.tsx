@@ -23,7 +23,7 @@ describe("Work activity summary", () => {
         view(undefined, false, true);
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getByText("Checking workflow status…")).toBeVisible();
-        expect(within(section).queryByText("Workflow status is unknown or incomplete.")).not.toBeInTheDocument();
+        expect(within(section).queryByText("Could not confirm the full workflow list, so running and blocked counts are hidden.")).not.toBeInTheDocument();
         expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
     });
@@ -134,17 +134,17 @@ describe("Work activity summary", () => {
         page([workflow("duplicate"), workflow("duplicate")]),
     ])("fails closed on missing, malformed, or incomplete evidence: %j", (evidence) => {
         view(evidence);
-        expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
+        expect(screen.getByText("Could not confirm the full workflow list, so running and blocked counts are hidden.")).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector(":scope > dl")).toBeNull();
     });
     it.each([{ timeline: [] }, { timeline: [{ name: "Execution", status: "surprise" }] }, { timeline: [{ name: "Execution", status: "completed" }, { name: "Execution", status: "failed" }] }])("does not fabricate outcomes from invalid execution stages", ({ timeline }) => {
         view(page([{ ...workflow("unknown", "completed"), timeline }]));
         fireEvent.click(screen.getByText("More about execution data"));
-        expect(screen.getByText(/Unknown — execution evidence missing or malformed/)).toBeInTheDocument();
+        expect(screen.getByText("Mission Control could not read an execution result for one or more workflows.")).toBeInTheDocument();
     });
     it("treats future workflow states as unknown rather than idle", () => {
         view(page([workflow("future", "future_state")]));
-        expect(screen.getByText("Some workflow statuses are not recognized, so counts are unavailable.")).toBeInTheDocument();
+        expect(screen.getByText("Some workflow statuses are not recognized. Running and blocked counts are hidden.")).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector(":scope > dl")).toBeNull();
     });
     it("starts with a short summary and exposes no mutation controls or raw payloads", () => {
@@ -171,7 +171,7 @@ it("retains failed-refresh observations explicitly as stale, without asserting h
 
 it.each(["..", "\ud800", " "])("rejects unsafe workflow navigation: %j", id => {
     view(page([workflow(id)]));
-    expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
+    expect(screen.getByText("Could not confirm the full workflow list, so running and blocked counts are hidden.")).toBeInTheDocument();
 });
 
 it("redacts sensitive display text and discloses partially missing outcomes", () => {

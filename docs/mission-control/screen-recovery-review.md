@@ -2257,3 +2257,13 @@ and “Passed.” The history no longer exposes their backend state names. The
 focused history and recovery-summary suites pass (51 tests), the unavailable
 history browser checks pass at 320px, 390px and 1280px (3 checks), and lint and
 build pass. Filtering, request links and maintenance actions are unchanged.
+
+## Work activity unavailable-state wording — 2026-10-28
+
+When workflow data is incomplete or contains an unfamiliar status, Work activity
+now says why its running and blocked counts are hidden. It also explains when
+Mission Control cannot read a recorded execution result without calling the
+evidence “malformed.” Counts remain hidden unless the full list and statuses
+can be checked. The focused overview and work-activity suites pass (91 tests),
+the responsive browser check passes at 320px and 1280px (2 checks), and lint
+and build pass. No workflow or execution state is changed.
