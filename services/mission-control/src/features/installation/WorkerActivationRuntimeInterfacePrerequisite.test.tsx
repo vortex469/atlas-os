@@ -1,6 +1,6 @@
 import { WorkerActivationRuntimePlanReview } from "./WorkerActivationRuntimePlanReview";
 import { reviewCollection, reviewResult, plan } from "../../test/workerActivationRuntimePlanReview";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { atlas } from "../../api/atlas";
 import { inventoryCollection, inventoryResult, review } from "../../test/workerActivationRuntimeInterfacePrerequisite";
@@ -11,17 +11,26 @@ function responses(result: unknown = inventoryResult) {
 }
 describe("v0.63 retained interface prerequisite presentation", () => {
     beforeEach(() => vi.resetAllMocks());
-    it("shows incomplete prerequisites first with inspectable collapsed details and no controls", async () => {
+    it("shows the unresolved requirements before collapsed technical evidence", async () => {
         responses();
         const { container } = render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
         expect(screen.getByRole("status")).toHaveTextContent("Loading");
         expect(await screen.findByText(/Core recorded an interface prerequisite inventory/)).toBeVisible();
-        expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+        expect(screen.getByText(/does not show that a runtime exists or is ready/)).toBeVisible();
+        expect(screen.getByText("7 runtime requirements are still unresolved.")).toBeVisible();
+        expect(screen.getByText("Worker start remains blocked")).toBeVisible();
         expect(screen.getByText(/Recording this inventory does not satisfy prerequisites/)).toBeVisible();
-        expect(screen.getByText(/state at Core’s last evaluation/)).toBeVisible();
-        const details = screen.getByText("Advanced Core evidence").closest("details");
+        expect(screen.getByText(/Core last checked these requirements/)).toBeVisible();
+        const recorded = container.querySelector(`time[datetime="${inventoryResult.record.recorded_at}"]`);
+        expect(recorded).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(inventoryResult.record.recorded_at)));
+        const blockerDetails = screen.getByText("Show the unresolved requirements").closest("details");
+        expect(blockerDetails).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Show the unresolved requirements"));
+        expect(screen.getByLabelText("Runtime requirements still unresolved")).toHaveTextContent(/The worker activation runtime is not available.*Contact with the worker store is not available.*Contact with the worker runtime is not available/i);
+        const details = screen.getByText("Technical evidence").closest("details");
         expect(details).not.toHaveAttribute("open");
-        expect(screen.getByText(inventoryResult.record.prerequisite_id)).not.toBeVisible();
+        expect(screen.queryByText(inventoryResult.record.prerequisite_id)).not.toBeVisible();
+        expect(screen.getByText("worker_activation_runtime_not_defined")).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
         expect(details).toHaveTextContent("v0.63 retains the Core-owned v0.57 interface prerequisite inventory integrated through v0.62");
         expect(details).toHaveTextContent("Successor runtime identity, capability and lifecycle definition and presentation remain deferred; no new runtime authority is established");
@@ -81,8 +90,8 @@ describe("v0.63 retained interface prerequisite presentation", () => {
         try {
             responses();
             render(<WorkerActivationRuntimeInterfacePrerequisite review={review} />);
-            expect(await screen.findByText(/Core reports this interface prerequisite evidence is active/)).toBeVisible();
-            expect(screen.getByText(/state at Core’s last evaluation/)).toBeVisible();
+            expect(await screen.findByText(/Core reports this inventory is current/)).toBeVisible();
+            expect(screen.getByText(/Core last checked these requirements/)).toBeVisible();
             expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
             expect(atlas.get).toHaveBeenCalledTimes(2);
         } finally {
