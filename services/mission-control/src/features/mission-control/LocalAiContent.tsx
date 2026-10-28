@@ -22,6 +22,10 @@ function inventory(data: Record<string, unknown>, key: "installed" | "running"):
 }
 
 export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
+    if (evidence?.data === undefined) return <>
+        <p>{evidence?.unavailable ? "AI provider details could not be loaded. Refresh Mission Control to try again." : "AI provider information has not been received yet."}</p>
+        <Link to="/providers">View provider registry</Link>
+    </>;
     const data = record(evidence?.data);
     const provider = record(data.provider);
     const health = record(data.health);
@@ -31,15 +35,14 @@ export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
         ? `${health.latency_ms} ms` : "Not reported";
     return <>
         <p>Configured AI provider: {publicLabel(provider.name) ?? publicLabel(provider.id) ?? "Unknown"}</p>
-        <p>Configured provider status</p>
         <HealthEvidence status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
-        <p>The configured provider's status does not confirm that AI is available on this computer.</p>
+        <p>Provider health does not show whether AI is available on this computer.</p>
         {lastKnown && <p>The details below are from the last successful refresh. Current version, response time, and model lists are not confirmed.</p>}
         {path && <Link to={path}>Inspect AI provider →</Link>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">AI details</summary>
             <div className="mt-3 space-y-3">
-                <p>This screen shows the configured provider's status. It does not show whether that provider runs locally.</p>
+                <p>These details describe the configured provider. They do not confirm whether AI runs on this computer.</p>
                 <p>Selected model: Not reported.</p>
                 <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div><dt>Runtime version</dt><dd>{safeText(record(health.details).version).trim() || "Not reported"}</dd></div>

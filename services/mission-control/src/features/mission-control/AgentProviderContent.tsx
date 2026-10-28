@@ -32,12 +32,19 @@ export function ProviderOverviewContent({ evidence }: { evidence?: Evidence }) {
         {provider.path && <Link to={provider.path}>Inspect {provider.name} →</Link>}
     </article>;
     return <>
-        <p>A provider listed here may not be connected or allowed to perform actions.</p>
-        {providers === null && <p>Provider configuration unknown.</p>}
+        {providers === null && <p>{evidence?.unavailable ? "Provider details could not be loaded. Refresh Mission Control to try again." : "Provider configuration is not available."}</p>}
         {providers?.length === 0 && <p>{stale ? "No providers appeared in the last successful refresh. Current configuration is unknown." : evidence?.unavailable ? "Provider configuration unknown." : "No providers configured."}</p>}
-        {providers?.slice(0, 4).map(renderProvider)}
-        {providers && providers.length > 4 && <details><summary>{providers.length - 4} more provider observations</summary>{providers.slice(4).map(renderProvider)}</details>}
-        <p>This screen does not show model names or which provider the Agent uses.</p>
+        {providers && providers.length > 0 && <>
+            <p>{stale ? `Showing last reported details for ${providers.length} provider${providers.length === 1 ? "" : "s"}. Current status is unknown.` : `${providers.length} provider${providers.length === 1 ? "" : "s"} reported.`}</p>
+            <details className="rounded-lg border border-mc-border-subtle p-3">
+                <summary className="mc-focusable cursor-pointer text-mc-primary">Show provider status ({providers.length})</summary>
+                <div className="mt-3 space-y-3">
+                    {providers.slice(0, 4).map(renderProvider)}
+                    {providers.length > 4 && <details><summary className="mc-focusable cursor-pointer text-mc-primary">More providers ({providers.length - 4})</summary><div className="mt-3 space-y-3">{providers.slice(4).map(renderProvider)}</div></details>}
+                </div>
+            </details>
+        </>}
+        <p>Provider health does not show whether actions are allowed.</p>
         <Link to="/providers">View provider registry</Link>
     </>;
 }
