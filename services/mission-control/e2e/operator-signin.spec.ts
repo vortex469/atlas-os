@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { discoveryItemsPage } from "./mission-control-fixtures";
 import type { DiscoveryProposalNavigation } from "../src/types/discovery";
 import { capability, resource } from "./maintenance-selector-fixture";
@@ -16,7 +17,19 @@ const proposal: DiscoveryProposalNavigation = {
     actionable_navigation: true,
 };
 
-for (const width of [390, 1280]) {
+async function expectLoginPagePadding(page: Page, width: number) {
+    const padding = await page.getByRole("heading", { name: "Operator login", exact: true }).evaluate((element) => {
+        const main = element.closest("main");
+        return main ? getComputedStyle(main).paddingLeft : null;
+    });
+    if (width < 640) {
+        expect(padding).toBe("16px");
+    } else {
+        expect(Number.parseFloat(padding ?? "0px")).toBeGreaterThan(16);
+    }
+}
+
+for (const width of [320, 390, 1280]) {
     test(`Discovery context survives sign-in without selecting or requesting maintenance at ${width}px`, async ({ page }) => {
         let logins = 0;
         let proposalReads = 0;
@@ -61,6 +74,7 @@ for (const width of [390, 1280]) {
         await page.goto("/discovery/items/fixture-app");
         await page.getByRole("link", { name: "Continue to maintenance selection for fixture-app" }).click();
         await expect(page.getByRole("heading", { name: "Operator login" })).toBeVisible();
+        await expectLoginPagePadding(page, width);
         await expect(page.getByText(/maintenance will reload the proposal/)).toBeVisible();
         await page.getByLabel("Operator ID").fill("browser-operator");
         await page.getByLabel("Password").fill("fixture-only-password");
@@ -74,6 +88,40 @@ for (const width of [390, 1280]) {
         expect(proposalReads).toBe(1);
         expect(unexpectedMutations).toEqual([]);
         expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
+
+for (const width of [320, 1280]) {
+    test(`rejected sign-in explains the result and clears the password at ${width}px`, async ({ page }) => {
+        let loginAttempts = 0;
+        const unexpectedRequests: string[] = [];
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/api/v1/**", async (route) => {
+            const request = route.request();
+            const path = new URL(request.url()).pathname;
+            if (request.method() === "GET" && path === "/api/v1/operator-auth/session") {
+                return route.fulfill({ status: 401, json: { detail: "Sign in required." } });
+            }
+            if (request.method() === "POST" && path === "/api/v1/operator-auth/login") {
+                loginAttempts += 1;
+                return route.fulfill({ status: 401, json: { detail: "Invalid credentials." } });
+            }
+            unexpectedRequests.push(`${request.method()} ${path}`);
+            return route.fulfill({ status: 404, json: { detail: "Unexpected request in sign-in fixture." } });
+        });
+
+        await page.goto("/operator/login");
+        await expectLoginPagePadding(page, width);
+        await page.getByLabel("Operator ID").fill("browser-operator");
+        const password = page.getByLabel("Password");
+        await password.fill("fixture-only-wrong-password");
+        await page.getByRole("button", { name: "Sign in", exact: true }).click();
+        await expect(page.getByRole("alert")).toHaveText("Operator credentials were rejected.");
+        await expect(password).toHaveValue("");
+        await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
+        expect(loginAttempts).toBe(1);
+        expect(unexpectedRequests).toEqual([]);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }

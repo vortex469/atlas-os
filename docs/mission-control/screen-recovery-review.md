@@ -2139,3 +2139,12 @@ checks the full repository and maintenance journeys, loading states, and
 read-recovery flows at 320px, 390px, and 1280px (17 checks). The focused
 workflow and audit page suites pass (102 tests), as do lint and the production
 build. Approval, resume, audit, and execution behavior are unchanged.
+
+## Operator sign-in phone spacing — 2026-10-28
+
+Operator sign-in now uses compact page spacing on phones while keeping its
+desktop layout. Synthetic browser checks cover Discovery-to-sign-in context
+and rejected credentials at phone and desktop sizes (5 checks). The focused
+login and session suites pass (14 tests), as do lint and the production build.
+Password clearing, validated return context, and Core-owned authentication
+behavior are unchanged.

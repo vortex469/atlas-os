@@ -42,7 +42,7 @@ export function OperatorLoginPage() {
     }
 
     return (
-        <main className="mx-auto max-w-xl space-y-6 p-8">
+        <main className="mx-auto max-w-xl space-y-6 p-4 sm:p-8">
             <header>
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Operator session</p>
                 <h1 className="mt-2 text-3xl font-bold text-white">Operator login</h1>
