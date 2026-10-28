@@ -71,7 +71,7 @@ describe("MC overview evidence", () => {
         show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: value } } } });
         const card = screen.getByRole('region', { name: 'AI provider' });
         expect(within(card).getAllByText(value[0].toUpperCase() + value.slice(1)).length).toBeGreaterThan(0);
-        expect(within(card).getByText(/Locality and dedicated/)).toBeInTheDocument();
+        expect(within(card).getByText(/This screen shows the configured provider's status/)).toBeInTheDocument();
     });
     it("marks failed refresh evidence stale and never displays cached health as current", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
@@ -100,7 +100,7 @@ describe('operational activity and runtime evidence', () => {
         expect(screen.getByText('Failed · Inspect resource')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Inspect action →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
         expect(screen.getByText('Completion time unknown.')).toBeInTheDocument();
-        expect(screen.getByText('Reported running models: model-a')).toBeInTheDocument();
+        expect(screen.getByText('Running models: model-a')).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
     });
     it('deduplicates an identical finding and provider condition', () => {
@@ -134,8 +134,8 @@ describe('overview fail-closed regressions', () => {
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
         const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
-        expect(runtime.getByText('Local AI availability is unknown; locality is not reported.')).toBeVisible();
-        expect(runtime.getByText('Configured provider health')).toBeInTheDocument();
+        expect(runtime.getByText(/does not confirm that AI is available on this computer/)).toBeVisible();
+        expect(runtime.getByText('Configured provider status')).toBeInTheDocument();
     });
 });
 
@@ -161,7 +161,7 @@ it('includes configured AI failures in attention without asserting local availab
     expect(attention.getByText('Unavailable')).toBeInTheDocument();
     expect(attention.getByRole('link', { name: 'Runtime' })).toHaveAttribute('href', '/providers/runtime');
     expect(attention.getByText('Endpoint unavailable')).toBeInTheDocument();
-    expect(screen.getByText(/Local AI availability is unknown/)).toBeInTheDocument();
+    expect(screen.getByText(/does not confirm that AI is available on this computer/)).toBeInTheDocument();
 });
 
 it('deduplicates configured AI and provider evidence and preserves freshness', () => {

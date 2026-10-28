@@ -18,10 +18,10 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
         expect(agent.getByRole("link", { name: "Open Forge →" })).toBeVisible();
         expect(agent.getByText("Development Agent")).not.toBeVisible();
-        expect(agent.getByText(/Identity does not establish availability or execution readiness/)).not.toBeVisible();
+        expect(agent.getByText(/name and version do not show whether it can run workflows/)).not.toBeVisible();
         fireEvent.click(agent.getByText("Agent details"));
         expect(agent.getByText("Development Agent")).toBeVisible();
-        expect(agent.getByText(/Identity does not establish availability or execution readiness/)).toBeVisible();
+        expect(agent.getByText(/The name and version do not show whether it can run workflows/)).toBeVisible();
         expect(agent.getByText("Unknown")).toBeVisible();
         fireEvent.click(agent.getByText("Agent details"));
         expect(agent.getByText("Development Agent")).not.toBeVisible();
@@ -39,7 +39,14 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText(/Last-known status: Healthy/)).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
-        expect(registry().getByText(/current configuration unknown/)).toBeInTheDocument();
+        expect(registry().getByText(/Current configuration is unknown/)).toBeInTheDocument();
+    });
+    it("shows a reported Agent version when its name is unavailable", () => {
+        show({ agent: { data: { version: "0.4.2" } } });
+        const agent = within(screen.getByRole("region", { name: "Agent state" }));
+        fireEvent.click(agent.getByText("Agent details"));
+        expect(agent.getByText("0.4.2", { exact: true })).toBeVisible();
+        expect(agent.getByText(/Agent name or version reported by Atlas Agent/)).toBeVisible();
     });
     it.each([undefined, null, {}, { providers: [] }])("does not present malformed or missing registries as empty: %s", data => {
         show({ providers: { data } });
