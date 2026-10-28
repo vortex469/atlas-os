@@ -39,6 +39,18 @@ describe("MC overview evidence", () => {
         expect(workflowId).toBeVisible();
     });
 
+    it('keeps attention focused on direct condition links', () => {
+        show({ workflows: { data: { items: [{
+            workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval', timeline: [],
+        }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('link', { name: 'Workflow · Waiting for implementation approval' })).toHaveAttribute('href', '/workflows/review-me');
+        expect(attention.queryByRole('link', { name: 'Review operational conditions →' })).not.toBeInTheDocument();
+        expect(attention.queryByRole('link', { name: 'Review workflow attention →' })).not.toBeInTheDocument();
+        expect(within(screen.getByRole('region', { name: 'Work activity' })).getByRole('link', { name: 'Review workflows →' })).toHaveAttribute('href', '/workflows');
+        expect(within(screen.getByRole('region', { name: 'System health' })).getByRole('link', { name: 'Open operations →' })).toHaveAttribute('href', '/operations');
+    });
+
     it('does not repeat an approval stage already named by the workflow link', () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',

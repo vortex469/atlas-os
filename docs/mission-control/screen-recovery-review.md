@@ -822,3 +822,11 @@ Work activity. Failed and last-known reads use shorter messages. No data source
 or status calculation changed. The focused overview suite and responsive
 overview browser checks pass, along with lint, production build, and
 `git diff --check`.
+
+## Operator Attention destinations — 2026-10-28
+
+The attention panel no longer repeats general links to operations and workflows
+below conditions that already link to their detail pages. General navigation
+remains in System health and Work activity. The focused overview tests and
+responsive browser checks pass, along with lint, production build, and
+`git diff --check`.

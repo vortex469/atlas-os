@@ -151,10 +151,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 {item.stale && <p>Last-known condition; current state unknown.</p>}
             </li>)}</ul>
             {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
-            <div className="flex flex-wrap gap-x-4 gap-y-2">
-                <Link to="/operations">Review operational conditions →</Link>
-                <Link to="/workflows">Review workflow attention →</Link>
-            </div>
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="System health" showSourceNote={false}>

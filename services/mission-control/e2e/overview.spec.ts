@@ -14,6 +14,9 @@ for (const width of [320, 768, 1440]) {
         await expect(agent.getByText('This report includes only the Agent name and version.')).toBeVisible();
         await expect(agent.getByText('Unknown', { exact: true })).toHaveCount(0);
         await expect(agent.getByText('Evidence unknown.', { exact: true })).toHaveCount(0);
+        const attention = page.getByRole('region', { name: 'Operator Attention' });
+        await expect(attention.getByRole('link', { name: 'Review operational conditions →' })).toHaveCount(0);
+        await expect(attention.getByRole('link', { name: 'Review workflow attention →' })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         const columns = await grid.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
         expect(columns).toBe(width < 768 ? 1 : width < 1280 ? 2 : 3);
