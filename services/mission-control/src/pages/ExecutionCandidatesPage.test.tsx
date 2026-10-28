@@ -96,9 +96,9 @@ describe("ExecutionCandidatesPage", () => {
         let resolveOld!: (value: ExecutionCandidatePage) => void;
         mockedListExecutionCandidates.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))
             .mockResolvedValueOnce(page([candidate({ id: "latest-candidate" })]));
-        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+        fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
         await screen.findByText("latest-candidate");
         await act(async () => resolveOld(page([candidate({ id: "older-candidate" })])));
         expect(screen.getByText("latest-candidate")).toBeInTheDocument();
@@ -112,8 +112,8 @@ describe("ExecutionCandidatesPage", () => {
         let resolveLatest!: (value: ExecutionCandidatePage) => void;
         mockedListExecutionCandidates.mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
             .mockImplementationOnce(() => new Promise((resolve) => { resolveLatest = resolve; }));
-        fireEvent.click(screen.getByRole("button", { name: "Search" }));
-        fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+        fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
+        fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
         await act(async () => rejectOld(new Error("Old search failed")));
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(screen.getByText("Loading change proposals…")).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe("ExecutionCandidatesPage", () => {
         renderPage();
         await screen.findByText("candidate-1");
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Current search failed"));
-        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
         await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe("ExecutionCandidatesPage", () => {
             .mockResolvedValueOnce(page([candidate({ id: "searched-candidate" })]));
         renderPage();
         await waitFor(() => expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(1));
-        fireEvent.click(screen.getByRole("button", { name: "Search" }));
+        fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
         await screen.findByText("searched-candidate");
         await act(async () => resolveInitial(page([candidate({ id: "initial-candidate" })])));
         expect(screen.getByText("searched-candidate")).toBeInTheDocument();
@@ -155,12 +155,13 @@ describe("ExecutionCandidatesPage", () => {
         renderPage();
         await screen.findByText("candidate-1");
 
-        await user.selectOptions(screen.getByLabelText("Status"), "eligible");
+        await user.selectOptions(screen.getByLabelText("Eligibility"), "eligible");
+        await user.click(screen.getByText("More filters"));
         await user.selectOptions(screen.getByLabelText("Category"), "update");
-        await user.selectOptions(screen.getByLabelText("Intent"), "update-compose-stack");
-        await user.type(screen.getByLabelText("Source subsystem"), "orion");
+        await user.selectOptions(screen.getByLabelText("Change"), "update-compose-stack");
+        await user.type(screen.getByLabelText("Source"), "orion");
         await user.type(screen.getByLabelText("Target ID"), "stack-home-assistant");
-        await user.click(screen.getByRole("button", { name: "Search" }));
+        await user.click(screen.getByRole("button", { name: "Search proposals" }));
 
         await waitFor(() =>
             expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith({
@@ -173,6 +174,7 @@ describe("ExecutionCandidatesPage", () => {
                 offset: 0,
             }),
         );
+        expect(screen.getByText("More filters · active")).toBeVisible();
 
         await user.click(screen.getByRole("button", { name: "Next change proposals page" }));
         await waitFor(() =>
@@ -196,12 +198,12 @@ describe("ExecutionCandidatesPage", () => {
         expect(await screen.findByText("No current change proposals.")).toBeInTheDocument();
 
         mockedListExecutionCandidates.mockResolvedValueOnce(page([]));
-        await user.selectOptions(screen.getByLabelText("Status"), "not_eligible");
-        await user.click(screen.getByRole("button", { name: "Search" }));
+        await user.selectOptions(screen.getByLabelText("Eligibility"), "not_eligible");
+        await user.click(screen.getByRole("button", { name: "Search proposals" }));
         expect(await screen.findByText("No change proposals match these filters.")).toBeInTheDocument();
 
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Core unavailable"));
-        await user.click(screen.getByRole("button", { name: "Clear" }));
+        await user.click(screen.getByRole("button", { name: "Reset filters" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Core unavailable");
     });
 

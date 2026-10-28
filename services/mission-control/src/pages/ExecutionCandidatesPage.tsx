@@ -122,6 +122,7 @@ export function ExecutionCandidatesPage() {
     }
 
     const hasActiveFilters = Object.values(submittedFilters).some((value) => value.length > 0);
+    const hasAdvancedFilters = submittedFilters.category.length > 0 || submittedFilters.sourceSubsystem.length > 0;
 
     return (
         <main className="mx-auto max-w-7xl space-y-8 p-8">
@@ -148,22 +149,31 @@ export function ExecutionCandidatesPage() {
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <form
                     aria-label="Filter change proposals"
-                    className="grid gap-4 lg:grid-cols-[repeat(5,1fr)_auto]"
+                    className="space-y-4"
                     onSubmit={submitFilters}
                 >
-                    <SelectFilter label="Status" value={filters.status} options={statusOptions} onChange={(value) => setFilters((current) => ({ ...current, status: value }))} />
-                    <SelectFilter label="Category" value={filters.category} options={categoryOptions} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
-                    <SelectFilter label="Intent" value={filters.intent} options={intentOptions} onChange={(value) => setFilters((current) => ({ ...current, intent: value }))} />
-                    <TextFilter label="Source subsystem" value={filters.sourceSubsystem} onChange={(value) => setFilters((current) => ({ ...current, sourceSubsystem: value }))} />
-                    <TextFilter label="Target ID" value={filters.targetId} onChange={(value) => setFilters((current) => ({ ...current, targetId: value }))} />
-                    <div className="flex items-end gap-2">
-                        <button type="submit" className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            Search
-                        </button>
-                        <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            Clear
-                        </button>
+                    <div className="grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+                        <SelectFilter label="Eligibility" value={filters.status} options={statusOptions} onChange={(value) => setFilters((current) => ({ ...current, status: value }))} />
+                        <SelectFilter label="Change" value={filters.intent} options={intentOptions} onChange={(value) => setFilters((current) => ({ ...current, intent: value }))} />
+                        <TextFilter label="Target ID" value={filters.targetId} onChange={(value) => setFilters((current) => ({ ...current, targetId: value }))} />
+                        <div className="flex items-end gap-2">
+                            <button type="submit" className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                Search proposals
+                            </button>
+                            <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300">
+                                Reset filters
+                            </button>
+                        </div>
                     </div>
+                    <details className="rounded-lg border border-slate-800 px-4 py-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            More filters{hasAdvancedFilters ? " · active" : ""}
+                        </summary>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                            <SelectFilter label="Category" value={filters.category} options={categoryOptions} onChange={(value) => setFilters((current) => ({ ...current, category: value }))} />
+                            <TextFilter label="Source" value={filters.sourceSubsystem} onChange={(value) => setFilters((current) => ({ ...current, sourceSubsystem: value }))} />
+                        </div>
+                    </details>
                 </form>
             </section>
 
