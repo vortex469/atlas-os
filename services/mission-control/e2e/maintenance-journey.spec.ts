@@ -12,7 +12,11 @@ for (const width of [390, 1280]) {
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Request a restart proposal", exact: true })).toBeVisible();
+        await expect(page.getByText("VM type", { exact: true })).toBeVisible();
         const target = page.getByRole("radio", { name: /Browser fixture VM/ });
+        const targetCard = page.locator("label").filter({ has: target });
+        await expect(targetCard).toContainText("VM ID 110");
+        await expect(targetCard).toContainText("Host fixture-node");
         await expect(target).not.toBeChecked();
         await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
         expect(fixture.entryWrites).toHaveLength(1);

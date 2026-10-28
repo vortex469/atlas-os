@@ -223,7 +223,7 @@ export function MaintenanceRequestPage() {
             {capability && <section className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 sm:grid-cols-3">
                 <FixedField label="Action" value={capability.label} />
                 <FixedField label="Provider" value={descriptorLabel(capability.provider_id)} />
-                <FixedField label="Resource type" value={descriptorLabel(capability.resource_type)} />
+                <FixedField label="VM type" value={descriptorLabel(capability.resource_type)} />
             </section>}
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your account does not have permission to request maintenance.</p>}
             {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Check whether a proposal was created</Link>}</div>}
@@ -240,7 +240,7 @@ export function MaintenanceRequestPage() {
                                     <strong className="text-slate-100">{resource.display_name}</strong>
                                     <span className="rounded-full border border-slate-600 px-2 py-0.5 text-xs">{descriptorLabel(resource.current_state)}</span>
                                 </span>
-                                <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400"><span>VMID {resource.resource_id}</span><span>Node {resource.node}</span></span>
+                                <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400"><span>VM ID {resource.resource_id}</span><span>Host {resource.node}</span></span>
                                 {!resource.requestable && <span className="mt-2 block text-sm text-amber-200">{resourceBlocker(resource.reason)}</span>}
                             </span>
                         </span>

@@ -1981,3 +1981,12 @@ provider-supplied parameter keys. The full Mission Control suite passes (2,793
 tests across 181 files), responsive browser checks pass at 390px and 1280px,
 and lint and production build pass. Tests confirm no backend contract or
 approval behavior changed.
+
+## Maintenance target labels — 2026-10-28
+
+The restart request screen labels VM identifiers as “VM ID,” the Proxmox node
+as “Host,” and the capability’s QEMU value as “VM type.” The selected target,
+proposal-only first step, and separate approval and execution controls remain
+unchanged. The full Mission Control suite passes (2,793 tests across 181
+files), the maintenance journey passes at 390px and 1280px, and lint and
+production build pass.
