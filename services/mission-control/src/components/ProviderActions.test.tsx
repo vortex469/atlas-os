@@ -180,9 +180,15 @@ describe("ProviderActions", () => {
         renderActions();
 
         expect(await screen.findByRole("heading", { name: "Provider actions are unavailable" })).toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent("Action list unavailable.");
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not load the available actions. No action was run.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Action list unavailable.")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: "Run Diagnostics" })).not.toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Reload actions" }));
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Action list unavailable.")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Try again" }));
         expect(await screen.findByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(2);
         expect(mockedRunProviderAction).not.toHaveBeenCalled();
@@ -249,7 +255,7 @@ describe("ProviderActions", () => {
         expect(alert).toHaveTextContent("Check Action history before trying the action again.");
         expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open Action history →" })).toHaveAttribute("href", "/operations");
-        expect(screen.queryByRole("button", { name: "Reload actions" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(onActionCompleted).not.toHaveBeenCalled();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");

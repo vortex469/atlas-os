@@ -68,6 +68,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
         string | null
     >(null);
     const [catalogError, setCatalogError] = useState<string | null>(null);
+    const [catalogErrorDetails, setCatalogErrorDetails] = useState<string | null>(null);
     const [executionError, setExecutionError] = useState<string | null>(null);
     const [result, setResult] =
         useState<ProviderActionResult | null>(null);
@@ -78,6 +79,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
     const loadActions = useCallback(async () => {
         setIsLoading(true);
         setCatalogError(null);
+        setCatalogErrorDetails(null);
 
         try {
             const providerActions = await getProviderActions(
@@ -89,12 +91,8 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                 `Unable to load actions for ${provider.id}:`,
                 requestError,
             );
-            setCatalogError(
-                getAtlasErrorMessage(
-                    requestError,
-                    `Mission Control could not load actions for ${provider.name}.`,
-                ),
-            );
+            setCatalogError("Mission Control could not load the available actions. No action was run.");
+            setCatalogErrorDetails(actionCatalogErrorDetails(requestError, provider.name));
         } finally {
             setIsLoading(false);
         }
@@ -113,6 +111,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
 
                     setActions(providerActions);
                     setCatalogError(null);
+                    setCatalogErrorDetails(null);
                 })
                 .catch((requestError: unknown) => {
                     if (cancelled) {
@@ -123,12 +122,8 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                         `Unable to load actions for ${provider.id}:`,
                         requestError,
                     );
-                    setCatalogError(
-                        getAtlasErrorMessage(
-                            requestError,
-                            `Mission Control could not load actions for ${provider.name}.`,
-                        ),
-                    );
+                    setCatalogError("Mission Control could not load the available actions. No action was run.");
+                    setCatalogErrorDetails(actionCatalogErrorDetails(requestError, provider.name));
                 })
                 .finally(() => {
                     if (!cancelled) {
@@ -239,12 +234,16 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     <p className="mt-1 text-sm text-red-200/80">
                         {catalogError}
                     </p>
+                    {catalogErrorDetails && <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{catalogErrorDetails}</p>
+                    </details>}
                     <button
                         type="button"
                         onClick={() => void loadActions()}
                         className="mt-4 rounded-lg border border-red-400/30 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-300/50 hover:text-white"
                     >
-                        Reload actions
+                        Try again
                     </button>
                 </div>
             )}
@@ -517,4 +516,10 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             )}
         </section>
     );
+}
+
+function actionCatalogErrorDetails(error: unknown, providerName: string): string | null {
+    const fallback = `Mission Control could not load actions for ${providerName}.`;
+    const details = getAtlasErrorMessage(error, fallback);
+    return details === fallback ? null : details;
 }

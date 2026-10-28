@@ -14,7 +14,7 @@ test("provider action catalog reload recovers after an unavailable read", async 
     });
     await page.goto("/providers/proxmox");
     await expect(page.getByRole("heading", { name: "Provider actions are unavailable" })).toBeVisible();
-    await page.getByRole("button", { name: "Reload actions" }).click();
+    await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByText("No actions are available for this provider.")).toBeVisible();
     expect(reads).toBe(2);
     expect(rejectedMutationRequests).toEqual([]);

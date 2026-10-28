@@ -1531,3 +1531,12 @@ report approval in maintenance terms. The provider and timeline suites pass
 (19 tests), the maintenance browser journey passes at 390px and 1280px (2
 tests), and lint, build, and `git diff --check` pass. Lifecycle evidence and
 permissions are unchanged.
+
+## Provider action-list recovery wording — 2026-10-28
+
+When the provider action list cannot load, the screen now says plainly that the
+list is unavailable and no action was run. Service details stay collapsed, and
+“Try again” repeats only the list read. The focused component suite passes (10
+tests), the source-server browser recovery passes (1 test), and lint, build,
+and `git diff --check` pass. Uncertain action results still use their separate
+Action history guidance; no provider action behavior changed.
