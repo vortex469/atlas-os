@@ -1706,3 +1706,12 @@ record, statement, and fingerprint fields remain available under collapsed
 Evidence details. The focused approval-evidence suite passes (6 tests), the
 full Mission Control suite passes (2,783 tests across 181 files), lint and
 production build pass. No approval-recording behavior or authority changed.
+
+## Approval evidence read recovery — 2026-10-28
+
+Failed approval-evidence list reads now show a plain message, collapsed
+diagnostics, and a retry that repeats only the list GET. Failed detail reads
+stay with the selected record, keep the list available, and retry only that
+record GET. The approval-evidence suite passes (7 tests), the full Mission
+Control suite passes (2,784 tests across 181 files), lint and production build
+pass. Approval recording and its uncertain-outcome boundary are unchanged.

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,17 +40,24 @@ describe("installation approval evidence", () => {
 
     it("renders loading, empty, and redacted error states", async () => {
         let reject: (error: Error) => void = () => undefined;
-        vi.mocked(listInstallationApprovalIntents).mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }));
+        vi.mocked(listInstallationApprovalIntents)
+            .mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }))
+            .mockResolvedValueOnce([]);
+        const user = userEvent.setup();
         const view = render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
         expect(screen.getByText(/loading installation approval evidence/i)).toBeInTheDocument();
         reject(new Error("credential secret /internal/path 10.0.0.1"));
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas could not load installation approval evidence.");
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Retry to check the current records.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Approval evidence is currently unavailable.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /record approval intent/i })).not.toBeInTheDocument();
         expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i);
-        view.unmount();
-        vi.mocked(listInstallationApprovalIntents).mockResolvedValueOnce([]);
-        render(<InstallationApprovalIntents records={[]} csrfToken={null} />);
+        await user.click(screen.getByRole("button", { name: "Retry approval evidence" }));
         expect(await screen.findByText(/no installation approval evidence has been recorded/i)).toBeInTheDocument();
+        expect(listInstallationApprovalIntents).toHaveBeenCalledTimes(2);
     });
 
     it("lists and gets exact operator-scoped linkage with fixed statement", async () => {
@@ -128,5 +135,31 @@ describe("installation approval evidence", () => {
         render(<InstallationApprovalIntents records={[]} csrfToken="csrf" />);
         await user.click(await screen.findByRole("button", { name: /review approval evidence/i }));
         expect(await screen.findByText(/unavailable or deleted; the historical identity is not reconstructed/i)).toBeInTheDocument();
+    });
+
+    it("keeps the evidence list visible after a review read fails and retries that read", async () => {
+        const apiError = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Approval evidence record is unavailable." } } },
+        };
+        vi.mocked(listInstallationApprovalIntents).mockResolvedValueOnce([intent]);
+        vi.mocked(getInstallationApprovalIntent)
+            .mockRejectedValueOnce(apiError)
+            .mockResolvedValueOnce(intent);
+        const user = userEvent.setup();
+        render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Review approval evidence" }));
+        const message = await screen.findByText("Atlas could not load this approval evidence. The evidence list is still available.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Approval evidence record is unavailable.")).toBeInTheDocument();
+        expect(screen.getByText("Immutable approval evidence")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry evidence review" }));
+        expect(await screen.findByRole("heading", { name: "Historical approval evidence" })).toBeInTheDocument();
+        expect(getInstallationApprovalIntent).toHaveBeenCalledTimes(2);
+        expect(listInstallationApprovalIntents).toHaveBeenCalledTimes(1);
     });
 });

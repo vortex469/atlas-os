@@ -57,7 +57,9 @@ describe("installation candidate admission", () => {
         expect(flags).not.toBeNull();
         if (!flags) throw new Error("candidate authority flags were not rendered");
         expect(within(flags).getAllByText("false")).toHaveLength(5);
-        expect(container.querySelectorAll("button, a, form")).toHaveLength(0);
+        const buttonLabels = Array.from(container.querySelectorAll("button"), (button) => button.textContent?.trim());
+        expect(buttonLabels.every((label) => label === "Retry saved records" || label === "Retry approval evidence")).toBe(true);
+        expect(container.querySelectorAll("a, form")).toHaveLength(0);
     });
 
     it("shows plain-language reasons and keeps their exact codes collapsed", async () => {
