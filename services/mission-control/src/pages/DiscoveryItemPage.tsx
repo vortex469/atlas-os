@@ -30,6 +30,7 @@ import {
 } from "../features/discovery/DiscoveryImageGroundingPanel";
 import { InstallationPlanReview } from "../features/discovery/InstallationPlanReview";
 import { useOptionalOperatorSession } from "../hooks/operatorSessionContext";
+import { compatibilityStatusLabel } from "../utils/operatorLanguage";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -560,7 +561,7 @@ function CompatibilityPanel({
                     <KeyValue label="Item" value={compatibility.item_id} />
                     <KeyValue label="Target" value={compatibility.target_type} />
                     <KeyValue label="Target ID" value={compatibility.target_id} />
-                    <KeyValue label="Status" value={formatCompatibilityStatus(compatibility.status)} />
+                    <KeyValue label="Status" value={compatibilityStatusLabel(compatibility.status)} />
                     <KeyValue label="Checked at" value={compatibility.checked_at} />
                     <KeyValue label="Findings" value={String(compatibility.findings.length)} />
                     <KeyValue label="Evidence" value={String(compatibility.evidence.length)} />
@@ -870,8 +871,4 @@ function formatLabel(value: string): string {
         .split("_")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
-}
-
-function formatCompatibilityStatus(status: string): string {
-    return formatLabel(status);
 }

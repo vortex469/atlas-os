@@ -76,7 +76,7 @@ describe("ExecutionCandidatesPage", () => {
         expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeInTheDocument();
         expect(screen.getByText("Eligible for planning consideration")).toBeInTheDocument();
         expect(screen.getByText("stack-home-assistant")).toBeVisible();
-        expect(screen.getByText("Compatible With Warnings")).toBeInTheDocument();
+        expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
             "href",
             "/execution-candidates/candidate-1",

@@ -588,9 +588,9 @@ describe("DiscoveryItemPage", () => {
 
     it.each([
         { status: "compatible", expected: "Compatible" },
-        { status: "compatible_with_warnings", expected: "Compatible With Warnings" },
-        { status: "insufficient_information", expected: "Insufficient Information" },
-        { status: "incompatible", expected: "Incompatible" },
+        { status: "compatible_with_warnings", expected: "Compatible with warnings" },
+        { status: "insufficient_information", expected: "Not enough information" },
+        { status: "incompatible", expected: "Not compatible" },
     ])("shows status presentation for %s", async ({ status, expected }) => {
         mockedGetDiscoveryCompatibility.mockResolvedValue(
             compatibilityAssessment({ status: status as DiscoveryCompatibilityAssessment["status"] }),

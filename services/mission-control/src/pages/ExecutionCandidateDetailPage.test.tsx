@@ -95,8 +95,8 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getAllByText("Eligible for planning consideration").length).toBeGreaterThan(0);
         expect(screen.getByText("Standard")).toBeInTheDocument();
         expect(screen.getByText("Update the compose stack after review.")).toBeInTheDocument();
-        expect(screen.getByText("service_disruption")).toBeInTheDocument();
-        expect(screen.getByText("Compatible With Warnings")).toBeInTheDocument();
+        expect(screen.getByText("May interrupt service")).toBeInTheDocument();
+        expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
         expect(screen.getByText(/Planning does not approve or apply a change/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
 

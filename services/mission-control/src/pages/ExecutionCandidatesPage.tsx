@@ -9,6 +9,7 @@ import type {
     ExecutionCandidate,
     ExecutionCandidateListQuery,
 } from "../types/executionCandidates";
+import { compatibilityStatusLabel } from "../utils/operatorLanguage";
 
 const PAGE_SIZE = 25;
 
@@ -237,7 +238,7 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
                 <StatusBadge status={candidate.status} />
             </div>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                <Field label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
+                <Field label="Compatibility" value={candidate.compatibility_status ? compatibilityStatusLabel(candidate.compatibility_status) : "Not reported"} />
                 <Field label="Expires" value={candidate.expires_at ? formatTimestamp(candidate.expires_at) : "No expiry"} />
             </dl>
             <details className="mt-4 border-t border-slate-800 pt-3">

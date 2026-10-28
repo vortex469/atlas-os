@@ -11,6 +11,7 @@ import { getExecutionCandidate } from "../api/executionCandidates";
 import type { CandidatePlanningResponse } from "../types/atlasAgent";
 import type { ExecutionCandidate } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
+import { compatibilityStatusLabel, executionConstraintLabel } from "../utils/operatorLanguage";
 import { PlanningProgress } from "../components/PlanningProgress";
 
 export function ExecutionCandidateDetailPage() {
@@ -142,7 +143,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 <h2 id="proposal-overview-heading" className="text-lg font-semibold text-white">Proposal overview</h2>
                 <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
                     <OverviewField label="Change" value={formatLabel(candidate.execution_category)} />
-                    <OverviewField label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
+                    <OverviewField label="Compatibility" value={candidate.compatibility_status ? compatibilityStatusLabel(candidate.compatibility_status) : "Not reported"} />
                     <OverviewField label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
                     <OverviewField label="Expires" value={formatExpiry(candidate.expires_at)} />
                 </dl>
@@ -153,7 +154,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     </div>
                     <div>
                         <h3 className="text-sm font-semibold text-white">Constraints</h3>
-                        <div className="mt-2"><ListField label="Constraints" values={candidate.constraints} empty="No constraints reported." /></div>
+                        <div className="mt-2"><ListField label="Constraints" values={candidate.constraints.map(executionConstraintLabel)} empty="No constraints reported." /></div>
                     </div>
                 </div>
             </section>

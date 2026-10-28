@@ -986,3 +986,13 @@ under a collapsed “Plan details” section. Operators can expand the complete
 record when needed. Focused component coverage and mobile and desktop browser
 checks verify the default summary and expanded details; installation authority
 and controls are unchanged.
+
+## Proposal compatibility and constraint wording — 2026-10-28
+
+Compatibility states now use consistent plain language across Discovery and
+Change proposals, including “Compatible with warnings,” “Not enough
+information,” and “Not compatible.” Proposal constraints use operator wording
+such as “May interrupt service” and “Backup required” instead of raw codes.
+Unknown values remain visible as readable labels. Focused page and label tests
+pass (89 tests), as do lint, production build, and `git diff --check`. Proposal
+evidence and planning/approval boundaries are unchanged.

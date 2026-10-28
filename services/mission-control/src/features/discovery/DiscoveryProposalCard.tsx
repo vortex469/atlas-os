@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import type { DiscoveryProposalNavigation } from "../../types/discovery";
+import { compatibilityStatusLabel } from "../../utils/operatorLanguage";
 import { resolveProposalNavigation } from "./proposalNavigation";
 
 const destinationLabels = {
@@ -55,7 +56,7 @@ export function DiscoveryProposalCard({
 
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
                 <Fact name="Reason" value={label(proposal.reason)} />
-                <Fact name="Compatibility" value={label(proposal.compatibility_status)} />
+                <Fact name="Compatibility" value={compatibilityStatusLabel(proposal.compatibility_status)} />
                 <Fact name="Destination" value={label(proposal.destination_kind)} />
                 <Fact name="Catalog source" value={label(proposal.catalog_source_type)} />
                 <Fact name="Finding references" value={String(proposal.finding_reference_count)} />
