@@ -1725,3 +1725,12 @@ for review; no match leaves the outcome explicitly uncertain and does not
 resubmit the write. The approval-evidence suite passes (8 tests), the full
 Mission Control suite passes (2,785 tests across 181 files), lint and
 production build pass. No backend or authority contract changed.
+
+## Workflow support evidence read recovery — 2026-10-28
+
+If support evidence cannot be prepared, the same read now has an explicit
+Retry support evidence action. If a local download fails after preparation,
+the message directs the operator to retry the existing download; it does not
+refetch or upload anything automatically. The Workflow page suite passes (80
+tests), the full Mission Control suite passes (2,786 tests across 181 files),
+lint and production build pass. Workflow actions and approvals are unchanged.

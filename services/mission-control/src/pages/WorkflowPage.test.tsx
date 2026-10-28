@@ -858,7 +858,9 @@ describe("WorkflowPage", () => {
             truncation: { transitions_truncated: true, audit_references_truncated: false, text_fields_truncated: [] },
             integrity: { digest: "operational-support-bundle-digest-v1:abc", purpose: "integrity_and_correlation_only" },
         });
-        const createObjectURL = vi.fn(() => "blob:support-evidence");
+        const createObjectURL = vi.fn()
+            .mockImplementationOnce(() => { throw new Error("private download diagnostic"); })
+            .mockReturnValueOnce("blob:support-evidence");
         const revokeObjectURL = vi.fn();
         Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
         Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
@@ -874,11 +876,40 @@ describe("WorkflowPage", () => {
         expect(createObjectURL).not.toHaveBeenCalled();
 
         fireEvent.click(screen.getByRole("button", { name: "Download support evidence" }));
-
+        expect(await screen.findByText("Mission Control could not create the local download. Use Download support evidence to try again.")).toBeInTheDocument();
         expect(createObjectURL).toHaveBeenCalledOnce();
+        expect(click).not.toHaveBeenCalled();
+        expect(document.body).not.toHaveTextContent("private download diagnostic");
+
+        fireEvent.click(screen.getByRole("button", { name: "Download support evidence" }));
+
+        expect(createObjectURL).toHaveBeenCalledTimes(2);
         expect(click).toHaveBeenCalledOnce();
         expect(revokeObjectURL).toHaveBeenCalledWith("blob:support-evidence");
-        expect(screen.queryByRole("button", { name: /retry|run again|reconcile|upload/i })).not.toBeInTheDocument();
+        expect(screen.queryByText("Mission Control could not create the local download. Use Download support evidence to try again.")).not.toBeInTheDocument();
+        expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries failed support evidence preparation with the same read only", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        mockedGetWorkflowSupportBundle
+            .mockRejectedValueOnce(new Error("private diagnostic"))
+            .mockRejectedValueOnce(new Error("private diagnostic"));
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: "Prepare support evidence" }));
+        const message = await screen.findByText("Mission Control could not prepare sanitized support evidence.");
+        expect(message.closest("[role=alert]")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Retry support evidence" })).toBeEnabled();
+        expect(document.body).not.toHaveTextContent("private diagnostic");
+
+        fireEvent.click(screen.getByRole("button", { name: "Retry support evidence" }));
+        await waitFor(() => expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledTimes(2));
+        expect(screen.getByRole("button", { name: "Retry support evidence" })).toBeEnabled();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
 
     it("never loads operational lifecycle for a repository workflow", async () => {

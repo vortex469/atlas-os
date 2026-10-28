@@ -199,6 +199,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     function downloadSupportEvidence() {
         if (!supportBundle?.applicable) return;
+        setSupportBundleError(null);
         try {
             const bundle = supportBundle;
             const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
@@ -211,7 +212,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             anchor.remove();
             URL.revokeObjectURL(downloadUrl);
         } catch {
-            setSupportBundleError("Mission Control could not create the local evidence download.");
+            setSupportBundleError("Mission Control could not create the local download. Use Download support evidence to try again.");
         }
     }
 
@@ -452,7 +453,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         <h2 id="support-evidence-heading" className="text-lg font-semibold text-white">Support evidence</h2>
                         <p className="mt-2 text-sm text-slate-300">Download one bounded, sanitized JSON projection. Nothing is uploaded or persisted by Mission Control.</p>
                         <button type="button" onClick={() => void prepareSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
-                            {isDownloadingSupport ? "Preparing support evidence..." : "Prepare support evidence"}
+                            {isDownloadingSupport ? "Preparing support evidence..." : supportBundleError && !supportBundle ? "Retry support evidence" : "Prepare support evidence"}
                         </button>
                         {supportBundle && <><dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div><div><dt className="text-slate-400">Partial or truncated</dt><dd className="text-slate-100">{supportBundle.lifecycle.availability !== "complete" || supportBundle.truncation.transitions_truncated || supportBundle.truncation.audit_references_truncated || supportBundle.truncation.text_fields_truncated.length > 0 ? "Yes" : "No"}</dd></div></dl><p className="mt-3 text-sm text-slate-300">The digest supports integrity and correlation only; it is not a signature. The bundle is sanitized and no upload occurs automatically.</p><button type="button" onClick={downloadSupportEvidence} className="mt-3 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Download support evidence</button></>}
                         {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
