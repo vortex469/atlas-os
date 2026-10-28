@@ -198,6 +198,7 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([]));
         renderDashboard();
         expect(await screen.findByText("No workflows yet.")).toBeInTheDocument();
+        expect(screen.queryByText("0 workflows", { exact: true })).not.toBeInTheDocument();
 
         vi.mocked(listWorkflows).mockReset();
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]));
@@ -207,11 +208,13 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getAllByLabelText("Workflow ID contains")[1], { target: { value: "missing" } });
         fireEvent.click(screen.getAllByRole("button", { name: /Apply filters/i })[1]);
         expect(screen.getByText("No workflows match the current filters.")).toBeInTheDocument();
+        expect(screen.queryByText("0 workflows", { exact: true })).not.toBeInTheDocument();
 
         vi.mocked(listWorkflows).mockReset();
         vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
         renderDashboard();
         expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+        expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
     });
 
     it("lets an operator retry an initial failure without reloading the page", async () => {
@@ -220,6 +223,7 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
         renderDashboard();
         expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable");
+        expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Try again" }));
         expect(screen.getByRole("status")).toHaveTextContent("Loading workflows");
         expect(listWorkflows).toHaveBeenCalledTimes(2);

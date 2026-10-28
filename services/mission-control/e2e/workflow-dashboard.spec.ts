@@ -34,3 +34,16 @@ for (const width of [390, 1280]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+for (const width of [390, 1280]) {
+    test(`workflow empty state explains the result without a duplicate count at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+            items: [], total: 0, limit: 200, offset: 0,
+        } }));
+        await page.goto("/workflows");
+        await expect(page.getByText("No workflows yet.", { exact: true })).toBeVisible();
+        await expect(page.getByText("0 workflows", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}

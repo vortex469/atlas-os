@@ -162,7 +162,6 @@ export function WorkflowDashboardPage() {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflows unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
-                    <p className="mt-2 text-sm text-slate-300">Try loading your workflows again.</p>
                     <button type="button" onClick={() => void loadDashboard()} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Try again
                     </button>
@@ -257,11 +256,7 @@ export function WorkflowDashboardPage() {
             <section aria-labelledby="workflow-list-heading" className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 id="workflow-list-heading" className="text-xl font-semibold text-white">Workflow list</h2>
-                    <p className="text-sm text-slate-400">
-                        {filteredWorkflows.length === 0
-                            ? "0 workflows"
-                            : `Showing ${firstVisibleWorkflow}–${lastVisibleWorkflow} of ${filteredWorkflows.length} loaded workflows`}
-                    </p>
+                    {filteredWorkflows.length > 0 && <p className="text-sm text-slate-400">Showing {firstVisibleWorkflow}–{lastVisibleWorkflow} of {filteredWorkflows.length} loaded workflows</p>}
                 </div>
 
                 {workflows.length === 0 ? (

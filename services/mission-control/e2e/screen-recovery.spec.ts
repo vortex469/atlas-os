@@ -201,6 +201,7 @@ test("workflows recover from an initial outage without reloading", async ({ page
     });
     await page.goto("/workflows");
     await expect(page.getByRole("heading", { name: "Workflows unavailable" })).toBeVisible();
+    await expect(page.getByText("Try loading your workflows again.")).toHaveCount(0);
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Workflows unavailable" })).not.toBeVisible();

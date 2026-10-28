@@ -804,3 +804,12 @@ Technical details; server response details remain hidden. A missing proposal is
 still distinguished from a service outage. The detail-page suite passes (18
 tests), responsive recovery checks pass (2 tests at 390px and 1280px), and lint,
 production build, and `git diff --check` pass.
+
+## Workflow list empty and error states — 2026-10-28
+
+Empty workflow lists no longer show a redundant “0 workflows” count beside the
+empty-state explanation. Initial load errors no longer repeat the retry button's
+“Try again” instruction. Counts for non-empty results, retry behavior, and
+workflow data are unchanged. The focused page suite passes (8 tests), responsive
+empty-state checks pass at 390px and 1280px, the recovery browser check passes,
+and lint, production build, and `git diff --check` pass.
