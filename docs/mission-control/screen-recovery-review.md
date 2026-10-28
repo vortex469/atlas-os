@@ -1856,3 +1856,15 @@ approval and Resume remain separate controls. The WorkflowPage suite passes
 181 files), and lint and production build pass. Browser workflow writes remain
 intercepted by synthetic fixtures; no API contract or authority behavior
 changed.
+
+## Repository change summary — 2026-10-28
+
+The workflow now presents the proposed tool and affected files under “Change
+details.” Repository paths, translator version, and immutable request ID are
+still available in collapsed technical details. When the request is missing,
+the page gives a plain-language status and directs the operator to refresh.
+Approval boundaries and request data are unchanged. The focused WorkflowPage
+suite passes (81 tests), the responsive fixture-backed repository journey
+passes (8 tests at 390px and 1280px), the full Mission Control suite passes
+(2,791 tests across 181 files), and lint and production build pass. Browser
+workflow writes remain intercepted by synthetic fixtures.

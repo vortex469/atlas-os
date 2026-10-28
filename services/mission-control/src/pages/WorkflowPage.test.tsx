@@ -659,7 +659,7 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
     });
 
-    it("renders workflow and immutable implementation request details", async () => {
+    it("renders concise change details and keeps request references collapsed", async () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Review workflow" })).toBeInTheDocument();
@@ -677,12 +677,31 @@ describe("WorkflowPage", () => {
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-fingerprint-123")).toBeInTheDocument();
         expect(screen.getByText("plan-fingerprint-123")).toBeInTheDocument();
-        expect(screen.getAllByText("/opt/atlas").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("/opt/atlas/services/demo").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("candidate-translator-v1").length).toBeGreaterThan(0);
-        expect(screen.getByText("impl-request-123")).toBeInTheDocument();
-        expect(screen.getByText("docker-compose")).toBeInTheDocument();
-        expect(screen.getAllByText("compose.yaml, services/demo/Dockerfile").length).toBeGreaterThan(0);
+        const changeDetails = within(screen.getByRole("region", { name: "Change details" }));
+        expect(changeDetails.getByText("docker-compose")).toBeVisible();
+        expect(changeDetails.getByText("compose.yaml, services/demo/Dockerfile")).toBeVisible();
+        const technicalDetails = changeDetails.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(changeDetails.getByText("/opt/atlas")).not.toBeVisible();
+        expect(changeDetails.getByText("/opt/atlas/services/demo")).not.toBeVisible();
+        expect(changeDetails.getByText("candidate-translator-v1")).not.toBeVisible();
+        expect(changeDetails.getByText("impl-request-123")).not.toBeVisible();
+
+        fireEvent.click(changeDetails.getByText("Technical details"));
+
+        expect(technicalDetails).toHaveAttribute("open");
+        expect(changeDetails.getByText("/opt/atlas")).toBeVisible();
+        expect(changeDetails.getByText("/opt/atlas/services/demo")).toBeVisible();
+        expect(changeDetails.getByText("candidate-translator-v1")).toBeVisible();
+        expect(changeDetails.getByText("impl-request-123")).toBeVisible();
+    });
+
+    it("explains when change details are unavailable", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ implementation_request: null }));
+        renderPage();
+
+        const changeDetails = within(await screen.findByRole("region", { name: "Change details" }));
+        expect(changeDetails.getByRole("alert")).toHaveTextContent("Change details are unavailable. Refresh this workflow before continuing.");
     });
 
     it("provides Open Audit link to workflow audit explorer", async () => {

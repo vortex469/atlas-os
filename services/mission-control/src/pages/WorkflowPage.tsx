@@ -620,19 +620,26 @@ function ImplementationRequestSection({ workflow }: { workflow: WorkflowDetailRe
 
     return (
         <section aria-labelledby="implementation-request-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 id="implementation-request-heading" className="text-lg font-semibold text-white">Immutable implementation request</h2>
-            <p className="mt-2 text-sm text-slate-400">Read-only summary. Commands, argv, shell editors, environment editing, repository editing, and path editing are intentionally not rendered.</p>
+            <h2 id="implementation-request-heading" className="text-lg font-semibold text-white">Change details</h2>
+            <p className="mt-2 text-sm text-slate-400">Review the tool and files involved in this proposed change.</p>
             {request ? (
-                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Tool" value={request.tool} />
-                    <Detail label="Working directory" value={request.working_directory} />
-                    <Detail label="Affected files" value={request.affected_files.length > 0 ? request.affected_files.join(", ") : "None reported"} />
-                    <Detail label="Repository" value={request.repository} />
-                    <Detail label="Translator version" value={request.translator_version ?? "Not exposed"} />
-                    <Detail label="Immutable request ID" value={request.immutable_request_id} />
-                </dl>
+                <>
+                    <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Tool" value={request.tool} />
+                        <Detail label="Affected files" value={request.affected_files.length > 0 ? request.affected_files.join(", ") : "None reported"} />
+                    </dl>
+                    <details className="mt-4 rounded-lg border border-slate-800 bg-slate-950/50 px-4 py-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                            <Detail label="Working directory" value={request.working_directory} />
+                            <Detail label="Repository" value={request.repository} />
+                            <Detail label="Translator version" value={request.translator_version ?? "Not available"} />
+                            <Detail label="Request ID" value={request.immutable_request_id} />
+                        </dl>
+                    </details>
+                </>
             ) : (
-                <p role="alert" className="mt-4 text-sm text-amber-100">Immutable implementation request is not available for this workflow.</p>
+                <p role="alert" className="mt-4 text-sm text-amber-100">Change details are unavailable. Refresh this workflow before continuing.</p>
             )}
         </section>
     );

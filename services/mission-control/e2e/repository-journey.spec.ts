@@ -75,6 +75,13 @@ for (const width of [390, 1280]) {
         await fitsViewport(page);
         expect(fixture.writes).toHaveLength(5);
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);
+        const changeDetails = page.getByRole("region", { name: "Change details" });
+        await expect(changeDetails.getByText("compose.production.yaml", { exact: true })).toBeVisible();
+        await expect(changeDetails.getByText("implementation-browser-journey", { exact: true })).toBeHidden();
+        await changeDetails.getByText("Technical details", { exact: true }).click();
+        await expect(changeDetails.getByText("implementation-browser-journey", { exact: true })).toBeVisible();
+        await changeDetails.getByText("Technical details", { exact: true }).click();
+        await expect(changeDetails.getByText("implementation-browser-journey", { exact: true })).toBeHidden();
         await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();
         await expect(page.getByRole("button", { name: "Resume Approved Implementation", exact: true })).toBeVisible();
         await expect(page.getByText("Implementation approved. Resume to run this change.", { exact: true })).toBeVisible();
