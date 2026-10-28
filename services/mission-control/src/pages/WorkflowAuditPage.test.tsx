@@ -48,7 +48,7 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockResolvedValue(response);
         renderAuditPage();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("The returned audit does not match this workflow.");
+        expect(alert).toHaveTextContent("The returned record does not match this workflow link.");
         expect(alert).not.toHaveTextContent("Try loading it again.");
         expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
     });
@@ -311,7 +311,13 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockRejectedValue(new Error("Atlas Agent unavailable."));
         renderAuditPage();
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable.");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not load the workflow record.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable.")).not.toBeVisible();
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable.")).toBeInTheDocument();
     });
 
     it("renders back to workflow link", async () => {

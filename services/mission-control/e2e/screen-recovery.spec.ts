@@ -776,7 +776,12 @@ for (const width of [390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow audit unavailable");
-        await expect(alert).toContainText("Malformed workflow audit payload.");
+        await expect(alert).toContainText("Mission Control could not load the workflow record.");
+        const technicalDetails = alert.locator("details");
+        await expect(technicalDetails).not.toHaveAttribute("open", "");
+        await expect(technicalDetails.getByText("Malformed workflow audit payload.")).not.toBeVisible();
+        await technicalDetails.locator("summary").click();
+        await expect(technicalDetails).toContainText("Malformed workflow audit payload.");
         await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();

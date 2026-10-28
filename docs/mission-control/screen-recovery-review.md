@@ -1486,3 +1486,11 @@ history wording for its loading, unavailable, copy-link, and record-link
 messages. The action list link now says “View action details.” Record IDs stay
 under collapsed technical details. This is a wording change only; history reads
 and retention behavior are unchanged.
+
+## Workflow audit error wording — 2026-10-28
+
+Failed workflow-audit reads now show a plain explanation and a read-only retry.
+Parser and service errors stay under collapsed Technical details. A response
+for another workflow keeps a specific mismatch message. The focused page suite
+passes 20 tests; the malformed-audit browser recovery passes at 390px and
+1280px, and lint/build pass. Retry still performs only the audit read.

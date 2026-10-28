@@ -175,7 +175,7 @@ export function WorkflowAuditPage() {
 function WorkflowAudit({ workflowId }: { workflowId: string }) {
     const [audit, setAudit] = useState<WorkflowAuditResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<{ message: string; details?: string } | null>(null);
 
     const loadAudit = useCallback(async () => {
         setIsLoading(true);
@@ -184,12 +184,15 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             const detail = await getWorkflowAudit(workflowId);
             if (detail && (detail.workflow_id !== workflowId || detail.workflow.workflow_id !== workflowId)) {
                 setAudit(null);
-                setLoadError("The returned audit does not match this workflow.");
+                setLoadError({ message: "The returned record does not match this workflow link." });
                 return;
             }
             setAudit(detail);
         } catch (error) {
-            setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
+            setLoadError({
+                message: "Mission Control could not load the workflow record.",
+                details: getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."),
+            });
         } finally {
             setIsLoading(false);
         }
@@ -215,8 +218,12 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                 <Link to={`/workflows/${workflowId}`} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow audit unavailable</h1>
-                    <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    <p className="mt-2 text-sm text-red-100">{loadError.message}</p>
                     <button type="button" onClick={() => void loadAudit()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
+                    {loadError.details && <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{loadError.details}</p>
+                    </details>}
                 </section>
             </main>
         );
