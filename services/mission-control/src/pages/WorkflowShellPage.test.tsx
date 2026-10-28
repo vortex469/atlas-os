@@ -259,10 +259,14 @@ describe("WorkflowShellPage", () => {
 
 		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-		expect(await screen.findByText("Translation status: implementation_translation_failed")).toBeInTheDocument();
-		expect(screen.getByText("Failure code: repository_stale")).toBeInTheDocument();
-		expect(screen.getByText("Failure message: Trusted repository HEAD differs from the reviewed candidate plan.")).toBeInTheDocument();
-		expect(screen.getByText("Reason codes: repository_stale")).toBeInTheDocument();
+		expect(await screen.findByRole("alert")).toHaveTextContent("The repository changed after plan review. Start a new planning session before preparing another request.");
+		const requestDetails = screen.getByText("Request technical details").closest("details");
+		expect(requestDetails).not.toHaveAttribute("open");
+		expect(within(requestDetails as HTMLElement).getByText("Failure code: repository_stale")).not.toBeVisible();
+		expect(within(requestDetails as HTMLElement).getByText("Failure message: Trusted repository HEAD differs from the reviewed candidate plan.")).not.toBeVisible();
+		expect(within(requestDetails as HTMLElement).getByText("Reason codes: repository_stale")).not.toBeVisible();
+		await user.click(within(requestDetails as HTMLElement).getByText("Request technical details"));
+		expect(within(requestDetails as HTMLElement).getByText("Failure code: repository_stale")).toBeVisible();
 		expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
@@ -289,7 +293,9 @@ describe("WorkflowShellPage", () => {
 
 			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-			expect(await screen.findByText("Failure code: plan_fingerprint_mismatch")).toBeInTheDocument();
+			expect(await screen.findByRole("alert")).toHaveTextContent("The plan no longer matches the proposal. Return to planning and review the current version.");
+			const requestDetails = screen.getByText("Request technical details").closest("details");
+			expect(within(requestDetails as HTMLElement).getByText("Failure code: plan_fingerprint_mismatch")).not.toBeVisible();
 			expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
 		});
 
@@ -350,7 +356,14 @@ describe("WorkflowShellPage", () => {
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
-			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent?.includes("Unable to create successor planning session: conflicting_active_session: No successor."))).toBe(true);
+			const successorAlert = (await screen.findAllByRole("alert")).find((alert) => alert.textContent?.includes("Another planning session is already active for this proposal."));
+			expect(successorAlert).toBeDefined();
+			const technicalDetails = within(successorAlert as HTMLElement).getByText("Technical details").closest("details");
+			expect(technicalDetails).not.toHaveAttribute("open");
+			expect(within(technicalDetails as HTMLElement).getByText(/conflicting_active_session/)).not.toBeVisible();
+			await user.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+			expect(technicalDetails).toHaveAttribute("open");
+			expect(technicalDetails).toHaveTextContent("conflicting_active_session");
 			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
 		});
 
@@ -484,10 +497,10 @@ describe("WorkflowShellPage", () => {
 		const button = await screen.findByRole("button", { name: /prepare exact request/i });
 		await user.click(button);
 
-		expect(await screen.findByText("Implementation request failed with repository_stale: Trusted repository HEAD differs from the reviewed candidate plan."))
-			.toBeInTheDocument();
+		expect(await screen.findByRole("alert"))
+			.toHaveTextContent("The repository changed after plan review. Start a new planning session before preparing another request.");
 		expect(button).not.toBeDisabled();
-		expect(screen.getByText(/Trusted repository state changed after plan review/)).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 	});
 
 	it("does not navigate when implementation_request_id is missing", async () => {
@@ -585,7 +598,8 @@ describe("WorkflowShellPage", () => {
         );
     });
 
-    it("renders workflow conversion failure summaries without controls", () => {
+	it("renders workflow conversion failures in plain language with codes collapsed", async () => {
+		const user = userEvent.setup();
         renderPage({
             workflow: workflow({
                 workflow_session_id: null,
@@ -598,9 +612,14 @@ describe("WorkflowShellPage", () => {
         });
 
         expect(screen.getByRole("heading", { name: "Workflow not created" })).toBeInTheDocument();
-        expect(screen.getByText("Stale candidate.")).toBeInTheDocument();
-        expect(screen.getByText("Reason codes: stale")).toBeInTheDocument();
-        expect(screen.getByText("Failure: candidate_stale - Candidate changed")).toBeInTheDocument();
+		expect(screen.getByText("This proposal changed after review. Open the current proposal and plan it again.")).toBeInTheDocument();
+		const technicalDetails = screen.getByText("Technical details").closest("details");
+		expect(technicalDetails).not.toHaveAttribute("open");
+		expect(within(technicalDetails as HTMLElement).getByText("stale")).not.toBeVisible();
+		expect(within(technicalDetails as HTMLElement).getByText("candidate_stale")).not.toBeVisible();
+		await user.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+		expect(technicalDetails).toHaveAttribute("open");
+		expect(technicalDetails).toHaveTextContent("candidate_stale");
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
     it.each(["awaiting_approval", "blocked"])("does not offer cached %s actions after server validation fails", async (workflow_status) => {

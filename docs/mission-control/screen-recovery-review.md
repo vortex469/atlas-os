@@ -996,3 +996,12 @@ such as “May interrupt service” and “Backup required” instead of raw cod
 Unknown values remain visible as readable labels. Focused page and label tests
 pass (89 tests), as do lint, production build, and `git diff --check`. Proposal
 evidence and planning/approval boundaries are unchanged.
+
+## Workflow preparation failure guidance — 2026-10-28
+
+Workflow preparation failures now explain what changed and what the operator
+can do next. Raw reason codes and failure messages are grouped under collapsed
+Technical details for workflow creation, exact-request preparation, and
+successor planning. The repository-stale recovery action and separate approval
+flow are unchanged. The focused workflow page suite passes (30 tests), along
+with lint, production build, and `git diff --check`.

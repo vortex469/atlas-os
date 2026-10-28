@@ -11,6 +11,7 @@ import {
 } from "../api/atlas-agent";
 import type {
     CandidateImplementationTranslationResponse,
+    CandidatePlanningResponse,
     CandidateWorkflowResponse,
 } from "../types/atlasAgent";
 
@@ -37,6 +38,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
     const [successorError, setSuccessorError] = useState<string | null>(null);
+    const [successorResult, setSuccessorResult] = useState<CandidatePlanningResponse | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
 
     useEffect(() => {
@@ -177,9 +179,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             if (isSuccessfulTranslation) {
                 navigate(`/workflows/${encodeURIComponent(response.workflow_session_id)}`);
             } else if (response.failure) {
-                setImplementationError(
-                    `Implementation request failed with ${response.failure.code}: ${response.failure.message}`,
-                );
+                setImplementationError(implementationFailureMessage(response));
             } else {
                 setImplementationError(
                     "The exact request is incomplete. Reload this workflow before preparing the request again.",
@@ -203,6 +203,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         const generation = viewGeneration.current;
         setIsCreatingSuccessor(true);
         setSuccessorError(null);
+        setSuccessorResult(null);
         try {
             const response = await createSuccessorCandidatePlanningSession(
                 workflow.candidate_planning_session_id,
@@ -213,11 +214,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
 
             if (generation !== viewGeneration.current) return;
             if (response.session_id === null) {
-                setSuccessorError(
-                    response.planning_failure
-                        ? `Unable to create successor planning session: ${response.planning_failure.code}: ${response.planning_failure.message}`
-                        : "Unable to create successor planning session. No session ID was returned.",
-                );
+                setSuccessorResult(response);
                 return;
             }
 
@@ -227,7 +224,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             setSuccessorError(
                 getAtlasAgentErrorMessage(
                     error,
-                    "Could not create a successor planning session for repository_stale recovery.",
+                    "Could not open a new planning session against the current repository.",
                 ),
             );
         } finally {
@@ -299,6 +296,16 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         <Detail label="Planning session" value={workflow.candidate_planning_session_id || "Not available"} />
                     </dl>
                 </details>
+                {(workflow.reason_codes.length > 0 || workflow.failure) && (
+                    <details className="mt-3 rounded-lg border border-slate-800 px-4 py-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Technical details</summary>
+                        <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2">
+                            {workflow.reason_codes.length > 0 && <Detail label="Reason codes" value={workflow.reason_codes.join(", ")} />}
+                            {workflow.failure && <Detail label="Failure code" value={workflow.failure.code} />}
+                            {workflow.failure && <Detail label="Failure message" value={workflow.failure.message} />}
+                        </dl>
+                    </details>
+                )}
                 {canCreateImplementation && (
                     <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
                         <h2 className="text-base font-semibold text-emerald-200">Prepare exact request</h2>
@@ -353,7 +360,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 )}
                 {implementationResult && (
                     <details className="mt-2 rounded-lg border border-slate-700 p-4 text-sm text-slate-300">
-                        <summary className="mc-focusable cursor-pointer font-semibold">Request details</summary>
+                        <summary className="mc-focusable cursor-pointer font-semibold">Request technical details</summary>
                         <p>Translation status: {implementationResult.translation_status}</p>
                         {implementationResult.failure ? (
                             <>
@@ -366,23 +373,29 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         )}
                     </details>
                 )}
-                {implementationResult && implementationResult.failure?.code === "repository_stale" && (
-                    <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                        Trusted repository state changed after plan review. Use the recovery action to open a successor planning session.
-                    </p>
-                )}
                 {successorError && (
                     <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
                         {successorError}
                     </p>
+                )}
+                {successorResult && (
+                    <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
+                        <p>{successorPlanningMessage(successorResult)}</p>
+                        <details className="mt-3 border-t border-red-200/20 pt-3">
+                            <summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary>
+                            <p className="mt-2">Planning status: {successorResult.status}</p>
+                            <p>Intake status: {successorResult.intake_status}</p>
+                            {successorResult.intake_reason_codes.length > 0 && <p>Intake reason codes: {successorResult.intake_reason_codes.join(", ")}</p>}
+                            {successorResult.planning_failure && <p>Failure code: {successorResult.planning_failure.code}</p>}
+                            {successorResult.planning_failure && <p>Failure message: {successorResult.planning_failure.message}</p>}
+                        </details>
+                    </div>
                 )}
                 {implementationError && (
                     <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
                         {implementationError}
                     </p>
                 )}
-                {workflow.reason_codes.length > 0 && <p className="mt-4 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
-                {workflow.failure && <p className="mt-4 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
                 {workflow.workflow_session_id && (
                     <Link to={`/workflows/${encodeURIComponent(workflow.workflow_session_id)}`} className="mt-5 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Open Workflow
@@ -399,12 +412,49 @@ function Detail({ label, value }: { label: string; value: string }) {
 
 function workflowMessage(workflow: CandidateWorkflowResponse): string {
     if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
-    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
-    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
-    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";
-    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
-    if (workflow.failure?.code === "persistence_failed") return "Persistence failure.";
-    return "Workflow creation did not complete.";
+    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "This proposal changed after review. Open the current proposal and plan it again.";
+    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "The proposal or plan changed after review. Return to planning and review the current version.";
+    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Atlas cannot create a workflow for this type of change yet.";
+    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core could not confirm the current proposal. Try again when Core is available.";
+    if (workflow.failure?.code === "persistence_failed") return "Atlas could not save the workflow. No workflow is ready to open.";
+    return "Atlas could not create this workflow. Review technical details before trying again.";
+}
+
+function implementationFailureMessage(response: CandidateImplementationTranslationResponse): string {
+    switch (response.failure?.code) {
+        case "repository_stale":
+            return "The repository changed after plan review. Start a new planning session before preparing another request.";
+        case "candidate_fingerprint_mismatch":
+            return "The proposal changed after review. Open the current proposal and plan it again.";
+        case "plan_fingerprint_mismatch":
+            return "The plan no longer matches the proposal. Return to planning and review the current version.";
+        case "workflow_translation_unsupported":
+        case "unsupported_intent":
+            return "Atlas cannot prepare an approval request for this type of change yet.";
+        case "atlas_core_unavailable":
+            return "Atlas Core could not confirm the current proposal and plan. Try again when Core is available.";
+        case "persistence_failed":
+            return "Atlas could not save the exact request. Reload this workflow before trying again.";
+        default:
+            return "Atlas could not prepare the exact request. Review technical details before trying again.";
+    }
+}
+
+function successorPlanningMessage(response: CandidatePlanningResponse): string {
+    switch (response.planning_failure?.code) {
+        case "conflicting_active_session":
+            return "Another planning session is already active for this proposal. Review your planning sessions before trying again.";
+        case "candidate_stale":
+            return "The proposal changed after review. Open the current proposal and plan it again.";
+        case "candidate_expired":
+            return "This proposal has expired. Open a current proposal before continuing.";
+        case "atlas_core_unavailable":
+            return "Atlas Core could not confirm the current proposal. Try again when Core is available.";
+        case "persistence_failed":
+            return "Atlas could not save the new planning session. No session is ready to open.";
+        default:
+            return "Atlas could not start a new planning session. Review technical details before trying again.";
+    }
 }
 
 function formatLabel(value: string): string {
