@@ -18,22 +18,28 @@ describe("WorkerBindingActivationEvidences", () => {
         let resolve!: (value: WorkerBindingActivationEvidenceCollectionV1) => void;
         vi.mocked(listWorkerBindingActivationEvidences).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<WorkerBindingActivationEvidences candidateId={workerBindingActivationPreflightFixture.candidate_record_id} preflightId={workerBindingActivationPreflightFixture.preflight_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading worker binding activation evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading activation records/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker binding activation evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no activation evidence is recorded/i));
         unmount();
 
         vi.mocked(listWorkerBindingActivationEvidences).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<WorkerBindingActivationEvidences candidateId={workerBindingActivationPreflightFixture.candidate_record_id} preflightId={workerBindingActivationPreflightFixture.preflight_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/technical error details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
     });
 
-    it("renders simple activation evidence state with technical evidence under Advanced details", async () => {
+    it("explains the blocked activation evidence in plain language and keeps technical evidence under Advanced details", async () => {
         vi.mocked(listWorkerBindingActivationEvidences).mockResolvedValue(workerBindingActivationEvidenceCollectionFixture);
         render(<WorkerBindingActivationEvidences candidateId={workerBindingActivationPreflightFixture.candidate_record_id} preflightId={workerBindingActivationPreflightFixture.preflight_id} />);
-        expect(await screen.findByText(/recorded worker binding activation evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/state: evidence recorded for later activation consideration; activation runtime: not defined; worker-start admission: not defined; blocked: yes/i)).toHaveTextContent(/queue claimed: false; worker started: false; Agent invoked: false; execution started: false/i);
+        expect(await screen.findByText("Activation evidence recorded")).toBeInTheDocument();
+        expect(screen.getByText("Runtime activation is blocked")).toBeInTheDocument();
+        expect(screen.getByText("10 requirements remain unavailable.")).toBeInTheDocument();
+        expect(screen.getByText(/This record does not activate a worker or start execution/i)).toBeInTheDocument();
+        const blockers = screen.getByText("Show what needs to be in place").closest("details");
+        expect(blockers).toBeInTheDocument();
+        expect(blockers).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("Runtime activation blockers")).toHaveTextContent(/The worker activation runtime is not available.*Contact with the worker store is not available.*Contact with the worker runtime is not available/i);
         const advanced = screen.getByText("Advanced details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
@@ -41,5 +47,16 @@ describe("WorkerBindingActivationEvidences", () => {
         expect(screen.getByText(/inherited sandbox, resource, network, and filesystem limits/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/worker binding activation evidence fixed-false authority fields/i)).toHaveTextContent(/binding activation allowedfalse.*worker activation runtime allowedfalse.*worker start admission allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("does not call an empty blocker list blocked", async () => {
+        const noBlockers: WorkerBindingActivationEvidenceCollectionV1 = {
+            ...workerBindingActivationEvidenceCollectionFixture,
+            items: [{ ...workerBindingActivationEvidenceCollectionFixture.items[0], blockers: [] }],
+        };
+        vi.mocked(listWorkerBindingActivationEvidences).mockResolvedValue(noBlockers);
+        render(<WorkerBindingActivationEvidences candidateId={workerBindingActivationPreflightFixture.candidate_record_id} preflightId={workerBindingActivationPreflightFixture.preflight_id} />);
+        expect(await screen.findByText("No blockers are listed. This record still does not activate the worker.")).toBeInTheDocument();
+        expect(screen.queryByText("Runtime activation is blocked")).not.toBeInTheDocument();
     });
 });

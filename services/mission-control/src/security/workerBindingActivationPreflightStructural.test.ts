@@ -26,13 +26,15 @@ describe("v0.47 worker binding activation preflight Mission Control boundary", (
     });
 
     it("keeps operator state simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/State: eligible for later activation consideration; activation: not defined; blocked: yes/);
+        expect(component).toMatch(/Worker activation is blocked/);
+        expect(component).toMatch(/requirements remain/);
+        expect(component).toMatch(/Show what needs to be in place/);
         expect(component).toMatch(/Advanced details/);
         expect(component).toMatch(/Worker capability fingerprint/);
         expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
         expect(component).toMatch(/Blockers/);
         expect(component).toMatch(/Worker binding activation preflight fixed-false authority fields/);
-        expect(component).toMatch(/No activation, store contact, runtime contact, queue claim, queue lease, queue acknowledgement/);
+        expect(component).toMatch(/This screen shows a preflight record. It is read-only/);
         expect(component).not.toMatch(/worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /workerBindingActivationPreflight|WorkerBindingActivationPreflight|worker-binding-activation-preflights/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
@@ -40,6 +42,7 @@ describe("v0.47 worker binding activation preflight Mission Control boundary", (
             "../api/workerBindingActivationPreflight.ts",
             "../features/installation/OneShotDequeueWorkerBindings.tsx",
             "../features/installation/WorkerBindingActivationPreflights.tsx",
+            "../features/installation/workerBindingActivationBlockers.ts",
             "../types/workerBindingActivationEvidence.ts",
             "../types/workerBindingActivationPreflight.ts",
         ]);

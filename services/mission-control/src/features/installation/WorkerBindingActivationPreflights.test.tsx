@@ -18,22 +18,28 @@ describe("WorkerBindingActivationPreflights", () => {
         let resolve!: (value: WorkerBindingActivationPreflightCollectionV1) => void;
         vi.mocked(listWorkerBindingActivationPreflights).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading worker binding activation preflight evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading preflight records/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker binding activation preflight evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no preflight is recorded/i));
         unmount();
 
         vi.mocked(listWorkerBindingActivationPreflights).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/technical error details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
     });
 
-    it("renders simple preflight state with technical evidence under Advanced details", async () => {
+    it("explains the blocked preflight in plain language and keeps technical evidence under Advanced details", async () => {
         vi.mocked(listWorkerBindingActivationPreflights).mockResolvedValue(workerBindingActivationPreflightCollectionFixture);
         render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
-        expect(await screen.findByText(/recorded worker binding activation preflight evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/state: eligible for later activation consideration; activation: not defined; blocked: yes/i)).toHaveTextContent(/store contacted: false; runtime contacted: false; queue claimed: false; worker started: false; Agent invoked: false; execution started: false/i);
+        expect(await screen.findByText("Preflight recorded")).toBeInTheDocument();
+        expect(screen.getByText("Worker activation is blocked")).toBeInTheDocument();
+        expect(screen.getByText("9 requirements remain unavailable.")).toBeInTheDocument();
+        expect(screen.getByText(/This record does not contact a store or runtime, take queue work, or start a worker/i)).toBeInTheDocument();
+        const blockers = screen.getByText("Show what needs to be in place").closest("details");
+        expect(blockers).toBeInTheDocument();
+        expect(blockers).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("Worker activation blockers")).toHaveTextContent(/Worker binding activation is not available.*Contact with the worker store is not available.*Contact with the worker runtime is not available/i);
         const advanced = screen.getByText("Advanced details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
@@ -41,5 +47,16 @@ describe("WorkerBindingActivationPreflights", () => {
         expect(screen.getByText(/inherited sandbox, resource, network, and filesystem limits/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/worker binding activation preflight fixed-false authority fields/i)).toHaveTextContent(/binding activation allowedfalse.*worker start allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("does not call an empty blocker list blocked", async () => {
+        const noBlockers: WorkerBindingActivationPreflightCollectionV1 = {
+            ...workerBindingActivationPreflightCollectionFixture,
+            items: [{ ...workerBindingActivationPreflightCollectionFixture.items[0], blockers: [] }],
+        };
+        vi.mocked(listWorkerBindingActivationPreflights).mockResolvedValue(noBlockers);
+        render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
+        expect(await screen.findByText("No blockers are listed. This record still does not activate the worker.")).toBeInTheDocument();
+        expect(screen.queryByText("Worker activation is blocked")).not.toBeInTheDocument();
     });
 });

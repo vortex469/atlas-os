@@ -4,18 +4,7 @@ import { listWorkerBindingActivationPreflights } from "../../api/workerBindingAc
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { WorkerBindingActivationPreflightV1 } from "../../types/workerBindingActivationPreflight";
 import { WorkerBindingActivationEvidences } from "./WorkerBindingActivationEvidences";
-
-const BLOCKERS: Record<string, string> = {
-    worker_binding_activation_not_defined: "Worker binding activation is not defined",
-    store_contact_not_defined: "Store contact is not defined",
-    runtime_contact_not_defined: "Runtime contact is not defined",
-    queue_claim_not_defined: "Queue claim is not defined",
-    queue_lease_not_defined: "Queue lease is not defined",
-    queue_ack_not_defined: "Queue acknowledgement is not defined",
-    worker_start_not_defined: "Worker start is not defined",
-    agent_invocation_not_defined: "Agent invocation is not defined",
-    execution_start_boundary_not_defined: "Execution start boundary is not defined",
-};
+import { workerBindingActivationBlockerLabel } from "./workerBindingActivationBlockers";
 
 export function WorkerBindingActivationPreflights({ candidateId, bindingId }: { candidateId: string; bindingId: string }) {
     const [items, setItems] = useState<WorkerBindingActivationPreflightV1[] | null>(null);
@@ -30,12 +19,11 @@ export function WorkerBindingActivationPreflights({ candidateId, bindingId }: { 
     }, [candidateId, bindingId]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Worker binding activation preflight evidence">
-        <h6 className="font-semibold">Worker binding activation preflight</h6>
-        <p className="mt-2 text-sm">Mission Control shows v0.47 activation preflight evidence inside the existing installation workflow. It is readiness evidence only and does not activate a binding, contact a store or runtime, claim work, lease work, acknowledge work, start a worker, invoke Agent, or start execution.</p>
-        <p className="mt-1 text-sm">No activation, store contact, runtime contact, queue claim, queue lease, queue acknowledgement, worker-start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading worker binding activation preflight evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Worker binding activation preflight evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No worker binding activation preflight evidence has been recorded. Activation, worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Worker activation preflight</h6>
+        <p className="mt-2 text-sm">This screen shows a preflight record. It is read-only and cannot activate or contact a worker, or start work.</p>
+        {items === null && !error && <p role="status" className="mt-3">Loading preflight records...</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Preflight records are unavailable.</p><p className="text-xs text-slate-400">Technical error details are hidden.</p></div>}
+        {items?.length === 0 && <p role="status" className="mt-3">No preflight is recorded for this binding. Worker activation remains blocked.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Worker binding activation preflights">{items.map((item) => <Preflight key={item.preflight_id} item={item} />)}</ol>}
     </section>;
 }
@@ -46,9 +34,10 @@ function Preflight({ item }: { item: WorkerBindingActivationPreflightV1 }) {
     const intake = binding.worker_intake_admission.worker_intake_reference;
     const limits = binding.worker_intake_admission.inherited_limits;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded worker binding activation preflight evidence</p>
-        <p className="mt-1">State: eligible for later activation consideration; activation: not defined; blocked: yes. Store contacted: false; runtime contacted: false; queue claimed: false; worker started: false; Agent invoked: false; execution started: false.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never activates the binding, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Preflight recorded</p>
+        <BlockerSummary blockers={item.blockers} />
+        <p className="mt-2">This record does not contact a store or runtime, take queue work, or start a worker.</p>
+        <p className="mt-1">Recorded {formatDateTime(item.recorded_at)} · Expires {formatDateTime(item.valid_until)}. Expiry does not trigger an action.</p>
         <details className="mt-3">
             <summary>Advanced details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -78,7 +67,7 @@ function Preflight({ item }: { item: WorkerBindingActivationPreflightV1 }) {
             </dl>
             <h6 className="mt-3 font-semibold">Blockers</h6>
             <ol aria-label="Ordered worker binding activation preflight blockers" className="mt-2 list-decimal pl-5">
-                {item.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? value} <code className="text-xs text-slate-400">{value}</code></li>)}
+                {item.blockers.map((value) => <li key={value}>{workerBindingActivationBlockerLabel(value)} <code className="text-xs text-slate-400">{value}</code></li>)}
             </ol>
             <h6 className="mt-3 font-semibold">Inherited sandbox, resource, network, and filesystem limits</h6>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -100,5 +89,20 @@ function Preflight({ item }: { item: WorkerBindingActivationPreflightV1 }) {
     </li>;
 }
 
+function BlockerSummary({ blockers }: { blockers: WorkerBindingActivationPreflightV1["blockers"] }) {
+    if (blockers.length === 0) return <p className="mt-1">No blockers are listed. This record still does not activate the worker.</p>;
+    return <div className="mt-1 rounded border border-amber-500/40 p-2" aria-label="Worker activation status">
+        <p className="font-semibold">Worker activation is blocked</p>
+        <p>{blockers.length} {blockers.length === 1 ? "requirement remains" : "requirements remain"} unavailable.</p>
+        <details className="mt-1">
+            <summary>Show what needs to be in place</summary>
+            <ul aria-label="Worker activation blockers" className="mt-2 list-disc pl-5">
+                {blockers.map((blocker) => <li key={blocker}>{workerBindingActivationBlockerLabel(blocker)}</li>)}
+            </ul>
+        </details>
+    </div>;
+}
+
+function formatDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date); }
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{display(value)}</dd></div>; }
