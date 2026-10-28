@@ -204,21 +204,40 @@ Provider Intent activation.
 
 Local development runs components directly and is not the production topology.
 Atlas Core requires Python 3.12; Mission Control requires a supported Node.js
-and npm toolchain. Typical startup:
+and npm toolchain. Open two terminals from the repository root and leave each
+server running in its own terminal.
+
+Terminal 1 — Atlas Core:
 
 ```bash
 cd services/atlas-core
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8643
+```
 
-cd ../mission-control
+Terminal 2 — Mission Control:
+
+```bash
+cd services/mission-control
 npm ci
 npm run dev
 ```
 
-The development server proxies API requests to Core. Atlas Agent and the
-hardened execution path have their own development and test workflows.
+For access from another device on the same trusted LAN, start Vite with:
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Open the Network URL printed by Vite or `http://<Atlas-machine-LAN-IP>:5173`;
+on Linux, `hostname -I` lists the machine's addresses. Allow inbound TCP port
+5173 through the host firewall if needed. Vite proxies API requests to Core at
+`127.0.0.1:8643` and Agent at `127.0.0.1:8090`, so start the backend needed by
+the screen you want to inspect on the Atlas machine. See the [Mission Control
+development guide](services/mission-control/README.md#development) for proxy
+and trusted-LAN details. The hardened execution path has its own development
+and test workflows.
 
 ## Production deployment
 
