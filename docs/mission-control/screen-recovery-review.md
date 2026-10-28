@@ -2038,3 +2038,12 @@ are pending. The full Mission Control suite passes (2,795 tests across 181
 files), overview browser checks pass (14 tests at 320px, 390px, 768px, 1280px,
 and 1440px), and lint/build pass. API reads and attention decisions are
 unchanged.
+
+## Agent summary labels — 2026-10-28
+
+The dashboard Agent card now labels the product name and version separately,
+shows “Not reported” when the version is absent, and displays the service's
+`atlas-agent` identifier as “Atlas Agent.” The redundant summary sentence is
+removed. The full Mission Control suite passes (2,796 tests across 181 files),
+all 14 overview browser checks pass, and lint and production build pass. Browser
+API reads use synthetic fixtures; no API or approval behavior changed.

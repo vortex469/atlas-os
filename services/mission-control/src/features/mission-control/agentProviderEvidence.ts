@@ -8,6 +8,11 @@ export function publicLabel(value: unknown): string | null {
     return value.trim();
 }
 
+export function agentDisplayName(value: unknown): string | null {
+    const label = publicLabel(value);
+    return label?.toLowerCase() === "atlas-agent" ? "Atlas Agent" : label;
+}
+
 export function providerDetailPath(id: unknown): string | null {
     return typeof id === "string" && /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}$/.test(id) && publicLabel(id)
         ? detailPath("/providers", id) : null;

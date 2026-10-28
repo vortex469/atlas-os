@@ -35,7 +35,9 @@ describe("integrated agent/provider evidence", () => {
         show({ agent: { data: { app_name: "Development Agent", token: "private-canary" } }, providers: { data: [provider("alpha", "healthy"), provider("beta", "failed"), provider("gamma", "offline"), provider("delta", "degraded"), provider("epsilon", "configured")] } });
         const agent = within(screen.getByRole("region", { name: "Agent details" }));
         expect(agent.getByText("Development Agent")).toBeInTheDocument();
-        expect(agent.getByText("This report includes only the Agent name and version.")).toBeInTheDocument();
+        expect(agent.getByText("Agent", { exact: true }).tagName).toBe("DT");
+        expect(agent.getByText("Version", { exact: true }).tagName).toBe("DT");
+        expect(agent.getByText("Not reported")).toBeInTheDocument();
         expect(agent.queryByText(/workflow availability/i)).not.toBeInTheDocument();
         expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
         expect(agent.queryByText("Check time unavailable.")).not.toBeInTheDocument();
@@ -58,6 +60,17 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText(/actions are allowed/)).toBeVisible();
         expect(screen.queryByText(/private-canary/)).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
+    });
+    it("uses the product name for the known service identifier and labels its version", () => {
+        show({ agent: { data: { app_name: "atlas-agent", version: "0.22.0" } } });
+        const agent = within(screen.getByRole("region", { name: "Agent details" }));
+
+        const agentField = agent.getByText("Agent", { exact: true }).parentElement;
+        const versionField = agent.getByText("Version", { exact: true }).parentElement;
+        expect(agentField).toHaveTextContent("Atlas Agent");
+        expect(versionField).toHaveTextContent("0.22.0");
+        expect(agent.queryByText("atlas-agent", { exact: true })).not.toBeInTheDocument();
+        expect(agent.queryByText("This report includes only the Agent name and version.")).not.toBeInTheDocument();
     });
     it("explains unavailable Agent details without inventing a health state", () => {
         show({ agent: { unavailable: true } });

@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { HealthEvidence } from "../../components/HealthEvidence";
-import { providerObservations, publicLabel } from "./agentProviderEvidence";
+import { agentDisplayName, providerObservations, publicLabel } from "./agentProviderEvidence";
 import { record, safeText } from "./overviewEvidence";
 import type { Evidence } from "./useOverviewEvidence";
 
 export function AgentOverviewContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
     const agent = record(evidence?.data);
-    const name = publicLabel(agent.app_name);
+    const name = agentDisplayName(agent.app_name);
     const version = publicLabel(agent.version);
     const hasData = evidence?.data !== undefined;
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && hasData));
@@ -18,10 +18,13 @@ export function AgentOverviewContent({ evidence, loading = false }: { evidence?:
                 : "Agent details are not available."
         : stale
             ? "Showing last-known Agent details."
-            : "This report includes only the Agent name and version.";
+            : null;
     return <>
-        {hasData && <p>{name || "Agent name unavailable"}{version && ` · ${version}`}</p>}
-        <p>{summary}</p>
+        {hasData && <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div><dt className="text-xs uppercase tracking-wider text-mc-text-muted">Agent</dt><dd>{name || "Agent name unavailable"}</dd></div>
+            <div><dt className="text-xs uppercase tracking-wider text-mc-text-muted">Version</dt><dd>{version || "Not reported"}</dd></div>
+        </dl>}
+        {summary && <p>{summary}</p>}
     </>;
 }
 

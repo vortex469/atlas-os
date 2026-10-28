@@ -55,7 +55,10 @@ test('overview separates initial loading from unavailable data across dashboard 
         releaseFindings();
         releasePolicy();
     }
-    await expect(agent.getByText('This report includes only the Agent name and version.')).toBeVisible();
+    await expect(agent.getByText('Agent', { exact: true })).toBeVisible();
+    await expect(agent.getByText('Atlas Agent', { exact: true })).toBeVisible();
+    await expect(agent.getByText('Version', { exact: true })).toBeVisible();
+    await expect(agent.getByText('browser-fixture', { exact: true })).toBeVisible();
     await expect(providers.getByText('Saved providers and the status Atlas reports for each one.')).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'Overall service status' }).getByText('Healthy', { exact: true })).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'System findings' }).getByText('Healthy', { exact: true })).toBeVisible();
@@ -76,7 +79,8 @@ for (const width of [320, 768, 1440]) {
         await expect(policyTime).not.toHaveText(/\d{4}-\d{2}-\d{2}T/);
         await expect(policyTime).toHaveAttribute('dateTime', /^\d{4}-\d{2}-\d{2}T/);
         const agent = page.getByRole('region', { name: 'Agent details' });
-        await expect(agent.getByText('This report includes only the Agent name and version.')).toBeVisible();
+        await expect(agent.getByText('Atlas Agent', { exact: true })).toBeVisible();
+        await expect(agent.getByText('browser-fixture', { exact: true })).toBeVisible();
         await expect(agent.getByRole('link', { name: 'View agent workflows' })).toHaveCount(0);
         await expect(agent.getByText('Unknown', { exact: true })).toHaveCount(0);
         await expect(agent.getByText('Evidence unknown.', { exact: true })).toHaveCount(0);
