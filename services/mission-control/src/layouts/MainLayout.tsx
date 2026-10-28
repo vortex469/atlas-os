@@ -311,9 +311,10 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
                     {contextLabel && (
                         <span
                             data-testid="mc-context"
-                            aria-label={`Current page: ${contextLabel}`}
+                            role="status"
                             className="order-last w-full min-w-0 truncate rounded-mc-sm sm:order-none sm:w-auto border border-mc-border-subtle bg-mc-surface-muted px-2 py-1 text-xs font-medium text-mc-text-secondary"
                         >
+                            <span className="sr-only">Current page: </span>
                             {contextLabel}
                         </span>
                     )}

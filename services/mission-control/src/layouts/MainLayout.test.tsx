@@ -169,14 +169,15 @@ describe("MainLayout", () => {
         ])("surfaces the context label for %s", (initialPath, label) => {
             renderAt(initialPath);
 
-            const context = screen.getByLabelText(`Current page: ${label}`);
-            expect(context).toHaveTextContent(label);
+            const context = screen.getByTestId("mc-context");
+            expect(context).toHaveAttribute("role", "status");
+            expect(context).toHaveTextContent(`Current page: ${label}`);
         });
 
         it("does not repeat the home screen label in the header", () => {
             renderAt("/");
 
-            expect(screen.queryByLabelText("Current page: Mission Control")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("mc-context")).not.toBeInTheDocument();
             expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(1);
         });
     });
@@ -258,8 +259,9 @@ describe("MainLayout", () => {
 
             expect(screen.queryByRole("dialog")).toBeNull();
             expect(
-                screen.getByLabelText("Current page: Deployment analysis"),
+                screen.getByTestId("mc-context"),
             ).toBeInTheDocument();
+            expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Deployment analysis");
         });
     });
 

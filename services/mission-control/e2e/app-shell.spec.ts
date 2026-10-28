@@ -70,7 +70,7 @@ test.describe("Mobile navigation", () => {
 
         // The main content stays reachable and unobstructed at narrow widths.
         await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
-        await expect(page.getByLabel("Current page: Mission Control")).toHaveCount(0);
+        await expect(page.getByTestId("mc-context")).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 
@@ -80,11 +80,11 @@ test.describe("Mobile navigation", () => {
         await trigger.click();
         await page.getByRole("dialog").getByRole("link", { name: "Catalog", exact: true }).click();
         await expect(page.getByRole("dialog")).toHaveCount(0);
-        await expect(page.getByLabel("Current page: Catalog")).toBeVisible();
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Catalog");
         await trigger.click();
         await page.goBack();
         await expect(page.getByRole("dialog")).toHaveCount(0);
-        await expect(page.getByLabel("Current page: Deployment analysis")).toBeVisible();
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Deployment analysis");
         await page.goForward();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await trigger.click();

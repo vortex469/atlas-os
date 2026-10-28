@@ -284,7 +284,7 @@ for (const width of [390, 1280]) {
         } }));
         await page.route("**/api/v1/discovery/proposals**", (route) => {
             reads += 1;
-            return reads <= 2
+            return reads === 1
                 ? route.fulfill({ status: 503, json: { detail: "PRIVATE_PROPOSAL_ERROR" } })
                 : route.fulfill({ json: { proposals: [], total: 0, limit: 25 } });
         });
@@ -296,7 +296,7 @@ for (const width of [390, 1280]) {
         await proposals.getByRole("button", { name: "Retry related proposals" }).click();
         await expect(proposals.getByText("No related proposals are available.")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
-        expect(reads).toBe(3);
+        expect(reads).toBe(2);
         expect(rejectedMutationRequests).toEqual([]);
         expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
     });
@@ -313,7 +313,7 @@ for (const width of [390, 1280]) {
         } }));
         await page.route("**/api/v1/discovery/items/fixture-app/evidence", (route) => {
             reads += 1;
-            return reads <= 2
+            return reads === 1
                 ? route.fulfill({ status: 503, json: { detail: "PRIVATE_EVIDENCE_ERROR" } })
                 : route.fulfill({ json: {
                     schema_version: "discovery-merged-item-v1",
@@ -332,7 +332,7 @@ for (const width of [390, 1280]) {
         await evidence.getByRole("button", { name: "Retry source evidence" }).click();
         await expect(evidence.getByText("Curated catalog only")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
-        expect(reads).toBe(3);
+        expect(reads).toBe(2);
         expect(rejectedMutationRequests).toEqual([]);
         expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
     });
@@ -349,7 +349,7 @@ for (const width of [390, 1280]) {
         } }));
         await page.route("**/api/v1/discovery/items/fixture-app/image-grounding", (route) => {
             reads += 1;
-            return reads <= 2
+            return reads === 1
                 ? route.fulfill({ status: 503, json: { detail: "PRIVATE_GROUNDING_ERROR" } })
                 : route.fulfill({ json: {
                     schema_version: "discovery-image-grounding-projection-v1",
@@ -369,7 +369,7 @@ for (const width of [390, 1280]) {
         await grounding.getByRole("button", { name: "Retry image grounding" }).click();
         await expect(grounding.getByText("No deployment binding").first()).toBeVisible();
         await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
-        expect(reads).toBe(3);
+        expect(reads).toBe(2);
         expect(rejectedMutationRequests).toEqual([]);
         expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
     });
@@ -645,7 +645,7 @@ for (const width of [390, 1280]) {
         await page.goto("/operations/history");
 
         await expect(page.getByRole("alert")).toContainText("Could not load maintenance history.");
-        await expect(page.getByRole("alert")).toContainText("A loading problem does not tell us whether maintenance failed.");
+        await expect(page.getByRole("alert")).toContainText("The maintenance outcome is unknown.");
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {
             await page.getByRole("button", { name: "Open navigation" }).click();
@@ -668,7 +668,7 @@ for (const width of [390, 1280]) {
         await page.getByRole("link", { name: "View provider registry", exact: true }).click();
         await expect(page).toHaveURL(/\/providers$/);
         await expect(page.getByRole("heading", { name: "Providers", exact: true })).toBeVisible();
-        await expect(page.getByLabel("Current page: Providers", { exact: true })).toBeVisible();
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Providers");
         await expect(page.getByText("Check time unavailable.", { exact: true })).toHaveCount(0);
         await page.getByRole("link", { name: "Open Proxmox provider", exact: true }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);

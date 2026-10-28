@@ -1998,3 +1998,13 @@ group, and assistive technology can identify the selected status. Filter
 requests and results are unchanged. The full Mission Control suite passes
 (2,793 tests across 181 files), responsive browser checks pass at 390px and
 1280px, and lint and production build pass.
+
+## Current page announcement — 2026-10-28
+
+The shared header now exposes the current route as a polite status announcement,
+including a screen-reader prefix, instead of relying on an `aria-label` on a
+plain span. Browser checks confirm the route label updates after navigation.
+The full Mission Control suite passes (2,793 tests across 181 files), responsive
+shell and recovery browser checks pass (69 checks at 390px and 1280px), and
+lint and production build pass. Browser API responses are synthetic; no
+navigation or API behavior changed.
