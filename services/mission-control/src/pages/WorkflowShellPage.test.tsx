@@ -520,7 +520,9 @@ describe("WorkflowShellPage", () => {
 
 		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-		expect(await screen.findByText("The exact request is incomplete. Reload this workflow before preparing the request again.")).toBeInTheDocument();
+        expect(await screen.findByText("The exact request result is incomplete. Reload this workflow to check its status before continuing.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 	});
 
@@ -541,7 +543,9 @@ describe("WorkflowShellPage", () => {
 
 		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
 
-		expect(await screen.findByText("The exact request is incomplete. Reload this workflow before preparing the request again.")).toBeInTheDocument();
+        expect(await screen.findByText("The exact request result is incomplete. Reload this workflow to check its status before continuing.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 	});
 
@@ -676,7 +680,26 @@ describe("WorkflowShellPage", () => {
         mockedCreateCandidateImplementationRequest.mockResolvedValue(implementationTranslationResponse({ workflow_session_id: "other-workflow" }));
         renderPage({ workflow: workflow() });
         await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
-        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not match the request result to this workflow.");
+        expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
+    });
+
+    it("requires a reload after an unreadable preparation result", async () => {
+        const user = userEvent.setup();
+        mockedCreateCandidateImplementationRequest.mockRejectedValue(new Error("Malformed candidate implementation response."));
+        renderPage({ workflow: workflow() });
+
+        await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not confirm whether the exact request was prepared.");
+        expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
+        expect(within(alert).getByText("Technical details").closest("details")).not.toHaveAttribute("open");
+        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateImplementationRequest).toHaveBeenCalledTimes(1);
         expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
     });
 

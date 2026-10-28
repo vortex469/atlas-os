@@ -37,6 +37,8 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(true);
     const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
+    const [implementationOutcomeUnknown, setImplementationOutcomeUnknown] = useState(false);
+    const [implementationErrorDetails, setImplementationErrorDetails] = useState<string | null>(null);
     const [successorError, setSuccessorError] = useState<string | null>(null);
     const [successorResult, setSuccessorResult] = useState<CandidatePlanningResponse | null>(null);
     const [implementationResult, setImplementationResult] = useState<CandidateImplementationTranslationResponse | null>(null);
@@ -111,6 +113,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         && workflow.workflow_status === "awaiting_approval"
         && workflow.workflow_session_id !== null
         && workflow.failure === null
+        && !implementationOutcomeUnknown
         && !isLoadingWorkflow
         && workflowLoadError === null;
 
@@ -158,6 +161,8 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
         const generation = viewGeneration.current;
         setIsCreatingImplementation(true);
         setImplementationError(null);
+        setImplementationOutcomeUnknown(false);
+        setImplementationErrorDetails(null);
         setImplementationResult(null);
         try {
             const response = await createCandidateImplementationRequest(
@@ -170,7 +175,8 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             if (generation !== viewGeneration.current) return;
             if (!response || response.candidate_planning_session_id !== sessionId
                 || (response.workflow_session_id !== null && response.workflow_session_id !== workflow.workflow_session_id)) {
-                setImplementationError("The implementation response did not match this workflow. No workflow was opened.");
+                setImplementationOutcomeUnknown(true);
+                setImplementationError("Mission Control could not match the request result to this workflow. Reload this workflow to check its status before continuing.");
                 return;
             }
             setImplementationResult(response);
@@ -181,15 +187,16 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             } else if (response.failure) {
                 setImplementationError(implementationFailureMessage(response));
             } else {
+                setImplementationOutcomeUnknown(true);
                 setImplementationError(
-                    "The exact request is incomplete. Reload this workflow before preparing the request again.",
+                    "The exact request result is incomplete. Reload this workflow to check its status before continuing.",
                 );
             }
         } catch (error) {
             if (generation !== viewGeneration.current) return;
-            setImplementationError(
-                getAtlasAgentErrorMessage(error, "The exact request could not be prepared."),
-            );
+            setImplementationOutcomeUnknown(true);
+            setImplementationError("Mission Control could not confirm whether the exact request was prepared. Reload this workflow to check its status before continuing.");
+            setImplementationErrorDetails(getAtlasAgentErrorMessage(error, "Request preparation returned no details."));
         } finally {
             if (generation === viewGeneration.current) setIsCreatingImplementation(false);
         }
@@ -392,9 +399,20 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     </div>
                 )}
                 {implementationError && (
-                    <p role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
-                        {implementationError}
-                    </p>
+                    <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+                        <p>{implementationError}</p>
+                        {implementationOutcomeUnknown && (
+                            <>
+                                <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-3 px-3 py-2 font-semibold">Reload workflow</button>
+                                {implementationErrorDetails && (
+                                    <details className="mt-3">
+                                        <summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary>
+                                        <p className="mt-2 break-words">{implementationErrorDetails}</p>
+                                    </details>
+                                )}
+                            </>
+                        )}
+                    </div>
                 )}
                 {workflow.workflow_session_id && (
                     <Link to={`/workflows/${encodeURIComponent(workflow.workflow_session_id)}`} className="mt-5 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">

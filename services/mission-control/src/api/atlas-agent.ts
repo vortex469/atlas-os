@@ -633,6 +633,36 @@ function parseCandidateWorkflowResponse(value: unknown): CandidateWorkflowRespon
     return value as unknown as CandidateWorkflowResponse;
 }
 
+function parseCandidateImplementationTranslationResponse(value: unknown): CandidateImplementationTranslationResponse {
+    if (!isPlainRecord(value)
+        || !isSafeRouteId(value.candidate_planning_session_id)
+        || !(value.workflow_session_id === null || isSafeRouteId(value.workflow_session_id))
+        || !isOneOf(value.translation_status, [
+            "implementation_ready", "implementation_not_supported",
+            "implementation_translation_failed", "stale_before_implementation",
+        ])
+        || !(value.implementation_request_id === null || isSafeRouteId(value.implementation_request_id))
+        || !(value.exact_approval_request_id === null || isSafeRouteId(value.exact_approval_request_id))
+        || !isNullableString(value.candidate_fingerprint)
+        || !isNullableString(value.plan_fingerprint)
+        || !isNullableString(value.repository_head)
+        || !isNullableString(value.translator_version)
+        || !hasStringArrayFields(value, ["reason_codes"])
+        || !isCandidatePlanningFailure(value.failure)) {
+        throw new Error("Malformed candidate implementation response.");
+    }
+
+    if (value.translation_status === "implementation_ready"
+        && (value.failure !== null
+            || !isSafeRouteId(value.workflow_session_id)
+            || !isSafeRouteId(value.implementation_request_id)
+            || !isSafeRouteId(value.exact_approval_request_id))) {
+        throw new Error("Malformed candidate implementation response.");
+    }
+
+    return value as unknown as CandidateImplementationTranslationResponse;
+}
+
 function parseAgentInfo(value: unknown): AgentInfo {
     if (!isRecord(value) || !isRecord(value.install_container)) {
         throw new Error("Malformed Atlas Agent information payload.");
@@ -915,12 +945,12 @@ export async function createCandidateImplementationRequest(
     sessionId: string,
     request?: CandidateImplementationTranslationRequest,
 ): Promise<CandidateImplementationTranslationResponse> {
-    const response = await atlasAgent.post<CandidateImplementationTranslationResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/candidate-planning/${encodeURIComponent(sessionId)}/implementation`,
         request,
     );
 
-    return response.data;
+    return parseCandidateImplementationTranslationResponse(response.data);
 }
 
 export async function getWorkflowDetail(

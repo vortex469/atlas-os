@@ -86,6 +86,53 @@ for (const width of [390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`unreadable preparation results require a fresh workflow read at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installRepositoryJourney(page, false, { baseURL });
+        let preparationCalls = 0;
+        let preparationBody: unknown;
+        await page.setViewportSize({ width, height: 844 });
+        await page.route(`**/candidate-planning/${journey.session}/implementation`, async (route) => {
+            preparationCalls += 1;
+            preparationBody = route.request().postDataJSON();
+            return route.fulfill({ json: {
+                candidate_planning_session_id: journey.session,
+                workflow_session_id: journey.workflow,
+                translation_status: "implementation_ready",
+                implementation_request_id: "implementation-browser-journey",
+                exact_approval_request_id: null,
+                candidate_fingerprint: journey.candidateFingerprint,
+                plan_fingerprint: journey.planFingerprint,
+                repository_head: journey.head,
+                translator_version: "fixture-translator-v1",
+                reason_codes: [],
+                failure: null,
+            } });
+        });
+
+        await page.goto(`/execution-candidates/${journey.candidate}`);
+        await page.getByRole("button", { name: "Start planning", exact: true }).click();
+        await page.getByRole("link", { name: "Continue planning", exact: true }).click();
+        await page.getByRole("button", { name: "Generate Plan", exact: true }).click();
+        await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
+        await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
+        await page.getByRole("button", { name: "Prepare exact request", exact: true }).click();
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Mission Control could not confirm whether the exact request was prepared.");
+        await expect(alert.getByRole("button", { name: "Reload workflow", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Prepare exact request", exact: true })).toHaveCount(0);
+        expect(preparationCalls).toBe(1);
+        expect(preparationBody).toEqual({
+            expected_candidate_fingerprint: journey.candidateFingerprint,
+            expected_plan_fingerprint: journey.planFingerprint,
+        });
+        expect(fixture.writes).toEqual(fixture.expectedWrites.slice(0, 4));
+        expect(fixture.unexpected).toEqual([]);
+        await fitsViewport(page);
+    });
+}
+
 test("rejecting implementation leaves execution and later approvals unavailable after reload", async ({ page, baseURL }) => {
     const fixture = await installRepositoryJourney(page, true, { baseURL });
     await page.goto(`/workflows/${journey.workflow}`);

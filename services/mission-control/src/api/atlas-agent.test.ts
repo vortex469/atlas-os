@@ -15,6 +15,7 @@ vi.mock("axios", () => ({
 }));
 
 import {
+    createCandidateImplementationRequest,
     createCandidateWorkflowShell,
     generateCandidatePlan,
     getAgentInfo,
@@ -66,6 +67,23 @@ function candidatePlanning(overrides: Record<string, unknown> = {}) {
         planning_failure: null,
         predecessor_session_id: null,
         successor_session_id: null,
+        ...overrides,
+    };
+}
+
+function candidateImplementationTranslation(overrides: Record<string, unknown> = {}) {
+    return {
+        candidate_planning_session_id: "session-one",
+        workflow_session_id: "workflow-one",
+        translation_status: "implementation_ready",
+        implementation_request_id: "implementation-one",
+        exact_approval_request_id: "approval-one",
+        candidate_fingerprint: "fingerprint-one",
+        plan_fingerprint: "plan-fingerprint-one",
+        repository_head: "head-one",
+        translator_version: "translator-v1",
+        reason_codes: [],
+        failure: null,
         ...overrides,
     };
 }
@@ -143,6 +161,22 @@ describe("Atlas Agent optional summary endpoints", () => {
 
         await expect(createCandidateWorkflowShell("session-one")).rejects.toThrow(
             "Malformed candidate workflow response.",
+        );
+    });
+
+    it("reads an exact-request preparation result with separate approval evidence", async () => {
+        const result = candidateImplementationTranslation();
+        mockPost.mockResolvedValueOnce({ data: result });
+
+        await expect(createCandidateImplementationRequest("session-one")).resolves.toBe(result);
+        expect(mockPost).toHaveBeenCalledWith("/candidate-planning/session-one/implementation", undefined);
+    });
+
+    it("rejects a ready preparation response without its exact approval", async () => {
+        mockPost.mockResolvedValueOnce({ data: candidateImplementationTranslation({ exact_approval_request_id: null }) });
+
+        await expect(createCandidateImplementationRequest("session-one")).rejects.toThrow(
+            "Malformed candidate implementation response.",
         );
     });
 

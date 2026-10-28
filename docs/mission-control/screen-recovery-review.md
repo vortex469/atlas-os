@@ -1228,6 +1228,19 @@ lint, build, 122 development-browser checks, and 68 built-app journeys pass.
 Browser responses are simulated and reject mutation requests; they do not
 establish real Agent integration or operator acceptance.
 
+## Exact-request preparation response recovery — 2026-10-28
+
+Mission Control validates the Agent response before opening the repository
+workflow for exact-request review. If preparation returns a malformed,
+mismatched, or incomplete result—or the request outcome cannot be confirmed—the
+page pauses another preparation attempt and offers a reload to check the saved
+workflow status. Explicit structured Agent failures retain their existing
+retry and stale-recovery behavior. Browser checks cover phone and desktop
+widths; no implementation, approval, or execution is simulated by this error
+case. The component suite (2,730 tests), lint, build, 126 development-browser
+checks, and 70 built-app journeys pass. These remain simulated checks, not real
+Agent integration or operator acceptance.
+
 ## Candidate planning response validation — 2026-10-28
 
 Planning-session, repository-plan, maintenance-plan, and workflow-shell
