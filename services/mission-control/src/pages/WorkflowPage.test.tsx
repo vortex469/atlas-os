@@ -881,8 +881,8 @@ describe("WorkflowPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Operational lifecycle unavailable");
-        expect(alert).toHaveTextContent("Retrying checks workflow status again. It does not repeat the maintenance action.");
-        fireEvent.click(screen.getByRole("button", { name: "Retry status read" }));
+        expect(alert).toHaveTextContent("Checking status again does not repeat the maintenance action.");
+        fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
 
         expect(await screen.findByText("proxmox/qemu/110")).toBeInTheDocument();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);

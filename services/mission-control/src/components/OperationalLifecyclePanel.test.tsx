@@ -41,11 +41,11 @@ describe("OperationalLifecyclePanel", () => {
 
         const alert = screen.getByRole("alert");
         expect(alert).toHaveTextContent("the maintenance outcome may still be unknown");
-        expect(alert).toHaveTextContent("Retrying checks workflow status again. It does not repeat the maintenance action.");
+        expect(alert).toHaveTextContent("Checking status again does not repeat the maintenance action.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Mission Control could not read the operational lifecycle.")).not.toBeVisible();
-        fireEvent.click(screen.getByRole("button", { name: "Retry status read" }));
+        fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
         expect(onRefresh).toHaveBeenCalledOnce();
         expect(document.body.textContent).not.toMatch(/Authorization|Bearer|vmgenid|CSRF|cookie|command|environment/i);
     });
