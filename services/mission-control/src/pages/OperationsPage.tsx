@@ -598,7 +598,7 @@ export function OperationsPage() {
                                         )}`}
                                         className="mt-3 inline-flex text-sm font-medium text-blue-400 transition hover:text-blue-300"
                                     >
-                                        View audit details
+                                        View action details
                                     </Link>
                                 </div>
 

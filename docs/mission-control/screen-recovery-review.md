@@ -1478,3 +1478,11 @@ The maintenance page heading now says “Request a restart proposal,” matching
 the actual result: a proposal for separate review and approval. The explanatory
 boundary and request behavior are unchanged. The component test and sign-in and
 maintenance browser journeys assert the updated title.
+
+## Action history detail wording — 2026-10-28
+
+The action history detail screen now uses “Action details” and plain action
+history wording for its loading, unavailable, copy-link, and record-link
+messages. The action list link now says “View action details.” Record IDs stay
+under collapsed technical details. This is a wording change only; history reads
+and retention behavior are unchanged.

@@ -141,7 +141,7 @@ describe("OperationsPage", () => {
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
     });
 
-    it("renders sanitized action audit details", async () => {
+    it("renders sanitized action history details", async () => {
         renderPage();
 
         expect(
@@ -161,7 +161,7 @@ describe("OperationsPage", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
-                name: "View audit details",
+                name: "View action details",
             }),
         ).toHaveAttribute(
             "href",

@@ -78,9 +78,9 @@ test("action history recovers a read without showing another record", async ({ p
     });
     await page.goto("/operations/actions/record-recovery");
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("alert")).toContainText("does not match this audit link");
+    await expect(page.getByRole("alert")).toContainText("does not match this link");
     await expect(page.getByRole("alert")).not.toContainText("Try again.");
-    await expect(page.getByRole("heading", { name: "Audit details" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
     expect(reads).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("link", { name: "← Back to action history" }).click();

@@ -65,7 +65,7 @@ describe("ActionHistoryDetailPage", () => {
         mockedGetProviderActionHistoryEntry.mockResolvedValue(auditEntry("other"));
         renderPage();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("The returned record does not match this audit link.");
+        expect(alert).toHaveTextContent("The action history record returned does not match this link.");
         expect(alert).not.toHaveTextContent("Try again.");
         expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
@@ -94,7 +94,7 @@ describe("ActionHistoryDetailPage", () => {
         await screen.findByText("Model unloaded.");
         await act(() => router.navigate("/operations/actions/audit-2"));
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
-        expect(screen.getByText("Loading audit details...")).toBeInTheDocument();
+        expect(screen.getByText("Loading action details…")).toBeInTheDocument();
         await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-2"));
         await act(() => router.navigate("/operations/actions/audit-3"));
         await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-3"));
@@ -108,6 +108,7 @@ describe("ActionHistoryDetailPage", () => {
         const user = userEvent.setup();
         renderPage();
 
+        expect(await screen.findByRole("heading", { name: "Action details" })).toBeVisible();
         expect(
             await screen.findByRole("heading", {
                 name: "Unload Model",
@@ -153,24 +154,24 @@ describe("ActionHistoryDetailPage", () => {
             window.location.href,
         );
         expect(
-            await screen.findByText("Audit link copied."),
+            await screen.findByText("Action history link copied."),
         ).toBeInTheDocument();
     });
 
-    it("shows an API error for a missing audit entry", async () => {
+    it("shows an API error for a missing action history entry", async () => {
         mockedGetProviderActionHistoryEntry.mockRejectedValue(
-            new Error("Provider action audit entry not found."),
+            new Error("Action history entry not found."),
         );
         renderPage("/operations/actions/missing-entry");
 
         expect(
             await screen.findByRole("alert"),
         ).toHaveTextContent(
-            "Provider action audit entry not found.",
+            "Action history entry not found.",
         );
         await waitFor(() =>
             expect(
-                screen.queryByText("Loading audit details..."),
+                screen.queryByText("Loading action details…"),
             ).not.toBeInTheDocument(),
         );
     });

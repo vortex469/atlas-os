@@ -58,7 +58,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                 .then((result) => {
                     if (active) {
                         if (result.id !== auditId) {
-                            setError("The returned record does not match this audit link.");
+                            setError("The action history record returned does not match this link.");
                             return;
                         }
                         setEntry(result);
@@ -69,7 +69,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         setError(
                             getAtlasErrorMessage(
                                 requestError,
-                                "Mission Control could not load this audit entry.",
+                                "Mission Control could not load this action history entry.",
                             ),
                         );
                     }
@@ -91,16 +91,16 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
             await navigator.clipboard.writeText(
                 window.location.href,
             );
-            setCopyMessage("Audit link copied.");
+            setCopyMessage("Action history link copied.");
         } catch {
             setCopyMessage(
-                "Unable to copy the link. Copy it from the address bar.",
+                "Unable to copy the action history link. Copy it from the address bar.",
             );
         }
     }, []);
     const displayedError = auditId
         ? error
-        : "The audit entry ID is missing from this URL.";
+        : "This action history link is missing its record ID.";
 
     return (
         <main className="mx-auto max-w-6xl space-y-6 p-4 [overflow-wrap:anywhere] sm:p-6">
@@ -113,10 +113,10 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         ← Back to action history
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold text-slate-100">
-                        Audit details
+                        Action details
                     </h1>
                     <p className="mt-1 text-sm text-slate-400">
-                        Recorded result of a provider action. Older records may expire under the history retention policy.
+                        Recorded result of a provider action. Older action results may no longer be available.
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
                         Times below use your browser’s local time.
@@ -139,7 +139,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
 
             {isLoading && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">
-                    Loading audit details...
+                    Loading action details…
                 </div>
             )}
 
@@ -149,7 +149,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Audit entry unavailable
+                        Action history entry unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
                         {displayedError}
@@ -219,7 +219,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         </summary>
                         <dl className="mt-4 grid gap-5 text-sm sm:grid-cols-2">
                             <div>
-                                <dt className="text-slate-500">Audit ID</dt>
+                                <dt className="text-slate-500">Action record ID</dt>
                                 <dd className="mt-1 break-all font-mono text-slate-200">
                                     {entry.id}
                                 </dd>
