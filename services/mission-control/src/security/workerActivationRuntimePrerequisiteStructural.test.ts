@@ -12,7 +12,9 @@ describe("v0.53 read-only Mission Control isolation", () => {
         expect(api + component).not.toMatch(/atlas\.(post|put|patch|delete)|setInterval|setTimeout|WebSocket|EventSource|Worker\(|localStorage|sessionStorage|document\.cookie|Authorization|Bearer|Date\.now|crypto\./);
         expect(component).not.toMatch(/<(button|form|input|select|textarea)\b|dangerouslySetInnerHTML/i);
         expect(component).not.toMatch(/<details[^>]*\bopen/);
-        expect(component).toContain("Runtime prerequisites remain incomplete");
+        expect(component).toContain("Runtime readiness remains incomplete");
+        expect(component).toContain("Runtime readiness is incomplete");
+        expect(component).toContain("Show what remains");
     });
     it("has only exact evidence consumers nested beneath the receipt, with no navigation", () => {
         expect(parent).toContain("<WorkerActivationRuntimePrerequisite receipt={receipt} />");
