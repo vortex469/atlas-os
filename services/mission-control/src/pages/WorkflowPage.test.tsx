@@ -291,7 +291,13 @@ describe("WorkflowPage", () => {
         else mockedGetWorkflowRecoveryDiagnostic.mockResolvedValue(operationalDiagnostic());
         renderPage();
         const message = kind === "lifecycle" ? "The operational lifecycle response does not match this workflow." : "The recovery diagnostic response does not match this workflow.";
-        expect(await screen.findByText(message)).toBeVisible();
+        const messageElement = await screen.findByText(message);
+        if (kind === "lifecycle") {
+            expect(messageElement.closest("details")).not.toHaveAttribute("open");
+            expect(messageElement).not.toBeVisible();
+        } else {
+            expect(messageElement).toBeVisible();
+        }
         expect(screen.queryByText("different-workflow")).not.toBeInTheDocument();
         expect(screen.queryByText("Loading recovery diagnostic...")).not.toBeInTheDocument();
     });
@@ -905,6 +911,24 @@ describe("WorkflowPage", () => {
 
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
         expect(mockedGetWorkflowOperationalLifecycle).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries unavailable lifecycle reads without repeating the action", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        mockedGetWorkflowOperationalLifecycle.mockRejectedValueOnce(new Error("Temporary lifecycle read failure"))
+            .mockResolvedValueOnce(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Operational lifecycle unavailable");
+        expect(alert).toHaveTextContent("Retrying checks workflow status again. It does not repeat the maintenance action.");
+        fireEvent.click(screen.getByRole("button", { name: "Retry status read" }));
+
+        expect(await screen.findByText("proxmox/qemu/110")).toBeInTheDocument();
+        expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+        expect(mockedGetWorkflowOperationalLifecycle).toHaveBeenCalledTimes(2);
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+        expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
     });
 
     it("shows workflow not found", async () => {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { operationalLifecycle } from "../test/operationalLifecycle";
@@ -35,10 +35,18 @@ describe("OperationalLifecyclePanel", () => {
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
-    it("renders a sanitized controlled network error", () => {
-        render(<OperationalLifecyclePanel lifecycle={null} isLoading={false} isRefreshing={false} error="Mission Control could not read the operational lifecycle." onRefresh={vi.fn()} />);
+    it("offers a read-only retry when lifecycle evidence is unavailable", () => {
+        const onRefresh = vi.fn();
+        render(<OperationalLifecyclePanel lifecycle={null} isLoading={false} isRefreshing={false} error="Mission Control could not read the operational lifecycle." onRefresh={onRefresh} />);
 
-        expect(screen.getByRole("alert")).toHaveTextContent("A network failure is not an operational failure");
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("the maintenance outcome may still be unknown");
+        expect(alert).toHaveTextContent("Retrying checks workflow status again. It does not repeat the maintenance action.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Mission Control could not read the operational lifecycle.")).not.toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Retry status read" }));
+        expect(onRefresh).toHaveBeenCalledOnce();
         expect(document.body.textContent).not.toMatch(/Authorization|Bearer|vmgenid|CSRF|cookie|command|environment/i);
     });
 });

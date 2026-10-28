@@ -1124,3 +1124,9 @@ while a rerun is pending or unavailable.
 The dashboard's Atlas Agent status panel now offers an in-place retry after a
 failed read. Retry repeats only the status and pending-approval reads; it does
 not submit or change approval state.
+
+## Operational lifecycle read recovery — 2026-10-28
+
+An unavailable lifecycle now offers a read-only workflow status retry and says
+that the maintenance outcome may still be unknown. The retry does not repeat
+the provider action; technical error text is optional.
