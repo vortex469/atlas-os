@@ -125,6 +125,8 @@ describe("OperationsPage", () => {
         expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
         expect(screen.queryByText("History unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
+        fireEvent.click(screen.getByText("Export or delete history"));
+        expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
     });
 
     it("keeps action records and date filters available when provider options fail", async () => {

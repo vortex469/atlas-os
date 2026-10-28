@@ -1182,3 +1182,14 @@ Browser checks cover recovery, shared navigation, and phone and desktop widths;
 they submit no actions. The full component suite (2,708 tests), lint, build, 110
 development-browser checks, and 68 built-app journeys pass. Simulated browser
 coverage does not establish real backend integration or operator acceptance.
+
+## Action history response validation — 2026-10-28
+
+Action-history pages, entries, provider filters, and retention summaries are
+validated against the Core response contracts before display. Unreadable rows
+use the existing history-unavailable state and can be retried. An invalid
+retention period leaves deletion disabled while preserving history browsing.
+An audit record returned for a different link remains a mismatch error. The
+full component suite (2,712 tests), lint, build, 114 development-browser checks,
+and 68 built-app journeys pass. Browser fixtures reject all action mutations;
+they do not establish real Core integration or operator acceptance.

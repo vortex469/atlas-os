@@ -56,7 +56,23 @@ test("action history recovers a read without showing another record", async ({ p
         reads += 1;
         return reads === 1
             ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
-            : route.fulfill({ json: { id: "other-record" } });
+            : route.fulfill({ json: {
+                id: "other-record",
+                provider_id: "proxmox",
+                provider_name: "Proxmox",
+                action_id: "restart-service",
+                action_label: "Restart service",
+                status: "succeeded",
+                success: true,
+                message: "The service restarted.",
+                confirmed: true,
+                destructive: true,
+                parameter_names: [],
+                request_id: null,
+                started_at: "2026-10-25T15:00:00Z",
+                completed_at: "2026-10-25T15:00:01Z",
+                duration_ms: 1000,
+            } });
     });
     await page.goto("/operations/actions/record-recovery");
     await page.getByRole("button", { name: "Try again" }).click();
@@ -571,5 +587,55 @@ for (const width of [390, 1280]) {
         await expect(proposalId).toBeVisible();
         await expect(page.getByRole("button", { name: "Start planning" })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`malformed action history rows recover with a read-only refresh at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/page**", route => {
+            reads += 1;
+            return route.fulfill({ json: reads === 1
+                ? { items: [null], total: 1, offset: 0, limit: 25, has_more: false }
+                : { items: [], total: 0, offset: 0, limit: 25, has_more: false } });
+        });
+        await page.goto("/operations");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("History unavailable");
+        await expect(alert).toContainText("Mission Control could not load action history.");
+        await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
+        if (width < 1024) {
+            await page.getByRole("button", { name: "Open navigation" }).click();
+            await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+            await page.getByRole("button", { name: "Close navigation" }).click();
+        }
+
+        await page.getByRole("button", { name: "Refresh history" }).click();
+        await expect(page.getByText("No actions recorded", { exact: true })).toBeVisible();
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`invalid retention details keep action deletion disabled at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/summary", route => route.fulfill({ json: {
+            entry_count: 0,
+            max_entries: 5000,
+            retention_days: 0,
+            oldest_entry_at: null,
+            newest_entry_at: null,
+        } }));
+        await page.goto("/operations");
+
+        await expect(page.getByText("Retention details are unavailable.", { exact: true })).toBeVisible();
+        await page.getByText("Export or delete history", { exact: true }).click();
+        await expect(page.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
+        await expect(page.getByText("This page could not load")).toHaveCount(0);
+        expect(rejectedMutationRequests).toEqual([]);
     });
 }
