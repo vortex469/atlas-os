@@ -40,6 +40,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await expect(page.getByText('Supported provider features could not be loaded. Some provider sections are hidden.')).toBeVisible();
     await expect(page.getByText('Capabilities unavailable.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
+    await expect(page.getByText('No actions are available for this provider.')).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
 });
 

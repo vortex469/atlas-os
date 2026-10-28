@@ -4,6 +4,7 @@ import {
     useRef,
     useState,
 } from "react";
+import { Link } from "react-router-dom";
 
 import {
     getAtlasErrorMessage,
@@ -66,7 +67,8 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
     const [runningActionId, setRunningActionId] = useState<
         string | null
     >(null);
-    const [error, setError] = useState<string | null>(null);
+    const [catalogError, setCatalogError] = useState<string | null>(null);
+    const [executionError, setExecutionError] = useState<string | null>(null);
     const [result, setResult] =
         useState<ProviderActionResult | null>(null);
     const [parameters, setParameters] = useState<
@@ -75,7 +77,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
 
     const loadActions = useCallback(async () => {
         setIsLoading(true);
-        setError(null);
+        setCatalogError(null);
 
         try {
             const providerActions = await getProviderActions(
@@ -87,7 +89,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                 `Unable to load actions for ${provider.id}:`,
                 requestError,
             );
-            setError(
+            setCatalogError(
                 getAtlasErrorMessage(
                     requestError,
                     `Mission Control could not load actions for ${provider.name}.`,
@@ -110,7 +112,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     }
 
                     setActions(providerActions);
-                    setError(null);
+                    setCatalogError(null);
                 })
                 .catch((requestError: unknown) => {
                     if (cancelled) {
@@ -121,7 +123,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                         `Unable to load actions for ${provider.id}:`,
                         requestError,
                     );
-                    setError(
+                    setCatalogError(
                         getAtlasErrorMessage(
                             requestError,
                             `Mission Control could not load actions for ${provider.name}.`,
@@ -162,7 +164,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
         }
 
         setRunningActionId(action.id);
-        setError(null);
+        setExecutionError(null);
         setResult(null);
 
         try {
@@ -189,10 +191,10 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                 `Unable to run ${action.id} for ${provider.id}:`,
                 requestError,
             );
-            setError(
+            setExecutionError(
                 getAtlasErrorMessage(
                     requestError,
-                    `Atlas Core could not run ${action.label}.`,
+                    "Mission Control could not confirm the action result.",
                 ),
             );
         } finally {
@@ -221,43 +223,42 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             {isLoading && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                     <p className="text-sm text-slate-400">
-                        Loading provider actions...
+                        Loading available actions…
                     </p>
                 </div>
             )}
 
-            {!isLoading && error && (
+            {!isLoading && catalogError && (
                 <div
                     role="alert"
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
-                    <p className="font-semibold text-red-300">
-                        Action unavailable
-                    </p>
+                    <h3 className="font-semibold text-red-300">
+                        Provider actions are unavailable
+                    </h3>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error}
+                        {catalogError}
                     </p>
                     <button
                         type="button"
                         onClick={() => void loadActions()}
                         className="mt-4 rounded-lg border border-red-400/30 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-300/50 hover:text-white"
                     >
-                        Try again
+                        Reload actions
                     </button>
                 </div>
             )}
 
             {!isLoading &&
-                !error &&
+                !catalogError &&
                 actions.length === 0 && (
                     <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                        This provider does not advertise any
-                        actions.
+                        No actions are available for this provider.
                     </div>
                 )}
 
             {!isLoading &&
-                !error &&
+                !catalogError &&
                 actions.length > 0 && (
                     <div
                         className={
@@ -460,6 +461,15 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                         })}
                     </div>
                 )}
+
+            {executionError && (
+                <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-5">
+                    <h3 className="font-semibold text-red-300">Action result unavailable</h3>
+                    <p className="mt-1 text-sm text-red-200/80">{executionError}</p>
+                    <p className="mt-2 text-sm text-slate-300">Check Action history before trying the action again.</p>
+                    <Link to="/operations" className="mt-3 inline-flex text-sm font-semibold text-blue-300 underline underline-offset-4">Open Action history →</Link>
+                </div>
+            )}
 
             {result && (
                 <div

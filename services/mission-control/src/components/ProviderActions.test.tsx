@@ -7,6 +7,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode } from "react";
+import { MemoryRouter } from "react-router-dom";
 
 import {
     getProviderActions,
@@ -64,10 +65,12 @@ function renderActions(
     onActionCompleted = vi.fn(),
 ) {
     render(
-        <ProviderActions
-            provider={{ id: "ollama", name: "Ollama" }}
-            onActionCompleted={onActionCompleted}
-        />,
+        <MemoryRouter>
+            <ProviderActions
+                provider={{ id: "ollama", name: "Ollama" }}
+                onActionCompleted={onActionCompleted}
+            />
+        </MemoryRouter>,
     );
 
     return onActionCompleted;
@@ -84,7 +87,7 @@ describe("ProviderActions", () => {
         mockedGetProviderActions.mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
         view.rerender(<ProviderActions provider={{ id: "other", name: "Other" }} onActionCompleted={completed} />);
         expect(screen.queryByLabelText(/model/i)).not.toBeInTheDocument();
-        expect(screen.getByText("Loading provider actions...")).toBeInTheDocument();
+        expect(screen.getByText("Loading available actions…")).toBeInTheDocument();
         await waitFor(() => expect(mockedGetProviderActions).toHaveBeenCalledWith("other"));
         await act(async () => resolveNext([unloadAction]));
         expect(await screen.findByLabelText(/model/i)).toHaveValue("");
@@ -164,6 +167,26 @@ describe("ProviderActions", () => {
         expect(screen.getByText(/Service maintenance uses a separate approval workflow/i)).toBeInTheDocument();
     });
 
+    it("describes an empty action list in plain language", async () => {
+        mockedGetProviderActions.mockResolvedValueOnce([]);
+        renderActions();
+        expect(await screen.findByText("No actions are available for this provider.")).toBeInTheDocument();
+    });
+
+    it("retries a failed action-list read without running an action", async () => {
+        const user = userEvent.setup();
+        mockedGetProviderActions.mockRejectedValueOnce(new Error("Action list unavailable."));
+        renderActions();
+
+        expect(await screen.findByRole("heading", { name: "Provider actions are unavailable" })).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Action list unavailable.");
+        expect(screen.queryByRole("button", { name: "Run Diagnostics" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Reload actions" }));
+        expect(await screen.findByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
+    });
+
     it("requires advertised parameters before execution", async () => {
         const user = userEvent.setup();
         mockedGetProviderActions.mockResolvedValue([
@@ -206,7 +229,7 @@ describe("ProviderActions", () => {
         expect(mockedRunProviderAction).not.toHaveBeenCalled();
     });
 
-    it("shows API failures without refreshing state", async () => {
+    it("keeps the action list after a failed request and points to action history", async () => {
         const user = userEvent.setup();
         const onActionCompleted = renderActions();
         mockedRunProviderAction.mockRejectedValue(
@@ -219,9 +242,14 @@ describe("ProviderActions", () => {
             }),
         );
 
-        expect(
-            await screen.findByText("Provider unavailable."),
-        ).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action result unavailable");
+        expect(alert).toHaveTextContent("Provider unavailable.");
+        expect(alert).toHaveTextContent("Check Action history before trying the action again.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Open Action history →" })).toHaveAttribute("href", "/operations");
+        expect(screen.queryByRole("button", { name: "Reload actions" })).not.toBeInTheDocument();
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(onActionCompleted).not.toHaveBeenCalled();
     });
 });

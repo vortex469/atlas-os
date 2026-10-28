@@ -1,5 +1,22 @@
 import { executionCandidates, expect, providers, test } from "./mission-control-fixtures";
 
+test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
+    let reads = 0;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route("**/api/v1/providers/proxmox/actions", (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
+            : route.fulfill({ json: [] });
+    });
+    await page.goto("/providers/proxmox");
+    await expect(page.getByRole("heading", { name: "Provider actions are unavailable" })).toBeVisible();
+    await page.getByRole("button", { name: "Reload actions" }).click();
+    await expect(page.getByText("No actions are available for this provider.")).toBeVisible();
+    expect(reads).toBe(2);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 test("switching provider routes clears action parameters before the next catalog arrives", async ({ page }) => {
     const action = { id: "review-model", label: "Review model", description: "Mock action for form isolation.",
         icon: "info", requires_confirmation: true, destructive: false, enabled: true,
@@ -22,7 +39,7 @@ test("switching provider routes clears action parameters before the next catalog
         const { router } = await import(modulePath);
         await router.navigate("/providers/ollama");
     });
-    await expect(page.getByText("Loading provider actions...")).toBeVisible();
+    await expect(page.getByText("Loading available actions…")).toBeVisible();
     await expect(page.getByLabel(/model/i)).toHaveCount(0);
     releaseNext();
     await expect(page.getByLabel(/model/i)).toHaveValue("");

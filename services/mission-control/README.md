@@ -31,6 +31,10 @@ workflow details. Local filters can be cleared without fetching or executing
 work, and empty later pages retain a route back to earlier results. These
 presentation changes grant no new action authority.
 
+Provider action screens distinguish a failed action-list read from an uncertain
+action result. Reload retries only the action-list read; an uncertain result
+keeps the available actions visible and links to Action history for review.
+
 Proposed-change screens keep loading and planning state scoped to the proposal
 in the current URL. Mismatched response identities are refused, late results
 cannot attach to another proposal, and malformed explicit expiry times keep

@@ -324,6 +324,10 @@ async function mockCore(route: Route, mode: MockMode) {
         return json(route, { detail: "Atlas Core unavailable in browser fixture." }, 503);
     }
 
+    if (/^\/providers\/[^/]+\/actions$/.test(path)) {
+        return json(route, []);
+    }
+
     switch (path) {
         case "/":
             return json(route, { release: "browser-regression-baseline" });

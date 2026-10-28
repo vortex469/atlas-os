@@ -17,7 +17,7 @@ runtime, tag, or publish a release.
 | Workflow directory | Each card shows its current stage, latest result and approval need first; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
 | Change proposal directory | Eligibility, change and target filters lead; category/source filters expand on demand and show when active; cards lead with the proposed change and keep references optional | `src/pages/ExecutionCandidatesPage.test.tsx`, `e2e/candidate-list-summary.spec.ts` |
 | Change proposal details | The proposed change, target, rationale, constraints and planning boundary lead; technical IDs remain available under optional details | `src/pages/ExecutionCandidateDetailPage.test.tsx`, `e2e/candidate-detail-summary.spec.ts` |
-| Providers | Registry and detail links work; unavailable data differs from absence; missing feature metadata leaves the provider view usable and does not imply there are no capabilities; forms and late responses stay with their provider | `src/pages/ProviderPage.test.tsx`, `src/components/ProviderOverview.test.tsx`, provider page/component tests, and route cases in `e2e/screen-recovery.spec.ts` and `e2e/overview.spec.ts` |
+| Providers | Registry and detail links work; unavailable data differs from absence; missing feature metadata leaves the provider view usable and does not imply there are no capabilities; action-catalog read failures differ from uncertain action results; forms and late responses stay with their provider | `src/pages/ProviderPage.test.tsx`, `src/components/ProviderOverview.test.tsx`, `src/components/ProviderActions.test.tsx`, provider page/component tests, and route cases in `e2e/screen-recovery.spec.ts` and `e2e/overview.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
 | Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
 | Repository workflow | Preparation and detail summaries show current state and approval status first; reference metadata is optional; exact requests remain reviewable; each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
@@ -191,6 +191,17 @@ overview and diagnostics available, and labels the capability list as
 unavailable rather than claiming no capabilities were advertised. Eleven
 focused component tests, six overview browser checks, lint and build pass. The
 browser fixture rejects mutations; provider actions and permission checks are
+unchanged.
+
+## Provider action recovery — 2026-10-28
+
+Action-catalog read failures now offer a read-only reload and have their own
+message. A failed action request keeps the action list visible, reports that its
+result is unavailable, and links to Action history so the operator can check
+before trying again. Empty catalogs use plain language. The synthetic browser
+fixture now returns an empty catalog for providers without advertised actions.
+Ten component tests and three browser checks pass, along with lint and build.
+No action request is retried automatically, and action or approval authority is
 unchanged.
 
 ## Acceptance status and remaining gaps
