@@ -113,7 +113,7 @@ function Review({ response }: { response: InstallationReadinessReviewResponseV1 
             <p className="mt-2 text-sm">{review.readiness === "blocked"
                 ? "The issues below prevent this candidate from reaching a later permission review."
                 : "The evidence passed this check. Any later permission review is separate, and installation is still not authorized."}</p>
-            <p className="mt-1 text-xs text-slate-400">Checked {review.observed_at}.</p>
+            <p className="mt-1 text-xs text-slate-400">Checked <DateTime value={review.observed_at} />.</p>
             <h3 className="mt-4 text-sm font-semibold">What needs attention</h3>
             {review.blockers.length === 0
                 ? <p className="mt-2 text-sm text-slate-300">No blocking issues were found in this check.</p>
@@ -145,7 +145,7 @@ function Review({ response }: { response: InstallationReadinessReviewResponseV1 
                         <p className="mt-1">Release: {item.release} · Evidence kind: {item.evidence_kind} · Status: {item.evidence_state}</p>
                         <p className="mt-1 break-all">Evidence ID: {item.evidence_id ?? "Not available"}</p>
                         <p className="mt-1 break-all">Fingerprint: {item.evidence_fingerprint?.value ?? "Not available"}</p>
-                        <p className="mt-1">Valid until: {item.valid_until ?? "No released expiry"}</p>
+                        <p className="mt-1">Valid until: {item.valid_until ? <DateTime value={item.valid_until} /> : "No released expiry"}</p>
                     </details>
                 </li>)}
             </ol>
@@ -247,7 +247,7 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
                     <Value name="Candidate record ID" value={candidateId} />
                     <Value name="Readiness review ID" value={response.review.review_id} />
                     <Value name="Review fingerprint" value={response.review.review_fingerprint.value} />
-                    <Value name="Review checked at" value={response.review.observed_at} />
+                    <DateTimeValue name="Review checked at" value={response.review.observed_at} />
                 </dl>
             </details>
             <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Save permission record</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
@@ -266,10 +266,10 @@ function Grant({ result }: { result: ExecutionPermissionGrantResultV1 }) {
     return <li className="rounded border border-slate-800 p-3 text-sm">
         <h3 className="font-semibold">{status.lifecycle === "active" ? "Current record for later review" : "Expired permission record"}</h3>
         <p className="mt-1">This record stores a past choice. It does not authorize or start installation or execution.</p>
-        <p className="mt-1">Saved {grant.recorded_at}; expires {grant.valid_until}.</p>
+        <p className="mt-1">Saved <DateTime value={grant.recorded_at} />; expires <DateTime value={grant.valid_until} />.</p>
         <details className="mt-3 rounded border border-slate-700 p-3"><summary className="cursor-pointer">Record and evidence details</summary>
             <p className="mt-2">Confirmation: {grant.confirmation_text}</p>
-            <dl className="mt-3 grid gap-2 sm:grid-cols-2"><Value name="Lifecycle code" value={status.lifecycle} /><Value name="Record state code" value={grant.record_state} /><Value name="Disposition code" value={result.disposition} /><Value name="Observed at" value={status.observed_at} /><Value name="Authenticated operator" value={grant.operator_id} /><Value name="Candidate record ID" value={grant.candidate_record_id} /><Value name="Grant ID" value={grant.grant_id} /><Value name="Grant fingerprint" value={grant.grant_fingerprint.value} /><Value name="Status fingerprint" value={status.status_fingerprint.value} /><Value name="v0.34 review ID" value={grant.linkage.v034_review_id} /><Value name="v0.34 review fingerprint" value={grant.linkage.v034_review_fingerprint.value} /><Value name="v0.34 audit fingerprint" value={grant.linkage.v034_audit_evidence_fingerprint.value} /><Value name="v0.34 operator fingerprint" value={grant.linkage.v034_operator_fingerprint.value} /><Value name="v0.20–v0.34 linkage fingerprint" value={grant.linkage.linkage_fingerprint.value} /><Value name="Request fingerprint" value={grant.request_fingerprint.value} /><Value name="Idempotency-key fingerprint" value={grant.idempotency_key_fingerprint.value} /><Value name="Audit evidence fingerprint" value={audit.evidence_fingerprint.value} /><Value name="Audit outcome code" value={audit.outcome} /><Value name="Audit correlation ID" value={audit.correlation_id} /></dl>
+            <dl className="mt-3 grid gap-2 sm:grid-cols-2"><Value name="Lifecycle code" value={status.lifecycle} /><Value name="Record state code" value={grant.record_state} /><Value name="Disposition code" value={result.disposition} /><DateTimeValue name="Observed at" value={status.observed_at} /><Value name="Authenticated operator" value={grant.operator_id} /><Value name="Candidate record ID" value={grant.candidate_record_id} /><Value name="Grant ID" value={grant.grant_id} /><Value name="Grant fingerprint" value={grant.grant_fingerprint.value} /><Value name="Status fingerprint" value={status.status_fingerprint.value} /><Value name="v0.34 review ID" value={grant.linkage.v034_review_id} /><Value name="v0.34 review fingerprint" value={grant.linkage.v034_review_fingerprint.value} /><Value name="v0.34 audit fingerprint" value={grant.linkage.v034_audit_evidence_fingerprint.value} /><Value name="v0.34 operator fingerprint" value={grant.linkage.v034_operator_fingerprint.value} /><Value name="v0.20–v0.34 linkage fingerprint" value={grant.linkage.linkage_fingerprint.value} /><Value name="Request fingerprint" value={grant.request_fingerprint.value} /><Value name="Idempotency-key fingerprint" value={grant.idempotency_key_fingerprint.value} /><Value name="Audit evidence fingerprint" value={audit.evidence_fingerprint.value} /><Value name="Audit outcome code" value={audit.outcome} /><Value name="Audit correlation ID" value={audit.correlation_id} /></dl>
         </details>
         <details className="mt-2 rounded border border-slate-700 p-3"><summary className="cursor-pointer">Earlier evidence linked to this record</summary><dl className="mt-2 grid gap-2 sm:grid-cols-2">{LINKAGE_KEYS.map((key) => <Value key={key} name={key} value={display(grant.linkage.readiness_linkage[key])} />)}</dl></details>
         <details className="mt-2 rounded border border-slate-700 p-3"><summary className="cursor-pointer">Authority and retry details</summary>
@@ -279,5 +279,14 @@ function Grant({ result }: { result: ExecutionPermissionGrantResultV1 }) {
     </li>;
 }
 
+function DateTime({ value }: { value: string }) {
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf())
+        ? <>{value}</>
+        : <time dateTime={value}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(date)}</time>;
+}
+function DateTimeValue({ name, value }: { name: string; value: string }) {
+    return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300"><DateTime value={value} /></dd></div>;
+}
 function display(value: string | boolean | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{value}</dd></div>; }

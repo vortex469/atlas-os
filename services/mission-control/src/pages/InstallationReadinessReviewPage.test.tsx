@@ -83,6 +83,46 @@ describe("InstallationReadinessReviewPage", () => {
 
     beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false, execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listRunnerBindingPlans).mockResolvedValue({ schema: "runner-binding-plan-collection-v1", plans: [], evidence_only: true, execution_authorized: false, mutation_allowed: false }); });
 
+    it("shows review and permission expiry dates in local time with exact machine timestamps", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Current record for later review" })).toBeInTheDocument();
+
+        const localTime = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value));
+        const expectLocalTimestamp = (value: string, root: ParentNode = document) => {
+            const timestamp = Array.from(root.querySelectorAll("time")).find((node) => node.dateTime === value);
+            expect(timestamp).toBeDefined();
+            if (!timestamp) throw new Error(`Expected visible time for ${value}`);
+            expect(timestamp).toHaveTextContent(localTime(value));
+        };
+        const reviewState = screen.getByRole("heading", { name: "Evidence check complete" }).closest("section");
+        if (!reviewState) throw new Error("Expected readiness review section");
+        expectLocalTimestamp(readinessGatedFixture.review.observed_at, reviewState);
+
+        const grantRow = screen.getByRole("heading", { name: "Current record for later review" }).closest("li");
+        if (!grantRow) throw new Error("Expected permission record");
+        expectLocalTimestamp(grantResultFixture.grant!.recorded_at, grantRow);
+        expectLocalTimestamp(grantResultFixture.grant!.valid_until, grantRow);
+        fireEvent.click(screen.getByText("Record and evidence details"));
+        const observedLabel = screen.getByText("Observed at", { exact: true });
+        expectLocalTimestamp(grantResultFixture.status!.observed_at, observedLabel.parentElement ?? document);
+        fireEvent.click(screen.getByRole("button", { name: "Review permission choice" }));
+        const confirmation = screen.getByLabelText("Permission evidence confirmation");
+        fireEvent.click(within(confirmation).getByText("Verify the exact review"));
+        const checkedLabel = within(confirmation).getByText("Review checked at");
+        expectLocalTimestamp(readinessGatedFixture.review.observed_at, checkedLabel.parentElement ?? document);
+
+        fireEvent.click(screen.getByText("Evidence chain (14 records)"));
+        const chain = screen.getByRole("list", { name: "Installation evidence chain" });
+        const firstEvidenceItem = within(chain).getAllByRole("listitem")[0]!;
+        fireEvent.click(within(firstEvidenceItem).getByText("Record identity and expiry"));
+        const evidenceExpiry = readinessGatedFixture.review.evidence[0]!.valid_until;
+        if (!evidenceExpiry) throw new Error("Expected first evidence fixture expiry");
+        expectLocalTimestamp(evidenceExpiry, firstEvidenceItem);
+    });
+
     it("renders loading then the readiness-gated evidence, linkage, audit, and authority boundary", async () => {
         let resolve!: (value: typeof readinessGatedFixture) => void;
         vi.mocked(getInstallationReadinessReview).mockReturnValue(new Promise((done) => { resolve = done; }));
