@@ -86,8 +86,9 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         typeof f.severity === "string" && ["info", "warning", "critical", "blocked"].includes(f.severity));
     const aiProvider = record(ai.provider);
     const aiHealth = record(ai.health);
+    const serviceChecksKnown = health.services !== null && typeof health.services === "object" && !Array.isArray(health.services);
     const healthStatusesKnown = typeof health.atlas === "string" && status(health.atlas) !== "unknown"
-        && services.every(([, service]) => status(record(service).status) !== "unknown");
+        && serviceChecksKnown && services.every(([, service]) => status(record(service).status) !== "unknown");
     const providersKnown = Array.isArray(evidence.providers?.data)
         && providers.length === evidence.providers.data.length
         && providers.every(provider => typeof provider.id === "string" && status(record(provider.health).status) !== "unknown");
@@ -157,13 +158,13 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <SystemHealthSummary evidence={evidence} />
                 <Link to="/operations">Open operations →</Link>
             </Card>
-            <Card title="Core health" evidence={evidence.health} loading={loading}>
-                {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking Core health…</p>}
-                {services.length === 0 && evidence.health?.data !== undefined && health.services !== null && typeof health.services === "object" && !Array.isArray(health.services) && <ObservedStatus value={null} reason="Core did not report subsystem health." stale={evidence.health.stale} />}
+            <Card title="Service checks" evidence={evidence.health} loading={loading}>
+                {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
+                {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
                 {services.slice(0, 4).map(([name, raw]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>)}
                 {services.length > 4 && <p>Showing 4 of {services.length} reported services.</p>}
-                <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">About Core health</summary>
-                    <p>The listed items are subsystem reports. Core process health is not reported separately.</p>
+                <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">About service checks</summary>
+                    <p>These checks show whether configured service endpoints responded. They do not measure Atlas Core’s own process health.</p>
                 </details>
                 <Link to="/operations">Inspect operations →</Link>
             </Card>

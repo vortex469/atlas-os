@@ -75,7 +75,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['System health','Core health','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe("MC overview evidence", () => {
     it('keeps health source limitations available without crowding the dashboard scan', () => {
         show({ health: { data: { atlas: 'healthy', services: { api: { status: 'healthy' } } } } });
         const health = within(screen.getByRole('region', { name: 'System health' }));
-        const report = health.getByRole('article', { name: 'Atlas Core health' });
+        const report = health.getByRole('article', { name: 'Overall service status' });
         const guidance = health.getByText('How to read health');
         expect(report).toBeVisible();
         expect(report.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -92,11 +92,16 @@ describe("MC overview evidence", () => {
         expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
         expect(health.getByText(/does not calculate one overall score/)).toBeVisible();
 
-        const core = within(screen.getByRole('region', { name: 'Core health' }));
-        const coreLimit = core.getByText(/Core process health is not reported separately/);
+        const checks = within(screen.getByRole('region', { name: 'Service checks' }));
+        const coreLimit = checks.getByText(/do not measure Atlas Core’s own process health/);
         expect(coreLimit).not.toBeVisible();
-        fireEvent.click(core.getByText('About Core health'));
+        fireEvent.click(checks.getByText('About service checks'));
         expect(coreLimit).toBeVisible();
+    });
+    it("describes an empty health report as missing service checks", () => {
+        show({ health: { data: { atlas: 'healthy', services: {} } } });
+        expect(screen.getAllByText('No configured service checks were reported.')).toHaveLength(2);
+        expect(screen.queryByText('Core did not report subsystem health.')).not.toBeInTheDocument();
     });
     it("shows a checking state instead of an empty result during the first load", () => {
         show({}, true);
@@ -104,7 +109,7 @@ describe("MC overview evidence", () => {
         expect(attention.getByText('Checking current information…')).toBeVisible();
         expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
         expect(attention.queryByText('System findings: Evidence unknown.')).not.toBeInTheDocument();
-        expect(within(screen.getByRole('region', { name: 'Core health' })).getByText('Checking Core health…')).toBeVisible();
+        expect(within(screen.getByRole('region', { name: 'Service checks' })).getByText('Checking configured services…')).toBeVisible();
         expect(activity().getByText('Checking recent activity…')).toBeVisible();
         expect(screen.queryByText('No current information is available.')).not.toBeInTheDocument();
     });
@@ -120,11 +125,25 @@ describe("MC overview evidence", () => {
         expect(attention.getByText('The current reports show no items needing attention.')).toBeVisible();
         expect(attention.queryByText(/cannot confirm whether attention is needed/)).not.toBeInTheDocument();
     });
-    it("does not report missing subsystem health after the Core health read fails", () => {
+    it("keeps attention unknown when health details omit configured service checks", () => {
+        show({
+            summary: { data: { findings: [] } },
+            workflows: { data: { items: [], total: 0, offset: 0, limit: 200 } },
+            health: { data: { atlas: 'healthy' } },
+            providers: { data: [] },
+            ai: { data: { health: { status: 'healthy' } } },
+        });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Some information is missing. Atlas cannot confirm whether attention is needed.')).toBeVisible();
+        expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
+        const checks = within(screen.getByRole('region', { name: 'Service checks' }));
+        expect(checks.getByText('Service check details are unavailable.')).toBeVisible();
+    });
+    it("does not report missing service checks after the health read fails", () => {
         show({ health: { unavailable: true } });
         const summary = within(screen.getByRole('region', { name: 'System health' }));
         expect(summary.getByText('Current information could not be loaded.')).toBeInTheDocument();
-        expect(summary.queryByText('Core did not report subsystem health.')).not.toBeInTheDocument();
+        expect(summary.queryByText('No service checks were reported.')).not.toBeInTheDocument();
     });
     it("does not repeat an incomplete-workflow warning when the source is unavailable", () => {
         show({
@@ -301,7 +320,7 @@ it('integrates one health summary with independent source freshness and safe rea
     });
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
-    const core = within(screen.getByRole('article', { name: 'Atlas Core health' }));
+    const core = within(screen.getByRole('article', { name: 'Overall service status' }));
     expect(core.getByText('Healthy')).toBeInTheDocument();
     const ace = within(screen.getByRole('article', { name: 'System findings' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();

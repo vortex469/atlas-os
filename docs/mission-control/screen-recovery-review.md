@@ -345,11 +345,22 @@ destinations are unchanged.
 
 ## Home health summary wording — 2026-10-28
 
-The health summary names its three separate inputs in plain language: Atlas
-Core health, system findings, and policy settings check. The explanation says
+The health summary names its three separate inputs in plain language: overall
+service status, system findings, and policy settings check. The explanation says
 these reports are not combined into one score and marks data over a minute old
 as out of date. Focused overview tests and responsive system-health browser
 checks, lint and build cover the display; health calculations are unchanged.
+
+## Dashboard service-health labels — 2026-10-28
+
+The main screen now calls the `/health` aggregate “Overall service status” and
+the per-endpoint list “Service checks.” Its explanation says those checks do
+not measure Atlas Core’s own process health. Missing check details keep operator
+attention unknown instead of looking like a clear report. The AI provider card
+uses a short unavailable message instead of repeating the alert and distant
+Refresh control. The response and health calculations are unchanged. Focused
+overview tests, responsive dashboard browser checks, lint, build, and
+`git diff --check` pass.
 
 ## Health status wording — 2026-10-28
 

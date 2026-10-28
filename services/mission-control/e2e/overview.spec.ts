@@ -47,7 +47,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await expect(attention.getByText('Reported status: offline', { exact: true })).toHaveCount(0);
     await expect(attention.getByText('Check time unavailable.', { exact: true })).toHaveCount(0);
     await expect(attention.getByText('Capacity limited')).toBeVisible();
-    await expect(page.getByRole('article', { name: 'Atlas Core health' }).getByText('Unknown', { exact: true })).toBeVisible();
+    await expect(page.getByRole('article', { name: 'Overall service status' }).getByText('Unknown', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await attention.getByRole('link', { name: 'API', exact: true }).click();
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
@@ -93,7 +93,8 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await attention.getByText('Technical details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'AI provider' });
-    await expect(runtime.getByText('AI provider information could not be loaded. Use Refresh to try again.')).toBeVisible();
+    await expect(runtime.getByText('Provider details are unavailable.')).toBeVisible();
+    await expect(runtime.getByText('Use Refresh to try again.')).toHaveCount(0);
     await expect(runtime.getByText('Current information could not be loaded.', { exact: true })).toHaveCount(0);
     await expect(runtime.getByText('Unknown', { exact: true })).toHaveCount(0);
     await expect(runtime.locator('summary', { hasText: 'Technical details' })).toHaveCount(0);
@@ -125,7 +126,7 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto('/');
         const health = page.getByRole('region', { name: 'System health', exact: true });
-        const coreReport = health.getByRole('article', { name: 'Atlas Core health' });
+        const coreReport = health.getByRole('article', { name: 'Overall service status' });
         await expect(coreReport).toBeVisible();
         const reportBox = await coreReport.boundingBox();
         const guidanceBox = await health.getByText('How to read health').boundingBox();
@@ -133,10 +134,10 @@ for (const width of [390, 1280]) {
         await expect(health.getByText(/overall check time/)).toBeHidden();
         await health.getByText('How to read health').click();
         await expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
-        const core = page.getByRole('region', { name: 'Core health', exact: true });
-        await expect(core.getByText(/Core process health is not reported separately/)).toBeHidden();
-        await core.getByText('About Core health').click();
-        await expect(core.getByText(/Core process health is not reported separately/)).toBeVisible();
+        const checks = page.getByRole('region', { name: 'Service checks', exact: true });
+        await expect(checks.getByText(/do not measure Atlas Core’s own process health/)).toBeHidden();
+        await checks.getByText('About service checks').click();
+        await expect(checks.getByText(/do not measure Atlas Core’s own process health/)).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

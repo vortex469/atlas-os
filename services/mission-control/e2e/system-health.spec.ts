@@ -26,21 +26,21 @@ for (const width of [390, 1440]) {
         } }));
         await page.goto("/");
         const summary = page.getByRole("region", { name: "System health", exact: true });
-        await expect(summary.getByRole("article", { name: "Atlas Core health" }).getByText("Unknown", { exact: true })).toBeVisible();
-        const core = page.getByRole("region", { name: "Core health", exact: true });
+        await expect(summary.getByRole("article", { name: "Overall service status" }).getByText("Unknown", { exact: true })).toBeVisible();
+        const checks = page.getByRole("region", { name: "Service checks", exact: true });
         for (const state of ["Degraded", "Unavailable", "Blocked", "Unknown"]) {
-            await expect(core.getByText(state, { exact: true })).toBeVisible();
+            await expect(checks.getByText(state, { exact: true })).toBeVisible();
         }
-        await expect(core.getByText("Connection refused", { exact: true })).toBeVisible();
+        await expect(checks.getByText("Connection refused", { exact: true })).toBeVisible();
         await expect(summary.getByText("Last report: Healthy. Current status unknown.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
-        await expect(core.getByText("Last report: Unavailable. Current status unknown.")).toBeVisible();
-        await expect(core.getByText("Unavailable", { exact: true })).toHaveCount(0);
+        await expect(checks.getByText("Last report: Unavailable. Current status unknown.")).toBeVisible();
+        await expect(checks.getByText("Unavailable", { exact: true })).toHaveCount(0);
         await expect(summary.getByRole("article", { name: "System findings" }).getByText("Healthy", { exact: true })).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ json: { atlas: "healthy", services: {} } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
-        await expect(summary.getByRole("article", { name: "Atlas Core health" }).getByText("Healthy", { exact: true })).toBeVisible();
+        await expect(summary.getByRole("article", { name: "Overall service status" }).getByText("Healthy", { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 }

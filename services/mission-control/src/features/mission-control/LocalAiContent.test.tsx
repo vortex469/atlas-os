@@ -72,7 +72,8 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("distinguishes observation failure from runtime offline", () => {
         const card = show({ unavailable: true });
-        expect(card.getByText("AI provider information could not be loaded. Use Refresh to try again.")).toBeInTheDocument();
+        expect(card.getByText("Provider details are unavailable.")).toBeInTheDocument();
+        expect(card.queryByText("Use Refresh to try again.")).not.toBeInTheDocument();
         expect(card.queryByText("Current information could not be loaded.")).not.toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
         expect(card.queryByText("Configured provider: Unknown")).not.toBeInTheDocument();

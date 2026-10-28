@@ -24,7 +24,7 @@ function inventory(data: Record<string, unknown>, key: "installed" | "running"):
 export function LocalAiContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
     if (evidence?.data === undefined) {
         const message = evidence?.unavailable
-            ? "AI provider information could not be loaded. Use Refresh to try again."
+            ? "Provider details are unavailable."
             : loading
                 ? "Loading AI provider information…"
                 : "AI provider information is not available.";
