@@ -168,7 +168,7 @@ function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUna
                 <div>
                     <h2 className="break-all text-lg font-semibold text-white">{historyTargetName(workflow, lifecycle)}</h2>
                     <p className="mt-1 text-sm text-slate-400">{action} · {outcome?.title ?? "Status unavailable"}</p>
-                    <p className="mt-1 text-sm text-slate-400">Requested: {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
+                    <p className="mt-1 text-sm text-slate-400">Requested (local time): {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Open workflow</Link>
             </div>
@@ -180,7 +180,7 @@ function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUna
                     <HistoryDetail label="Consistency" value={diagnostic?.consistency ?? "unavailable"} />
                     <HistoryDetail label="Verification" value={lifecycle?.verification_status ?? "Not reported"} />
                     <HistoryDetail label="Support Evidence" value={diagnostic ? "Available" : "Unavailable"} />
-                    <HistoryDetail label="Result recorded" value={formatTimestamp(resultTimestamp)} />
+                    <HistoryDetail label="Result recorded (local time)" value={formatTimestamp(resultTimestamp)} />
                     <HistoryDetail label="Target reference" value={lifecycle?.target_label ?? workflow.target_id ?? "Not reported"} />
                 </dl>
             </details>

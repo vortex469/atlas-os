@@ -59,10 +59,12 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        expect(screen.getByText(/^Requested \(local time\):/)).toBeVisible();
         const targetReference = screen.getByText("proxmox/qemu/110");
         expect(targetReference).not.toBeVisible();
         fireEvent.click(screen.getByText("Workflow details", { exact: true }));
         expect(targetReference).toBeVisible();
+        expect(screen.getByText("Result recorded (local time)")).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
         expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");

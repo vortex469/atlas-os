@@ -1063,3 +1063,9 @@ Temporary failures while loading optional suggestion details now offer an
 in-place retry of that GET. A 404 stays a separate “no longer available” state
 without retry. The selected VM, provider capability list, and maintenance
 request state are not changed by the retry; the suggestion remains advisory.
+
+## Maintenance history time labels — 2026-10-28
+
+Request and result timestamps now identify that they are shown in the
+browser's local time. The recorded timestamps and history queries are
+unchanged.
