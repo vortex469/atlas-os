@@ -1753,3 +1753,11 @@ suite passes (31 tests), the 390px synthetic browser recovery check passes,
 the full Mission Control suite passes (2,786 tests across 181 files), and lint
 and production build pass. Backend contracts and execution authority are
 unchanged.
+
+## Home header simplification — 2026-10-28
+
+The home screen no longer repeats “Mission Control” in the sticky route label;
+the app brand and page heading keep the screen identified. Focused layout tests
+pass (33 tests), mobile development and built-preview checks pass, and the
+full Mission Control suite passes (2,786 tests across 181 files), lint and
+production build pass. Routes and navigation behavior are unchanged.

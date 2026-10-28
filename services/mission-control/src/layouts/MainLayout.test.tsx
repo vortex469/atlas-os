@@ -163,7 +163,6 @@ describe("MainLayout", () => {
 
     describe("current route context", () => {
         it.each([
-            ["/", "Mission Control"],
             ["/operations", "Action history"],
             ["/discovery", "Catalog"],
             ["/forge", "Deployment analysis"],
@@ -172,6 +171,13 @@ describe("MainLayout", () => {
 
             const context = screen.getByLabelText(`Current page: ${label}`);
             expect(context).toHaveTextContent(label);
+        });
+
+        it("does not repeat the home screen label in the header", () => {
+            renderAt("/");
+
+            expect(screen.queryByLabelText("Current page: Mission Control")).not.toBeInTheDocument();
+            expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(2);
         });
     });
 

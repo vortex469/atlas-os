@@ -69,7 +69,7 @@ test.describe("Mobile navigation", () => {
 
         // The main content stays reachable and unobstructed at narrow widths.
         await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
-        await expect(page.getByLabel("Current page: Mission Control")).toBeVisible();
+        await expect(page.getByLabel("Current page: Mission Control")).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 

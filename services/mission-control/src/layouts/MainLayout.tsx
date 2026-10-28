@@ -267,10 +267,12 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
         }
     };
 
-    const contextLabel = navigationItemForPath(
-        primaryNavigationItems,
-        location.pathname,
-    )?.label ?? routeContextForPath(location.pathname);
+    const contextLabel = location.pathname === "/"
+        ? undefined
+        : navigationItemForPath(
+            primaryNavigationItems,
+            location.pathname,
+        )?.label ?? routeContextForPath(location.pathname);
 
     return (
         <div className="mc-app-shell">
