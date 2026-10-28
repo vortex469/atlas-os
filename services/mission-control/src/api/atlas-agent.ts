@@ -38,6 +38,59 @@ function isStringArray(value: unknown): value is string[] {
     return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function isNullableString(value: unknown): value is string | null {
+    return value === null || typeof value === "string";
+}
+
+function isSafeRouteId(value: unknown): value is string {
+    if (typeof value !== "string" || !value.trim()) return false;
+    try {
+        encodeURIComponent(value);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// TypeScript types do not validate JSON received from Atlas Agent at runtime.
+function parseWorkflowListResponse(value: unknown): WorkflowListResponse {
+    if (!isRecord(value) || Array.isArray(value) || !Array.isArray(value.items)
+        || typeof value.total !== "number" || !Number.isSafeInteger(value.total) || value.total < 0
+        || typeof value.limit !== "number" || !Number.isSafeInteger(value.limit) || value.limit <= 0
+        || typeof value.offset !== "number" || !Number.isSafeInteger(value.offset) || value.offset < 0
+        || value.total < value.items.length) {
+        throw new Error("Malformed workflow list payload.");
+    }
+
+    const workflowIds = new Set<string>();
+    const validItems = value.items.every((item) => {
+        if (!isRecord(item) || Array.isArray(item)
+            || !isSafeRouteId(item.workflow_id)
+            || typeof item.workflow_source !== "string"
+            || typeof item.workflow_state !== "string"
+            || (item.effect_kind !== "repository_change" && item.effect_kind !== "operational_action")
+            || !isNullableString(item.execution_intent)
+            || !isNullableString(item.candidate_id)
+            || !isNullableString(item.planning_session_id)
+            || !isNullableString(item.repository)
+            || !isNullableString(item.target_id)
+            || typeof item.last_result_summary !== "string"
+            || !Array.isArray(item.timeline)
+            || !item.timeline.every((stage) => isRecord(stage) && !Array.isArray(stage)
+                && typeof stage.name === "string"
+                && typeof stage.status === "string")
+            || workflowIds.has(item.workflow_id)) {
+            return false;
+        }
+
+        workflowIds.add(item.workflow_id);
+        return true;
+    });
+    if (!validItems) throw new Error("Malformed workflow list payload.");
+
+    return value as unknown as WorkflowListResponse;
+}
+
 function parseAgentInfo(value: unknown): AgentInfo {
     if (!isRecord(value) || !isRecord(value.install_container)) {
         throw new Error("Malformed Atlas Agent information payload.");
@@ -417,7 +470,13 @@ export async function listWorkflows(
         { params },
     );
 
-    return response.data;
+    const workflowList = parseWorkflowListResponse(response.data);
+    if (query.effect_kind !== undefined
+        && workflowList.items.some((workflow) => workflow.effect_kind !== query.effect_kind)) {
+        throw new Error("Malformed workflow list payload.");
+    }
+
+    return workflowList;
 }
 
 export async function submitWorkflowImplementationApproval(

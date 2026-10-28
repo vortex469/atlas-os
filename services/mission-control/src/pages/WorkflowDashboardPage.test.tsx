@@ -238,9 +238,9 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
-    it("offers a retry when the workflow list contains an unreadable entry", async () => {
+    it("offers a retry when workflow response validation fails", async () => {
         vi.mocked(listWorkflows)
-            .mockResolvedValueOnce(response([null as unknown as WorkflowSummary]))
+            .mockRejectedValueOnce(new Error("Malformed workflow list payload."))
             .mockResolvedValueOnce(response([workflow()]));
         renderDashboard();
 

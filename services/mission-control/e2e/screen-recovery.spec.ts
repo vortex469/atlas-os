@@ -433,6 +433,35 @@ for (const width of [390, 1280]) {
 }
 
 for (const width of [390, 1280]) {
+    test(`malformed maintenance history offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => {
+            reads += 1;
+            return route.fulfill({ json: reads === 1
+                ? { items: [null], total: 1, limit: 10, offset: 0 }
+                : { items: [], total: 0, limit: 10, offset: 0 } });
+        });
+        await page.goto("/operations/history");
+
+        await expect(page.getByRole("alert")).toContainText("Could not load maintenance history.");
+        await expect(page.getByRole("alert")).toContainText("A loading problem does not tell us whether maintenance failed.");
+        await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
+        if (width < 1024) {
+            await page.getByRole("button", { name: "Open navigation" }).click();
+            await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+            await page.getByRole("button", { name: "Close navigation" }).click();
+        }
+
+        await page.getByRole("button", { name: "Refresh history" }).click();
+        await expect(page.getByText("No maintenance requests yet.", { exact: true })).toBeVisible();
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`provider registry is reachable and links back from details at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/");

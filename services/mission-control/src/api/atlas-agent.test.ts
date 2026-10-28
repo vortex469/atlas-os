@@ -21,6 +21,7 @@ import {
     getWorkflowOperationalLifecycle,
     getWorkflowRecoveryDiagnostic,
     getWorkflowSupportBundle,
+    listWorkflows,
 } from "./atlas-agent";
 
 function axiosError(status: number): unknown {
@@ -80,6 +81,57 @@ describe("Atlas Agent optional summary endpoints", () => {
         await expect(getSprintStatus()).rejects.toBeInstanceOf(Error);
         await expect(getVerificationReport()).rejects.toBeInstanceOf(Error);
         await expect(getReviewReport()).rejects.toBeInstanceOf(Error);
+    });
+
+    it("returns valid workflow list entries with the requested effect kind", async () => {
+        const workflowList = {
+            items: [{
+                workflow_id: "workflow/one",
+                workflow_source: "manual",
+                workflow_state: "completed",
+                effect_kind: "operational_action",
+                execution_intent: "restart-service",
+                candidate_id: null,
+                planning_session_id: null,
+                repository: null,
+                target_id: "qemu/110",
+                last_result_summary: "Completed",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 10,
+            offset: 0,
+        };
+        mockGet.mockResolvedValueOnce({ data: workflowList });
+
+        await expect(listWorkflows({ effect_kind: "operational_action", limit: 10, offset: 0 }))
+            .resolves.toEqual(workflowList);
+        expect(mockGet).toHaveBeenCalledWith("/api/v1/agent/workflows", {
+            params: { effect_kind: "operational_action", limit: 10, offset: 0 },
+        });
+    });
+
+    it("rejects malformed workflow list entries", async () => {
+        mockGet.mockResolvedValueOnce({ data: {
+            items: [null], total: 1, limit: 10, offset: 0,
+        } });
+
+        await expect(listWorkflows()).rejects.toThrow("Malformed workflow list payload.");
+    });
+
+    it("rejects workflow entries outside the requested effect kind", async () => {
+        mockGet.mockResolvedValueOnce({ data: {
+            items: [{
+                workflow_id: "workflow-1", workflow_source: "candidate", workflow_state: "completed",
+                effect_kind: "repository_change", execution_intent: "update-compose-stack",
+                candidate_id: "candidate-1", planning_session_id: "plan-1", repository: "/workspace",
+                target_id: "stack-1", last_result_summary: "Completed", timeline: [],
+            }],
+            total: 1, limit: 10, offset: 0,
+        } });
+
+        await expect(listWorkflows({ effect_kind: "operational_action" }))
+            .rejects.toThrow("Malformed workflow list payload.");
     });
 
     it("throws on malformed sprint success responses", async () => {

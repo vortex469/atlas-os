@@ -67,9 +67,6 @@ export function WorkflowDashboardPage() {
 
         try {
             const response = await listWorkflows({ limit: 200, offset: 0 });
-            if (!isDisplayableWorkflowList(response)) {
-                throw new Error("The workflow response included data Mission Control could not display.");
-            }
             setWorkflowResponse(response);
             hasLoadedResponse.current = true;
         } catch (error) {
@@ -345,51 +342,4 @@ function Detail({ label, value }: { label: string; value: string }) {
             <dd className="mt-1 break-all text-slate-200">{value}</dd>
         </div>
     );
-}
-
-function isDisplayableWorkflowList(value: unknown): value is WorkflowListResponse {
-    if (!isRecord(value) || !Array.isArray(value.items)
-        || typeof value.total !== "number" || !Number.isSafeInteger(value.total) || value.total < 0
-        || typeof value.limit !== "number" || !Number.isSafeInteger(value.limit) || value.limit <= 0
-        || typeof value.offset !== "number" || !Number.isSafeInteger(value.offset) || value.offset < 0
-        || value.total < value.items.length) {
-        return false;
-    }
-
-    const validItems = value.items.every((item) => isRecord(item)
-        && isRouteId(item.workflow_id)
-        && typeof item.workflow_source === "string"
-        && typeof item.workflow_state === "string"
-        && (item.effect_kind === "repository_change" || item.effect_kind === "operational_action")
-        && isNullableString(item.execution_intent)
-        && isNullableString(item.candidate_id)
-        && isNullableString(item.planning_session_id)
-        && isNullableString(item.repository)
-        && isNullableString(item.target_id)
-        && typeof item.last_result_summary === "string"
-        && Array.isArray(item.timeline)
-        && item.timeline.every((stage) => isRecord(stage)
-            && typeof stage.name === "string"
-            && typeof stage.status === "string"));
-    if (!validItems) return false;
-
-    return new Set(value.items.map((item) => (item as Record<string, unknown>).workflow_id)).size === value.items.length;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isNullableString(value: unknown): value is string | null {
-    return value === null || typeof value === "string";
-}
-
-function isRouteId(value: unknown): value is string {
-    if (typeof value !== "string" || !value.trim()) return false;
-    try {
-        encodeURIComponent(value);
-        return true;
-    } catch {
-        return false;
-    }
 }
