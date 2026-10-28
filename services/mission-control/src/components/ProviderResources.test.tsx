@@ -319,18 +319,21 @@ describe("ProviderResources Provider Intent flow", () => {
         await renderResources();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
         expect(screen.getByText("Running", { selector: "dd" })).toBeInTheDocument();
+        expect(screen.getByText("Atlas observed this VM running and found no saved monitoring expectation.")).toBeInTheDocument();
+        expect(screen.queryByText("Provider intelligence rule")).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole("button", { name: "Review suggestion" }));
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
+        expect(screen.getByText("Added to the form. Nothing has been saved.")).toBeInTheDocument();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole("button", { name: "Save" }));
         await waitFor(() => expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1));
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas suggestion")).not.toBeInTheDocument();
     });
 
     it("allows manual override after review", async () => {
@@ -353,7 +356,7 @@ describe("ProviderResources Provider Intent flow", () => {
             suggestion({ management_fingerprint: replacementFingerprint }),
         ]);
         await renderResources();
-        expect(screen.getByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(screen.getByText(/suggestion no longer matches/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
@@ -374,7 +377,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(screen.getByRole("button", { name: "Review suggestion" }));
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
         await user.click(screen.getByRole("button", { name: "Refresh resources" }));
-        expect(await screen.findByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(await screen.findByText(/suggestion no longer matches/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -429,7 +432,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ caller_can_mutate: false }));
         render(<ProviderResources provider={provider} />);
         await user.click(await screen.findByRole("button", { name: "Review suggestion" }));
-        expect(screen.getByText(/selected for local review/i)).toBeInTheDocument();
+        expect(screen.getByText("Added to the form. Nothing has been saved.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -438,7 +441,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
         vi.mocked(getAuthenticatedProviderManagement).mockRejectedValue(new Error("offline"));
         render(<ProviderResources provider={provider} />);
-        expect(await screen.findByText("Advisory suggestion")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas suggestion")).toBeInTheDocument();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
         expect(screen.getByText(/Atlas could not check your edit access/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
@@ -450,7 +453,7 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Not configured")).toBeInTheDocument();
         expect(screen.getByText(/Suggested monitoring choices could not be loaded/i)).toBeInTheDocument();
-        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas suggestion")).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
     });
 
@@ -473,7 +476,7 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(await screen.findByText(/saved and confirmed.*suggestions could not be refreshed/i)).toBeInTheDocument();
         expect(screen.queryByText(/could not save the monitoring expectation/i)).not.toBeInTheDocument();
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.getByText(/different resource incarnation or monitoring state/i)).toBeInTheDocument();
+        expect(screen.getByText(/suggestion no longer matches/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
     });
 
@@ -500,8 +503,8 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         const qemu = await screen.findByTestId("resource-row-qemu-110");
         const lxc = screen.getByTestId("resource-row-lxc-110");
-        expect(within(qemu).getByText("Advisory suggestion")).toBeInTheDocument();
-        expect(within(lxc).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(within(qemu).getByText("Atlas suggestion")).toBeInTheDocument();
+        expect(within(lxc).queryByText("Atlas suggestion")).not.toBeInTheDocument();
     });
 
     it("keeps reviewed selection local to its exact QEMU coordinate", async () => {
@@ -519,7 +522,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(within(qemu110).getByRole("button", { name: "Review suggestion" }));
         expect(within(qemu110).getByLabelText(/monitoring expectation/i)).toHaveValue("running");
         expect(within(qemu200).getByLabelText(/monitoring expectation/i)).toHaveValue("");
-        expect(within(qemu200).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(within(qemu200).queryByText("Atlas suggestion")).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
