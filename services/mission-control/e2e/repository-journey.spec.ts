@@ -6,7 +6,7 @@ async function fitsViewport(page: Page) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`an uncertain implementation approval refreshes before allowing another decision at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, false, { baseURL, uncertainApproval: true });
         await page.setViewportSize({ width, height: 844 });
@@ -55,7 +55,17 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await expect(page.getByRole("button", { name: "Prepare change for review", exact: true })).toBeEnabled();
-        await expect(page.getByRole("heading", { name: "Workflow setup", exact: true })).toBeVisible();
+        const workflowSetupHeading = page.getByRole("heading", { name: "Workflow setup", exact: true });
+        await expect(workflowSetupHeading).toBeVisible();
+        const workflowSetupPadding = await workflowSetupHeading.evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(workflowSetupPadding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(workflowSetupPadding ?? "0px")).toBeGreaterThan(16);
+        }
         const workflowShellSummary = page.getByRole("region", { name: "Workflow summary" });
         await expect(workflowShellSummary.getByText("Workflow ID", { exact: true })).toBeHidden();
         await expect(workflowShellSummary.getByText("Candidate ID", { exact: true })).toBeHidden();
@@ -166,7 +176,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`unreadable preparation results require a fresh workflow read at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, false, { baseURL });
         let preparationCalls = 0;

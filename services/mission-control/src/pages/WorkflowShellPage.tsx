@@ -241,7 +241,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
 
     if (isLoadingWorkflow && workflow === null) {
         return (
-            <main className="mx-auto max-w-6xl p-8">
+            <main className="mx-auto max-w-6xl p-4 sm:p-8">
                 <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                     Loading workflow summary…
                 </p>
@@ -251,7 +251,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
 
     if (!workflow) {
         return (
-            <main className="mx-auto max-w-6xl space-y-6 p-8">
+            <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
                 <PlanningProgress current={null} />
                 <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <p className="font-semibold text-amber-200">Workflow summary unavailable</p>
@@ -268,7 +268,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     }
 
     return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
+        <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow preparation</p>

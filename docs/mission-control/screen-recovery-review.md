@@ -2099,3 +2099,13 @@ Browser checks cover loaded details and the missing-provider route at 320px,
 provider action-field labels are also checked at 320px. The three focused
 page/component suites pass (17 tests), as do lint and the production build.
 Provider reads, actions, and approval behavior are unchanged.
+
+## Workflow setup phone layout — 2026-10-28
+
+The workflow setup page now uses compact outer padding on phones in its loading,
+unavailable, and loaded states, while retaining desktop spacing. The full
+synthetic repository journey, uncertain-approval recovery, and unreadable
+preparation recovery are covered at 320px, 390px, and 1280px. Loading and
+initial-read failure states are checked at phone and desktop widths (11 browser
+checks). The workflow page suite, lint, and production build pass. Approval,
+resume, and execution behavior are unchanged.
