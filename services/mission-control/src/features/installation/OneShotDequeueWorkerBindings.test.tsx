@@ -18,28 +18,31 @@ describe("OneShotDequeueWorkerBindings", () => {
         let resolve!: (value: OneShotDequeueWorkerBindingCollectionV1) => void;
         vi.mocked(listOneShotDequeueWorkerBindings).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading one-shot dequeue worker binding evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading worker readiness reviews/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no one-shot dequeue worker binding evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker readiness review is saved/i));
         unmount();
 
         vi.mocked(listOneShotDequeueWorkerBindings).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/technical error details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
     });
 
-    it("renders simple eligible, bound, and blocked state with technical evidence under Advanced details", async () => {
+    it("summarizes why a worker cannot start and keeps technical evidence in closed details", async () => {
         vi.mocked(listOneShotDequeueWorkerBindings).mockResolvedValue(oneShotDequeueWorkerBindingCollectionFixture);
         render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
-        expect(await screen.findByText(/recorded one-shot dequeue worker binding evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/state: eligible; bound: readiness gated; blocked: yes/i)).toHaveTextContent(/store contacted: false; runtime contacted: false; worker started: false; execution started: false/i);
-        const advanced = screen.getByText("Advanced details").closest("details");
-        expect(advanced).toBeInTheDocument();
-        expect(advanced).not.toHaveAttribute("open");
-        expect(screen.getByLabelText(/ordered one-shot dequeue worker binding blockers/i)).toHaveTextContent(/store_contact_not_defined.*runtime_contact_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
-        expect(screen.getByText(/inherited sandbox, resource, network, and filesystem limits/i)).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Worker readiness review saved" })).toBeInTheDocument();
+        expect(screen.getAllByText(/does not contact a store or runtime or start a worker/i)).toHaveLength(2);
+        expect(screen.getByLabelText("Why a worker cannot start")).toHaveTextContent(/safe way to contact the store.*safe way to contact the runtime.*safe way to start a worker.*safe way to start installation/i);
+        expect(screen.getByLabelText("Limits recorded for a future worker")).toHaveTextContent(/No network access.*No access to host, repository, or guest files.*No elevated privileges.*1 CPU core.*512 MiB memory.*64 processes.*15 minutes.*1 MiB output.*256 MiB temporary workspace/i);
+        const details = screen.getByText("Worker and queue details").closest("details");
+        expect(details).toBeInTheDocument();
+        expect(details).not.toHaveAttribute("open");
+        for (const element of screen.getAllByText(oneShotDequeueWorkerBindingCollectionFixture.items[0].binding_id)) expect(element).not.toBeVisible();
+        expect(screen.getByText("Exact safety and authority details").closest("details")).not.toHaveAttribute("open");
         expect(screen.getByLabelText(/one-shot dequeue worker binding fixed-false authority fields/i)).toHaveTextContent(/worker start allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
+        expect(screen.queryByText("store_contact_not_defined")).not.toBeInTheDocument();
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 });
