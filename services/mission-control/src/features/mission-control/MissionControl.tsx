@@ -36,6 +36,24 @@ function attentionPriority(value: unknown) {
     return state === "blocked" ? 0 : state === "unavailable" ? 1 : 2;
 }
 
+function workflowAttentionStage(state: string): string {
+    switch (state) {
+        case "awaiting_approval": return "Waiting for approval";
+        case "awaiting_implementation_approval": return "Waiting for implementation approval";
+        case "awaiting_verification_approval": return "Waiting for verification approval";
+        case "awaiting_commit_approval": return "Waiting for commit approval";
+        default: return formatWorkflowLabel(state);
+    }
+}
+
+function workflowAttentionLabel(intent: unknown, state: string, stale: boolean): string {
+    const safeIntent = safeText(intent);
+    const action = safeIntent && safeIntent !== "[Sensitive text withheld]"
+        ? formatWorkflowLabel(safeIntent)
+        : "Workflow";
+    return `${stale ? "Last known · " : ""}${action} · ${workflowAttentionStage(state)}`;
+}
+
 function attentionKey(finding: Record<string, unknown>, providers: Record<string, unknown>[], services: [string, unknown][]) {
     if (typeof finding.source === "string" && typeof finding.message === "string" && finding.message.length > 0) {
         const providerMatch = providers.some(p => p.id === finding.source && record(p.health).message === finding.message);
@@ -75,7 +93,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
         })),
         ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => ({
-            actionRequired: workflowActionRequired(String(w.workflow_state)), workflowState: String(w.workflow_state), key: `workflow:${String(w.workflow_id)}`, label: safeText(w.workflow_id), reason: safeText(w.last_result_summary), state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
+            actionRequired: workflowActionRequired(String(w.workflow_state)), workflowId: safeText(w.workflow_id), key: `workflow:${String(w.workflow_id)}`, label: workflowAttentionLabel(w.execution_intent, String(w.workflow_state), evidence.workflows?.stale === true), reason: safeText(w.last_result_summary), state: w.workflow_state === "blocked" ? "blocked" : "warning", to: detailPath("/workflows", w.workflow_id) ?? "/workflows", stale: evidence.workflows?.stale,
         })),
     ];
     const deduplicated = new Map<string, typeof attention[number]>();
@@ -95,12 +113,12 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
                 <Link to={item.to}>{item.label || "Inspect condition"}</Link>
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
-                {"workflowState" in item ? <>
-                    {item.state === "blocked" && <p className="text-red-300">{item.stale ? "Last-known workflow blocked; current state unknown." : "Workflow blocked"}</p>}
+                {"workflowId" in item && typeof item.workflowId === "string" ? <>
+                    {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
                     {item.reason && <p>{item.reason}</p>}
-                    <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Workflow details</summary>
-                        <p>{item.stale ? "Last-known workflow stage" : "Workflow stage"}: {formatWorkflowLabel(safeText(item.workflowState))}</p>
-                        <p className="text-xs text-mc-text-muted">Stage update time is not supplied.</p>
+                    <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Technical details</summary>
+                        <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
+                        <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
                     </details>
                 </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
                 {item.stale && <p>Last-known condition; current state unknown.</p>}

@@ -23,7 +23,7 @@ describe("integrated attention and activity", () => {
         expect(attention().getAllByRole("listitem")[0]).toHaveTextContent("Blocked");
         expect(attention().getAllByText("Human action required", { exact: true })).toHaveLength(4);
         expect(attention().queryByRole("link", { name: "mystery" })).not.toBeInTheDocument();
-        await userEvent.click(attention().getByRole("link", { name: "awaiting_approval" }));
+        await userEvent.click(attention().getByRole("link", { name: "Workflow · Waiting for approval" }));
         expect(screen.getByText("Workflow detail")).toBeVisible();
     });
     it.each([" ", "", "..", "\ud800", {}])("rejects malformed workflow identity %j without requiring human action", id => {

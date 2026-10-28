@@ -404,6 +404,15 @@ parameter names are grouped under a collapsed “Technical details” disclosure
 The focused detail suite passes (6 tests); lint and build pass. Audit reads and
 copy-link behavior are unchanged.
 
+## Main dashboard workflow attention — 2026-10-28
+
+Operator Attention links now name the proposed action and explain the workflow
+stage in plain language. Last-known evidence is labeled as such. Workflow IDs
+in this list are under a collapsed “Technical details” disclosure. The focused
+dashboard suites pass (68 tests), and 17 built browser checks pass across
+narrow, mobile, tablet and desktop layouts. Lint and build pass; workflow links
+remain read-only.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

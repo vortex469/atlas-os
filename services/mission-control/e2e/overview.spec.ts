@@ -69,10 +69,12 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     const gridBox = await grid.boundingBox();
     expect(attentionBox!.y + attentionBox!.height).toBeLessThanOrEqual(gridBox!.y);
     await expect(attention.getByText('Human action required', { exact: true })).toBeVisible();
-    await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeHidden();
-    await attention.getByText('Workflow details', { exact: true }).click();
-    await expect(attention.getByText('Workflow stage: Awaiting Implementation Approval', { exact: true })).toBeVisible();
-    await attention.getByText('Workflow details', { exact: true }).click();
+    await expect(attention.getByRole('link', { name: 'Update Compose Stack · Waiting for implementation approval' })).toBeVisible();
+    const workflowId = attention.getByText('workflow-browser-baseline', { exact: true });
+    await expect(workflowId).toBeHidden();
+    await attention.getByText('Technical details', { exact: true }).click();
+    await expect(workflowId).toBeVisible();
+    await attention.getByText('Technical details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'AI provider' });
     await expect(runtime.getByText('Atlas does not report where this provider runs or which model is selected or ready to use.')).toBeVisible();

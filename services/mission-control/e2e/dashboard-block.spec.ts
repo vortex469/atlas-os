@@ -21,7 +21,7 @@ for (const width of [320, 390, 1280]) {
             expect(box.right).toBeLessThanOrEqual(width);
             expect(box.scroll).toBeLessThanOrEqual(box.client);
         }
-        await attention.getByRole("link", { name: "workflow-browser-baseline" }).click();
+        await attention.getByRole("link", { name: "Update Compose Stack · Waiting for implementation approval" }).click();
         await expect(page).toHaveURL(/\/workflows\/workflow-browser-baseline$/);
         await page.goBack();
         await activity.getByRole("link", { name: "Inspect action →" }).click();
