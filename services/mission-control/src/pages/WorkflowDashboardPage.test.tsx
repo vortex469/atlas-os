@@ -179,8 +179,11 @@ describe("WorkflowDashboardPage", () => {
     it("does not invent global counts for an older Agent", async () => {
         list.mockResolvedValue(response([workflow()], { state_counts: undefined }));
         renderDashboard(); await screen.findByText("workflow-123");
-        expect(screen.getAllByText("Unavailable")).toHaveLength(7);
-        expect(screen.getByRole("status")).toHaveTextContent("does not provide workflow totals");
+        const totals = screen.getByRole("region", { name: "Workflow totals" });
+        expect(within(totals).queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
+        expect(within(totals).getByRole("status")).toHaveTextContent("This version of Atlas Agent does not report workflow totals.");
+        expect(within(totals).getByRole("status")).toHaveTextContent("You can still search and browse workflows");
+        expect(screen.getByRole("heading", { name: "workflow-123" })).toBeVisible();
     });
 
     it("refuses unsupported approval filtering and offers a working clear action", async () => {
