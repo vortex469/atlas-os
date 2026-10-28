@@ -50,6 +50,8 @@ for (const width of [320, 390, 1280]) {
             await route.fulfill({ json: { items: selected.slice(offset, offset + limit), total: selected.length, limit, offset, state_counts } });
         });
         await page.goto("/workflows");
+        await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
+        await expect(page.getByText("Workflow Dashboard", { exact: true })).toHaveCount(0);
         await expect(page.getByText("directory-workflow-000", { exact: true })).toBeVisible();
         await expect(page.getByText("Showing 10 of 215 matching workflows", { exact: true })).toBeVisible();
         const applied = page.getByRole("region", {name: "Applied workflow filters", exact: true});

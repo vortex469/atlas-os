@@ -193,9 +193,8 @@ export function WorkflowDashboardPage() {
         <main className="mx-auto max-w-7xl space-y-8 p-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Dashboard</p>
-                    <h1 className="mt-3 text-3xl font-bold text-white">Workflows</h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                    <h1 className="text-3xl font-bold text-white">Workflows</h1>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
                         See what is running, what needs your review, and what has finished. Open a workflow to see its details.
                     </p>
                 </div>
