@@ -813,3 +813,12 @@ empty-state explanation. Initial load errors no longer repeat the retry button's
 workflow data are unchanged. The focused page suite passes (8 tests), responsive
 empty-state checks pass at 390px and 1280px, the recovery browser check passes,
 and lint, production build, and `git diff --check` pass.
+
+## Overview Agent details — 2026-10-28
+
+The Agent details card now describes only the Agent name and version reported
+by that source. It no longer repeats workflow availability already shown in
+Work activity. Failed and last-known reads use shorter messages. No data source
+or status calculation changed. The focused overview suite and responsive
+overview browser checks pass, along with lint, production build, and
+`git diff --check`.

@@ -11,7 +11,7 @@ for (const width of [320, 768, 1440]) {
         await expect(policyTime).not.toHaveText(/\d{4}-\d{2}-\d{2}T/);
         await expect(policyTime).toHaveAttribute('dateTime', /^\d{4}-\d{2}-\d{2}T/);
         const agent = page.getByRole('region', { name: 'Agent details' });
-        await expect(agent.getByText('Agent details do not include health or workflow status.')).toBeVisible();
+        await expect(agent.getByText('This report includes only the Agent name and version.')).toBeVisible();
         await expect(agent.getByText('Unknown', { exact: true })).toHaveCount(0);
         await expect(agent.getByText('Evidence unknown.', { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

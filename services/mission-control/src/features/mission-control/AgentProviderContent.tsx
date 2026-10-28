@@ -12,11 +12,11 @@ export function AgentOverviewContent({ evidence }: { evidence?: Evidence }) {
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && hasData));
     const summary = !hasData
         ? evidence?.unavailable
-            ? "Agent details are unavailable. Workflow availability is unknown."
+            ? "Agent details could not be loaded."
             : "Loading Agent details…"
         : stale
-            ? "Last-known Agent details. Current workflow availability is unknown."
-            : "Agent details do not include health or workflow status.";
+            ? "Showing last-known Agent details."
+            : "This report includes only the Agent name and version.";
     return <>
         {hasData && <p>{name || "Agent name unavailable"}{version && ` · ${version}`}</p>}
         <p>{summary}</p>
