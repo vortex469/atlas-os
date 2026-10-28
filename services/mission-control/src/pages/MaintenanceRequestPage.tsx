@@ -246,7 +246,7 @@ export function MaintenanceRequestPage() {
                         {expiryUnreadable ? "Proposal expiration unknown" : proposalExpired ? "Maintenance proposal expired" : !proposalReady ? "Maintenance proposal unavailable" : "Maintenance proposal ready"}
                     </h2>
                     <p className="mt-2 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p>
-                    <p className="mt-1 text-sm text-slate-300">Expires: {expiryUnreadable ? "Not readable" : result.candidate.expires_at ?? "Not reported"}</p>
+                    <p className="mt-1 text-sm text-slate-300">Expires: {expiryUnreadable ? "Not readable" : result.candidate.expires_at ? <time dateTime={result.candidate.expires_at}>{formatLocalDateTime(result.candidate.expires_at)}</time> : "Not reported"}</p>
                     <p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>
                     <details className="mt-3 text-sm text-slate-300">
                         <summary className="cursor-pointer font-semibold text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Proposal details</summary>
@@ -273,6 +273,13 @@ export function MaintenanceRequestPage() {
             )}
         </main>
     );
+}
+
+function formatLocalDateTime(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf())
+        ? value
+        : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(date);
 }
 
 function FixedField({ label, value }: { label: string; value: string }) {
