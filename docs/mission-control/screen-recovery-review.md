@@ -1566,3 +1566,11 @@ text is under collapsed Technical details. The existing Refresh history control
 retries the read; expired-entry deletion remains disabled until history loads.
 The focused page test checks the error detail visibility, read-only retry, and
 deletion guard. No history or provider action behavior changed.
+
+## Action detail read-error wording — 2026-10-28
+
+When one action-history record cannot be read, the detail page now explains
+that the record is unavailable and that retrying only reloads the record. The
+service response stays under collapsed Technical details. Tests cover both a
+transient read failure and a missing record; the retry continues to call only
+the record-read endpoint. No provider action behavior changed.

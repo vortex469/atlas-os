@@ -77,7 +77,14 @@ describe("ActionHistoryDetailPage", () => {
             <Route path="/operations/actions/:auditId" element={<ActionHistoryDetailPage />} />
         </Routes></MemoryRouter></StrictMode>);
         const user = userEvent.setup();
-        await user.click(await screen.findByRole("button", { name: "Try again" }));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action details are unavailable. Try again to reload this record. This read does not run the provider action again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        expect(within(technicalDetails as HTMLElement).getByText("Unavailable")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("Unavailable")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Try again" }));
         expect(await screen.findByText("Model unloaded.")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledTimes(2);
@@ -158,17 +165,17 @@ describe("ActionHistoryDetailPage", () => {
         ).toBeInTheDocument();
     });
 
-    it("shows an API error for a missing action history entry", async () => {
+    it("keeps missing-entry service details out of the main error message", async () => {
         mockedGetProviderActionHistoryEntry.mockRejectedValue(
             new Error("Action history entry not found."),
         );
         renderPage("/operations/actions/missing-entry");
 
-        expect(
-            await screen.findByRole("alert"),
-        ).toHaveTextContent(
-            "Action history entry not found.",
-        );
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action details are unavailable. Try again to reload this record. This read does not run the provider action again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        expect(within(technicalDetails as HTMLElement).getByText("Action history entry not found.")).not.toBeVisible();
         await waitFor(() =>
             expect(
                 screen.queryByText("Loading action details…"),

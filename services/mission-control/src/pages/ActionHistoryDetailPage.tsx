@@ -38,6 +38,8 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
         useState<ProviderActionAuditEntry | null>(null);
     const [isLoading, setIsLoading] = useState(Boolean(auditId));
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [isReadFailure, setIsReadFailure] = useState(false);
     const [readAttempt, setReadAttempt] = useState(0);
     const [copyMessage, setCopyMessage] = useState<string | null>(
         null,
@@ -59,6 +61,8 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                     if (active) {
                         if (result.id !== auditId) {
                             setError("The action history record returned does not match this link.");
+                            setErrorDetails(null);
+                            setIsReadFailure(false);
                             return;
                         }
                         setEntry(result);
@@ -66,12 +70,11 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                 })
                 .catch((requestError: unknown) => {
                     if (active) {
-                        setError(
-                            getAtlasErrorMessage(
-                                requestError,
-                                "Mission Control could not load this action history entry.",
-                            ),
-                        );
+                        const fallback = "Action history read failed without additional details.";
+                        const details = getAtlasErrorMessage(requestError, fallback);
+                        setError("Mission Control could not load this action history entry.");
+                        setErrorDetails(details === fallback ? null : details);
+                        setIsReadFailure(true);
                     }
                 })
                 .finally(() => {
@@ -152,10 +155,13 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         Action history entry unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {displayedError}
+                        {auditId && isReadFailure
+                            ? "Action details are unavailable. Try again to reload this record. This read does not run the provider action again."
+                            : displayedError}
                     </p>
+                    {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
                     {auditId && <button type="button" onClick={() => {
-                        setEntry(null); setError(null); setIsLoading(true); setReadAttempt((attempt) => attempt + 1);
+                        setEntry(null); setError(null); setErrorDetails(null); setIsReadFailure(false); setIsLoading(true); setReadAttempt((attempt) => attempt + 1);
                     }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>}
                 </div>
             )}
