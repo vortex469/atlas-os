@@ -131,7 +131,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             </>}
             {uniqueAttention.length === 0 && loading && <p>Checking current information…</p>}
             {uniqueAttention.length === 0 && !loading && !attentionEvidenceComplete && <p>Some information is missing. Atlas cannot confirm whether attention is needed.</p>}
-            {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>No attention items were reported by the checked sources.</p>}
+            {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>The current reports show no items needing attention.</p>}
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
                 <Link to={item.to}>{item.label || "Inspect condition"}</Link>
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}

@@ -740,6 +740,14 @@ status and action permissions are unchanged. The focused component suite passes
 (10 tests), the keyboard-accessible overview browser check passes, and lint,
 production build, and `git diff --check` pass.
 
+## Operator Attention empty state — 2026-10-28
+
+When all current sources are checked and none reports an attention item, the
+dashboard now says, “The current reports show no items needing attention.” The
+incomplete-source message remains unchanged and still says Atlas cannot confirm
+whether attention is needed. The overview component suite passes (51 tests),
+and lint and production build pass.
+
 ## Health report scan order — 2026-10-28
 
 The health card now lists its independent source reports before the optional

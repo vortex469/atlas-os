@@ -77,7 +77,7 @@ describe("MC overview evidence", () => {
         show({}, true);
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByText('Checking current information…')).toBeVisible();
-        expect(attention.queryByText('No attention items were reported by the checked sources.')).not.toBeInTheDocument();
+        expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
         expect(attention.queryByText('System findings: Evidence unknown.')).not.toBeInTheDocument();
         expect(within(screen.getByRole('region', { name: 'Core health' })).getByText('Checking Core health…')).toBeVisible();
         expect(activity().getByText('Checking recent activity…')).toBeVisible();
@@ -92,7 +92,7 @@ describe("MC overview evidence", () => {
             workflows: { data: { items: [], total: 0, offset: 0, limit: 200 } },
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('No attention items were reported by the checked sources.')).toBeVisible();
+        expect(attention.getByText('The current reports show no items needing attention.')).toBeVisible();
         expect(attention.queryByText(/cannot confirm whether attention is needed/)).not.toBeInTheDocument();
     });
     it("does not report missing subsystem health after the Core health read fails", () => {
