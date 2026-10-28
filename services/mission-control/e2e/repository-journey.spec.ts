@@ -19,9 +19,12 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Prepare change for review", exact: true }).click();
         await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();
 
-        await expect(page.getByRole("alert")).toContainText(
-            "Approval may have been recorded. Check the current workflow status before trying again.",
-        );
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Mission Control could not confirm the implementation approval decision.");
+        await expect(alert).toContainText("The workflow status was refreshed; check its current approval status before taking another step.");
+        const technicalDetails = alert.locator("details");
+        await expect(technicalDetails).not.toHaveAttribute("open");
+        await expect(technicalDetails).toContainText("Approval may have been recorded. Check the current workflow status before trying again.");
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Reject implementation", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Resume Approved Implementation", exact: true })).toBeVisible();
