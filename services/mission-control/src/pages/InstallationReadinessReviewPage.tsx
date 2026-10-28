@@ -52,7 +52,7 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
     return <main className="mx-auto max-w-6xl p-6 text-slate-200">
         <Link to="/discovery" className="text-sm text-blue-300">← Catalog</Link>
         <h1 className="mt-4 text-2xl font-semibold">Installation readiness review</h1>
-        <p className="mt-2 text-sm text-slate-300">Authenticated, operator-owned, Core-local evidence review. This read does not refresh or consume evidence.</p>
+        <p className="mt-2 text-sm text-slate-300">See the evidence Atlas checked before considering an installation.</p>
         <AuthorityNotice />
         {!candidateRecordId && <p role="status" className="mt-6">No candidate record selected.</p>}
         {loading && <p role="status" className="mt-6">Loading installation readiness review…</p>}
@@ -83,14 +83,15 @@ function Review({ response }: { response: InstallationReadinessReviewResponseV1 
     const { review, audit_evidence: audit } = response;
     return <div className="mt-6 space-y-6">
         <section aria-labelledby="readiness-state-heading" className="rounded border border-slate-700 p-4">
-            <h2 id="readiness-state-heading" className="font-semibold">{review.readiness === "blocked" ? "Blocked" : "Readiness gated"}</h2>
-            <p className="mt-2 text-sm">{review.readiness === "blocked" ? "This review is blocked by the listed evidence issues." : "Evidence is recorded, but Atlas has not defined execution admission for this installation."}</p>
+            <h2 id="readiness-state-heading" className="font-semibold">{review.readiness === "blocked" ? "Blocked" : "Evidence is current, but installation cannot start"}</h2>
+            <p className="mt-2 text-sm">{review.readiness === "blocked" ? "This review is blocked by the evidence issues listed below." : "Atlas has not defined a way to start this installation yet."}</p>
             <p className="mt-1 text-xs text-slate-400">Review time: {formatUtcTimestamp(review.observed_at)}</p>
-            <h3 className="mt-4 text-sm font-semibold">What needs attention</h3>
-            <ol aria-label="Ordered readiness blockers" className="mt-2 list-decimal pl-6 text-sm">
-                {review.blockers.map((blocker) => <li key={blocker}>{BLOCKER_LABELS[blocker]}</li>)}
-            </ol>
-            {review.blockers.length === 0 && <p className="mt-2 text-sm">No evidence blockers were reported.</p>}
+            {review.readiness === "blocked" && <>
+                <h3 className="mt-4 text-sm font-semibold">What needs attention</h3>
+                <ol aria-label="Ordered readiness blockers" className="mt-2 list-decimal pl-6 text-sm">
+                    {review.blockers.map((blocker) => <li key={blocker}>{BLOCKER_LABELS[blocker]}</li>)}
+                </ol>
+            </>}
             <details className="mt-4 border-t border-slate-800 pt-3">
                 <summary className="cursor-pointer text-sm font-medium text-slate-300">Review record details</summary>
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
@@ -111,7 +112,7 @@ function Review({ response }: { response: InstallationReadinessReviewResponseV1 
 
         <section aria-labelledby="evidence-chain-heading" className="rounded border border-slate-700 p-4">
             <h2 id="evidence-chain-heading" className="font-semibold">Evidence reviewed</h2>
-            <p className="mt-1 text-sm text-slate-300">Each row shows which released evidence Atlas checked and whether it was current at review time. Expired or stale evidence remains evidence only and blocks readiness. This page never extends, refreshes, or restarts a validity window.</p>
+            <p className="mt-1 text-sm text-slate-300">Evidence is shown as it was at review time. Expired or outdated evidence blocks this review. This page does not refresh evidence.</p>
             <ol aria-label="Installation evidence chain" className="mt-4 space-y-3">
                 {review.evidence.map((item) => <li key={item.release} className="rounded border border-slate-800 p-3 text-sm">
                     <p className="font-semibold">{item.release} · {formatLabel(item.evidence_kind)} · {formatLabel(item.evidence_state)}</p>

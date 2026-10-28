@@ -54,7 +54,7 @@ describe("InstallationReadinessReviewPage", () => {
             <Route path="/installation/candidate-records/:candidateRecordId/readiness-review" element={<InstallationReadinessReviewPage />} />
         </Routes></MemoryRouter></StrictMode>);
         fireEvent.click(await screen.findByRole("button", { name: "Reload review" }));
-        await screen.findByRole("heading", { name: /Readiness gated/ });
+        await screen.findByRole("heading", { name: "Evidence is current, but installation cannot start" });
         expect(getInstallationReadinessReview).toHaveBeenCalledTimes(2);
         expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
     });
@@ -89,8 +89,9 @@ describe("InstallationReadinessReviewPage", () => {
         renderPage();
         expect(screen.getByRole("status")).toHaveTextContent(/loading installation readiness review/i);
         resolve(readinessGatedFixture);
-        expect(await screen.findByRole("heading", { name: "Readiness gated" })).toBeInTheDocument();
-        expect(screen.getByText("Evidence is recorded, but Atlas has not defined execution admission for this installation.")).toBeVisible();
+        expect(await screen.findByRole("heading", { name: "Evidence is current, but installation cannot start" })).toBeInTheDocument();
+        expect(screen.getByText("Atlas has not defined a way to start this installation yet.")).toBeVisible();
+        expect(screen.queryByRole("list", { name: "Ordered readiness blockers" })).not.toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Evidence reviewed" })).toBeInTheDocument();
         expect(screen.getByText("Review record details").closest("details")).not.toHaveAttribute("open");
         fireEvent.click(screen.getByText("Review record details"));
@@ -116,7 +117,8 @@ describe("InstallationReadinessReviewPage", () => {
         const items = within(blockers).getAllByRole("listitem");
         expect(items[0]).toHaveTextContent("Stale evidence");
         expect(items[1]).toHaveTextContent("Installation capability unsupported");
-        expect(screen.getByText(/expired or stale evidence remains evidence only and blocks readiness/i)).toBeInTheDocument();
+        expect(screen.getByText("This review is blocked by the evidence issues listed below.")).toBeInTheDocument();
+        expect(screen.getByRole("list", { name: "Ordered readiness blockers" })).toBeInTheDocument();
     });
 
     it("renders redacted error and empty states without leaked details", async () => {
@@ -141,7 +143,7 @@ describe("InstallationReadinessReviewPage", () => {
     it("contains explicit non-authorizing copy and no effect controls or action navigation", async () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
         renderPage();
-        await waitFor(() => expect(screen.getByRole("heading", { name: /readiness gated/i })).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByRole("heading", { name: "Evidence is current, but installation cannot start" })).toBeInTheDocument());
         const boundary = screen.getByLabelText("Read-only authority boundary");
         expect(boundary).toHaveTextContent(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
         expect(boundary).toHaveTextContent(/not approval, admission, authorization, installability, or executability/i);

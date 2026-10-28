@@ -37,8 +37,9 @@ for (const width of [390, 1280]) {
         await page.goto(`/installation/candidate-records/${uuid4}/readiness-review`);
         await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toBeVisible();
         await page.getByRole("button", { name: "Reload review", exact: true }).click();
-        await expect(page.getByRole("heading", { name: "Readiness gated", exact: true })).toBeVisible();
-        await expect(page.getByText("Evidence is recorded, but Atlas has not defined execution admission for this installation.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Evidence is current, but installation cannot start", exact: true })).toBeVisible();
+        await expect(page.getByText("Atlas has not defined a way to start this installation yet.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("list", { name: "Ordered readiness blockers" })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "Evidence reviewed", exact: true })).toBeVisible();
         await expect(page.getByRole("list", { name: "Installation evidence chain" }).getByRole("listitem")).toHaveCount(14);
         await expect(page.getByText(uuid4, { exact: true }).first()).toBeHidden();

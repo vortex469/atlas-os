@@ -880,3 +880,12 @@ message. Its existing “All providers” navigation remains the recovery route,
 and the message does not repeat refresh instructions. It does not label a
 successfully loaded catalog as unavailable. Provider page and responsive
 browser recovery checks, lint, production build, and `git diff --check` pass.
+
+## Installation readiness status — 2026-10-28
+
+The readiness-gated state now says that evidence is current while installation
+cannot start because Atlas has no defined start process. Its sole technical
+blocker remains available in collapsed record details. Blocked reviews continue
+to list their evidence issues. Evidence review remains non-authorizing and does
+not refresh evidence. The readiness component suite, responsive browser checks,
+lint, production build, and `git diff --check` pass.
