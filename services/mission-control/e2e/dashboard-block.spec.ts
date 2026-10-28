@@ -16,8 +16,12 @@ test("dashboard explains unavailable workflow data once and translates network e
     await page.goto("/");
 
     const attention = page.getByRole("region", { name: "Operator Attention" });
+    const workActivity = page.getByRole("region", { name: "Work activity" });
     await expect(attention.getByText("Workflows: Evidence unavailable.")).toBeVisible();
     await expect(attention.getByText("Workflow results are incomplete.")).toHaveCount(0);
+    await expect(workActivity.getByText("Workflow status could not be loaded.")).toBeVisible();
+    await expect(workActivity.getByText("Running workflows", { exact: true })).toHaveCount(0);
+    await expect(workActivity.getByText("Blocked workflows", { exact: true })).toHaveCount(0);
     await expect(attention.getByText("The service refused the connection.")).toBeVisible();
     await expect(attention.getByText("The service could not be reached over the network.")).toBeVisible();
     await expect(page.getByText(/\[Errno \d+\]/)).toHaveCount(0);

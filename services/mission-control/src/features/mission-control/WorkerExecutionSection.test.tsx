@@ -19,6 +19,21 @@ function view(evidence: unknown, unavailable = false, loading = false) {
 }
 
 describe("Work activity summary", () => {
+    it("shows one checking message without unavailable count placeholders during first load", () => {
+        view(undefined, false, true);
+        const section = screen.getByRole("region", { name: "Work activity" });
+        expect(within(section).getByText("Checking workflow status…")).toBeVisible();
+        expect(within(section).queryByText("Workflow status is unknown or incomplete.")).not.toBeInTheDocument();
+        expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
+    });
+    it("shows one unavailable message instead of repeating it as two unavailable counts", () => {
+        view(undefined, true);
+        const section = screen.getByRole("region", { name: "Work activity" });
+        expect(within(section).getByText("Workflow status could not be loaded.")).toBeVisible();
+        expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
+    });
     it("shows an idle observation without inventing worker health or queue depth", () => {
         view(page([]));
         const section = screen.getByRole("region", { name: "Work activity" });
@@ -72,6 +87,8 @@ describe("Work activity summary", () => {
         const { rerender } = view(page([workflow("old")]), true);
         expect(screen.queryByRole("link", { name: "Workflow · Running" })).not.toBeInTheDocument();
         expect(screen.getByText("Workflow status could not be loaded.")).toBeInTheDocument();
+        expect(screen.queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
         rerender(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([]) }} loading={false} /></MemoryRouter>);
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector("dd")).toHaveTextContent("0");
     });
@@ -86,7 +103,7 @@ describe("Work activity summary", () => {
     ])("fails closed on missing, malformed, or incomplete evidence: %j", (evidence) => {
         view(evidence);
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Work activity" }).querySelector("dd")).not.toHaveTextContent("0");
+        expect(screen.getByRole("region", { name: "Work activity" }).querySelector(":scope > dl")).toBeNull();
     });
     it.each([{ timeline: [] }, { timeline: [{ name: "Execution", status: "surprise" }] }, { timeline: [{ name: "Execution", status: "completed" }, { name: "Execution", status: "failed" }] }])("does not fabricate outcomes from invalid execution stages", ({ timeline }) => {
         view(page([{ ...workflow("unknown", "completed"), timeline }]));
@@ -95,8 +112,8 @@ describe("Work activity summary", () => {
     });
     it("treats future workflow states as unknown rather than idle", () => {
         view(page([workflow("future", "future_state")]));
-        expect(screen.getByText(/Some workflow states are not recognized/)).toBeInTheDocument();
-        expect(screen.getByRole("region", { name: "Work activity" }).querySelector("dd")).toHaveTextContent("Unknown");
+        expect(screen.getByText("Some workflow statuses are not recognized, so counts are unavailable.")).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Work activity" }).querySelector(":scope > dl")).toBeNull();
     });
     it("caps records and exposes no mutation controls or raw payloads", () => {
         view(page(Array.from({ length: 8 }, (_, index) => workflow(`item-${index}`))));

@@ -228,6 +228,16 @@ dashboard and health suites pass (120 tests); four browser checks pass at 320px,
 390px, and 1280px; lint and build pass. Read-only behavior and backend contracts
 are unchanged.
 
+## Work activity unavailable-state clarity — 2026-10-28
+
+The work-activity card only shows running and blocked counts when workflow
+states are recognized. Initial loading, failed reads, malformed records, and
+unknown future states use one clear status message instead of repeated
+unavailable or unknown count values. Last-known data and freshness warnings
+remain visible after a failed refresh. Focused component and dashboard browser
+checks cover loading, failure, malformed evidence, future states, and responsive
+layout. Workflow reads and execution boundaries are unchanged.
+
 ## Provider action recovery — 2026-10-28
 
 Action-catalog read failures now offer a read-only reload and have their own

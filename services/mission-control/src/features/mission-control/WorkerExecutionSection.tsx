@@ -46,8 +46,6 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
     const outcomes = items?.filter((item) => ["completed", "failed"].includes(executionStage(item) ?? "")) ?? [];
     const missingStages = items?.some((item) =>
         !["waiting", "current", "completed", "failed", "blocked"].includes(executionStage(item) ?? ""));
-    const fallback = unavailable ? "Unavailable" : "Unknown";
-
     return (
         <section aria-labelledby="work-activity-heading" className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -60,12 +58,15 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <p className="mt-2 text-sm text-mc-text-secondary">Worker availability is not reported.</p>
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}
             {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing workflow information; displayed results may be stale.</p>}
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Metric label="Running workflows" value={items && knownStates ? String(active.length) : fallback} />
-                <Metric label="Blocked workflows" value={items && knownStates ? String(blocked.length) : fallback} />
-            </dl>
+            {items && knownStates && (
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Metric label="Running workflows" value={String(active.length)} />
+                    <Metric label="Blocked workflows" value={String(blocked.length)} />
+                </dl>
+            )}
+            {loading && !items && <p role="status" className="mt-3 text-sm text-mc-text-secondary">Checking workflow status…</p>}
+            {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized, so counts are unavailable.</p>}
             {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running workflows are listed. Worker availability is unknown.</p>}
-            {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Some workflow states are not recognized. Counts may be incomplete.</p>}
             <div className="mt-4 grid gap-4">
                 {active.length > 0 && <EvidenceList title="Running workflows" items={active} available={!!items} empty="Unknown" />}
                 {blocked.length > 0 && <EvidenceList title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
@@ -81,7 +82,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 </div>
             </details>
             {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
-            {!items && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Workflow status is unknown or incomplete."}</p>}
+            {!items && !loading && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Workflow status is unknown or incomplete."}</p>}
         </section>
     );
 }
