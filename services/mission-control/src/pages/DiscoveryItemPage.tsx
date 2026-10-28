@@ -55,7 +55,11 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [isLoading, setIsLoading] = useState(true);
     const [compatibilityLoading, setCompatibilityLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
+    const [relationshipsLoading, setRelationshipsLoading] = useState(true);
+    const [relationshipsUnavailable, setRelationshipsUnavailable] = useState(false);
+    const [relationshipsLoadAttempt, setRelationshipsLoadAttempt] = useState(0);
     const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
     const [evidence, setEvidence] = useState<DiscoveryItemEvidence | null>(null);
     const [evidenceLoading, setEvidenceLoading] = useState(true);
@@ -180,37 +184,29 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     useEffect(() => {
         let cancelled = false;
 
-        Promise.all([
-            getDiscoveryItem(itemId).catch((requestError: unknown) => {
-                if (!cancelled && isAxiosError(requestError) && requestError.response?.status === 404) setNotFound(true);
-                throw requestError;
-            }),
-            getDiscoveryRelationships(itemId),
-        ])
-            .then(([entry, relationships]) => {
+        getDiscoveryItem(itemId)
+            .then((entry) => {
                 if (cancelled) {
                     return;
                 }
-                if (entry.item.id !== itemId || relationships.item_id !== itemId) {
+                if (entry.item.id !== itemId) {
                     setError("The catalog response does not match this item. Reload to check again.");
                     return;
                 }
-                setState({
-                    entry,
-                    incoming: relationships.incoming,
-                    outgoing: relationships.outgoing,
-                });
+                setState((current) => ({ ...current, entry }));
             })
             .catch((requestError: unknown) => {
                 if (cancelled) {
                     return;
                 }
+                if (isAxiosError(requestError) && requestError.response?.status === 404) setNotFound(true);
                 console.error(`Unable to load Discovery item ${itemId}:`, requestError);
                 const message = getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not load this catalog item.",
                 );
-                setError(message);
+                setError("Mission Control could not load this catalog item. Its current details are unknown.");
+                setErrorDetails(message);
             })
             .finally(() => {
                 if (!cancelled) {
@@ -222,6 +218,39 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             cancelled = true;
         };
     }, [itemId]);
+
+    useEffect(() => {
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setRelationshipsLoading(true);
+                setRelationshipsUnavailable(false);
+                setState((current) => ({ ...current, incoming: [], outgoing: [] }));
+            }
+        });
+
+        getDiscoveryRelationships(itemId)
+            .then((relationships) => {
+                if (cancelled) return;
+                if (relationships.item_id !== itemId) throw new Error("The relationships do not match this catalog item.");
+                setState((current) => ({
+                    ...current,
+                    incoming: relationships.incoming,
+                    outgoing: relationships.outgoing,
+                }));
+            })
+            .catch((requestError: unknown) => {
+                if (cancelled) return;
+                console.error(`Unable to load Discovery relationships for ${itemId}:`, requestError);
+                setState((current) => ({ ...current, incoming: [], outgoing: [] }));
+                setRelationshipsUnavailable(true);
+            })
+            .finally(() => {
+                if (!cancelled) setRelationshipsLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [itemId, relationshipsLoadAttempt]);
 
     useEffect(() => {
         let cancelled = false;
@@ -305,6 +334,13 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         setProposalLoadAttempt((attempt) => attempt + 1);
     }
 
+    function retryRelationships() {
+        setState((current) => ({ ...current, incoming: [], outgoing: [] }));
+        setRelationshipsLoading(true);
+        setRelationshipsUnavailable(false);
+        setRelationshipsLoadAttempt((attempt) => attempt + 1);
+    }
+
     function retrySourceEvidence() {
         setEvidence(null);
         setEvidenceLoading(true);
@@ -375,6 +411,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     <p className="mt-1 text-sm text-red-200/80">
                         {error ?? "Mission Control could not load this catalog item."}
                     </p>
+                    {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
                     <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
                 </div>
             </main>
@@ -470,17 +507,21 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
             <RequirementsPanel requirements={item.requirements} />
 
-            <section className="grid gap-4 lg:grid-cols-2">
-                <RelationshipsPanel
-                    title="Outgoing relationships"
-                    empty="No outgoing relationships."
-                    relationships={state.outgoing}
-                />
-                <RelationshipsPanel
-                    title="Incoming relationships"
-                    empty="No incoming relationships."
-                    relationships={state.incoming}
-                />
+            <section aria-label="Catalog relationships">
+                {relationshipsLoading && <p role="status" className="text-sm text-slate-400">Loading catalog relationships…</p>}
+                {relationshipsUnavailable && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p className="font-semibold">Relationships unavailable</p><p className="mt-1">The catalog item is available, but its related items could not be checked.</p><button type="button" onClick={retryRelationships} className="mt-3 rounded-lg border border-amber-400/50 px-3 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-200">Retry relationships</button></div>}
+                {!relationshipsLoading && !relationshipsUnavailable && <div className="grid gap-4 lg:grid-cols-2">
+                    <RelationshipsPanel
+                        title="Outgoing relationships"
+                        empty="No outgoing relationships."
+                        relationships={state.outgoing}
+                    />
+                    <RelationshipsPanel
+                        title="Incoming relationships"
+                        empty="No incoming relationships."
+                        relationships={state.incoming}
+                    />
+                </div>}
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">

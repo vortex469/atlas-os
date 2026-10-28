@@ -318,13 +318,24 @@ describe("DiscoveryItemPage", () => {
         expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
     });
 
-    it.each(["catalog", "relationships"])("refuses %s data for a different item", async (source) => {
-        if (source === "catalog") mockedGetDiscoveryItem.mockResolvedValue({ ...entry(), item: { ...entry().item, id: "other" } });
-        else mockedGetDiscoveryRelationships.mockResolvedValue({ ...relationships(), item_id: "other" });
+    it("refuses catalog data for a different item", async () => {
+        mockedGetDiscoveryItem.mockResolvedValue({ ...entry(), item: { ...entry().item, id: "other" } });
         renderPage();
         expect(await screen.findByRole("alert")).toHaveTextContent("does not match this item");
         expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+    });
+
+    it("does not show relationships returned for a different catalog item", async () => {
+        mockedGetDiscoveryRelationships.mockResolvedValue({ ...relationships(), item_id: "other" });
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        const section = screen.getByRole("region", { name: "Catalog relationships" });
+        expect(await within(section).findByRole("alert")).toHaveTextContent("Relationships unavailable");
+        expect(screen.queryByRole("link", { name: "mqtt" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
+        expect(within(section).getByRole("button", { name: "Retry relationships" })).toBeInTheDocument();
     });
 
     it.each(["compatibility", "evidence", "grounding", "plan"])("does not display unrelated %s evidence", async (source) => {
@@ -339,17 +350,33 @@ describe("DiscoveryItemPage", () => {
         expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
     });
 
-    it("does not report a missing item when its relationships read fails", async () => {
-        mockedGetDiscoveryRelationships.mockRejectedValue(httpError(404, "Relationships not found"));
+    it("keeps catalog details available and retries a failed relationships read", async () => {
+        mockedGetDiscoveryRelationships.mockRejectedValueOnce(httpError(404, "Relationships not found"))
+            .mockResolvedValueOnce(relationships());
         renderPage();
-        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
+        const section = screen.getByRole("region", { name: "Catalog relationships" });
+        expect(await within(section).findByRole("alert")).toHaveTextContent("The catalog item is available, but its related items could not be checked.");
+        expect(within(section).queryByText("No outgoing relationships.")).not.toBeInTheDocument();
+        await userEvent.setup().click(within(section).getByRole("button", { name: "Retry relationships" }));
+        expect(await within(section).findByRole("heading", { name: "Outgoing relationships" })).toBeInTheDocument();
+        expect(within(section).getByRole("link", { name: "mqtt" })).toBeInTheDocument();
+        expect(mockedGetDiscoveryRelationships).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });
 
     it("does not infer a missing item from error prose", async () => {
         mockedGetDiscoveryItem.mockRejectedValue(new Error("Proxy not found while reading catalog"));
         renderPage();
-        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not load this catalog item. Its current details are unknown.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        const readError = within(technicalDetails as HTMLDetailsElement).getByText("Proxy not found while reading catalog");
+        expect(readError).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(readError).toBeVisible();
         expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
     });
 

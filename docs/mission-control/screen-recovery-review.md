@@ -1142,3 +1142,10 @@ Technical details, and Reload page remains the recovery action.
 Unavailable proposal lists and proposal details now lead with plain-language
 read-failure messages. Backend error text stays under collapsed Technical
 details; the existing retry controls repeat only the corresponding read.
+
+## Discovery item read separation — 2026-10-28
+
+Catalog item details now load independently from related-item relationships.
+If the relationship read fails or returns another item's data, the catalog
+entry remains visible and the relationship section offers a read-only retry.
+Catalog read errors also keep backend text under collapsed Technical details.
