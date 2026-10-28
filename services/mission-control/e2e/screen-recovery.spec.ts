@@ -276,26 +276,33 @@ for (const width of [390, 1280]) {
     });
 }
 
-test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
-    let reads = 0;
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.route("**/agent-api/**/workflows/recovery-workflow/implementation-request", (route) => {
-        reads += 1;
-        return reads === 1
-            ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
-            : route.fulfill({ json: workflowDetail({ workflow_id: "different-workflow" }) });
+for (const width of [390, 1280]) {
+    test(`workflow read failure hides technical errors and keeps recovery at ${width}px`, async ({ page }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/agent-api/**/workflows/recovery-workflow/implementation-request", (route) => {
+            reads += 1;
+            return reads === 1
+                ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
+                : route.fulfill({ json: workflowDetail({ workflow_id: "different-workflow" }) });
+        });
+        await page.goto("/workflows/recovery-workflow");
+        const alert = page.getByRole("alert");
+        await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
+        await expect(alert).toContainText("Mission Control could not load this workflow, so its current status is unknown.");
+        const technicalDetails = alert.locator("details");
+        await expect(technicalDetails).not.toHaveAttribute("open");
+        await expect(alert.getByText("Unavailable", { exact: true })).toBeHidden();
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByRole("alert")).toContainText("does not match this page");
+        await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
+        expect(reads).toBe(2);
+        await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+        await page.getByRole("link", { name: "← All workflows" }).click();
+        await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
     });
-    await page.goto("/workflows/recovery-workflow");
-    await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
-    await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("alert")).toContainText("does not match this page");
-    await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
-    expect(reads).toBe(2);
-    await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.getByRole("link", { name: "← All workflows" }).click();
-    await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
-});
+}
 
 for (const wrongIdentity of [false, true]) {
     test(`planning refuses unavailable or mismatched sessions (${wrongIdentity})`, async ({ page }) => {

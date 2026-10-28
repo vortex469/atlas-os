@@ -1274,3 +1274,12 @@ approval whose response fails, at 390px and 1280px. Both confirm that the page
 refreshes status and removes both decision controls. Lint and production build
 pass. The fixtures reject unexpected mutations and do not establish live Agent
 integration or operator acceptance.
+
+## Workflow read failure wording — 2026-10-28
+
+Workflow-detail read failures now lead with a plain-language notice that the
+current status is unknown. Request errors remain under collapsed Technical
+details, and the read-only retry and workflow-list link stay available. The
+workflow page suite passes (78 tests), and the responsive browser recovery case
+passes at 390px and 1280px. Lint and production build pass. The browser fixture
+tests reads only and rejects unexpected mutations.

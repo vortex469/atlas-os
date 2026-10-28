@@ -43,6 +43,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadErrorDetails, setLoadErrorDetails] = useState<string | null>(null);
     const [approvalError, setApprovalError] = useState<string | null>(null);
     const [approvalResult, setApprovalResult] = useState<WorkflowImplementationApprovalResponse | null>(null);
     const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
@@ -70,12 +71,14 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         if (mode === "initial") setIsLoading(true);
         if (mode === "refresh") setIsRefreshing(true);
         setLoadError(null);
+        setLoadErrorDetails(null);
         try {
             const detail = await getWorkflowDetail(workflowId);
             if (sequence !== readSequence.current) return;
             if (detail && detail.workflow_id !== workflowId) {
                 setWorkflow(null);
                 setLoadError("The returned workflow does not match this page.");
+                setLoadErrorDetails("The workflow ID in the response differs from the requested workflow.");
                 return;
             }
             let nextLifecycle: WorkflowOperationalLifecycle | null = null;
@@ -110,10 +113,11 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setDiagnosticError(nextDiagnosticError);
         } catch (error) {
             if (sequence === readSequence.current) {
-                const message = error instanceof Error && error.message === "Malformed workflow detail payload."
+                const malformed = error instanceof Error && error.message === "Malformed workflow detail payload.";
+                setLoadError(malformed
                     ? "Mission Control could not read this workflow response. Refresh to try again."
-                    : getAtlasAgentErrorMessage(error, "Atlas Agent unavailable.");
-                setLoadError(message);
+                    : "Mission Control could not load this workflow, so its current status is unknown.");
+                setLoadErrorDetails(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
             }
         } finally {
             if (sequence === readSequence.current) {
@@ -244,6 +248,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    {loadErrorDetails && (
+                        <details className="mt-3">
+                            <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                            <p className="mt-2 break-words text-sm text-slate-400">{loadErrorDetails}</p>
+                        </details>
+                    )}
                     <button type="button" onClick={() => void loadWorkflow()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
                 <Link to="/workflows" className="text-sm text-blue-300">← All workflows</Link>

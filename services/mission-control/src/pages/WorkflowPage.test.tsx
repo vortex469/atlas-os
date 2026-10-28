@@ -108,11 +108,27 @@ describe("WorkflowPage", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Workflow unavailable");
         expect(alert).toHaveTextContent("Mission Control could not read this workflow response. Refresh to try again.");
-        expect(alert.textContent).not.toContain("Malformed workflow detail payload.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Malformed workflow detail payload.")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("keeps workflow request errors in collapsed technical details", async () => {
+        mockedGetWorkflowDetail.mockRejectedValue(new Error("Network Error"));
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not load this workflow, so its current status is unknown.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Network Error")).not.toBeVisible();
+        expect(within(alert).getByRole("button", { name: "Try again" })).toBeVisible();
+        expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
+        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
     });
 
     it("shows the exact maintenance request before offering action approval", async () => {
