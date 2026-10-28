@@ -1915,3 +1915,12 @@ suite passes (35 tests), the responsive fixture-backed repository journey
 passes (8 tests at 390px and 1280px), the full Mission Control suite passes
 (2,792 tests across 181 files), and lint and production build pass. Browser
 workflow writes remain intercepted by synthetic fixtures.
+
+## Proposal eligibility wording — 2026-10-28
+
+The proposal list and detail page now label eligible proposals “Eligible for
+planning,” which is shorter and easier to scan. The page still states that
+planning and approval are separate steps. The complete Mission Control suite
+passes (2,792 tests across 181 files), proposal-list browser checks pass at
+390px and 1280px (6 checks), and lint and production build pass. Browser reads
+use synthetic fixtures; no API or approval behavior changed.

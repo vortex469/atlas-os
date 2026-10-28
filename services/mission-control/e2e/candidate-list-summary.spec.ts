@@ -8,7 +8,7 @@ for (const width of [390, 1280]) {
         const proposalCard = page.locator("article").first();
         await expect(proposalCard.getByRole("link", { name: "Review Update Compose Stack proposal" })).toBeVisible();
         await expect(proposalCard.getByText("atlas", { exact: true })).toBeVisible();
-        await expect(proposalCard.getByText("Eligible for planning consideration", { exact: true })).toBeVisible();
+        await expect(proposalCard.getByText("Eligible for planning", { exact: true })).toBeVisible();
         await expect(proposalCard.getByText("Compatible", { exact: true })).toBeVisible();
         await expect(proposalCard.getByText("candidate-browser-baseline", { exact: true })).toBeHidden();
         await expect(page.getByLabel("Category")).toBeHidden();

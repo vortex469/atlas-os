@@ -227,7 +227,7 @@ function formatTimestamp(value: string): string {
 }
 
 function statusText(status: string): string {
-    if (status === "eligible") return "Eligible for planning consideration";
+    if (status === "eligible") return "Eligible for planning";
     if (status === "not_eligible") return "Not eligible for planning";
     if (status === "expired") return "Expired";
     return formatLabel(status);
