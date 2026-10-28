@@ -313,6 +313,7 @@ export function OperationsPage() {
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div
                     className="flex rounded-lg border border-slate-800 bg-slate-900 p-1"
+                    role="group"
                     aria-label="Filter action history"
                 >
                     {(
@@ -325,6 +326,7 @@ export function OperationsPage() {
                         <button
                             key={value}
                             type="button"
+                            aria-pressed={filter === value}
                             onClick={() => {
                                 setFilter(value);
                                 setOffset(0);

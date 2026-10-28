@@ -1990,3 +1990,11 @@ proposal-only first step, and separate approval and execution controls remain
 unchanged. The full Mission Control suite passes (2,793 tests across 181
 files), the maintenance journey passes at 390px and 1280px, and lint and
 production build pass.
+
+## Action history filter accessibility — 2026-10-28
+
+The All, Succeeded, and Failed controls are now exposed as one named filter
+group, and assistive technology can identify the selected status. Filter
+requests and results are unchanged. The full Mission Control suite passes
+(2,793 tests across 181 files), responsive browser checks pass at 390px and
+1280px, and lint and production build pass.

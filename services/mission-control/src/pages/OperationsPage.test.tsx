@@ -174,9 +174,15 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
+        const filters = screen.getByRole("group", { name: "Filter action history" });
+        expect(within(filters).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+        expect(within(filters).getByRole("button", { name: "Succeeded" })).toHaveAttribute("aria-pressed", "false");
+        expect(within(filters).getByRole("button", { name: "Failed" })).toHaveAttribute("aria-pressed", "false");
         await user.click(
             screen.getByRole("button", { name: "Failed" }),
         );
+        expect(within(filters).getByRole("button", { name: "Failed" })).toHaveAttribute("aria-pressed", "true");
+        expect(within(filters).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
 
         await waitFor(() =>
             expect(

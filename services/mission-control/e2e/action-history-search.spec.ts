@@ -1,6 +1,26 @@
 import { expect, test } from "./mission-control-fixtures";
 
 for (const width of [390, 1280]) {
+    test(`action history status filter announces selection at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/operations");
+
+        const filters = page.getByRole("group", { name: "Filter action history" });
+        const all = filters.getByRole("button", { name: "All", exact: true });
+        const succeeded = filters.getByRole("button", { name: "Succeeded", exact: true });
+        const failed = filters.getByRole("button", { name: "Failed", exact: true });
+        await expect(all).toHaveAttribute("aria-pressed", "true");
+        await expect(succeeded).toHaveAttribute("aria-pressed", "false");
+        await expect(failed).toHaveAttribute("aria-pressed", "false");
+
+        await failed.click();
+        await expect(failed).toHaveAttribute("aria-pressed", "true");
+        await expect(all).toHaveAttribute("aria-pressed", "false");
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`action history explains confirmation and action risk at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/ops/actions/page**", (route) => route.fulfill({ json: {
