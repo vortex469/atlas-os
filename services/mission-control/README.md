@@ -36,6 +36,10 @@ planning unavailable. Optional expiry remains supported. The planning entry
 uses plain-language labels and still sends only the candidate ID for backend
 revalidation; it grants no approval or execution permission.
 
+Proposal details put the change, target, current status, rationale, and
+constraints first. IDs and evidence references remain available under optional
+technical details.
+
 Planning and workflow summaries also keep state tied to the current session.
 Responses for another session or plan are refused. Failed workflow validation
 removes cached action controls, and late implementation or recovery responses

@@ -86,34 +86,43 @@ describe("ExecutionCandidateDetailPage", () => {
         mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse());
     });
 
-    it("renders all public candidate fields and boundary wording", async () => {
+    it("leads with the proposal summary and keeps technical references collapsed", async () => {
+        const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "candidate-1" })).toBeInTheDocument();
-        expect(screen.getByText("finding-1")).toBeInTheDocument();
-        expect(screen.getByText("orion")).toBeInTheDocument();
-        expect(screen.getByText("update-compose-stack")).toBeInTheDocument();
-        expect(screen.getByText("catalog-home-assistant")).toBeInTheDocument();
-        expect(screen.getByText("stack-home-assistant")).toBeInTheDocument();
-        expect(screen.getByText("compose_stack")).toBeInTheDocument();
-        expect(screen.getAllByText("Update Compose Stack").length).toBeGreaterThan(0);
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(screen.getByText("For stack-home-assistant (Compose Stack)")).toBeInTheDocument();
         expect(screen.getAllByText("Eligible for planning consideration").length).toBeGreaterThan(0);
         expect(screen.getByText("Standard")).toBeInTheDocument();
         expect(screen.getByText("Update the compose stack after review.")).toBeInTheDocument();
         expect(screen.getByText("service_disruption")).toBeInTheDocument();
-        expect(screen.getByText("evidence-1")).toBeInTheDocument();
-        expect(screen.getByText("compat-1")).toBeInTheDocument();
         expect(screen.getByText("Compatible With Warnings")).toBeInTheDocument();
-        expect(screen.getByText("relationship-1")).toBeInTheDocument();
         expect(screen.getByText(/Planning does not approve or apply a change/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
+
+        expect(screen.getByText("candidate-1")).not.toBeVisible();
+        expect(screen.getByText("finding-1")).not.toBeVisible();
+        expect(screen.getByText("orion")).not.toBeVisible();
+        expect(screen.getByText("catalog-home-assistant")).not.toBeVisible();
+        expect(screen.getByText("compat-1")).not.toBeVisible();
+        expect(screen.getByText("evidence-1")).not.toBeVisible();
+        expect(screen.getByText("relationship-1")).not.toBeVisible();
+
+        await user.click(screen.getByText("Technical references"));
+        expect(screen.getByText("candidate-1")).toBeVisible();
+        expect(screen.getByText("finding-1")).toBeVisible();
+        expect(screen.getByText("orion")).toBeVisible();
+        expect(screen.getByText("catalog-home-assistant")).toBeVisible();
+        expect(screen.getByText("compat-1")).toBeVisible();
+        expect(screen.getByText("evidence-1")).toBeVisible();
+        expect(screen.getByText("relationship-1")).toBeVisible();
     });
 
     it("submits only candidate_id and displays planning session success", async () => {
         const user = userEvent.setup();
         renderPage();
 
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
 
         await waitFor(() =>
@@ -136,7 +145,7 @@ describe("ExecutionCandidateDetailPage", () => {
         );
 
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         const button = screen.getByRole("button", { name: "Start planning" });
         await user.dblClick(button);
 
@@ -163,7 +172,7 @@ describe("ExecutionCandidateDetailPage", () => {
     it("handles unsupported, rejected, stale, Core unavailable, Agent unavailable, and persistence failures", async () => {
         const user = userEvent.setup();
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({
             session_id: null,
@@ -201,12 +210,14 @@ describe("ExecutionCandidateDetailPage", () => {
             ? Promise.resolve(candidate()) : new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/candidate-1"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        expect(screen.queryByRole("heading", { name: "candidate-1" })).not.toBeInTheDocument();
+        expect(screen.getByText("Loading execution candidate…")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
         resolveNext(candidate({ id: "candidate-2" }));
-        expect(await screen.findByRole("heading", { name: "candidate-2" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("Technical references"));
+        expect(screen.getByText("candidate-2")).toBeVisible();
     });
 
     it("recovers when navigating from a missing proposal to a valid one", async () => {
@@ -216,7 +227,9 @@ describe("ExecutionCandidateDetailPage", () => {
         render(<RouterProvider router={router} />);
         await screen.findByRole("heading", { name: "Execution candidate not found" });
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        expect(await screen.findByRole("heading", { name: "candidate-2" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("Technical references"));
+        expect(screen.getByText("candidate-2")).toBeVisible();
     });
 
     it("does not apply a late planning response to a different proposal", async () => {
@@ -227,10 +240,10 @@ describe("ExecutionCandidateDetailPage", () => {
             .mockResolvedValueOnce(planningResponse({ candidate_id: "candidate-2", session_id: "candidate-plan-2" }));
         const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/candidate-1"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        await screen.findByRole("heading", { name: "candidate-2" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         await act(async () => resolvePlanning(planningResponse()));
         expect(screen.queryByText("Planning session ID: candidate-plan-1")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Start planning" }));
@@ -250,7 +263,7 @@ describe("ExecutionCandidateDetailPage", () => {
         const user = userEvent.setup();
         mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ candidate_id: "different-candidate" }));
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("The planning response did not match this proposal.");
         expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
@@ -259,7 +272,7 @@ describe("ExecutionCandidateDetailPage", () => {
     it.each(["not-a-time", "2999-02-30T00:00:00Z", "2999-01-01T00:00:00", ""])("keeps planning disabled for an unverified expiry: %j", async (expires_at) => {
         mockedGetExecutionCandidate.mockResolvedValue(candidate({ expires_at }));
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
         expect(screen.getByText("Unverified expiry")).toBeInTheDocument();
     });
@@ -267,7 +280,7 @@ describe("ExecutionCandidateDetailPage", () => {
     it.each([null, undefined])("preserves planning eligibility when expiry is optional: %j", async (expires_at) => {
         mockedGetExecutionCandidate.mockResolvedValue(candidate({ expires_at }));
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
     });
 

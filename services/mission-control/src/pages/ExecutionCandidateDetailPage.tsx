@@ -114,20 +114,40 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     ← Change proposals
                 </Link>
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Execution Candidate</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Change proposal</p>
                     <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <h1 className="break-all text-3xl font-bold text-white">{candidate.id}</h1>
-                            <p className="mt-2 text-sm text-slate-400">{statusText(candidate.status)}</p>
+                            <h1 className="text-3xl font-bold text-white">{formatLabel(candidate.execution_intent)}</h1>
+                            <p className="mt-2 text-sm text-slate-300">For {candidate.target_id} ({formatLabel(candidate.target_type)})</p>
                         </div>
-                        <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{formatLabel(candidate.execution_intent)}</span>
+                        <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{statusText(candidate.status)}</span>
                     </div>
                     <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
-                        Review this proposal before planning. Planning does not approve or apply a change.
+                        Review the proposed change and its limits before planning. Planning does not approve or apply a change.
                     </p>
                 </div>
                 <PlanningProgress current="Execution Candidate" />
             </header>
+
+            <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" aria-labelledby="proposal-overview-heading">
+                <h2 id="proposal-overview-heading" className="text-lg font-semibold text-white">Proposal overview</h2>
+                <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-3">
+                    <OverviewField label="Change" value={formatLabel(candidate.execution_category)} />
+                    <OverviewField label="Compatibility" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
+                    <OverviewField label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
+                    <OverviewField label="Expires" value={formatExpiry(candidate.expires_at)} />
+                </dl>
+                <div className="mt-5 grid gap-5 border-t border-slate-800 pt-5 lg:grid-cols-2">
+                    <div>
+                        <h3 className="text-sm font-semibold text-white">Why this is proposed</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-300">{candidate.rationale}</p>
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-semibold text-white">Constraints</h3>
+                        <div className="mt-2"><ListField label="Constraints" values={candidate.constraints} empty="No constraints reported." /></div>
+                    </div>
+                </div>
+            </section>
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" aria-labelledby="planning-action-heading">
                 <h2 id="planning-action-heading" className="text-lg font-semibold text-white">Plan this change</h2>
@@ -144,40 +164,28 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-2" aria-label="Execution candidate details">
-                <InfoPanel title="Immutable identity">
-                    <DetailField label="Candidate ID" value={candidate.id} />
-                    <DetailField label="Created" value={formatTimestamp(candidate.created_at)} />
-                    <DetailField label="Expires" value={formatExpiry(candidate.expires_at)} />
-                </InfoPanel>
-                <InfoPanel title="Source recommendation">
-                    <DetailField label="Source recommendation ID" value={candidate.source_recommendation_id} />
-                    <DetailField label="Source subsystem" value={candidate.source_subsystem} />
-                    <DetailField label="Recommendation class" value={candidate.recommendation_class} />
-                    <DetailField label="Catalog item ID" value={candidate.catalog_item_id ?? "Not linked"} />
-                </InfoPanel>
-                <InfoPanel title="Target and classification">
-                    <DetailField label="Target ID" value={candidate.target_id} />
-                    <DetailField label="Target type" value={candidate.target_type} />
-                    <DetailField label="Execution category" value={formatLabel(candidate.execution_category)} />
-                    <DetailField label="Execution intent" value={formatLabel(candidate.execution_intent)} />
-                    <DetailField label="Status" value={statusText(candidate.status)} />
-                    <DetailField label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
-                </InfoPanel>
-                <InfoPanel title="Compatibility and relationships">
-                    <DetailField label="Compatibility assessment ID" value={candidate.compatibility_assessment_id ?? "Not reported"} />
-                    <DetailField label="Compatibility status" value={candidate.compatibility_status ? formatLabel(candidate.compatibility_status) : "Not reported"} />
-                    <ListField label="Relationship IDs" values={candidate.relationship_ids} empty="No relationship IDs." />
-                </InfoPanel>
-            </section>
-
-            <InfoPanel title="Rationale">
-                <p className="text-sm leading-6 text-slate-300">{candidate.rationale}</p>
-            </InfoPanel>
-            <section className="grid gap-4 lg:grid-cols-2">
-                <InfoPanel title="Constraints"><ListField label="Constraints" values={candidate.constraints} empty="No constraints." /></InfoPanel>
-                <InfoPanel title="Evidence IDs"><ListField label="Evidence IDs" values={candidate.evidence_ids} empty="No evidence IDs." /></InfoPanel>
-            </section>
+            <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical references</summary>
+                <section className="mt-5 grid gap-4 lg:grid-cols-2" aria-label="Technical references">
+                    <InfoPanel title="Proposal identity">
+                        <DetailField label="Candidate ID" value={candidate.id} />
+                        <DetailField label="Created" value={formatTimestamp(candidate.created_at)} />
+                    </InfoPanel>
+                    <InfoPanel title="Source recommendation">
+                        <DetailField label="Source recommendation ID" value={candidate.source_recommendation_id} />
+                        <DetailField label="Source subsystem" value={candidate.source_subsystem} />
+                        <DetailField label="Recommendation class" value={candidate.recommendation_class} />
+                        <DetailField label="Catalog item ID" value={candidate.catalog_item_id ?? "Not linked"} />
+                    </InfoPanel>
+                    <InfoPanel title="Compatibility references">
+                        <DetailField label="Compatibility assessment ID" value={candidate.compatibility_assessment_id ?? "Not reported"} />
+                        <ListField label="Relationship IDs" values={candidate.relationship_ids} empty="No relationship IDs." />
+                    </InfoPanel>
+                    <InfoPanel title="Evidence references">
+                        <ListField label="Evidence IDs" values={candidate.evidence_ids} empty="No evidence IDs." />
+                    </InfoPanel>
+                </section>
+            </details>
         </main>
     );
 }
@@ -266,6 +274,10 @@ function InfoPanel({ title, children }: { title: string; children: React.ReactNo
 
 function DetailField({ label, value }: { label: string; value: string }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-sm text-slate-200">{value}</dd></div>;
+}
+
+function OverviewField({ label, value }: { label: string; value: string }) {
+    return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm text-slate-200">{value}</dd></div>;
 }
 
 function ListField({ label, values, empty }: { label: string; values: string[]; empty: string }) {

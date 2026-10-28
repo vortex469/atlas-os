@@ -15,6 +15,7 @@ runtime, tag, or publish a release.
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Workflow directory | Each card shows its current stage, latest result and approval need first; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
+| Change proposal details | The proposed change, target, rationale, constraints and planning boundary lead; technical IDs remain available under optional details | `src/pages/ExecutionCandidateDetailPage.test.tsx`, `e2e/candidate-detail-summary.spec.ts` |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
 | Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
@@ -132,6 +133,16 @@ while entry times use the browser's local time. The explanation is associated
 with both date fields for assistive technology. The focused history suite passes
 (8 tests), responsive browser checks pass at 390px and 1280px (2 tests), and
 lint/build pass. The existing UTC query bounds are unchanged.
+
+## Change proposal detail simplification — 2026-10-28
+
+Proposal detail pages now lead with the human-readable change, target, current
+eligibility, rationale and constraints. Candidate and source IDs plus evidence
+references stay available under collapsed technical details. Focused component
+tests pass (17 tests), responsive browser checks pass at 390px and 1280px (2
+tests), and lint/build pass. The browser checks cover the default collapsed
+view and confirm it adds no mutation requests. Planning still requires an
+explicit operator action and does not approve or apply a change.
 
 ## Acceptance status and remaining gaps
 
