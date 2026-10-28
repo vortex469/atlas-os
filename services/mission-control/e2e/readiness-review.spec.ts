@@ -50,6 +50,10 @@ for (const width of [390, 1280]) {
         await page.getByText("Technical review details", { exact: true }).click();
         await expect(page.getByRole("heading", { name: "Required linkage and fingerprints", exact: true })).toBeVisible();
         await expect(page.getByText("No execution permission evidence has been recorded.", { exact: true })).toBeVisible();
+        await expect(page.getByText("How permission evidence is handled", { exact: true })).toBeVisible();
+        await expect(page.getByText(/Core binds the authenticated operator and exact v0\.20–v0\.34 evidence\/readiness fingerprints/).first()).toBeHidden();
+        await expect(page.getByText("How admission evidence is handled", { exact: true })).toBeVisible();
+        await expect(page.getByText(/Core binds the authenticated operator, exact v0\.20–v0\.35 fingerprints/).first()).toBeHidden();
         await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /record|approve|install|execute|start|deploy/i })).toHaveCount(0);
         await expect(page.getByRole("complementary", { name: "Read-only authority boundary" })).toBeVisible();

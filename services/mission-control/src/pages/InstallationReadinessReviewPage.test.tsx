@@ -129,6 +129,15 @@ describe("InstallationReadinessReviewPage", () => {
         expect(screen.getByRole("status")).toHaveTextContent("No candidate record selected.");
     });
 
+    it("reports a permission-evidence read failure as unavailable", async () => {
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(listExecutionPermissionGrants).mockRejectedValue(new Error("private response"));
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Execution permission evidence is unavailable.");
+        expect(screen.getByRole("alert")).not.toHaveTextContent("could not be recorded");
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
     it("contains explicit non-authorizing copy and no effect controls or action navigation", async () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
         renderPage();
@@ -150,6 +159,8 @@ describe("InstallationReadinessReviewPage", () => {
         vi.mocked(createExecutionPermissionGrant).mockResolvedValue(grantResultFixture);
         renderPage();
         expect(await screen.findByRole("heading", { name: "Active permission evidence" })).toBeInTheDocument();
+        expect(screen.getByText("Record IDs and audit details").closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Record IDs and audit details"));
         expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
         expect(screen.getByText(/permanent reservation: true/i)).toHaveTextContent(/retry allowed: false · replay allowed: false/i);
         fireEvent.click(screen.getByRole("button", { name: "Review permission evidence statement" }));

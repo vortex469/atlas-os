@@ -28,19 +28,21 @@ describe("InstallationExecutionAdmissions", () => {
         const { unmount } = render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[]} homeAssistantBlocked={false} />);
         expect(screen.getByRole("status")).toHaveTextContent(/loading installation execution admission evidence/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no installation execution admission evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no admission evidence has been recorded/i));
         unmount();
         vi.mocked(listInstallationExecutionAdmissions).mockRejectedValue(new Error("secret token /internal/path 10.0.0.1"));
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[]} homeAssistantBlocked={false} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/could not be recorded/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/evidence is unavailable/i);
         expect(document.body).not.toHaveTextContent(/secret token|10\.0\.0\.1/i);
     });
 
     it("renders admission-gated lifecycle, blockers, full linkage, and false authority", async () => {
         vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ ...empty, admissions: [admissionResultFixture] });
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
-        expect(await screen.findByRole("heading", { name: "Active admission-gated evidence" })).toBeInTheDocument();
-        expect(screen.getByText(/readiness: admission_gated; lifecycle: active/i)).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Admission evidence is active" })).toBeInTheDocument();
+        expect(screen.getByText("Admission record details").closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Admission record details"));
+        expect(screen.getByText(/readiness: admission_gated; lifecycle: active/i)).toBeVisible();
         const blockers = screen.getByRole("list", { name: "Ordered admission blockers" });
         expect(within(blockers).getAllByRole("listitem")[0]).toHaveTextContent("Runner binding is not defined");
         expect(within(blockers).getAllByRole("listitem")[1]).toHaveTextContent("Execution start boundary is not defined");
@@ -56,7 +58,7 @@ describe("InstallationExecutionAdmissions", () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: "csrf" };
         vi.mocked(createInstallationExecutionAdmission).mockResolvedValue(admissionResultFixture);
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
-        await screen.findByText(/no installation execution admission evidence/i);
+        await screen.findByText(/no admission evidence has been recorded/i);
         fireEvent.click(screen.getByRole("button", { name: "Review admission evidence statement" }));
         expect(screen.getByLabelText("Admission evidence confirmation")).toHaveTextContent(/records admission evidence only.*does not select or invoke a runner.*does not install or execute anything/i);
         fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
@@ -64,10 +66,21 @@ describe("InstallationExecutionAdmissions", () => {
         expect(createInstallationExecutionAdmission).toHaveBeenCalledWith(uuid4, expect.objectContaining({ permission_grant_id: uuid4, requested_scope: "future_installation_runner_consideration_only", execution_authorized: false, mutation_allowed: false, replay_allowed: false }), "csrf", "stable-admission-key");
     });
 
+    it("reports a failed record without retaining the empty state", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: "csrf" };
+        vi.mocked(createInstallationExecutionAdmission).mockRejectedValue(new Error("private response"));
+        render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
+        await screen.findByText(/no admission evidence has been recorded/i);
+        fireEvent.click(screen.getByRole("button", { name: "Review admission evidence statement" }));
+        fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Installation execution admission evidence could not be recorded.");
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
     it("keeps Home Assistant and expired grants blocked with no creation control", async () => {
         const expired = { ...grantResultFixture, status: { ...grantResultFixture.status!, lifecycle: "expired" as const } };
         const { rerender } = render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[expired]} homeAssistantBlocked={false} />);
-        await screen.findByText(/creation remains blocked/i);
+        await screen.findByText(/cannot be recorded yet/i);
         expect(screen.queryByRole("button", { name: /admission evidence/i })).not.toBeInTheDocument();
         rerender(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={true} />);
         expect(screen.getByText(/Home Assistant remains blocked, non-installable, and non-executable/i)).toBeInTheDocument();

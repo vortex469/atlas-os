@@ -164,10 +164,13 @@ cover expansion, active-filter visibility, and unchanged query fields.
 The review now leads with its blocked or readiness-gated state, a plain-language
 explanation and ordered blockers. Evidence kinds are human-readable, and UTC
 expiry times remain visible. Record IDs, hashes, blocker codes, full linkage,
-audit fields and fixed authority fields remain under optional details. The
-focused page suite passes (9 tests), responsive browser checks pass at 390px
-and 1280px (2 tests), and lint/build pass. Permission-evidence confirmation
-and request contracts are unchanged.
+audit fields and fixed authority fields remain under optional details.
+Permission and admission records lead with their state and blockers; IDs,
+fingerprints, linkage and authority fields are expandable. Read failures and
+failed record requests have separate messages. The combined component suites
+pass (15 tests), responsive browser checks pass at 390px and 1280px (2 tests),
+and lint/build pass. Permission-evidence confirmation and request contracts
+are unchanged.
 
 ## Acceptance status and remaining gaps
 

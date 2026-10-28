@@ -104,7 +104,9 @@ are retained; they do not promise permanent storage.
 
 Installation readiness reviews lead with their state and blockers. Evidence
 IDs, hashes, blocker codes, linkage, and audit fields are under optional
-details, with evidence expiry shown in UTC. Recording permission evidence
+details, with evidence expiry shown in UTC. Permission and admission records
+show their state first and keep technical references optional. Read errors and
+failed record requests are reported separately. Recording permission evidence
 remains a separate exact-confirmation step.
 
 Provider action, connection and monitoring panels reset when the provider
