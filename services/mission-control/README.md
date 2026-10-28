@@ -123,7 +123,9 @@ monitoring selections cannot appear under the next provider. Late action
 results do not populate or refresh a different provider's panel. Previously
 submitted actions remain associated with their original provider and its
 recorded action history. Confirmation and backend permission checks remain
-in their existing controls.
+in their existing controls. Connection settings show a saved status only after
+Core returns the settings; a failed read can be refreshed without testing or
+saving a connection.
 
 Action-history date filters cover whole UTC days; timestamps in the results
 use the browser's local time zone.

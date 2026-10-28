@@ -173,6 +173,28 @@ describe("ProviderConnection", () => {
         expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
     });
 
+    it("shows unavailable settings after a failed read and recovers on refresh", async () => {
+        mockedGetProviderConnection
+            .mockRejectedValueOnce(new Error("Core unavailable"))
+            .mockResolvedValueOnce(proxmoxSchema());
+        const user = userEvent.setup();
+
+        render(<ProviderConnection provider={provider} />);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Core unavailable");
+        expect(screen.queryByText(/Saved settings:/)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh settings" })).toBeEnabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+
+        expect(await screen.findByLabelText("Host")).toHaveValue("10.10.50.10");
+        expect(screen.getByText("Saved settings: incomplete")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(2);
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetProviderConnection.mockResolvedValue(proxmoxSchema());
@@ -313,7 +335,7 @@ describe("ProviderConnection", () => {
         await screen.findByText(/Test success/);
         let rejectRead!: (reason: Error) => void;
         mockedGetProviderConnection.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
-        await user.click(screen.getByRole("button", { name: "Reload Schema" }));
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
         expect(screen.queryByText(/Test success/)).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Settings unavailable")); });
         expect(await screen.findByRole("alert")).toHaveTextContent("Settings unavailable");

@@ -60,7 +60,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             setError(
                 getAtlasErrorMessage(
                     requestError,
-                    `Mission Control could not load the connection schema for ${provider.name}.`,
+                    `Mission Control could not load connection settings for ${provider.name}.`,
                 ),
             );
         } finally {
@@ -97,7 +97,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     setError(
                         getAtlasErrorMessage(
                             requestError,
-                            `Mission Control could not load the connection schema for ${provider.name}.`,
+                            `Mission Control could not load connection settings for ${provider.name}.`,
                         ),
                     );
                 })
@@ -237,9 +237,11 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <span className={statusClass(statusLabel)}>
-                            {statusLabel}
-                        </span>
+                        {schema && (
+                            <span className={statusClass(statusLabel)}>
+                                Saved settings: {statusLabel}
+                            </span>
+                        )}
                         {schema?.updated_at && (
                             <p className="mt-2 text-xs text-slate-500">
                                 Last updated {formatTimestamp(schema.updated_at)}
@@ -263,13 +265,13 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                         disabled={isBusy}
                         className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Reload Schema
+                        Refresh settings
                     </button>
                 </div>
 
                 {busyMode === "loading" && (
                     <p className="mt-6 text-sm text-slate-400">
-                        Loading connection schema...
+                        Loading connection settings...
                     </p>
                 )}
 
