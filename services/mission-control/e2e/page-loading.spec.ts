@@ -10,7 +10,7 @@ test("a delayed screen keeps navigation usable and pauses the previous page", as
     });
     await page.goto("/");
     await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
-    await page.getByRole("link", { name: "Forge", exact: true }).click();
+    await page.getByRole("link", { name: "Deployment analysis", exact: true }).click();
     try {
         await expect(page.getByText("Loading page...", { exact: true })).toBeVisible();
         await expect(page.locator("#mc-page-content")).toHaveAttribute("inert", "");
@@ -18,7 +18,7 @@ test("a delayed screen keeps navigation usable and pauses the previous page", as
     } finally {
         release();
     }
-    await expect(page.getByRole("heading", { name: "Atlas Forge" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Deployment analysis" })).toBeVisible();
     await expect(page.locator("#mc-page-content")).not.toHaveAttribute("inert", "");
     await expect(page.getByText("Loading page...", { exact: true })).toHaveCount(0);
 });
@@ -33,7 +33,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("link", { name: "Return to Mission Control" })).toHaveAttribute("href", "/");
         await page.unroute("**/src/pages/ForgePage.tsx*");
         await page.getByRole("button", { name: "Reload page" }).click();
-        await expect(page.getByRole("heading", { name: "Atlas Forge" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Deployment analysis" })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }
@@ -47,7 +47,7 @@ test("leaving a pending screen ignores its late module", async ({ page }) => {
         await route.continue();
     });
     await page.goto("/");
-    await page.getByRole("link", { name: "Forge", exact: true }).click();
+    await page.getByRole("link", { name: "Deployment analysis", exact: true }).click();
     const completed = page.waitForResponse("**/src/pages/ForgePage.tsx*");
     try {
         await expect(page.getByText("Loading page...", { exact: true })).toBeVisible();
@@ -60,5 +60,5 @@ test("leaving a pending screen ignores its late module", async ({ page }) => {
     await completed;
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Atlas Forge" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Deployment analysis" })).toHaveCount(0);
 });

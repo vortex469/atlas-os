@@ -164,7 +164,7 @@ describe("MainLayout", () => {
             ["/", "Mission Control"],
             ["/operations", "Action history"],
             ["/discovery", "Discovery"],
-            ["/forge", "Forge"],
+            ["/forge", "Deployment analysis"],
         ])("surfaces the context label for %s", (initialPath, label) => {
             renderAt(initialPath);
 
@@ -246,11 +246,11 @@ describe("MainLayout", () => {
 
             await user.click(screen.getByRole("button", { name: "Open navigation" }));
             const dialog = screen.getByRole("dialog");
-            await user.click(within(dialog).getByRole("link", { name: "Forge" }));
+            await user.click(within(dialog).getByRole("link", { name: "Deployment analysis" }));
 
             expect(screen.queryByRole("dialog")).toBeNull();
             expect(
-                screen.getByLabelText("Current page: Forge"),
+                screen.getByLabelText("Current page: Deployment analysis"),
             ).toBeInTheDocument();
         });
     });
@@ -264,7 +264,7 @@ describe("MainLayout", () => {
         const dialog = screen.getByRole("dialog");
         expect(document.querySelector(".mc-shell-header")).toHaveAttribute("inert");
         const close = within(dialog).getByRole("button", { name: "Close navigation" });
-        const last = within(dialog).getByRole("link", { name: "Forge" });
+        const last = within(dialog).getByRole("link", { name: "Deployment analysis" });
         close.focus();
         await user.tab({ shift: true });
         expect(last).toHaveFocus();
@@ -329,7 +329,7 @@ describe("MainLayout", () => {
                 "Discovery",
                 "Change proposals",
                 "Workflows",
-                "Forge",
+                "Deployment analysis",
             ]);
             expect(
                 primaryNavigationItems.map((item) => item.path),

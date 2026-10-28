@@ -55,10 +55,10 @@ const routes = [
         },
     },
     {
-        label: "Forge",
+        label: "Deployment analysis",
         path: "/forge",
         assertion: async (page) => {
-            await expect(page.getByRole("heading", { name: "Atlas Forge" })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Deployment analysis" })).toBeVisible();
         },
     },
 ] satisfies Array<{

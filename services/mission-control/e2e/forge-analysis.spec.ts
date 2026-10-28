@@ -44,7 +44,7 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 844 });
         await page.goto("/forge");
         await page.getByLabel("Deployment name").fill("first-analysis");
-        await page.getByLabel("Compose document").fill("services:\n  web:\n    image: example.invalid/fixture:one\n");
+        await page.getByLabel("Docker Compose file").fill("services:\n  web:\n    image: example.invalid/fixture:one\n");
         await page.getByRole("button", { name: "Analyze Deployment" }).click();
         await expect(page.getByText("first-analysis", { exact: true }).first()).toBeVisible();
         await page.getByLabel("Deployment name").fill("current-analysis");

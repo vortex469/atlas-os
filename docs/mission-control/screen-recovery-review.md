@@ -26,7 +26,7 @@ runtime, tag, or publish a release.
 | Provider action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results; UTC date filters are explained beside local display times | `src/pages/OperationsPage.test.tsx`, `e2e/action-history-dates.spec.ts` |
 | Atlas Doctor | Rerunning clears the previous report; pending and failed reads cannot retain an old healthy score | `src/components/AtlasDoctorPanel.test.tsx` includes healthy-to-pending-to-unavailable coverage |
 | Provider connections | Saved status appears only after settings load; failed reads can be refreshed without testing or saving; field origins use plain labels; test results lead with success or failure while diagnostics stay optional; editing inputs or reloading clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` covers read recovery, source labels, collapsed diagnostics, stale-result invalidation and synthetic secret canaries, and mocks every test/save request |
-| Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
+| Deployment analysis | The menu and page name the task; input, findings, and proposed steps are clear; the page says it does not deploy; edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts`, shell/navigation browser checks |
 | Installation readiness | Review state and plain-language blockers lead; evidence IDs, linkage fingerprints and audit fields are available under optional details; owner evidence stays bound to the current record | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
 
 Paths in the table are relative to `services/mission-control`.
@@ -311,12 +311,12 @@ under collapsed “Technical details.” Focused overview tests, lint, build and
 responsive browser checks cover the wording and keyboard access; provider
 evidence and action boundaries are unchanged.
 
-## Forge findings wording — 2026-10-28
+## Deployment analysis findings wording — 2026-10-28
 
-Forge labels the analyzer output “Findings.” An empty list says only that no
+The analyzer output is labeled “Findings.” An empty list says only that no
 findings were reported for the Compose file; it no longer claims that the
-deployment has no security or operational concerns. The Forge test checks the
-scoped empty state; analysis and deployment authority are unchanged.
+deployment has no security or operational concerns. A focused component test
+checks the scoped empty state; analysis and deployment authority are unchanged.
 
 ## Mission Control page title — 2026-10-28
 
@@ -324,6 +324,14 @@ The home page title and main landmark now use “Mission Control” without the
 extra “command center” wording. Shell, navigation and screen-recovery browser
 checks cover the visible title and landmark; routes and page content are
 unchanged.
+
+## Deployment analysis labels — 2026-10-28
+
+The former “Forge” menu item and page title now say “Deployment analysis.” The
+page names the Docker Compose input and states that it reviews findings and
+suggested steps without deploying anything. The Agent overview link uses the
+same task name. Focused component, shell and route checks cover these labels;
+the route and action boundaries are unchanged.
 
 ## Monitoring suggestion wording — 2026-10-28
 

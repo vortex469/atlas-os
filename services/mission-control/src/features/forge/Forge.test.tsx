@@ -22,7 +22,7 @@ const submit = () => fireEvent.click(screen.getByRole("button", { name: "Analyze
 describe("Forge analysis freshness", () => {
     beforeEach(() => { analyze.mockReset().mockResolvedValue(analysis("Original result")); });
 
-    it.each(["Deployment name", "Compose document"])("clears a displayed result when %s changes", async (label) => {
+    it.each(["Deployment name", "Docker Compose file"])("clears a displayed result when %s changes", async (label) => {
         render(<Forge />);
         submit();
         await screen.findAllByText("Original result");
@@ -53,7 +53,7 @@ describe("Forge analysis freshness", () => {
             .mockImplementationOnce(() => new Promise((resolve) => { resolveCurrent = resolve; }));
         render(<Forge />);
         submit();
-        fireEvent.change(screen.getByLabelText("Compose document"), { target: { value: "services: {}" } });
+        fireEvent.change(screen.getByLabelText("Docker Compose file"), { target: { value: "services: {}" } });
         submit();
         await act(async () => rejectOld(new Error("Old failure")));
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -77,9 +77,9 @@ describe("Forge analysis freshness", () => {
 
     it("requires a document and name before analysis", () => {
         render(<Forge />);
-        fireEvent.change(screen.getByLabelText("Compose document"), { target: { value: " " } });
+        fireEvent.change(screen.getByLabelText("Docker Compose file"), { target: { value: " " } });
         submit();
-        expect(screen.getByRole("alert")).toHaveTextContent("Add a Compose document");
+        expect(screen.getByRole("alert")).toHaveTextContent("Add a Docker Compose file");
         fireEvent.change(screen.getByLabelText("Deployment name"), { target: { value: " " } });
         submit();
         expect(screen.getByRole("alert")).toHaveTextContent("Deployment name is required");
@@ -119,5 +119,12 @@ describe("Forge analysis freshness", () => {
         expect(screen.getByRole("heading", { name: "Findings" })).toBeInTheDocument();
         expect(screen.getByText("No findings were reported for this Compose file.")).toBeInTheDocument();
         expect(screen.queryByText(/security or operational concerns/)).not.toBeInTheDocument();
+    });
+
+    it("states what deployment analysis does and does not do", () => {
+        render(<Forge />);
+        expect(screen.getByRole("heading", { name: "Deployment analysis" })).toBeInTheDocument();
+        expect(screen.getByText("Review a Docker Compose file, findings, and suggested steps. This page does not deploy anything.")).toBeInTheDocument();
+        expect(screen.queryByText("Atlas Forge")).not.toBeInTheDocument();
     });
 });

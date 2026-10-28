@@ -13,7 +13,7 @@ Mission Control is the Atlas OS operator interface: a React, TypeScript, and Vit
 - Execution-candidate browsing, planning sessions, workflow-shell intake, exact repository approval stages, execution/verification/review/commit artifacts, workflow dashboards, timelines, and audit-chain views.
 - Operational maintenance request preparation, operational lifecycle/history, recovery guidance, diagnostics, and support-bundle access.
 - Core-owned operator login and session handling for protected mutations.
-- Forge deployment analysis and planning views.
+- Deployment analysis and planning from Docker Compose files.
 
 Mission Control presents and submits requests to authoritative backend contracts. It does not itself execute infrastructure changes, decide approval, expand intent sets, or bypass server-side identity, permission, target-fingerprint, and exact-approval checks.
 

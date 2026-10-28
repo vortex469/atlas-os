@@ -15,12 +15,12 @@ export function Forge() {
         <main className="mx-auto max-w-7xl space-y-8 p-8">
             <header>
                 <h1 className="text-3xl font-bold text-slate-100">
-                    Atlas Forge
+                    Deployment analysis
                 </h1>
 
                 <p className="mt-2 text-slate-400">
-                    Analyze, understand, and prepare deployments before
-                    execution.
+                    Review a Docker Compose file, findings, and suggested
+                    steps. This page does not deploy anything.
                 </p>
             </header>
 
@@ -42,7 +42,7 @@ export function Forge() {
             {result && (
                 <details className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                     <summary className="cursor-pointer text-sm font-semibold text-slate-300">
-                        Developer Output
+                        Technical details
                     </summary>
 
                     <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-xs text-slate-400">

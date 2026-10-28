@@ -48,7 +48,7 @@ export function ComposeEditor({
         }
 
         if (!compose.trim()) {
-            setError("Add a Compose document to analyze.");
+            setError("Add a Docker Compose file to analyze.");
             return;
         }
 
@@ -78,12 +78,11 @@ export function ComposeEditor({
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
             <div className="mb-4">
                 <h2 className="text-lg font-semibold text-slate-100">
-                    Compose Deployment
+                    Docker Compose file
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                    Paste or edit a Docker Compose document for Atlas to
-                    analyze.
+                    Paste or edit a Docker Compose file for review.
                 </p>
             </div>
 
@@ -104,7 +103,7 @@ export function ComposeEditor({
                 />
             </label>
 
-            <label htmlFor="forge-compose" className="mb-2 block text-sm font-medium text-slate-300">Compose document</label>
+            <label htmlFor="forge-compose" className="mb-2 block text-sm font-medium text-slate-300">Docker Compose file</label>
             <textarea id="forge-compose"
                 value={compose}
                 onChange={(event) => {

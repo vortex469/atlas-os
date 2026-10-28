@@ -58,7 +58,7 @@ export const primaryNavigationItems: NavigationItem[] = [
         path: "/workflows",
     },
     {
-        label: "Forge",
+        label: "Deployment analysis",
         path: "/forge",
     },
 ];

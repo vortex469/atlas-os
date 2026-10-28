@@ -10,11 +10,11 @@ describe("Mission Control 2.0 shell navigation boundary", () => {
         expect(navigation).toMatch(/from "\.\.\/app\/navigation"/);
         // The shell must not define its own enabled destination list.
         expect(navigation).not.toMatch(/label:\s*"Mission Control"/);
-        expect(navigation).not.toMatch(/label:\s*"Forge"/);
+        expect(navigation).not.toMatch(/label:\s*"Deployment analysis"/);
         // Every enabled destination label lives in exactly one metadata
         // module so desktop and mobile surfaces cannot drift apart.
         expect(navigationMetadata).toMatch(/label:\s*"Mission Control"/);
-        expect(navigationMetadata).toMatch(/label:\s*"Forge"/);
+        expect(navigationMetadata).toMatch(/label:\s*"Deployment analysis"/);
     });
 
     it("keeps only supported destinations in the visible menu", () => {

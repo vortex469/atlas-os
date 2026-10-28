@@ -15,7 +15,7 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByRole("link", { name: "Discovery", exact: true })).toHaveAttribute("href", "/discovery");
     await expect(page.getByRole("link", { name: "Change proposals", exact: true })).toHaveAttribute("href", "/execution-candidates");
     await expect(page.getByRole("link", { name: "Workflows", exact: true })).toHaveAttribute("href", "/workflows");
-    await expect(page.getByRole("link", { name: "Forge", exact: true })).toHaveAttribute("href", "/forge");
+    await expect(page.getByRole("link", { name: "Deployment analysis", exact: true })).toHaveAttribute("href", "/forge");
 
     const navigation = page.getByRole("navigation", { name: "Primary" }).first();
     for (const unavailable of ["Knowledge", "Developer", "Settings", "Soon"]) {
@@ -58,7 +58,7 @@ test.describe("Mobile navigation", () => {
             "Discovery",
             "Change proposals",
             "Workflows",
-            "Forge",
+            "Deployment analysis",
         ]) {
             await expect(dialog.getByRole("link", { name: label, exact: true })).toBeVisible();
         }
@@ -82,7 +82,7 @@ test.describe("Mobile navigation", () => {
         await trigger.click();
         await page.goBack();
         await expect(page.getByRole("dialog")).toHaveCount(0);
-        await expect(page.getByLabel("Current page: Forge")).toBeVisible();
+        await expect(page.getByLabel("Current page: Deployment analysis")).toBeVisible();
         await page.goForward();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await trigger.click();
@@ -106,7 +106,7 @@ test.describe("Mobile navigation", () => {
         const dialog = page.getByRole("dialog");
         await dialog.getByRole("button", { name: "Close navigation" }).focus();
         await page.keyboard.press("Shift+Tab");
-        await expect(dialog.getByRole("link", { name: "Forge", exact: true })).toBeFocused();
+        await expect(dialog.getByRole("link", { name: "Deployment analysis", exact: true })).toBeFocused();
         await page.keyboard.press("Tab");
         await expect(dialog.getByRole("button", { name: "Close navigation" })).toBeFocused();
         await page.keyboard.press("Escape");
