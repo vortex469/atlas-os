@@ -320,6 +320,44 @@ for (const wrongIdentity of [false, true]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`malformed saved plans keep workflow controls hidden at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/**/candidate-planning/malformed-plan", (route) => route.fulfill({ json: {
+            session_id: "malformed-plan",
+            candidate_id: "candidate-browser",
+            status: "plan_ready",
+            planning_allowed: true,
+            intake_status: "accepted_for_planning",
+            intake_reason_codes: [],
+            candidate_fingerprint: "candidate-fingerprint",
+            unsupported_reason: null,
+            plan: {
+                identifier: "plan-browser",
+                session_id: "malformed-plan",
+                candidate_id: "candidate-browser",
+                candidate_fingerprint: "candidate-fingerprint",
+                title: "Update service configuration",
+                objective: "Review the proposed configuration change.",
+                assumptions: [], constraints: [], proposed_steps: null,
+                likely_affected_components: [], likely_affected_files: [], verification_strategy: [],
+                rollback_considerations: [], unresolved_questions: [], evidence_ids: [],
+                created_at: "2026-10-28T00:00:00Z", repository_branch: null, repository_head: null,
+                revalidated_candidate_fingerprint: "candidate-fingerprint",
+            },
+            planning_failure: null,
+        } }));
+        await page.goto("/candidate-planning/malformed-plan");
+
+        await expect(page.getByRole("heading", { name: "Planning session unavailable" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Generate Plan" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Create Workflow" })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
     test(`unknown pages retain navigation at ${viewport.width}px`, async ({ page }) => {
         await page.setViewportSize(viewport);

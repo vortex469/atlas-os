@@ -6,6 +6,7 @@ import type {
     CandidatePlanningRequest,
     CandidatePlanningSuccessorRequest,
     CandidatePlanningResponse,
+    OperationalCandidatePlanApiResponse,
     CandidateImplementationTranslationRequest,
     CandidateImplementationTranslationResponse,
     CandidateWorkflowRequest,
@@ -539,6 +540,99 @@ function parseWorkflowDetailResponse(value: unknown): WorkflowDetailResponse {
     return value as unknown as WorkflowDetailResponse;
 }
 
+function isCandidatePlan(value: unknown): value is CandidatePlanApiResponse {
+    return isPlainRecord(value)
+        && isSafeRouteId(value.identifier)
+        && isSafeRouteId(value.session_id)
+        && isSafeRouteId(value.candidate_id)
+        && isNonEmptyString(value.candidate_fingerprint)
+        && typeof value.title === "string"
+        && typeof value.objective === "string"
+        && hasStringArrayFields(value, [
+            "assumptions", "constraints", "proposed_steps", "likely_affected_components",
+            "likely_affected_files", "verification_strategy", "rollback_considerations",
+            "unresolved_questions", "evidence_ids",
+        ])
+        && typeof value.created_at === "string" && Number.isFinite(Date.parse(value.created_at))
+        && isNullableString(value.repository_branch)
+        && isNullableString(value.repository_head)
+        && isNonEmptyString(value.revalidated_candidate_fingerprint);
+}
+
+function isOperationalCandidatePlan(value: unknown): value is OperationalCandidatePlanApiResponse {
+    return isPlainRecord(value)
+        && isSafeRouteId(value.identifier)
+        && isSafeRouteId(value.session_id)
+        && isSafeRouteId(value.candidate_id)
+        && isNonEmptyString(value.candidate_fingerprint)
+        && value.effect_kind === "operational_action"
+        && isNonEmptyString(value.execution_intent)
+        && isNonEmptyString(value.provider_id)
+        && isNonEmptyString(value.resource_id)
+        && isNonEmptyString(value.resource_type)
+        && isNonEmptyString(value.target_fingerprint)
+        && isNullableString(value.target_version)
+        && isNonEmptyString(value.expected_pre_state)
+        && isNonEmptyString(value.intended_action)
+        && isNonEmptyString(value.disruption_scope)
+        && isPlainRecord(value.verification)
+        && isNonEmptyString(value.verification.pre_state)
+        && isNonEmptyString(value.verification.expected_post_state)
+        && isNonEmptyString(value.verification.identity_fingerprint)
+        && isNonEmptyString(value.verification.health_requirement)
+        && isNonEmptyString(value.verification.unknown_outcome_policy)
+        && hasStringArrayFields(value, ["failure_considerations", "evidence_ids"])
+        && typeof value.created_at === "string" && Number.isFinite(Date.parse(value.created_at))
+        && isNonEmptyString(value.revalidated_candidate_fingerprint);
+}
+
+function isCandidatePlanningFailure(value: unknown): boolean {
+    return value === null || (isPlainRecord(value)
+        && typeof value.code === "string"
+        && typeof value.message === "string");
+}
+
+function parseCandidatePlanningResponse(value: unknown): CandidatePlanningResponse {
+    if (!isPlainRecord(value)
+        || !(value.session_id === null || isSafeRouteId(value.session_id))
+        || !isSafeRouteId(value.candidate_id)
+        || typeof value.status !== "string"
+        || typeof value.planning_allowed !== "boolean"
+        || typeof value.intake_status !== "string"
+        || !hasStringArrayFields(value, ["intake_reason_codes"])
+        || !isNullableString(value.candidate_fingerprint)
+        || !isNullableString(value.unsupported_reason)
+        || !(value.plan === null || isCandidatePlan(value.plan))
+        || !(value.operational_plan === undefined || value.operational_plan === null || isOperationalCandidatePlan(value.operational_plan))
+        || !isCandidatePlanningFailure(value.planning_failure)
+        || !(value.predecessor_session_id === undefined || value.predecessor_session_id === null || isSafeRouteId(value.predecessor_session_id))
+        || !(value.successor_session_id === undefined || value.successor_session_id === null || isSafeRouteId(value.successor_session_id))) {
+        throw new Error("Malformed candidate planning response.");
+    }
+
+    return value as unknown as CandidatePlanningResponse;
+}
+
+function parseCandidateWorkflowResponse(value: unknown): CandidateWorkflowResponse {
+    if (!isPlainRecord(value)
+        || !isSafeRouteId(value.candidate_planning_session_id)
+        || !isSafeRouteId(value.candidate_id)
+        || !isNullableString(value.candidate_fingerprint)
+        || !isNullableString(value.candidate_plan_id)
+        || !isNullableString(value.candidate_plan_fingerprint)
+        || !isNullableString(value.workflow_session_id)
+        || !isNullableString(value.workflow_status)
+        || !isNullableString(value.implementation_approval_request_id)
+        || !isNonEmptyString(value.conversion_status)
+        || !isNullableString(value.core_revalidation_status)
+        || !hasStringArrayFields(value, ["reason_codes"])
+        || !isCandidatePlanningFailure(value.failure)) {
+        throw new Error("Malformed candidate workflow response.");
+    }
+
+    return value as unknown as CandidateWorkflowResponse;
+}
+
 function parseAgentInfo(value: unknown): AgentInfo {
     if (!isRecord(value) || !isRecord(value.install_container)) {
         throw new Error("Malformed Atlas Agent information payload.");
@@ -742,18 +836,18 @@ export async function createCandidatePlanningSession(
         request,
     );
 
-    return response.data;
+    return parseCandidatePlanningResponse(response.data);
 }
 
 export async function getCandidatePlanningSession(
     sessionId: string,
 ): Promise<CandidatePlanningResponse | null> {
     try {
-        const response = await atlasAgent.get<CandidatePlanningResponse>(
+        const response = await atlasAgent.get<unknown>(
             `/candidate-planning/${encodeURIComponent(sessionId)}`,
         );
 
-        return response.data;
+        return parseCandidatePlanningResponse(response.data);
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
             return null;
@@ -766,22 +860,24 @@ export async function getCandidatePlanningSession(
 export async function generateCandidatePlan(
     sessionId: string,
 ): Promise<CandidatePlanningResponse> {
-    const response = await atlasAgent.post<CandidatePlanningResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/candidate-planning/${encodeURIComponent(sessionId)}/plan`,
     );
 
-    return response.data;
+    return parseCandidatePlanningResponse(response.data);
 }
 
 export async function getCandidatePlan(
     sessionId: string,
 ): Promise<CandidatePlanApiResponse | null> {
     try {
-        const response = await atlasAgent.get<CandidatePlanApiResponse>(
+        const response = await atlasAgent.get<unknown>(
             `/candidate-planning/${encodeURIComponent(sessionId)}/plan`,
         );
 
-        return response.data;
+        const plan = response.data;
+        if (!isCandidatePlan(plan)) throw new Error("Malformed candidate plan response.");
+        return plan;
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
             return null;
@@ -795,24 +891,24 @@ export async function createSuccessorCandidatePlanningSession(
     sessionId: string,
     request?: CandidatePlanningSuccessorRequest,
 ): Promise<CandidatePlanningResponse> {
-    const response = await atlasAgent.post<CandidatePlanningResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/candidate-planning/${encodeURIComponent(sessionId)}/successor`,
         request,
     );
 
-    return response.data;
+    return parseCandidatePlanningResponse(response.data);
 }
 
 export async function createCandidateWorkflowShell(
     sessionId: string,
     request?: CandidateWorkflowRequest,
 ): Promise<CandidateWorkflowResponse> {
-    const response = await atlasAgent.post<CandidateWorkflowResponse>(
+    const response = await atlasAgent.post<unknown>(
         `/candidate-planning/${encodeURIComponent(sessionId)}/workflow`,
         request,
     );
 
-    return response.data;
+    return parseCandidateWorkflowResponse(response.data);
 }
 
 export async function createCandidateImplementationRequest(

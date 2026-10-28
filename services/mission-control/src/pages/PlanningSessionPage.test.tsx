@@ -461,6 +461,30 @@ describe("PlanningSessionPage", () => {
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
     });
 
+    it("keeps planning controls hidden when the session response is unreadable", async () => {
+        mockedGetCandidatePlanningSession.mockRejectedValue(new Error("Malformed candidate planning response."));
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not load this planning session, so its current status is unknown.");
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+    });
+
+    it("does not offer workflow creation when the generated plan response is unreadable", async () => {
+        mockedGenerateCandidatePlan.mockRejectedValue(new Error("Malformed candidate planning response."));
+        const user = userEvent.setup();
+        renderPage();
+
+        await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Plan result unavailable");
+        expect(alert).toHaveTextContent("Mission Control could not verify the plan result.");
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
+    });
+
     it("does not show a ready plan belonging to another session", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan({ session_id: "other-session" }) }));
         renderPage();

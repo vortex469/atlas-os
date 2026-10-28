@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGet } = vi.hoisted(() => ({
+const { mockGet, mockPost } = vi.hoisted(() => ({
     mockGet: vi.fn(),
+    mockPost: vi.fn(),
 }));
 
 vi.mock("axios", () => ({
     default: {
-        create: () => ({ get: mockGet }),
+        create: () => ({ get: mockGet, post: mockPost }),
     },
     isAxiosError: (error: unknown): error is { response?: { status?: number } } => {
         return !!error && typeof error === "object" && "isAxiosError" in (error as { isAxiosError?: boolean });
@@ -14,7 +15,11 @@ vi.mock("axios", () => ({
 }));
 
 import {
+    createCandidateWorkflowShell,
+    generateCandidatePlan,
     getAgentInfo,
+    getCandidatePlan,
+    getCandidatePlanningSession,
     getReviewReport,
     getSprintStatus,
     getVerificationReport,
@@ -28,6 +33,42 @@ import {
 import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
 import { workflowAudit } from "../test/workflowAudit";
 import { workflowDetail } from "../test/workflowDetail";
+
+function candidatePlan(overrides: Record<string, unknown> = {}) {
+    return {
+        identifier: "plan-one",
+        session_id: "session-one",
+        candidate_id: "candidate-one",
+        candidate_fingerprint: "fingerprint-one",
+        title: "Update service configuration",
+        objective: "Review a safe configuration change.",
+        assumptions: [], constraints: [], proposed_steps: ["Review the change"],
+        likely_affected_components: [], likely_affected_files: [], verification_strategy: [],
+        rollback_considerations: [], unresolved_questions: [], evidence_ids: [],
+        created_at: "2026-10-28T00:00:00Z", repository_branch: null, repository_head: null,
+        revalidated_candidate_fingerprint: "fingerprint-one",
+        ...overrides,
+    };
+}
+
+function candidatePlanning(overrides: Record<string, unknown> = {}) {
+    return {
+        session_id: "session-one",
+        candidate_id: "candidate-one",
+        status: "ready_for_planning",
+        planning_allowed: true,
+        intake_status: "accepted_for_planning",
+        intake_reason_codes: [],
+        candidate_fingerprint: "fingerprint-one",
+        unsupported_reason: null,
+        plan: null,
+        operational_plan: null,
+        planning_failure: null,
+        predecessor_session_id: null,
+        successor_session_id: null,
+        ...overrides,
+    };
+}
 
 function axiosError(status: number): unknown {
     const error = new Error(`Request failed with status code ${status}`) as unknown as {
@@ -44,6 +85,65 @@ function axiosError(status: number): unknown {
 describe("Atlas Agent optional summary endpoints", () => {
     beforeEach(() => {
         mockGet.mockReset();
+        mockPost.mockReset();
+    });
+
+    it("reads a complete planning session before presentation", async () => {
+        const session = candidatePlanning();
+        mockGet.mockResolvedValueOnce({ data: session });
+
+        await expect(getCandidatePlanningSession("session-one")).resolves.toBe(session);
+    });
+
+    it("rejects malformed nested plan data in a planning session", async () => {
+        mockGet.mockResolvedValueOnce({ data: candidatePlanning({
+            status: "plan_ready",
+            plan: candidatePlan({ proposed_steps: null }),
+        }) });
+
+        await expect(getCandidatePlanningSession("session-one")).rejects.toThrow(
+            "Malformed candidate planning response.",
+        );
+    });
+
+    it("rejects malformed standalone plan data", async () => {
+        mockGet.mockResolvedValueOnce({ data: candidatePlan({ assumptions: "none" }) });
+
+        await expect(getCandidatePlan("session-one")).rejects.toThrow(
+            "Malformed candidate plan response.",
+        );
+    });
+
+    it("rejects malformed planning results before exposing plan content", async () => {
+        mockPost.mockResolvedValueOnce({ data: candidatePlanning({
+            status: "plan_ready",
+            plan: candidatePlan({ verification_strategy: null }),
+        }) });
+
+        await expect(generateCandidatePlan("session-one")).rejects.toThrow(
+            "Malformed candidate planning response.",
+        );
+    });
+
+    it("rejects malformed workflow-shell results", async () => {
+        mockPost.mockResolvedValueOnce({ data: {
+            candidate_planning_session_id: "session-one",
+            candidate_id: "candidate-one",
+            candidate_fingerprint: "fingerprint-one",
+            candidate_plan_id: "plan-one",
+            candidate_plan_fingerprint: "plan-fingerprint-one",
+            workflow_session_id: "workflow-one",
+            workflow_status: "approval_pending",
+            implementation_approval_request_id: "approval-one",
+            conversion_status: "workflow_created",
+            core_revalidation_status: "accepted_for_planning",
+            reason_codes: null,
+            failure: null,
+        } });
+
+        await expect(createCandidateWorkflowShell("session-one")).rejects.toThrow(
+            "Malformed candidate workflow response.",
+        );
     });
 
     it("treats 404 sprint/verification/review as not published", async () => {

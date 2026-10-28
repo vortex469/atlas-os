@@ -1227,3 +1227,14 @@ still reaches the page identity check. The full component suite (2,720 tests),
 lint, build, 122 development-browser checks, and 68 built-app journeys pass.
 Browser responses are simulated and reject mutation requests; they do not
 establish real Agent integration or operator acceptance.
+
+## Candidate planning response validation — 2026-10-28
+
+Planning-session, repository-plan, maintenance-plan, and workflow-shell
+responses are validated before the planning screen uses them. Malformed saved
+plan data now reaches the existing unavailable state, while malformed
+generated results cannot expose workflow creation. Phone and desktop browser
+checks confirm the unavailable state keeps the navigation and hides planning
+controls. The component suite (2,727 tests), lint, build, 124 development-browser
+checks, and 68 built-app journeys pass. Responses are simulated; this does not
+establish real Agent integration or operator acceptance.
