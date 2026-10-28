@@ -86,7 +86,8 @@ function workflowAttentionLabel(intent: unknown, state: string, stale: boolean):
     const action = safeIntent && safeIntent !== "[Sensitive text withheld]"
         ? formatWorkflowLabel(safeIntent)
         : "Workflow";
-    return `${stale ? "Last known · " : ""}${action} · ${workflowAttentionStage(state)}`;
+    const stage = workflowActionRequired(state) ? "" : ` · ${workflowAttentionStage(state)}`;
+    return `${stale ? "Last known · " : ""}${action}${stage}`;
 }
 
 function attentionKey(finding: Record<string, unknown>, providers: Record<string, unknown>[], services: [string, unknown][]) {
@@ -101,7 +102,11 @@ function attentionKey(finding: Record<string, unknown>, providers: Record<string
 function AttentionListItem({ item }: { item: AttentionItem }) {
     return <li>
         <Link to={item.to}>{item.label || "Inspect condition"}</Link>
-        {item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
+        {item.actionRequired === true && <p>{isWorkflowAttention(item)
+            ? item.stale
+                ? `Last-known status: ${workflowAttentionStage(item.workflowState)}. Current status unknown.`
+                : `Action needed: ${workflowAttentionStage(item.workflowState)}`
+            : item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
         {isWorkflowAttention(item) ? <>
             {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
             {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState) && <p>{item.reason}</p>}

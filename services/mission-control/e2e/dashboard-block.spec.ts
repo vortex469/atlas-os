@@ -41,7 +41,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/");
         const attention = page.getByRole("region", { name: "Operator Attention" });
         const activity = page.getByRole("region", { name: "Recent Activity" });
-        await expect(attention.getByText("Human action required", { exact: true })).toBeVisible();
+        await expect(attention.getByText("Action needed: Waiting for implementation approval", { exact: true })).toBeVisible();
         await expect(activity.getByRole("listitem")).toHaveCount(1);
         await expect(activity.getByText(`Failed · ${label.slice(0, 240)}`)).toBeVisible();
         await expect(activity.getByText(/^Completed /)).toBeVisible();
@@ -54,7 +54,7 @@ for (const width of [320, 390, 1280]) {
             expect(box.right).toBeLessThanOrEqual(width);
             expect(box.scroll).toBeLessThanOrEqual(box.client);
         }
-        await attention.getByRole("link", { name: "Update Compose Stack · Waiting for implementation approval" }).click();
+        await attention.getByRole("link", { name: "Update Compose Stack" }).click();
         await expect(page).toHaveURL(/\/workflows\/workflow-browser-baseline$/);
         await page.goBack();
         await activity.getByRole("link", { name: "Inspect action →" }).click();

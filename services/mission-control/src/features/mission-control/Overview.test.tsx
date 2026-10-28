@@ -11,13 +11,13 @@ describe("MC overview evidence", () => {
     it.each(['awaiting_implementation_approval', 'awaiting_verification_approval', 'awaiting_commit_approval'])("shows %s as a workflow decision rather than degraded health", workflow_state => {
         show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Human action required')).toBeVisible();
         const expectedStage = workflow_state === 'awaiting_implementation_approval'
             ? 'Waiting for implementation approval'
             : workflow_state === 'awaiting_verification_approval'
                 ? 'Waiting for verification approval'
                 : 'Waiting for commit approval';
-        expect(attention.getByRole('link', { name: `Workflow · ${expectedStage}` })).toHaveAttribute('href', '/workflows/review-me');
+        expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/review-me');
+        expect(attention.getByText(`Action needed: ${expectedStage}`)).toBeVisible();
         const workflowId = attention.getByText('review-me');
         expect(workflowId).not.toBeVisible();
         fireEvent.click(attention.getByText('Technical details'));
@@ -31,7 +31,8 @@ describe("MC overview evidence", () => {
             execution_intent: 'update-compose-stack', last_result_summary: 'Review the exact verification', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByRole('link', { name: 'Update Compose Stack · Waiting for verification approval' })).toHaveAttribute('href', '/workflows/workflow-123');
+        expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toHaveAttribute('href', '/workflows/workflow-123');
+        expect(attention.getByText('Action needed: Waiting for verification approval')).toBeVisible();
         expect(attention.getByText('Review the exact verification')).toBeVisible();
         const workflowId = attention.getByText('workflow-123');
         expect(workflowId).not.toBeVisible();
@@ -44,7 +45,8 @@ describe("MC overview evidence", () => {
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByRole('link', { name: 'Workflow · Waiting for implementation approval' })).toHaveAttribute('href', '/workflows/review-me');
+        expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/review-me');
+        expect(attention.getByText('Action needed: Waiting for implementation approval')).toBeVisible();
         expect(attention.queryByRole('link', { name: 'Review operational conditions →' })).not.toBeInTheDocument();
         expect(attention.queryByRole('link', { name: 'Review workflow attention →' })).not.toBeInTheDocument();
         expect(within(screen.getByRole('region', { name: 'Work activity' })).getByRole('link', { name: 'Review workflows →' })).toHaveAttribute('href', '/workflows');
@@ -82,7 +84,7 @@ describe("MC overview evidence", () => {
         expect(within(visibleItems[0]).getByRole('link')).toHaveTextContent('blocked');
         expect(within(visibleItems[1]).getByRole('link', { name: 'Critical condition' })).toBeVisible();
         expect(within(visibleItems[2]).getByRole('link', {
-            name: 'Update Compose Stack · Waiting for commit approval',
+            name: 'Update Compose Stack',
         })).toBeVisible();
         const expand = attention.getByRole('button', { name: 'Show all 9 attention items' });
         expect(expand).toHaveAttribute('aria-expanded', 'false');
@@ -118,23 +120,24 @@ describe("MC overview evidence", () => {
         expect(checks.getAllByRole('listitem')).toHaveLength(4);
     });
 
-    it('does not repeat an approval stage already named by the workflow link', () => {
+    it('keeps the workflow action and approval stage on separate lines without repeating the result', () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',
             execution_intent: 'update-compose-stack', last_result_summary: 'Waiting for implementation approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByRole('link', { name: 'Update Compose Stack · Waiting for implementation approval' })).toBeVisible();
-        expect(attention.getByText('Human action required')).toBeVisible();
+        expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toBeVisible();
+        expect(attention.getByText('Action needed: Waiting for implementation approval')).toBeVisible();
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
+        expect(attention.queryByText('Human action required', { exact: true })).not.toBeInTheDocument();
         expect(attention.queryByText('Review each item and use its link to see the details.')).not.toBeInTheDocument();
     });
 
     it('keeps a stale approval requirement explicitly last-known', () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-review', workflow_state: 'awaiting_implementation_approval', last_result_summary: 'Previous review request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Last-known human action required; current requirement unknown.')).toBeVisible();
-        expect(attention.getByRole('link', { name: 'Last known · Workflow · Waiting for implementation approval' })).toBeVisible();
+        expect(attention.getByText('Last-known status: Waiting for implementation approval. Current status unknown.')).toBeVisible();
+        expect(attention.getByRole('link', { name: 'Last known · Workflow' })).toBeVisible();
         expect(attention.queryByText('Human action required', { exact: true })).not.toBeInTheDocument();
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
     });
@@ -319,7 +322,8 @@ describe('overview fail-closed regressions', () => {
         expect(attention.getByText('Endpoint offline')).toBeInTheDocument();
         expect(attention.getByText('Capacity limited')).toBeInTheDocument();
         expect(attention.queryByText('Blocked')).not.toBeInTheDocument();
-        expect(attention.getByRole('link', { name: 'Workflow · Waiting for approval' })).toHaveAttribute('href', '/workflows/w');
+        expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/w');
+        expect(attention.getByText('Action needed: Waiting for approval')).toBeVisible();
     });
     it('keeps a malformed provider unknown even in the expanded list', () => {
         show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: String(i) })), { health: { status: 'healthy' } }] } });
