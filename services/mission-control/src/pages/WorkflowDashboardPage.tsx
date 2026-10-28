@@ -214,18 +214,17 @@ export function WorkflowDashboardPage() {
             {refreshError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">Refresh failed: {refreshError}</p>}
 
             <section aria-labelledby="workflow-counts-heading" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <h2 id="workflow-counts-heading" className="text-sm font-semibold text-slate-300 md:col-span-2 xl:col-span-3">{retainedResults ? "Last loaded totals for this search" : "Totals for this search"}</h2>
+                <h2 id="workflow-counts-heading" className="text-sm font-semibold text-slate-300 md:col-span-2 xl:col-span-3">{summaryCounts === null ? "Workflow totals" : retainedResults ? "Last loaded totals for this search" : "Totals for this search"}</h2>
                 {isLoading && <p role="status" className="text-sm text-slate-300">Loading matching workflow totals…</p>}
-                {!isLoading && SUMMARY_GROUPS.map((group) => (
+                {!isLoading && summaryCounts === null && <p role="status" className="text-sm text-slate-400">This version of Atlas Agent does not report workflow totals. You can still search and browse workflows; approval filters need an updated Agent.</p>}
+                {!isLoading && summaryCounts !== null && SUMMARY_GROUPS.map((group) => (
                     <article key={group.key} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
                         <p className="min-w-0 flex-1 text-sm text-slate-400">{group.label}</p>
-                        <p className="max-w-full break-all text-xl font-bold text-white">{summaryCounts === null ? "Unavailable" : summaryCounts.get(group.key) ?? 0}</p>
+                        <p className="max-w-full break-all text-xl font-bold text-white">{summaryCounts.get(group.key) ?? 0}</p>
                     </article>
                 ))}
                 {!isLoading && (summaryCounts?.get("unknown") ?? 0) > 0 && <article className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3"><p className="min-w-0 flex-1 text-sm text-slate-400">Other states</p><p className="max-w-full break-all text-xl font-bold text-white">{summaryCounts?.get("unknown")}</p></article>}
             </section>
-
-            {!isLoading && summaryCounts === null && <p role="status" className="text-sm text-slate-400">This Agent does not provide workflow totals. Paging and search are available; approval-state filtering requires an updated Agent.</p>}
 
             <section aria-labelledby="workflow-filters-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="workflow-filters-heading" className="text-lg font-semibold text-white">Filters</h2>

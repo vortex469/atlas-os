@@ -9,6 +9,20 @@ const allWorkflows: WorkflowSummary[] = Array.from({ length: 215 }, (_, index) =
     repository: "/fixture/repository", target_id: "fixture-stack", last_result_summary: "Synthetic workflow history", timeline: [],
 }));
 
+test("workflow totals show one explanation when the Agent omits them", async ({ page, rejectedMutationRequests }) => {
+    await page.route("**/agent-api/api/v1/agent/workflows*", (route) => route.fulfill({
+        json: { items: [allWorkflows[0]], total: 1, limit: 10, offset: 0 },
+    }));
+    await page.goto("/workflows");
+
+    const totals = page.getByRole("region", { name: "Workflow totals" });
+    await expect(totals).toContainText("This version of Atlas Agent does not report workflow totals.");
+    await expect(totals.getByText("Unavailable", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: allWorkflows[0].workflow_id, exact: true })).toBeVisible();
+    await expect(page.getByText("Showing 1 of 1 matching workflows", { exact: true })).toBeVisible();
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 for (const width of [320, 390, 1280]) {
     test(`the complete workflow directory is searchable at ${width}px`, async ({ page, baseURL, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 844 });
