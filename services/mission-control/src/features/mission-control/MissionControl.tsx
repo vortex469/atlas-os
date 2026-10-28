@@ -236,7 +236,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 <ProviderOverviewContent evidence={evidence.providers} loading={loading} />
             </Card>
         </div>
-        <Card title="Recent Activity" showSourceNote={false}>
+        <Card title="Recent provider actions" showSourceNote={false}>
             <RecentActivity evidence={evidence.activity} loading={loading} />
         </Card>
     </>;

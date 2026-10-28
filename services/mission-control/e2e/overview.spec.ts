@@ -86,8 +86,9 @@ for (const width of [320, 768, 1440]) {
         await page.getByRole('link', { name: 'View Proxmox →' }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
         await page.goBack();
-        await page.getByRole('link', { name: 'Open operational history →' }).click();
-        await expect(page).toHaveURL(/\/operations\/history$/);
+        await page.getByRole('link', { name: 'Open action history →' }).click();
+        await expect(page).toHaveURL(/\/operations$/);
+        await expect(page.getByRole('heading', { name: 'Action history' })).toBeVisible();
         expect(rejectedMutationRequests).toEqual([]);
     });
 }

@@ -1791,3 +1791,14 @@ tests), and the 390px dashboard browser check passes. Shell/navigation/loading
 browser checks pass (21 tests in development and 17 against the built app).
 The full Mission Control suite passes (2,787 tests across 181 files), lint and
 production build pass. Routes, API requests, and authority are unchanged.
+
+## Provider action history destination — 2026-10-28
+
+The dashboard card is now named “Recent provider actions,” distinguishing it
+from workflow activity. Its “Open action history” link now opens the Action
+history page instead of the separate maintenance history screen. Empty,
+loading, stale, and unavailable messages use the provider-action context. The
+focused dashboard suites pass (81 tests), responsive dashboard browser checks
+pass (25 tests in development and 25 against the built app), the full Mission
+Control suite passes (2,787 tests across 181 files), and lint and production
+build pass. No API or authority contract changed.

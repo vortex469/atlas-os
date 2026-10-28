@@ -19,14 +19,14 @@ export function RecentActivity({ evidence, loading = false }: { evidence?: Evide
     const activity = [...unique.values()].sort((a, b) =>
         (timestamp(b.completed_at)?.getTime() ?? 0) - (timestamp(a.completed_at)?.getTime() ?? 0));
     return <>
-        <p>Past provider actions and their recorded results. These do not show current system health or alerts.</p>
-        {evidence?.stale && <p role="status">Refresh failed. Showing the last available actions; current activity may have changed.</p>}
+        <p>Results from earlier provider actions. Current health and alerts are shown above.</p>
+        {evidence?.stale && <p role="status">Refresh failed. Showing previous provider actions; newer results may exist.</p>}
         {activity.length === 0 && <p>{Array.isArray(page.items)
-            ? (returned.length === 0 && (page.total === undefined || page.total === 0) && (page.has_more === undefined || page.has_more === false) ? "No recent actions recorded." : "Some recent activity records could not be read.")
-            : evidence?.unavailable ? "Recent activity could not be loaded."
-                : evidence?.data === undefined && loading ? "Checking recent activity…"
-                    : "Recent activity information is unavailable."}</p>}
-        {activity.length > 0 && incomplete && <p>Some recent activity records could not be read.</p>}
+            ? (returned.length === 0 && (page.total === undefined || page.total === 0) && (page.has_more === undefined || page.has_more === false) ? "No recent provider actions recorded." : "Some provider action records could not be read.")
+            : evidence?.unavailable ? "Recent provider actions could not be loaded."
+                : evidence?.data === undefined && loading ? "Checking recent provider actions…"
+                    : "Recent provider action information is unavailable."}</p>}
+        {activity.length > 0 && incomplete && <p>Some provider action records could not be read.</p>}
         <ol className="grid gap-3 md:grid-cols-2">{activity.slice(0, 5).map(event => {
             const date = timestamp(event.completed_at);
             const outcome = event.status === "failed" ? "Failed" : event.status === "succeeded" ? "Succeeded" : "Outcome unknown";
@@ -42,6 +42,6 @@ export function RecentActivity({ evidence, loading = false }: { evidence?: Evide
             </li>;
         })}</ol>
         {activity.length > 5 && <p>Showing 5 of {activity.length} returned actions.</p>}
-        <Link to="/operations/history">Open operational history →</Link>
+        <Link to="/operations">Open action history →</Link>
     </>;
 }

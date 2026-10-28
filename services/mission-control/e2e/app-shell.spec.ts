@@ -32,7 +32,7 @@ test("Mission Control dashboard loads from controlled Core and Agent responses",
     await expect(page.getByText("Action needed: Waiting for implementation approval")).toBeVisible();
     await expect(page.getByRole("link", { name: "Review workflows →", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("heading", { name: "Agent details" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Recent Activity" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Recent provider actions" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
     await expect(page.getByText("Proxmox").first()).toBeVisible();
 });

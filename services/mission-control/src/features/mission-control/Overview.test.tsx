@@ -5,7 +5,7 @@ import { Overview } from "./MissionControl";
 import { safeText, timestamp, status, detailPath } from "./overviewEvidence";
 import type { OverviewEvidence } from "./useOverviewEvidence";
 const show = (evidence: OverviewEvidence = {}, loading = false) => render(<MemoryRouter><Overview evidence={evidence} loading={loading} /></MemoryRouter>);
-const activity = () => within(screen.getByRole('region', { name: 'Recent Activity' }));
+const activity = () => within(screen.getByRole('region', { name: 'Recent provider actions' }));
 
 describe("MC overview evidence", () => {
     it.each(['awaiting_implementation_approval', 'awaiting_verification_approval', 'awaiting_commit_approval'])("shows %s as a workflow decision rather than degraded health", workflow_state => {
@@ -152,7 +152,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("MC overview evidence", () => {
         expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
         expect(attention.queryByText('System findings: Evidence unknown.')).not.toBeInTheDocument();
         expect(within(screen.getByRole('region', { name: 'Service checks' })).getByText('Checking configured services…')).toBeVisible();
-        expect(activity().getByText('Checking recent activity…')).toBeVisible();
+        expect(activity().getByText('Checking recent provider actions…')).toBeVisible();
         expect(screen.queryByText('No current information is available.')).not.toBeInTheDocument();
     });
     it("reports no attention only after all current sources are checked", () => {
@@ -252,7 +252,7 @@ describe("MC overview evidence", () => {
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
-        expect(screen.getByText('Some recent activity records could not be read.')).toBeInTheDocument();
+        expect(screen.getByText('Some provider action records could not be read.')).toBeInTheDocument();
     });
     it("presents reported state, reasons, providers and safe detail links; deduplicates subsystem attention", () => {
         show({ health: { data: { atlas: 'degraded', services: { Beta: { provider_id: 'beta', status: 'offline', message: 'Connection refused' } } } }, providers: { data: [{ id: 'alpha', name: 'Alpha', health: { status: 'healthy' }, secret: 'private-credential' }, { id: 'beta', name: 'Beta', health: { status: 'offline', message: 'Connection refused', details: { token: 'private-credential' } } }] }, workflows: { data: { items: [{ workflow_id: 'w/1', workflow_state: 'blocked', last_result_summary: 'Approval expired' }, { workflow_id: 'w2', workflow_state: 'executing' }] } } });
@@ -272,14 +272,14 @@ describe("MC overview evidence", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getAllByText(/Refresh failed/).length).toBeGreaterThan(0);
-        expect(activity().getByText(/Past provider actions and their recorded results\. These do not show current system health or alerts\./)).toBeVisible();
+        expect(activity().getByText('Results from earlier provider actions. Current health and alerts are shown above.')).toBeVisible();
         expect(activity().queryByText(/Historical evidence/)).not.toBeInTheDocument();
     });
     it("handles empty lists and links to existing routes", () => {
         show({ providers: { data: [] }, activity: { data: { items: [] } }, workflows: { data: { items: [] } } });
         expect(screen.getByText('No providers configured.')).toBeInTheDocument();
-        expect(screen.getByText('No recent actions recorded.')).toBeInTheDocument();
-        for (const [name, href] of [['Open operations →','/operations'], ['Review workflows →','/workflows'], ['Open operational history →','/operations/history']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+        expect(screen.getByText('No recent provider actions recorded.')).toBeInTheDocument();
+        for (const [name, href] of [['Open operations →','/operations'], ['Review workflows →','/workflows'], ['Open action history →','/operations']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
         expect(within(screen.getByRole('region', { name: 'Agent details' })).queryByRole('link')).not.toBeInTheDocument();
     });
     it("rejects bad timestamps, unsafe paths and sensitive free text", () => {
@@ -390,7 +390,7 @@ it('surfaces incomplete attention evidence and rejects uninspectable activity', 
     fireEvent.click(attention.getByText('Source status'));
     expect(attention.getByText('Workflows: workflow results are incomplete.')).toBeVisible();
     expect(attention.getByText('System findings: finding details are incomplete.')).toBeVisible();
-    expect(screen.getByText('Some recent activity records could not be read.')).toBeInTheDocument();
+    expect(screen.getByText('Some provider action records could not be read.')).toBeInTheDocument();
     expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });
 
