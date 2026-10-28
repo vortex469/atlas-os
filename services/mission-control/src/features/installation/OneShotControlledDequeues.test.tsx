@@ -44,9 +44,11 @@ describe("OneShotControlledDequeues", () => {
         await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no one-shot controlled dequeue receipt/i));
         unmount();
 
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.one_shot_controlled_dequeue.record", "installation.execution.one_shot_controlled_dequeue.read", "installation.execution.controlled_dequeue_admission.read"] }, csrfToken: "csrf" };
         vi.mocked(listOneShotControlledDequeues).mockResolvedValue(oneShotControlledDequeueCollectionFixture);
         render(<OneShotControlledDequeues {...props} />);
         expect(await screen.findByText(/state: exact inert item dequeued/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review one-shot controlled dequeue statement" })).not.toBeInTheDocument();
         expect(screen.getByText("Advanced one-shot controlled dequeue details")).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered one-shot controlled dequeue blockers/i)).toHaveTextContent(/queue_polling_not_defined.*queue_claim_not_defined.*queue_lease_not_defined.*queue_ack_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
         expect(screen.getByLabelText(/one-shot controlled dequeue fixed-false authority fields/i)).toHaveTextContent(/queue polling allowedfalse.*worker startedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
@@ -62,6 +64,7 @@ describe("OneShotControlledDequeues", () => {
     it("requires dedicated permissions and creates only from controlled dequeue admission readback", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.one_shot_controlled_dequeue.read", "installation.execution.controlled_dequeue_admission.read"] }, csrfToken: "csrf" };
         const { rerender } = render(<OneShotControlledDequeues {...props} />);
+        expect(screen.queryByRole("button", { name: "Review one-shot controlled dequeue statement" })).not.toBeInTheDocument();
         expect(await screen.findByText(/recording remains blocked/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review one-shot controlled dequeue statement" })).not.toBeInTheDocument();
 
@@ -86,6 +89,7 @@ describe("OneShotControlledDequeues", () => {
             worker_start_allowed: false,
             process_execution_allowed: false,
         }), "csrf", "stable-one-shot-controlled-key");
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review one-shot controlled dequeue statement" })).not.toBeInTheDocument());
     });
 
     it("withholds one-shot dequeue controls when the signed-in session has no CSRF token", async () => {
@@ -107,6 +111,7 @@ describe("OneShotControlledDequeues", () => {
         fireEvent.click(screen.getByRole("button", { name: "Review one-shot controlled dequeue statement" }));
         fireEvent.click(screen.getByRole("button", { name: "Record exact inert item receipt" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(/ambiguous state/i);
+        expect(screen.queryByRole("button", { name: "Review one-shot controlled dequeue statement" })).not.toBeInTheDocument();
         expect(document.body.textContent).not.toMatch(/poll queue|claim item|lease item|ack now|consume item|remove item|retry now|resend now|start worker|execute now|install now|deploy now|roll back now/i);
     });
 });

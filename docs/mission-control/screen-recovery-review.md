@@ -1371,3 +1371,14 @@ The same guard now covers installation admission, queue observation, controlled
 dequeue admission, and one-shot dequeue evidence. Each panel has a regression
 that verifies the confirmation stays hidden without the session token; no
 dequeue, worker, installation, or execution authority was added.
+
+## One-time evidence action visibility — 2026-10-28
+
+Permission grant, installation admission, queue observation, controlled
+dequeue admission, and one-shot dequeue panels now wait for a successful
+read-only record check before showing their one-time confirmation. They hide it
+when a record already exists, the read is unavailable, or a recording attempt
+fails or returns a blocked result. This follows the backend's permanent
+reservation and no-retry contracts. Five focused component suites cover
+loading, empty, existing, and post-submit states; no approval or runtime
+authority changed.

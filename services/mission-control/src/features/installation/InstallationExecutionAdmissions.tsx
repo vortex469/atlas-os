@@ -30,7 +30,8 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
     }, [candidateId]);
 
     const activeGrant = grants.find((item) => item.grant && item.status?.lifecycle === "active");
-    const mayCreate = !homeAssistantBlocked && Boolean(activeGrant) && session.authenticated &&
+    const mayCreate = admissions !== null && admissions.length === 0 && error === null &&
+        !homeAssistantBlocked && Boolean(activeGrant) && session.authenticated &&
         session.principal?.permissions.includes("installation.execution.admission.record") &&
         Boolean(session.csrfToken);
     const record = async () => {
@@ -50,8 +51,11 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
         };
         try {
             const result = await createInstallationExecutionAdmission(candidateId, body, session.csrfToken, installationExecutionAdmissionIdempotencyKey());
+            if (!result.admission || !result.status || !result.audit_evidence) {
+                setError("create"); setConfirming(false); return;
+            }
             setAdmissions((current) => [result, ...(current ?? [])]); setConfirming(false);
-        } catch { setError("create"); }
+        } catch { setError("create"); setConfirming(false); }
         finally { setSubmitting(false); }
     };
 
@@ -74,7 +78,7 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
             <p className="mt-2 text-xs">The record remains admission gated, non-authorizing, permanent, and unavailable for replay.</p>
             <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record admission evidence</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
-        {!mayCreate && <p className="mt-4 text-sm text-amber-200">Admission evidence cannot be recorded yet. It requires a current permission grant, an authenticated operator with the required permission, and a valid session.</p>}
+        {admissions?.length === 0 && !error && !mayCreate && <p className="mt-4 text-sm text-amber-200">Admission evidence cannot be recorded yet. It requires a current permission grant, an authenticated operator with the required permission, and a valid session.</p>}
         {!mayCreate && homeAssistantBlocked && <p className="mt-2 text-sm text-amber-200">Home Assistant remains blocked, non-installable, and non-executable.</p>}
     </section>;
 }

@@ -51,7 +51,8 @@ export function QueueObservationEvidence({ candidateId, oneShot }: { candidateId
     }, [candidateId, oneShot.enqueue_id]);
 
     const permissions = session.principal?.permissions ?? [];
-    const mayCreate = oneShot.lifecycle === "active" && session.authenticated &&
+    const mayCreate = items !== null && items.length === 0 && !error && blockedResult === null &&
+        oneShot.lifecycle === "active" && session.authenticated &&
         permissions.includes("installation.execution.queue_observation.record") &&
         permissions.includes("installation.execution.one_shot_live_enqueue.read") &&
         Boolean(session.csrfToken);
@@ -66,9 +67,9 @@ export function QueueObservationEvidence({ candidateId, oneShot }: { candidateId
                 setItems((current) => [result.record!, ...(current ?? [])]);
                 setConfirming(false);
             } else {
-                setBlockedResult(result);
+                setBlockedResult(result); setConfirming(false);
             }
-        } catch { setError(true); }
+        } catch { setError(true); setConfirming(false); }
         finally { setSubmitting(false); }
     };
 
@@ -89,7 +90,7 @@ export function QueueObservationEvidence({ candidateId, oneShot }: { candidateId
             <p className="mt-2 text-xs">Core binds the authenticated operator, exact v0.42 enqueue, exact inert queue item, inherited ceilings, receipt evidence, and permanent no-replay reservation.</p>
             <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record observation evidence</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
-        {!mayCreate && <p className="mt-3 text-sm text-amber-200">Recording remains blocked. An active v0.42 enqueue, authenticated owner, dedicated queue observation permission, and valid CSRF session are required.</p>}
+        {items?.length === 0 && !error && !blockedResult && !mayCreate && <p className="mt-3 text-sm text-amber-200">Recording remains blocked. An active v0.42 enqueue, authenticated owner, dedicated queue observation permission, and valid CSRF session are required.</p>}
     </section>;
 }
 

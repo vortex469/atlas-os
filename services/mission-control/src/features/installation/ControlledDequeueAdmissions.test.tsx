@@ -41,9 +41,11 @@ describe("ControlledDequeueAdmissions", () => {
         expect(screen.getByRole("status")).toHaveTextContent(/no controlled dequeue admission evidence/i);
         unmount();
 
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.controlled_dequeue_admission.record", "installation.execution.controlled_dequeue_admission.read", "installation.execution.queue_observation.read"] }, csrfToken: "csrf" };
         vi.mocked(listControlledDequeueAdmissions).mockResolvedValue(controlledDequeueAdmissionCollectionFixture);
         render(<ControlledDequeueAdmissions candidateId={queueObservationReceiptFixture.candidate_record_id} observation={queueObservationReceiptFixture} />);
         await waitFor(() => expect(screen.getAllByText(/ready for later dequeue consideration/i).length).toBeGreaterThan(0));
+        expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument();
         expect(screen.getByText("Advanced controlled dequeue admission details")).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered controlled dequeue admission blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*queue_claim_not_defined.*queue_lease_not_defined.*queue_ack_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
         expect(screen.getByLabelText(/controlled dequeue admission fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*queue consumedfalse.*worker startedfalse.*process execution allowedfalse/i);
@@ -56,14 +58,16 @@ describe("ControlledDequeueAdmissions", () => {
         vi.mocked(createControlledDequeueAdmission).mockResolvedValue({ ...ambiguousControlledDequeueAdmissionResultFixture, error: { ...ambiguousControlledDequeueAdmissionResultFixture.error!, error_code: "evidence_stale" } });
         render(<ControlledDequeueAdmissions candidateId={queueObservationReceiptFixture.candidate_record_id} observation={queueObservationReceiptFixture} />);
         expect(await screen.findByText(/readiness: blocked or not yet admitted/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Review controlled dequeue admission statement" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Review controlled dequeue admission statement" }));
         fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(/evidence stale/i);
+        expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument();
     });
 
     it("requires dedicated permissions and creates admission only from queue observation readback", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.controlled_dequeue_admission.read", "installation.execution.queue_observation.read"] }, csrfToken: "csrf" };
         const { rerender } = render(<ControlledDequeueAdmissions candidateId={queueObservationReceiptFixture.candidate_record_id} observation={queueObservationReceiptFixture} />);
+        expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument();
         expect(await screen.findByText(/recording remains blocked/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument();
 
@@ -86,6 +90,7 @@ describe("ControlledDequeueAdmissions", () => {
             worker_start_allowed: false,
             process_execution_allowed: false,
         }), "csrf", "stable-controlled-dequeue-key");
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument());
     });
 
     it("withholds admission evidence controls when the signed-in session has no CSRF token", async () => {
@@ -106,6 +111,7 @@ describe("ControlledDequeueAdmissions", () => {
         fireEvent.click(screen.getByRole("button", { name: "Review controlled dequeue admission statement" }));
         fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(/ambiguous state/i);
+        expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument();
         expect(document.body.textContent).not.toMatch(/dequeue now|poll queue|claim item|lease item|ack now|consume item|remove item|retry now|resend now|start worker|execute now|install now|deploy now|roll back now/i);
     });
 });

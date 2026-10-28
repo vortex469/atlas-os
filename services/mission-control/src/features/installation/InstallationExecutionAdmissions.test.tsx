@@ -37,9 +37,11 @@ describe("InstallationExecutionAdmissions", () => {
     });
 
     it("renders admission-gated lifecycle, blockers, full linkage, and false authority", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: "csrf" };
         vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ ...empty, admissions: [admissionResultFixture] });
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
         expect(await screen.findByRole("heading", { name: "Admission evidence is active" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review admission evidence statement" })).not.toBeInTheDocument();
         expect(screen.getByText("Admission record details").closest("details")).not.toHaveAttribute("open");
         fireEvent.click(screen.getByText("Admission record details"));
         expect(screen.getByText(/readiness: admission_gated; lifecycle: active/i)).toBeVisible();
@@ -58,11 +60,14 @@ describe("InstallationExecutionAdmissions", () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: "csrf" };
         vi.mocked(createInstallationExecutionAdmission).mockResolvedValue(admissionResultFixture);
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
+        expect(screen.queryByRole("button", { name: "Review admission evidence statement" })).not.toBeInTheDocument();
         await screen.findByText(/no admission evidence has been recorded/i);
+        expect(await screen.findByRole("button", { name: "Review admission evidence statement" })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Review admission evidence statement" }));
         expect(screen.getByLabelText("Admission evidence confirmation")).toHaveTextContent(/records admission evidence only.*does not select or invoke a runner.*does not install or execute anything/i);
         fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
         await waitFor(() => expect(createInstallationExecutionAdmission).toHaveBeenCalled());
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review admission evidence statement" })).not.toBeInTheDocument());
         expect(createInstallationExecutionAdmission).toHaveBeenCalledWith(uuid4, expect.objectContaining({ permission_grant_id: uuid4, requested_scope: "future_installation_runner_consideration_only", execution_authorized: false, mutation_allowed: false, replay_allowed: false }), "csrf", "stable-admission-key");
     });
 
@@ -85,6 +90,7 @@ describe("InstallationExecutionAdmissions", () => {
         fireEvent.click(screen.getByRole("button", { name: "Record admission evidence" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Installation execution admission evidence could not be recorded.");
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review admission evidence statement" })).not.toBeInTheDocument();
     });
 
     it("keeps Home Assistant and expired grants blocked with no creation control", async () => {

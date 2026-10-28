@@ -67,6 +67,7 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
 
     const permissions = session.principal?.permissions ?? [];
     const mayCreate = admission.lifecycle === "active"
+        && items !== null && items.length === 0 && !error && blockedResult === null
         && session.authenticated
         && permissions.includes("installation.execution.one_shot_controlled_dequeue.record")
         && permissions.includes("installation.execution.one_shot_controlled_dequeue.read")
@@ -84,9 +85,9 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
                 setItems((current) => [result.record!, ...(current ?? [])]);
                 setConfirming(false);
             } else {
-                setBlockedResult(result);
+                setBlockedResult(result); setConfirming(false);
             }
-        } catch { setError(true); }
+        } catch { setError(true); setConfirming(false); }
         finally { setSubmitting(false); }
     };
 
@@ -115,7 +116,7 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
             <p className="mt-2 text-xs">Core binds the authenticated operator, exact v0.44 admission, exact v0.43 observation receipt, exact inert v0.42 item, inherited limits, and permanent no-replay reservations.</p>
             <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record exact inert item receipt</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
-        {!mayCreate && <p className="mt-3 text-sm text-amber-200">Recording remains blocked. An active v0.44 admission, authenticated owner, dedicated one-shot controlled dequeue permissions, controlled dequeue admission read permission, and valid CSRF session are required.</p>}
+        {items?.length === 0 && !error && !blockedResult && !mayCreate && <p className="mt-3 text-sm text-amber-200">Recording remains blocked. An active v0.44 admission, authenticated owner, dedicated one-shot controlled dequeue permissions, controlled dequeue admission read permission, and valid CSRF session are required.</p>}
     </section>;
 }
 

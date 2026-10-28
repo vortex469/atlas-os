@@ -37,9 +37,11 @@ describe("QueueObservationEvidence", () => {
         expect(screen.getByRole("status")).toHaveTextContent(/no observation receipt evidence/i);
         unmount();
 
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         vi.mocked(listQueueObservations).mockResolvedValue(queueObservationCollectionFixture);
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
         await waitFor(() => expect(screen.getAllByText(/state: observed/i).length).toBeGreaterThan(0));
+        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
         expect(screen.getByText(/observed queued item/i)).toBeInTheDocument();
         expect(screen.getByText("Advanced queue observation details")).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered queue observation blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
@@ -50,11 +52,13 @@ describe("QueueObservationEvidence", () => {
     it("uses the exact two-step confirmation and dedicated permission before creating evidence", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
+        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
         expect(await screen.findByText(/state: pending or blocked/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Review queue observation evidence statement" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Review queue observation evidence statement" }));
         expect(screen.getByLabelText("Queue observation evidence confirmation")).toHaveTextContent("Record bounded queue observation evidence only. This does not dequeue, poll as a consumer, claim, lease, acknowledge, contact or start a worker, invoke Agent or a workflow, dispatch, retry, resend, install, deploy, roll back, mutate, or execute anything.");
         fireEvent.click(screen.getByRole("button", { name: "Record observation evidence" }));
         await waitFor(() => expect(createQueueObservation).toHaveBeenCalled());
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument());
         expect(getOneShotLiveEnqueue).toHaveBeenCalledWith(oneShotLiveEnqueueFixture.candidate_record_id, oneShotLiveEnqueueFixture.enqueue_id);
         expect(createQueueObservation).toHaveBeenCalledWith(oneShotLiveEnqueueFixture.candidate_record_id, expect.objectContaining({
             schema: "queue-observation-receipt-create-v1",
@@ -84,6 +88,7 @@ describe("QueueObservationEvidence", () => {
         fireEvent.click(screen.getByRole("button", { name: "Review queue observation evidence statement" }));
         fireEvent.click(screen.getByRole("button", { name: "Record observation evidence" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(/ambiguous state/i);
+        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
         expect(document.body.textContent).not.toMatch(/dequeue now|retry now|resend now|start worker|execute now|install now|deploy now|roll back now/i);
     });
 });

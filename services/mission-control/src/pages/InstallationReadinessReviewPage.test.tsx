@@ -162,9 +162,16 @@ describe("InstallationReadinessReviewPage", () => {
     it("uses a two-step exact evidence-only confirmation and renders create/readback", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
-        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
         vi.mocked(createExecutionPermissionGrant).mockResolvedValue(grantResultFixture);
         renderPage();
+        expect(screen.queryByRole("button", { name: "Review permission evidence statement" })).not.toBeInTheDocument();
+        expect(await screen.findByText("No execution permission evidence has been recorded.")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Review permission evidence statement" }));
+        expect(screen.getByLabelText("Permission evidence confirmation")).toHaveTextContent(/creates durable permission evidence only/i);
+        fireEvent.click(screen.getByRole("button", { name: "Record permission evidence" }));
+        await waitFor(() => expect(createExecutionPermissionGrant).toHaveBeenCalled());
+        expect(createExecutionPermissionGrant).toHaveBeenCalledWith(uuid4, expect.objectContaining({ confirmation_text: expect.stringContaining("This does not install or execute anything."), execution_authorized: false, mutation_allowed: false }), "csrf", "stable-key");
         const recordHeading = await screen.findByRole("heading", { name: "Current evidence record" });
         const recordRow = recordHeading.closest("li");
         const recordTimes = within(recordRow!).getByText(/^Recorded /);
@@ -174,11 +181,33 @@ describe("InstallationReadinessReviewPage", () => {
         fireEvent.click(screen.getByText("Record IDs and audit details"));
         expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
         expect(screen.getByText(/permanent reservation: true/i)).toHaveTextContent(/retry allowed: false · replay allowed: false/i);
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review permission evidence statement" })).not.toBeInTheDocument());
+    });
+
+    it("does not offer another permission-evidence request when a record already exists", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Current evidence record" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review permission evidence statement" })).not.toBeInTheDocument();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
+    it("hides permission-evidence controls after a failed recording attempt", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(createExecutionPermissionGrant).mockRejectedValue(new Error("private response"));
+        renderPage();
+
+        expect(await screen.findByText("No execution permission evidence has been recorded.")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Review permission evidence statement" }));
-        expect(screen.getByLabelText("Permission evidence confirmation")).toHaveTextContent(/creates durable permission evidence only/i);
         fireEvent.click(screen.getByRole("button", { name: "Record permission evidence" }));
-        await waitFor(() => expect(createExecutionPermissionGrant).toHaveBeenCalled());
-        expect(createExecutionPermissionGrant).toHaveBeenCalledWith(uuid4, expect.objectContaining({ confirmation_text: expect.stringContaining("This does not install or execute anything."), execution_authorized: false, mutation_allowed: false }), "csrf", "stable-key");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Execution permission evidence could not be recorded.");
+        expect(screen.queryByRole("button", { name: "Review permission evidence statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Permission evidence confirmation")).not.toBeInTheDocument();
     });
 
     it("withholds permission-evidence controls when the signed-in session has no CSRF token", async () => {
