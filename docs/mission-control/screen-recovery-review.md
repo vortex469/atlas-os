@@ -867,3 +867,8 @@ instruction already given by the visible Reload, Sign in, or Refresh history
 control. The maintenance-history warning still distinguishes a failed read
 from a failed maintenance action. Focused page tests, responsive page-recovery
 browser checks, lint, production build, and `git diff --check` pass.
+
+Planning screens also keep the reload instruction on the visible control rather
+than repeating it in errors for missing or conflicting plans. A missing plan
+does not offer another generation request. The planning page tests, lint, and
+production build pass.

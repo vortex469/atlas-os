@@ -478,18 +478,22 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
         mockedGetCandidatePlan.mockResolvedValue(null);
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("The saved plan could not be loaded");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The saved plan could not be loaded.");
+        expect(alert).not.toHaveTextContent("Reload to check again");
         expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
     });
 
-    it("does not repeat generation when the server reports ready but its plan read fails", async () => {
+    it("does not repeat generation when the server reports ready but its plan is missing", async () => {
         const user = userEvent.setup();
         mockedGenerateCandidatePlan.mockResolvedValue(session({ status: "plan_ready" }));
-        mockedGetCandidatePlan.mockRejectedValue(new Error("read unavailable"));
+        mockedGetCandidatePlan.mockResolvedValue(null);
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
-        await screen.findByRole("alert");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The generated plan could not be loaded.");
+        expect(alert).not.toHaveTextContent("Reload to check again");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);

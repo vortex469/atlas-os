@@ -49,7 +49,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 let loadedPlan = nextSession?.plan ?? null;
                 const loadedOperationalPlan = nextSession?.operational_plan ?? null;
                 if (loadedPlan && loadedOperationalPlan) {
-                    setError("The planning response contains conflicting plan types. Reload to check again.");
+                    setError("The planning response contains conflicting plan types.");
                     return;
                 }
                 if (loadedOperationalPlan !== null && (!nextSession || !validOperationalPlan(loadedOperationalPlan, nextSession))) {
@@ -63,7 +63,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     return;
                 }
                 if (nextSession?.status === "plan_ready" && loadedPlan === null && loadedOperationalPlan === null) {
-                    setError("The saved plan could not be loaded. Reload to check again.");
+                    setError("The saved plan could not be loaded.");
                     return;
                 }
                 setSession(nextSession);
@@ -110,7 +110,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             setSession(response);
             const generatedOperationalPlan = response.operational_plan ?? null;
             if (response.plan && generatedOperationalPlan) {
-                setGenerateError("The planning response contains conflicting plan types. Reload to check again.");
+                setGenerateError("The planning response contains conflicting plan types.");
                 return;
             }
             if (generatedOperationalPlan !== null && !validOperationalPlan(generatedOperationalPlan, response)) {
@@ -123,7 +123,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 return;
             }
             if (response.status === "plan_ready" && generatedPlan === null && generatedOperationalPlan === null) {
-                setGenerateError("The generated plan could not be loaded. Reload to check again.");
+                setGenerateError("The generated plan could not be loaded.");
                 return;
             }
             setPlan(generatedPlan);
