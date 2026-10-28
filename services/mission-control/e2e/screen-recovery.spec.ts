@@ -561,7 +561,7 @@ for (const wrongIdentity of [false, true]) {
         await page.goto("/candidate-planning/browser-session");
         if (wrongIdentity) {
             await expect(page.getByRole("heading", { name: "Planning session unavailable" })).toBeVisible();
-            await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+            await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
         } else {
             await expect(page.getByText("Planning is unavailable for this session.")).toBeVisible();
         }
@@ -571,7 +571,75 @@ for (const wrongIdentity of [false, true]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 1280]) {
+    test(`planning session read failure retries in place at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        let allowRecovery = false;
+        let releaseInitialFailure!: () => void;
+        const initialFailure = new Promise<void>((resolve) => { releaseInitialFailure = resolve; });
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/**/candidate-planning/retry-session", (route) => {
+            reads += 1;
+            if (!allowRecovery) {
+                return initialFailure.then(() => route.fulfill({ status: 503, json: { detail: "Planning service temporarily unavailable." } }));
+            }
+            return route.fulfill({ json: {
+                session_id: "retry-session",
+                candidate_id: "browser-candidate",
+                status: "ready_for_planning",
+                planning_allowed: true,
+                intake_status: "accepted_for_planning",
+                intake_reason_codes: [],
+                candidate_fingerprint: "browser-fingerprint",
+                unsupported_reason: null,
+                plan: null,
+                planning_failure: null,
+            } });
+        });
+        await page.goto("/candidate-planning/retry-session");
+        const loadingMessage = page.getByText("Loading planning session…", { exact: true });
+        await expect(loadingMessage).toBeVisible();
+        const loadingPadding = await loadingMessage.evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(loadingPadding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(loadingPadding ?? "0px")).toBeGreaterThan(16);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        releaseInitialFailure();
+        await expect(page.getByRole("heading", { name: "Planning session unavailable" })).toBeVisible();
+        const retryUrl = page.url();
+        const recoveryPadding = await page.getByRole("alert").evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(recoveryPadding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(recoveryPadding ?? "0px")).toBeGreaterThan(16);
+        }
+        let mainFrameNavigations = 0;
+        page.on("framenavigated", (frame) => {
+            if (frame === page.mainFrame()) mainFrameNavigations += 1;
+        });
+
+        const readsBeforeRetry = reads;
+        allowRecovery = true;
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByRole("heading", { name: "Plan this change" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Generate Plan" })).toBeEnabled();
+        expect(page.url()).toBe(retryUrl);
+        expect(mainFrameNavigations).toBe(0);
+        expect(reads).toBeGreaterThan(readsBeforeRetry);
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
     test(`malformed saved plans keep workflow controls hidden at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/agent-api/**/candidate-planning/malformed-plan", (route) => route.fulfill({ json: {
@@ -601,7 +669,7 @@ for (const width of [390, 1280]) {
         await page.goto("/candidate-planning/malformed-plan");
 
         await expect(page.getByRole("heading", { name: "Planning session unavailable" })).toBeVisible();
-        await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
         await expect(page.getByRole("button", { name: "Generate Plan" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Create Workflow" })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

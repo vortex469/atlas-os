@@ -103,6 +103,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     function checkPlanningStatus() {
         setError(null);
         setErrorDetails(null);
+        setGenerateError(null);
         setIsLoading(true);
         setReadAttempt((attempt) => attempt + 1);
     }
@@ -191,7 +192,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-6xl p-8">
+            <main className="mx-auto max-w-6xl p-4 sm:p-8">
                 <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                     Loading planning session…
                 </p>
@@ -201,20 +202,20 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
 
     if (error || session === null) {
         return (
-            <main className="mx-auto max-w-6xl space-y-6 p-8">
+            <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
                 <Link to="/execution-candidates" className="text-sm text-blue-300">← Change proposals</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-xl font-semibold text-red-100">{error ? "Planning session unavailable" : "Planning session not found"}</h1>
                     <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>
                     {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
-                    <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload page</button>
+                    <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             </main>
         );
     }
 
     return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
+        <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Change plan</p>
@@ -274,8 +275,8 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 {generateError && (
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                         <p className="font-semibold text-red-300">Plan result unavailable</p>
-                        <p className="mt-1 text-sm text-red-200/80">Mission Control could not verify the plan result. Reload this page to check whether Atlas saved the plan before trying again. No approval or infrastructure change was made.</p>
-                        <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload page</button>
+                        <p className="mt-1 text-sm text-red-200/80">Mission Control could not verify the plan result. Check whether Atlas saved the plan before trying again. This only checks for a saved plan. It does not generate another plan or approve or apply the change.</p>
+                        <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check for saved plan</button>
                         <details className="mt-3">
                             <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
                             <p className="mt-2 break-words text-sm text-slate-400">{generateError}</p>

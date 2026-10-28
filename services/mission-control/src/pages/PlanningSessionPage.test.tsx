@@ -332,19 +332,25 @@ describe("PlanningSessionPage", () => {
         renderPage();
         expect(await screen.findByText("Atlas could not save the planning session. No plan is ready to review.")).toBeInTheDocument();
 
-        mockedGetCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
+        mockedGetCandidatePlanningSession
+            .mockRejectedValueOnce(new Error("Agent unavailable"))
+            .mockResolvedValueOnce(session());
         cleanup();
         renderPage();
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Planning session unavailable");
         expect(alert).toHaveTextContent("Mission Control could not load this planning session, so its current status is unknown.");
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
         const readError = within(alert).getByText("Agent unavailable");
         const readErrorDetails = readError.closest("details");
         expect(readErrorDetails).not.toHaveAttribute("open");
         expect(readError).not.toBeVisible();
         await userEvent.setup().click(within(alert).getByText("Technical details"));
         expect(readError).toBeVisible();
+        const readsBeforeRetry = mockedGetCandidatePlanningSession.mock.calls.length;
+        await userEvent.setup().click(within(alert).getByRole("button", { name: "Try again" }));
+        expect(await screen.findByRole("heading", { name: "Plan this change" })).toBeInTheDocument();
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(readsBeforeRetry + 1);
     });
 
     it("creates a workflow shell from a plan-ready session", async () => {
@@ -424,19 +430,23 @@ describe("PlanningSessionPage", () => {
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(3);
     });
 
-    it("requires a reload before retrying a failed plan generation", async () => {
+    it("checks whether a plan was saved without repeating generation", async () => {
         const user = userEvent.setup();
         mockedGenerateCandidatePlan.mockRejectedValueOnce(new Error("Generation failed"));
+        mockedGetCandidatePlanningSession
+            .mockResolvedValueOnce(session())
+            .mockResolvedValueOnce(session({ status: "plan_ready", plan: plan() }));
         renderPage();
 
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Plan result unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not verify the plan result. Reload this page to check whether Atlas saved the plan before trying again.");
-        expect(alert).toHaveTextContent("No approval or infrastructure change was made.");
+        expect(alert).toHaveTextContent("Mission Control could not verify the plan result.");
+        expect(alert).toHaveTextContent("Check whether Atlas saved the plan before trying again.");
+        expect(alert).toHaveTextContent("This only checks for a saved plan. It does not generate another plan or approve or apply the change.");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Check for saved plan" })).toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
         expect(screen.queryByRole("button", { name: /create workflow|approve|execute|implementation|commit/i })).not.toBeInTheDocument();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
@@ -444,6 +454,13 @@ describe("PlanningSessionPage", () => {
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Generation failed")).not.toBeVisible();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Generation failed")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Check for saved plan" }));
+        expect(await screen.findByRole("heading", { name: "Review the plan" })).toBeInTheDocument();
+        expect(screen.getByText("Update Home Assistant compose stack")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Create Workflow" })).toBeEnabled();
+        expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
     it("clears an older session while a different session is loading", async () => {
         let resolveNext!: (value: CandidatePlanningResponse) => void;
@@ -570,7 +587,7 @@ describe("PlanningSessionPage", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("The saved plan could not be loaded.");
         expect(alert).not.toHaveTextContent("Reload to check again");
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
     });
 
@@ -584,7 +601,7 @@ describe("PlanningSessionPage", () => {
         expect(alert).toHaveTextContent("The generated plan could not be loaded.");
         expect(alert).not.toHaveTextContent("Reload to check again");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Check for saved plan" })).toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
     });
 

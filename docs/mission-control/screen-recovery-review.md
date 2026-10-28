@@ -2109,3 +2109,13 @@ preparation recovery are covered at 320px, 390px, and 1280px. Loading and
 initial-read failure states are checked at phone and desktop widths (11 browser
 checks). The workflow page suite, lint, and production build pass. Approval,
 resume, and execution behavior are unchanged.
+
+## Planning session recovery and phone layout — 2026-10-28
+
+Planning-session loading, error, and review screens now use compact phone
+spacing. Session-read failures can retry in place. After an uncertain plan
+generation result, “Check for saved plan” re-reads the session and saved plan;
+it does not run generation again. Browser coverage includes loading, read
+recovery, malformed saved plans, and the synthetic approval journey at phone
+and desktop widths (10 checks). The focused page suite passes (35 tests), as do
+lint and the production build. No approval or infrastructure change was added.
