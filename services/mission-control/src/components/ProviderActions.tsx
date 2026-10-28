@@ -465,9 +465,13 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             {executionError && (
                 <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-5">
                     <h3 className="font-semibold text-red-300">Action result unavailable</h3>
-                    <p className="mt-1 text-sm text-red-200/80">{executionError}</p>
+                    <p className="mt-1 text-sm text-red-200/80">The action may have completed, but Mission Control did not receive a final result.</p>
                     <p className="mt-2 text-sm text-slate-300">Check Action history before trying the action again.</p>
                     <Link to="/operations" className="mt-3 inline-flex text-sm font-semibold text-blue-300 underline underline-offset-4">Open Action history →</Link>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{executionError}</p>
+                    </details>
                 </div>
             )}
 

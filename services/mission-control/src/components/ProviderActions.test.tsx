@@ -3,6 +3,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -244,12 +245,17 @@ describe("ProviderActions", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Action result unavailable");
-        expect(alert).toHaveTextContent("Provider unavailable.");
+        expect(alert).toHaveTextContent("The action may have completed, but Mission Control did not receive a final result.");
         expect(alert).toHaveTextContent("Check Action history before trying the action again.");
         expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open Action history →" })).toHaveAttribute("href", "/operations");
         expect(screen.queryByRole("button", { name: "Reload actions" })).not.toBeInTheDocument();
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(onActionCompleted).not.toHaveBeenCalled();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider unavailable.")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider unavailable.")).toBeVisible();
     });
 });

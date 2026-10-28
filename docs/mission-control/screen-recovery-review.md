@@ -1081,6 +1081,10 @@ Action records now load independently from retention details and provider
 filter options. A failure in either optional read leaves the action list
 available and identifies only the affected information as unavailable.
 
+Provider action failures now lead with the uncertain outcome and direct the
+operator to Action history before retrying. Raw provider errors are available
+under collapsed Technical details; the action is not automatically repeated.
+
 ## Planning request recovery — 2026-10-28
 
 An uncertain planning-request result now explains that a session may have been
