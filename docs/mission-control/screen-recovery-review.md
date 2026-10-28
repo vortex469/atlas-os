@@ -387,6 +387,15 @@ and that the page is read-only. The focused audit suite passes (18 tests), lint
 and build pass, and the built repository journey passes all 4 cases, including
 the audit view at 390px and 1280px.
 
+## Action history filters — 2026-10-28
+
+Action History keeps status and text search in view and places provider and
+date filters under “More filters.” Active extra filters are marked and can be
+cleared from the main panel. The UTC-day explanation stays with the date
+controls. The focused page suite passes (8 tests), lint/build pass, and the
+built responsive browser checks pass at 390px and 1280px (2 tests). Query
+semantics and audit operations are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

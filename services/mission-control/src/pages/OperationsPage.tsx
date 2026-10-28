@@ -103,6 +103,8 @@ export function OperationsPage() {
             search,
         ],
     );
+    const hasActiveMoreFilters = providerId !== "all" || Boolean(completedFrom || completedTo);
+    const hasActiveFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search || searchInput);
 
     const loadHistory = useCallback(async () => {
         const requestId = requestSequence.current + 1;
@@ -310,9 +312,9 @@ export function OperationsPage() {
                 </p>
             </div>
 
-            <section className="grid gap-4 rounded-lg border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 xl:grid-cols-5">
+            <section aria-label="Action history filters" className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <form
-                    className="sm:col-span-2 xl:col-span-1"
+                    className="max-w-2xl"
                     onSubmit={(event) => {
                         event.preventDefault();
                         setSearch(searchInput.trim());
@@ -346,104 +348,98 @@ export function OperationsPage() {
                     </div>
                 </form>
 
-                <div>
-                    <label
-                        htmlFor="audit-provider-filter"
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                    >
-                        Provider
-                    </label>
-                    <select
-                        id="audit-provider-filter"
-                        value={providerId}
-                        onChange={(event) => {
-                            setProviderId(event.target.value);
-                            setOffset(0);
-                        }}
-                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
-                    >
-                        <option value="all">All providers</option>
-                        {providers.map((provider) => (
-                            <option
-                                key={provider.id}
-                                value={provider.id}
+                <details className="rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-300">
+                        More filters
+                        {hasActiveMoreFilters && <span className="ml-2 text-xs font-normal text-amber-200">Additional filters are applied</span>}
+                    </summary>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div>
+                            <label
+                                htmlFor="audit-provider-filter"
+                                className="text-xs font-medium uppercase tracking-wider text-slate-500"
                             >
-                                {provider.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label
-                        htmlFor="audit-from-filter"
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                    >
-                        From date
-                    </label>
-                    <input
-                        id="audit-from-filter"
-                        type="date"
-                        aria-describedby="audit-date-filter-help"
-                        value={completedFrom}
-                        max={completedTo || undefined}
-                        onChange={(event) => {
-                            setCompletedFrom(event.target.value);
-                            setOffset(0);
-                        }}
-                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
-                    />
-                </div>
-
-                <div>
-                    <label
-                        htmlFor="audit-to-filter"
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                    >
-                        To date
-                    </label>
-                    <input
-                        id="audit-to-filter"
-                        type="date"
-                        aria-describedby="audit-date-filter-help"
-                        value={completedTo}
-                        min={completedFrom || undefined}
-                        onChange={(event) => {
-                            setCompletedTo(event.target.value);
-                            setOffset(0);
-                        }}
-                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
-                    />
-                </div>
-
-                <div className="flex items-end">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setFilter("all");
-                            setProviderId("all");
-                            setSearchInput("");
-                            setSearch("");
-                            setCompletedFrom("");
-                            setCompletedTo("");
-                            setOffset(0);
-                        }}
-                        disabled={
-                            filter === "all" &&
-                            providerId === "all" &&
-                            !search &&
-                            !searchInput &&
-                            !completedFrom &&
-                            !completedTo
-                        }
-                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        Clear filters
-                    </button>
-                </div>
-                <p id="audit-date-filter-help" className="text-xs text-slate-500 sm:col-span-2 xl:col-span-5">
-                    Dates cover UTC days. Entry times use your browser’s local time.
-                </p>
+                                Provider
+                            </label>
+                            <select
+                                id="audit-provider-filter"
+                                value={providerId}
+                                onChange={(event) => {
+                                    setProviderId(event.target.value);
+                                    setOffset(0);
+                                }}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                            >
+                                <option value="all">All providers</option>
+                                {providers.map((provider) => (
+                                    <option key={provider.id} value={provider.id}>{provider.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="audit-from-filter"
+                                className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                            >
+                                From date
+                            </label>
+                            <input
+                                id="audit-from-filter"
+                                type="date"
+                                aria-describedby="audit-date-filter-help"
+                                value={completedFrom}
+                                max={completedTo || undefined}
+                                onChange={(event) => {
+                                    setCompletedFrom(event.target.value);
+                                    setOffset(0);
+                                }}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="audit-to-filter"
+                                className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                            >
+                                To date
+                            </label>
+                            <input
+                                id="audit-to-filter"
+                                type="date"
+                                aria-describedby="audit-date-filter-help"
+                                value={completedTo}
+                                min={completedFrom || undefined}
+                                onChange={(event) => {
+                                    setCompletedTo(event.target.value);
+                                    setOffset(0);
+                                }}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                            />
+                        </div>
+                        <p id="audit-date-filter-help" className="text-xs text-slate-500 sm:col-span-2 xl:col-span-3">
+                            Dates cover UTC days. Entry times use your browser’s local time.
+                        </p>
+                    </div>
+                </details>
+                {hasActiveFilters && (
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFilter("all");
+                                setProviderId("all");
+                                setSearchInput("");
+                                setSearch("");
+                                setCompletedFrom("");
+                                setCompletedTo("");
+                                setOffset(0);
+                            }}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                )}
             </section>
 
             <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">

@@ -6,6 +6,11 @@ for (const width of [390, 1280]) {
         await page.goto("/operations");
 
         await expect(page.getByRole("heading", { name: "Action History", exact: true })).toBeVisible();
+        await expect(page.getByLabel("From date")).toBeHidden();
+        await expect(page.getByLabel("Provider")).toBeHidden();
+        await page.getByText("More filters", { exact: true }).click();
+        await expect(page.getByLabel("From date")).toBeVisible();
+        await expect(page.getByLabel("Provider")).toBeVisible();
         await expect(page.getByText("Dates cover UTC days. Entry times use your browser’s local time.", { exact: true })).toBeVisible();
         await expect(page.getByLabel("From date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
         await expect(page.getByLabel("To date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");

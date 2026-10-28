@@ -260,6 +260,10 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
+        const moreFilters = screen.getByText("More filters", { exact: true });
+        expect(moreFilters.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("From date")).not.toBeVisible();
+        await user.click(moreFilters);
         expect(screen.getByText("Dates cover UTC days. Entry times use your browser’s local time.", { exact: true })).toBeVisible();
         expect(screen.getByLabelText("From date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
         expect(screen.getByLabelText("To date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
@@ -291,6 +295,20 @@ describe("OperationsPage", () => {
                     "2026-07-25T23:59:59.999Z",
             }),
         );
+        expect(screen.getByText("Additional filters are applied")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Clear filters" }));
+        expect(screen.getByLabelText("Provider")).toHaveValue("all");
+        expect(screen.getByLabelText("From date")).toHaveValue("");
+        expect(screen.getByLabelText("To date")).toHaveValue("");
+        await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenLastCalledWith({
+            limit: 25,
+            offset: 0,
+            search: undefined,
+            status: undefined,
+            providerId: undefined,
+            completedFrom: undefined,
+            completedTo: undefined,
+        }));
     });
 
     it("searches and pages through audit results", async () => {
