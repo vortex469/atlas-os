@@ -34,6 +34,26 @@ function descriptorLabel(value: string | undefined): string {
     return value.charAt(0).toUpperCase() + value.slice(1).replaceAll("-", " ");
 }
 
+function resourceBlocker(reason: OperatorIntentResource["reason"]): string {
+    switch (reason) {
+        case "identity_unavailable": return "Atlas could not confirm this VM’s identity.";
+        case "unsupported_resource_type": return "This resource type cannot be restarted here.";
+        case "stopped": return "This VM is stopped. Select a running VM to request a restart.";
+        case "template": return "Templates cannot be restarted.";
+        case "locked": return "This VM is locked in Proxmox.";
+        case "migrating": return "This VM is moving between hosts.";
+        case "unavailable_state": return "Atlas could not confirm this VM’s current state.";
+        default: return "This VM cannot be selected for a restart.";
+    }
+}
+
+function formatExpiry(value: string | null | undefined): string | null {
+    if (!value) return null;
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return null;
+    return `${date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC`;
+}
+
 export function MaintenanceRequestPage() {
     const session = useOperatorSession();
     const location = useLocation();
@@ -125,6 +145,7 @@ export function MaintenanceRequestPage() {
 
     const permitted = session.principal?.permissions.includes(OPERATIONAL_INTENT_CREATE) ?? false;
     const selected = resources.find((resource) => resource.resource_id === selectedId) ?? null;
+    const expiry = result ? formatExpiry(result.candidate.expires_at) : null;
     async function submit() {
         if (!selected?.requestable || !selected.operational_target_fingerprint || !session.csrfToken || !permitted || loading || submitting) return;
         const generation = ++submissionGeneration.current;
@@ -190,26 +211,44 @@ export function MaintenanceRequestPage() {
             </section>
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your operator session lacks maintenance permission.</p>}
             {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
-            <section className="space-y-3" aria-label="Authoritative Proxmox resources">
-                <div className="flex items-center justify-between"><h2 className="text-xl font-semibold text-white">Select one exact resource</h2><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
+            <section className="space-y-3" aria-label="Available virtual machines">
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the selected VM again when you send the request.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Refreshing authoritative resources…</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">
                             <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted || loading || submitting} onChange={() => { setSelectedId(resource.resource_id); setResult(null); setResultExpired(false); setError(null); }} />
-                            <span><strong className="text-slate-100">{resource.display_name}</strong><span className="ml-2 text-sm">VMID {resource.resource_id}</span><span className="ml-2 text-sm">{resource.node}</span><span className="ml-2 text-sm">{resource.current_state}</span>{!resource.requestable && <span className="mt-1 block text-sm">Unavailable: {resource.reason?.replaceAll("_", " ") ?? "unknown"}</span>}</span>
+                            <span className="min-w-0 flex-1">
+                                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <strong className="text-slate-100">{resource.display_name}</strong>
+                                    <span className="rounded-full border border-slate-600 px-2 py-0.5 text-xs">{descriptorLabel(resource.current_state)}</span>
+                                </span>
+                                <span className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400"><span>VMID {resource.resource_id}</span><span>Node {resource.node}</span></span>
+                                {!resource.requestable && <span className="mt-2 block text-sm text-amber-200">{resourceBlocker(resource.reason)}</span>}
+                            </span>
                         </span>
                     </label>
                 ))}
             </section>
             <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
-                {submitting ? "Requesting candidate…" : "Request restart candidate"}
+                {submitting ? "Requesting restart proposal…" : "Request restart proposal"}
             </button>
-            {result && <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5"><h2 className="text-lg font-semibold text-emerald-200">Maintenance candidate ready</h2><p className="mt-2 break-all text-sm text-slate-200">Candidate ID: {result.candidate_id}</p><p className="mt-1 text-sm text-slate-300">Target: {selected?.display_name ?? result.candidate.target_id} ({result.candidate.target_id})</p><p className="mt-1 text-sm text-slate-300">Status: {result.candidate.status}</p><p className="mt-1 text-sm text-slate-300">Expires: {result.candidate.expires_at ?? "Not reported"}</p><p className="mt-1 text-sm text-amber-200">Expected disruption: brief service interruption</p>{resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This candidate has expired. Request a new maintenance candidate.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Continue to candidate planning</Link>}</section>}
+            {result && <section aria-label="Restart proposal ready" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+                <h2 className="text-lg font-semibold text-emerald-200">Restart proposal ready for review</h2>
+                <p className="mt-2 text-sm text-slate-200">Target: {selected?.display_name ?? "selected VM"}. Nothing has restarted.</p>
+                <p className="mt-1 text-sm text-slate-300">Expected impact: brief service interruption.</p>
+                {expiry ? <p className="mt-1 text-sm text-slate-300">Expires {expiry}</p> : <p className="mt-1 text-sm text-slate-300">Expiry time unavailable.</p>}
+                {resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This proposal has expired. Request a new restart proposal before continuing.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Review restart proposal</Link>}
+                <details className="mt-4 text-sm text-slate-300"><summary>Technical details</summary><dl className="mt-3 grid gap-2 sm:grid-cols-2"><TechnicalField label="Proposal ID" value={result.candidate_id} /><TechnicalField label="Target ID" value={result.candidate.target_id} /><TechnicalField label="Reported status" value={result.candidate.status} /><TechnicalField label="Expiry time (UTC)" value={result.candidate.expires_at ?? "Not reported"} /></dl></details>
+            </section>}
         </main>
     );
 }
 
 function FixedField({ label, value }: { label: string; value: string }) {
     return <div><p className="text-xs uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-100">{value}</p></div>;
+}
+
+function TechnicalField({ label, value }: { label: string; value: string }) {
+    return <div className="min-w-0"><dt className="text-xs text-slate-500">{label}</dt><dd className="mt-1 break-all font-mono text-xs">{value}</dd></div>;
 }

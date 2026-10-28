@@ -238,6 +238,18 @@ remain visible after a failed refresh. Focused component and dashboard browser
 checks cover loading, failure, malformed evidence, future states, and responsive
 layout. Workflow reads and execution boundaries are unchanged.
 
+## Maintenance request clarity — 2026-10-28
+
+The target picker now says “Choose a virtual machine,” labels each VM’s state,
+and explains why an unavailable VM cannot be selected in operator language.
+The result says a restart proposal is ready for review, confirms that nothing
+has restarted, shows the expected impact and readable UTC expiry, and offers a
+direct review link. Proposal IDs, target IDs and raw status values remain under
+collapsed technical details. Twenty-seven focused component tests and the full
+synthetic maintenance journey at 390px and 1280px pass, along with lint and
+build. Target validation, request ordering, permissions and approval boundaries
+are unchanged.
+
 ## Provider action recovery — 2026-10-28
 
 Action-catalog read failures now offer a read-only reload and have their own
