@@ -30,7 +30,7 @@ export function OperatorLoginPage() {
             const succeeded = await session.login(operatorId, password);
             if (succeeded && viewActive.current) navigate("/operations/request", { replace: true, state: returnState });
         } catch {
-            if (viewActive.current) setLoginError("Sign-in could not be completed. Try again.");
+            if (viewActive.current) setLoginError("Sign-in could not be completed.");
         } finally {
             setPassword("");
             if (viewActive.current) setSubmitting(false);

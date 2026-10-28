@@ -57,7 +57,9 @@ describe("OperatorLoginPage", () => {
         await user.type(screen.getByLabelText("Operator ID"), "kenny");
         await user.type(screen.getByLabelText("Password"), "secret");
         await user.click(screen.getByRole("button", { name: "Sign in" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Sign-in could not be completed. Try again.");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Sign-in could not be completed.");
+        expect(alert).not.toHaveTextContent("Try again");
         expect(screen.getByLabelText("Password")).toHaveValue("");
         expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
         expect(screen.queryByText(/private diagnostic/)).not.toBeInTheDocument();

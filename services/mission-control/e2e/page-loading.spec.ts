@@ -29,6 +29,7 @@ for (const width of [390, 1280]) {
         await page.route("**/src/pages/ForgePage.tsx*", (route) => route.abort("failed"));
         await page.goto("/forge");
         await expect(page.getByRole("heading", { name: "This page could not load" })).toBeVisible();
+        await expect(page.getByText("Reload to try again, or choose another screen from the navigation.")).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Return to Mission Control" })).toHaveAttribute("href", "/");
         await page.unroute("**/src/pages/ForgePage.tsx*");

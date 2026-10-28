@@ -859,3 +859,11 @@ fixture now matches Core's retention-summary contract, preventing undefined
 counts in the screen. These changes do not alter read, planning, approval, or
 workflow behavior. Focused page tests, screen-recovery browser checks, lint,
 production build, and `git diff --check` pass.
+
+## Recovery controls on error screens — 2026-10-28
+
+Page-load, sign-in, and maintenance-history failures no longer repeat the
+instruction already given by the visible Reload, Sign in, or Refresh history
+control. The maintenance-history warning still distinguishes a failed read
+from a failed maintenance action. Focused page tests, responsive page-recovery
+browser checks, lint, production build, and `git diff --check` pass.

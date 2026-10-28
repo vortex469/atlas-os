@@ -92,7 +92,7 @@ export function OperationalHistoryPage() {
             setItems(page.items.map((workflow, index) => ({ workflow, ...evidence[index] })));
             setTotal(page.total);
         } catch {
-            if (generation === requestGeneration.current) setError("Could not load maintenance history. Refresh to try again.");
+            if (generation === requestGeneration.current) setError("Could not load maintenance history.");
         } finally {
             if (generation === requestGeneration.current) setIsLoading(false);
         }

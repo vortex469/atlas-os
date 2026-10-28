@@ -160,6 +160,18 @@ describe("OperationalHistoryPage", () => {
 });
 
 describe("maintenance history recovery", () => {
+    it("keeps recovery to one refresh control and separates load failure from maintenance outcome", async () => {
+        mockedList.mockRejectedValue(new Error("private diagnostic"));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Could not load maintenance history.");
+        expect(alert).not.toHaveTextContent("Refresh to try again.");
+        expect(alert).toHaveTextContent("A loading problem does not tell us whether maintenance failed.");
+        expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
+        expect(document.body.textContent).not.toContain("private diagnostic");
+    });
+
     it("loads once during Strict Mode initialization", async () => {
         vi.clearAllMocks();
         mockedList.mockResolvedValue({ items: [], total: 0, limit: 10, offset: 0 });
