@@ -869,7 +869,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
-    const action = workflow.effect_kind === "operational_action" ? "Maintenance action" : "Implementation";
+    const action = workflow.effect_kind === "operational_action" ? "Maintenance request" : "Implementation";
     switch (workflow.workflow_state) {
         case "planned":
             return "Workflow is ready for review.";

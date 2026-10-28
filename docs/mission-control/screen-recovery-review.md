@@ -2181,3 +2181,11 @@ implementation-approval wording, and stale maintenance records remain marked
 last-known. The focused dashboard suites pass (78 tests), along with six
 synthetic browser checks at 320px, 390px, and 1280px; lint and the production
 build pass. Approval authority and workflow transitions are unchanged.
+
+## Maintenance workflow summary wording — 2026-10-28
+
+The workflow detail summary now says “Maintenance request needs approval,”
+matching the exact approval control and the later approved status. The focused
+workflow page suite passes (82 tests), and the synthetic maintenance journey
+passes at 320px, 390px, and 1280px (3 checks); lint and the production build
+pass. Approval and run steps remain separate.

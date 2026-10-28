@@ -89,6 +89,7 @@ for (const width of [320, 390, 1280]) {
         await expect(progress.getByRole("listitem")).toHaveCount(4);
         await page.getByRole("button", { name: "Prepare change for review", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Maintenance request", exact: true })).toBeVisible();
+        await expect(page.getByText("Maintenance request needs approval.", { exact: true })).toBeVisible();
         await expect(page.getByRole("button", { name: "Approve maintenance request", exact: true })).toBeEnabled();
         await expect(page.getByRole("button", { name: "Run approved maintenance", exact: true })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(5);

@@ -135,7 +135,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage();
         await screen.findByRole("heading", { name: "Maintenance request" });
-        expect(screen.getByText("Maintenance action needs approval.", { exact: true })).toBeVisible();
+        expect(screen.getByText("Maintenance request needs approval.", { exact: true })).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
