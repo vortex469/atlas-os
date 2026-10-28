@@ -147,7 +147,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     <OverviewField label="Change" value={formatLabel(candidate.execution_category)} />
                     <OverviewField label="Compatibility" value={candidate.compatibility_status ? compatibilityStatusLabel(candidate.compatibility_status) : "Not reported"} />
                     <OverviewField label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
-                    <OverviewField label="Expires" value={formatExpiry(candidate.expires_at)} />
+                    <OverviewField label="Expires (local time)" value={formatExpiry(candidate.expires_at)} />
                 </dl>
                 <div className="mt-5 grid gap-5 border-t border-slate-800 pt-5 lg:grid-cols-2">
                     <div>
@@ -181,7 +181,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 <section className="mt-5 grid gap-4 lg:grid-cols-2" aria-label="Technical references">
                     <InfoPanel title="Proposal identity">
                         <DetailField label="Candidate ID" value={candidate.id} />
-                        <DetailField label="Created" value={formatTimestamp(candidate.created_at)} />
+                        <DetailField label="Created (local time)" value={formatTimestamp(candidate.created_at)} />
                     </InfoPanel>
                     <InfoPanel title="Source recommendation">
                         <DetailField label="Source recommendation ID" value={candidate.source_recommendation_id} />

@@ -1051,3 +1051,8 @@ Refresh proposal action. It reloads the proposal details, clears the stale
 planning result, and makes no second planning request. The focused proposal
 detail suite verifies the refreshed content and request counts; no approval or
 change action is added.
+
+## Proposal date labels — 2026-10-28
+
+Proposal expiry and creation timestamps now say that they are shown in the
+browser's local time. Their displayed values and expiry checks are unchanged.

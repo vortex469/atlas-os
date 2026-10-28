@@ -94,6 +94,7 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getByText("For stack-home-assistant (Compose Stack)")).toBeInTheDocument();
         expect(screen.getAllByText("Eligible for planning consideration").length).toBeGreaterThan(0);
         expect(screen.getByText("Standard")).toBeInTheDocument();
+        expect(screen.getByText("Expires (local time)")).toBeInTheDocument();
         expect(screen.getByText("Update the compose stack after review.")).toBeInTheDocument();
         expect(screen.getByText("May interrupt service")).toBeInTheDocument();
         expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
@@ -110,6 +111,7 @@ describe("ExecutionCandidateDetailPage", () => {
 
         await user.click(screen.getByText("Technical references"));
         expect(screen.getByText("candidate-1")).toBeVisible();
+        expect(screen.getByText("Created (local time)")).toBeVisible();
         expect(screen.getByText("finding-1")).toBeVisible();
         expect(screen.getByText("orion")).toBeVisible();
         expect(screen.getByText("catalog-home-assistant")).toBeVisible();
