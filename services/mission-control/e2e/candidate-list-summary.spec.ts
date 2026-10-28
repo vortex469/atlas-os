@@ -23,3 +23,21 @@ for (const width of [390, 1280]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+for (const width of [390, 1280]) {
+    test(`proposal search failure shows one clear error at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/execution-candidates**", route => route.fulfill({
+            status: 503,
+            json: { detail: "Proposal service is temporarily unavailable." },
+        }));
+        await page.goto("/execution-candidates");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Change proposals unavailable");
+        await expect(alert).toContainText("Mission Control could not load change proposals.");
+        await expect(page.getByText("Results unavailable", { exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}

@@ -128,7 +128,8 @@ describe("ExecutionCandidatesPage", () => {
         fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
         await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
-        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Current search failed");
+        expect(screen.queryByText("Results unavailable")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
     });
 

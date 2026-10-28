@@ -775,3 +775,13 @@ workflow ID remain. The overview component suite passes (52 tests), the
 synthetic overview and dashboard-attention browser suites pass (14 tests across
 phone, tablet, and desktop widths), and lint, build, and `git diff --check`
 pass. The fixture rejects unexpected mutation requests.
+
+## Change proposal read failure — 2026-10-28
+
+When a proposal search fails, the page now shows its error alert without a
+second “Results unavailable” message beside the disabled pagination. The
+screen continues to hide previous results after the failed search, and error
+details remain redacted by the API error handler. The focused page suite passes
+(8 tests), responsive proposal-list browser checks pass (4 tests at 390px and
+1280px), and lint, production build, and `git diff --check` pass. The browser
+fixture rejects unexpected mutations.

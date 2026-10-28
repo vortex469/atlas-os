@@ -179,7 +179,7 @@ export function ExecutionCandidatesPage() {
 
             <section aria-label="Change proposal results" className="space-y-4">
                 <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
-                    <p>{isLoading ? "Loading change proposals…" : error ? "Results unavailable" : `${result.total} proposal${result.total === 1 ? "" : "s"}`}</p>
+                    {!error && <p>{isLoading ? "Loading change proposals…" : `${result.total} proposal${result.total === 1 ? "" : "s"}`}</p>}
                     <div className="flex gap-2">
                         <button type="button" aria-label="Previous change proposals page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Previous
