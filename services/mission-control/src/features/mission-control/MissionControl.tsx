@@ -138,9 +138,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         </li>
     );
     return <>
-        <Card title="Operator Attention" evidence={evidence.summary}>
+        <Card title="Operator Attention" evidence={evidence.summary} showEvidenceNote={false}>
             <p>Review the conditions below and open a workflow when it needs your decision.</p>
-            <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
             {!workflowKnown && <p>Workflow status could not be confirmed.</p>}
             {!findingsKnown && <p>Operational findings could not be confirmed.</p>}
             {uniqueAttention.length === 0 && <p>No attention items appear in the information received. Atlas cannot confirm an all-clear while information is missing.</p>}

@@ -36,7 +36,11 @@ describe("MC overview evidence", () => {
         for (const name of ['System status','Service health','Worker / Execution','Agent state','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
-        expect(screen.getByText(/Workflow details are missing or incomplete/)).toBeInTheDocument();
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Workflow status could not be confirmed.')).toBeInTheDocument();
+        expect(attention.getByText('Operational findings could not be confirmed.')).toBeInTheDocument();
+        expect(attention.getByText(/No attention items appear in the information received/)).toBeInTheDocument();
+        expect(attention.queryByText('Information has not been received yet.')).not.toBeInTheDocument();
     });
     it.each([false, true])("keeps every service accessible with stale=%s", (stale) => {
         const services = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`Service ${index + 1}`, { status: "healthy", message: `Reported service ${index + 1}` }]));
