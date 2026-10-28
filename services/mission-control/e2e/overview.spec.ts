@@ -119,7 +119,11 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto('/');
         const health = page.getByRole('region', { name: 'System health', exact: true });
-        await expect(health.getByRole('article', { name: 'Atlas Core health' })).toBeVisible();
+        const coreReport = health.getByRole('article', { name: 'Atlas Core health' });
+        await expect(coreReport).toBeVisible();
+        const reportBox = await coreReport.boundingBox();
+        const guidanceBox = await health.getByText('How to read health').boundingBox();
+        expect(reportBox!.y).toBeLessThan(guidanceBox!.y);
         await expect(health.getByText(/overall check time/)).toBeHidden();
         await health.getByText('How to read health').click();
         await expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();

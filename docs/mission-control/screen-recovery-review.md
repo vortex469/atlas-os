@@ -740,6 +740,15 @@ status and action permissions are unchanged. The focused component suite passes
 (10 tests), the keyboard-accessible overview browser check passes, and lint,
 production build, and `git diff --check` pass.
 
+## Health report scan order — 2026-10-28
+
+The health card now lists its independent source reports before the optional
+“How to read health” explanation. This lets operators see the reported status
+before opening guidance. Status, freshness, source ordering, and disclosure
+contents are unchanged. The focused health and overview suites pass (100 tests),
+phone and desktop browser checks pass (2 tests at 390px and 1280px), and lint,
+production build, and `git diff --check` pass.
+
 ## Provider summary wording — 2026-10-28
 
 The Providers card now says, “Saved providers and the status Atlas reports for

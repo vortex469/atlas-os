@@ -58,7 +58,10 @@ describe("MC overview evidence", () => {
     it('keeps health source limitations available without crowding the dashboard scan', () => {
         show({ health: { data: { atlas: 'healthy', services: { api: { status: 'healthy' } } } } });
         const health = within(screen.getByRole('region', { name: 'System health' }));
-        expect(health.getByRole('article', { name: 'Atlas Core health' })).toBeVisible();
+        const report = health.getByRole('article', { name: 'Atlas Core health' });
+        const guidance = health.getByText('How to read health');
+        expect(report).toBeVisible();
+        expect(report.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         expect(health.queryByText(/overall check time/)).not.toBeVisible();
         fireEvent.click(health.getByText('How to read health'));
         expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();

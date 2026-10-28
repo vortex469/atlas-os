@@ -16,9 +16,6 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
     ];
     return (
         <section aria-label="Health reports" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
-            <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
-                <p>Atlas shows each source separately; it does not calculate one overall score. Core does not supply an overall check time. Reports older than a minute are marked out of date.</p>
-            </details>
             {sources.map(source => (
                 <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
                     <h4 className="font-semibold">{source.title}</h4>
@@ -34,6 +31,9 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
                 </article>
             ))}
             {hasServiceMap && Object.keys(record(core.services)).length === 0 && <p>Core did not report subsystem health.</p>}
+            <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
+                <p>Atlas shows each source separately; it does not calculate one overall score. Core does not supply an overall check time. Reports older than a minute are marked out of date.</p>
+            </details>
         </section>
     );
 }
