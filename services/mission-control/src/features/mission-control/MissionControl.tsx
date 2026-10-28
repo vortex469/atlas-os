@@ -34,9 +34,14 @@ function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unk
     return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} />;
 }
 
-function attentionPriority(value: unknown) {
+function attentionPriority(value: unknown, actionRequired = false) {
+    const reported = typeof value === "string" ? value.trim().toLowerCase() : "";
     const state = status(value);
-    return state === "blocked" ? 0 : state === "unavailable" ? 1 : 2;
+    if (reported === "blocked" || state === "blocked") return 0;
+    if (reported === "critical") return 1;
+    if (actionRequired) return 2;
+    if (state === "unavailable") return 3;
+    return 4;
 }
 
 function workflowAttentionStage(state: string): string {
@@ -123,7 +128,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         if (!previous || (previous.stale && !item.stale) || (Boolean(previous.stale) === Boolean(item.stale) && attentionPriority(item.state) < attentionPriority(previous.state))) deduplicated.set(item.key, item);
     }
     const uniqueAttention = [...deduplicated.values()]
-        .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
+        .sort((a, b) => attentionPriority(a.state, "actionRequired" in a && a.actionRequired === true)
+            - attentionPriority(b.state, "actionRequired" in b && b.actionRequired === true));
     return <>
         <Card title="Operator Attention" showSourceNote={false}>
             {!initialAttentionLoad && <>

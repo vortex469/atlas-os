@@ -51,6 +51,41 @@ describe("MC overview evidence", () => {
         expect(within(screen.getByRole('region', { name: 'System health' })).getByRole('link', { name: 'Open operations →' })).toHaveAttribute('href', '/operations');
     });
 
+    it('keeps a workflow approval visible ahead of routine degraded services', () => {
+        const services = Object.fromEntries(Array.from({ length: 6 }, (_, index) => [`service-${index}`, {
+            provider_id: `provider-${index}`,
+            status: 'degraded',
+            message: `Service ${index} needs attention`,
+        }]));
+        services.blocked = { provider_id: 'priority-blocked', status: 'blocked', message: 'This service is blocked' };
+        show({
+            health: { data: { atlas: 'healthy', services } },
+            summary: { data: { findings: [{
+                id: 'critical-finding',
+                source: 'core',
+                title: 'Critical condition',
+                message: 'Immediate review required',
+                severity: 'critical',
+            }] } },
+            workflows: { data: { items: [{
+                workflow_id: 'needs-commit-review',
+                workflow_state: 'awaiting_commit_approval',
+                execution_intent: 'update-compose-stack',
+                timeline: [],
+            }], total: 1, limit: 200, offset: 0 } },
+        });
+
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const visibleItems = attention.getAllByRole('listitem');
+        expect(visibleItems).toHaveLength(5);
+        expect(within(visibleItems[0]).getByRole('link')).toHaveTextContent('blocked');
+        expect(within(visibleItems[1]).getByRole('link', { name: 'Critical condition' })).toBeVisible();
+        expect(within(visibleItems[2]).getByRole('link', {
+            name: 'Update Compose Stack · Waiting for commit approval',
+        })).toBeVisible();
+        expect(attention.getByText('Showing 5 of 9 reported conditions. Open the detail views for more.')).toBeVisible();
+    });
+
     it('does not repeat an approval stage already named by the workflow link', () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',

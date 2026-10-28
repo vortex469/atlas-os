@@ -1283,3 +1283,13 @@ details, and the read-only retry and workflow-list link stay available. The
 workflow page suite passes (78 tests), and the responsive browser recovery case
 passes at 390px and 1280px. Lint and production build pass. The browser fixture
 tests reads only and rejects unexpected mutations.
+
+## Operator Attention priority — 2026-10-28
+
+When more than five conditions are reported, the dashboard now keeps blocked
+conditions first, then critical findings, then workflow approvals. Routine
+degraded checks no longer push a human decision out of the visible list;
+unavailable information follows approvals. The overview suite passes (56
+tests), with lint, production build, and `git diff --check` passing. The card
+still caps the visible list at five and links each condition to its owning
+screen; no source state or authority changed.
