@@ -30,6 +30,14 @@ for (const width of [390, 1280]) {
             "href",
             "/workflows/workflow-browser-baseline",
         );
+
+        await page.getByLabel("Workflow status").selectOption("completed");
+        await expect(page.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toBeVisible();
+        await page.getByRole("button", { name: "Apply filters" }).click();
+        await expect(page.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toHaveCount(0);
+        await expect(page.getByText("No workflows match the current filters.")).toBeVisible();
+        await page.getByRole("button", { name: "Clear filters" }).click();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

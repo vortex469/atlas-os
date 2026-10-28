@@ -131,8 +131,11 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: "candidate-123" } });
         fireEvent.change(screen.getByLabelText("Workflow ID contains"), { target: { value: "workflow-123" } });
         fireEvent.change(screen.getByLabelText("Approval status"), { target: { value: "waiting" } });
+        expect(screen.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
 
+        expect(screen.queryByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).not.toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
@@ -153,6 +156,16 @@ describe("WorkflowDashboardPage", () => {
 
         expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
         expect(screen.getByText("Showing 11–11 of 11 loaded workflows")).toBeVisible();
+        fireEvent.change(screen.getByLabelText("Workflow status"), { target: { value: "awaiting_implementation_approval" } });
+        expect(screen.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+
+        fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
+        expect(screen.queryByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).not.toBeInTheDocument();
+        expect(screen.getByText("Showing 1–10 of 11 loaded workflows")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+        expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
     });
 
     it("uses a plain fallback for missing references inside workflow details", async () => {

@@ -1410,3 +1410,11 @@ disables result paging until Search applies them. Whitespace-only edits do not
 create a false pending state. The Discovery page suite passes 14 tests, and
 the responsive catalog browser checks pass at 390px and 1280px. Catalog reads
 and all authority boundaries are unchanged.
+
+## Workflow filter clarity — 2026-10-28
+
+The workflow dashboard now identifies draft filters that have not been applied
+and pauses Previous and Next until the operator applies them. Applying a filter
+still returns the list to its first page. The page suite passes 10 tests, and
+six browser checks pass across 390px and 1280px. Workflow retrieval and
+approval behavior are unchanged.

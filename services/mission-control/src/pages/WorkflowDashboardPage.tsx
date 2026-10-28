@@ -108,6 +108,7 @@ export function WorkflowDashboardPage() {
     }, [workflows]);
 
     const hasAppliedMoreFilters = Boolean(filters.source || filters.candidateId || filters.workflowId);
+    const hasUnappliedFilters = !dashboardFiltersEqual(draftFilters, filters);
 
     const filteredWorkflows = useMemo(() => {
         return workflows.filter((workflow) => {
@@ -264,6 +265,7 @@ export function WorkflowDashboardPage() {
                         <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">Clear filters</button>
                     </div>
                 </form>
+                {hasUnappliedFilters && <p role="status" className="mt-4 rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">These filter changes haven&apos;t been applied yet. Select Apply filters to update the workflow list.</p>}
             </section>
 
             <section aria-labelledby="workflow-list-heading" className="space-y-4">
@@ -284,14 +286,22 @@ export function WorkflowDashboardPage() {
 
                 {filteredWorkflows.length > PAGE_SIZE && (
                     <nav aria-label="Workflow pagination" className="flex items-center gap-3">
-                        <button type="button" onClick={() => setPageIndex((page) => Math.max(0, page - 1))} disabled={currentPage === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                        <button type="button" onClick={() => setPageIndex((page) => Math.max(0, page - 1))} disabled={hasUnappliedFilters || currentPage === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                         <span className="text-sm text-slate-400">Page {currentPage + 1} of {totalPages}</span>
-                        <button type="button" onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))} disabled={currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        <button type="button" onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))} disabled={hasUnappliedFilters || currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                     </nav>
                 )}
             </section>
         </main>
     );
+}
+
+function dashboardFiltersEqual(left: DashboardFilters, right: DashboardFilters): boolean {
+    return left.state === right.state
+        && left.source === right.source
+        && left.candidateId === right.candidateId
+        && left.workflowId === right.workflowId
+        && left.approvalStatus === right.approvalStatus;
 }
 
 function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
