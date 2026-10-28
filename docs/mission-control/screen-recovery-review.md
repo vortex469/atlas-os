@@ -244,6 +244,14 @@ points operators to the current monitoring section. It no longer uses
 policy and provider-page tests, lint, and build validate the wording; provider
 configuration and monitoring authority are unchanged.
 
+## Provider check history wording — 2026-10-28
+
+Provider telemetry now uses “Provider check history” and explains the bars,
+results and time limit without the internal ACE name or “snapshots” and
+“threshold” jargon. The empty state says when no checks are available. Focused
+telemetry tests, lint and build cover the labels, graph description, limit and
+no-limit states; collection and policy behavior are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

@@ -39,13 +39,12 @@ export function ProviderTelemetryTrend({
     return (
         <section>
             <SectionHeader
-                title="Intelligence History"
-                description="Provider-specific ACE finding-collection duration and outcomes."
+                title="Provider check history"
+                description="Each bar is one check. Taller bars took longer; green bars finished and amber bars timed out or failed."
             />
             {points.length === 0 ? (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                    No intelligence collection history is available for
-                    this provider yet.
+                    Atlas has no check history for this provider yet.
                 </div>
             ) : (
                 <TrendChart
@@ -100,13 +99,13 @@ function TrendChart({
     return (
         <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
             <div className="grid gap-4 sm:grid-cols-4">
-                <Metric label="Snapshots" value={String(points.length)} />
-                <Metric label="Average" value={duration(average)} />
+                <Metric label="Checks" value={String(points.length)} />
+                <Metric label="Average time" value={duration(average)} />
                 <Metric
                     label={
                         performancePolicy
-                            ? "Over threshold"
-                            : "Issues"
+                            ? "Checks over limit"
+                            : "Checks with issues"
                     }
                     value={String(
                         performancePolicy
@@ -120,7 +119,7 @@ function TrendChart({
                     }
                 />
                 <Metric
-                    label="Latest"
+                    label="Latest result"
                     value={status(latest.timing.status)}
                     warning={latest.timing.status !== "completed"}
                 />
@@ -128,7 +127,7 @@ function TrendChart({
             <div className="relative mt-6">
                 {performancePolicy && (
                     <div
-                        aria-label={`Policy threshold ${duration(performancePolicy.maximum_collection_duration_ms)}`}
+                        aria-label={`Time limit ${duration(performancePolicy.maximum_collection_duration_ms)}`}
                         className={`absolute right-0 left-0 z-10 border-t border-dashed ${
                             performancePolicy.severity === "critical"
                                 ? "border-red-400"
@@ -145,13 +144,13 @@ function TrendChart({
                             {duration(
                                 performancePolicy.maximum_collection_duration_ms,
                             )}{" "}
-                            policy
+                            limit
                         </span>
                     </div>
                 )}
                 <div
                     role="img"
-                    aria-label={`${latest.timing.provider_name} intelligence duration trend`}
+                    aria-label={`${latest.timing.provider_name} check time trend. Each bar is one check; taller bars took longer, green bars finished, and amber bars timed out or failed.`}
                     className="flex h-32 items-end gap-1 border-b border-l border-slate-700 px-2 pt-2"
                 >
                     {points.map((point) => {

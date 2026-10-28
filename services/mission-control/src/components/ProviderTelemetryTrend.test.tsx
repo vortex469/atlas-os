@@ -64,14 +64,14 @@ describe("ProviderTelemetryTrend", () => {
         expect(screen.getByText("150 ms")).toBeInTheDocument();
         expect(screen.getByText("Timed out")).toBeInTheDocument();
         expect(
-            screen.getByText("Over threshold"),
+            screen.getByText("Checks over limit"),
         ).toBeInTheDocument();
         expect(
-            screen.getByLabelText("Policy threshold 150 ms"),
+            screen.getByLabelText("Time limit 150 ms"),
         ).toHaveStyle({ bottom: "75%" });
         expect(
             screen.getByRole("img", {
-                name: "Qdrant intelligence duration trend",
+                name: "Qdrant check time trend. Each bar is one check; taller bars took longer, green bars finished, and amber bars timed out or failed.",
             }),
         ).toBeInTheDocument();
         expect(
@@ -92,8 +92,21 @@ describe("ProviderTelemetryTrend", () => {
         );
         expect(
             screen.getByText(
-                "No intelligence collection history is available for this provider yet.",
+                "Atlas has no check history for this provider yet.",
             ),
         ).toBeInTheDocument();
+    });
+
+    it("describes check problems when no time limit is configured", () => {
+        render(
+            <ProviderTelemetryTrend
+                providerId="qdrant"
+                snapshots={snapshots}
+            />,
+        );
+
+        expect(screen.getByText("Checks with issues")).toBeInTheDocument();
+        expect(screen.queryByText("Checks over limit")).not.toBeInTheDocument();
+        expect(screen.queryByText("limit")).not.toBeInTheDocument();
     });
 });
