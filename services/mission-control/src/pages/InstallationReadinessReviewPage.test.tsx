@@ -131,12 +131,17 @@ describe("InstallationReadinessReviewPage", () => {
         expect(screen.getByRole("status")).toHaveTextContent("No candidate record selected.");
     });
 
-    it("reports a permission-evidence read failure as unavailable", async () => {
+    it("offers a read-only retry after a permission-evidence read failure", async () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
-        vi.mocked(listExecutionPermissionGrants).mockRejectedValue(new Error("private response"));
+        vi.mocked(listExecutionPermissionGrants)
+            .mockRejectedValueOnce(new Error("private response"))
+            .mockResolvedValueOnce({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
         renderPage();
         expect(await screen.findByRole("alert")).toHaveTextContent("Execution permission evidence is unavailable.");
         expect(screen.getByRole("alert")).not.toHaveTextContent("could not be recorded");
+        fireEvent.click(screen.getByRole("button", { name: "Reload permission evidence" }));
+        expect(await screen.findByText("No execution permission evidence has been recorded.")).toBeInTheDocument();
+        expect(listExecutionPermissionGrants).toHaveBeenCalledTimes(2);
         expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
     });
 

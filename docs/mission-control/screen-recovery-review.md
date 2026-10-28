@@ -1035,3 +1035,11 @@ states that candidate eligibility was not evaluated and installation was not
 authorized. The focused assessment suite passes (11 tests), along with lint,
 production build, and `git diff --check`. Selection and assessment boundaries
 are unchanged.
+
+## Permission evidence read recovery — 2026-10-28
+
+If the permission-evidence list cannot be read, the review now offers a reload
+that repeats only that read. The retry clears the unavailable state while it
+loads and does not create permission evidence. A failed record request remains
+separate and does not offer a duplicate submission control. Focused readiness
+review tests, lint, production build, and `git diff --check` pass.

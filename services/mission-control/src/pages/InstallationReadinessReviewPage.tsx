@@ -173,6 +173,7 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
     const session = useOperatorSession();
     const [grants, setGrants] = useState<ExecutionPermissionGrantResultV1[] | null>(null);
     const [error, setError] = useState<"load" | "create" | null>(null);
+    const [readAttempt, setReadAttempt] = useState(0);
     const [confirming, setConfirming] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const candidateId = response.review.candidate_record_id;
@@ -183,7 +184,7 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
             .then((value) => { if (current) setGrants(value.grants); })
             .catch(() => { if (current) setError("load"); })
         return () => { current = false; };
-    }, [candidateId]);
+    }, [candidateId, readAttempt]);
 
     const begin = () => setConfirming(true);
     const record = async () => {
@@ -218,7 +219,7 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
             <p className="mt-2 text-sm">Core binds the authenticated operator and exact v0.20–v0.34 evidence/readiness fingerprints. Validity inherits at most 30 seconds; expiry never refreshes evidence. The review subject and idempotency subject are reserved permanently, with no replay.</p>
         </details>
         {grants === null && !error && <p role="status" className="mt-4">Loading execution permission evidence…</p>}
-        {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Execution permission evidence is unavailable." : "Execution permission evidence could not be recorded."}</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, or internal path is shown.</p></div>}
+        {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Execution permission evidence is unavailable." : "Execution permission evidence could not be recorded."}</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, or internal path is shown.</p>{error === "load" && <button type="button" onClick={() => { setGrants(null); setError(null); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload permission evidence</button>}</div>}
         {grants?.length === 0 && !error && <p role="status" className="mt-4">No execution permission evidence has been recorded.</p>}
         {grants && grants.length > 0 && <ol aria-label="Execution permission grants" className="mt-4 space-y-4">{grants.map((item) => <Grant key={item.grant!.grant_id} result={item} />)}</ol>}
         {mayCreate && !confirming && <button type="button" onClick={begin} className="mt-4 rounded border border-blue-400 px-3 py-2 text-sm">Review permission evidence statement</button>}
