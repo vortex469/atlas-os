@@ -28,10 +28,10 @@ describe("v0.35 execution permission evidence presentation boundary", () => {
         for (const label of ["install now", "execute now", "run now", "deploy now", "dispatch now", "retry now", "resend now", "send to agent", "start workflow", "roll back now"]) expect(page.toLowerCase()).not.toContain(label);
     });
 
-    it("locks the exact evidence-only confirmation and full authority disclaimer", () => {
+    it("locks the exact evidence-only confirmation and plain authority boundary", () => {
         expect(page).toContain("EXECUTION_PERMISSION_CONFIRMATION");
-        expect(page).toMatch(/creates durable permission evidence only/i);
-        expect(page).toMatch(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, worker execution, Docker, Podman, shell or process execution, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
-        expect(page).toMatch(/Home Assistant remains non-installable and non-executable/i);
+        expect(page).toMatch(/saves evidence for a later review only/i);
+        expect(page).toMatch(/does not authorize or start installation or execution/i);
+        expect(page).toMatch(/Home Assistant remains blocked because Atlas cannot install it/i);
     });
 });
