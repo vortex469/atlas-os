@@ -21,6 +21,7 @@ export function ExecutionCandidateDetailPage() {
 function CandidateDetail({ candidateId }: { candidateId: string }) {
     const [candidate, setCandidate] = useState<ExecutionCandidate | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [candidateLoadAttempt, setCandidateLoadAttempt] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
     const [planningResponse, setPlanningResponse] = useState<CandidatePlanningResponse | null>(null);
@@ -60,7 +61,15 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         return () => {
             cancelled = true;
         };
-    }, [candidateId]);
+    }, [candidateId, candidateLoadAttempt]);
+
+    function retryCandidateRead() {
+        setCandidate(null);
+        setError(null);
+        setNotFound(false);
+        setIsLoading(true);
+        setCandidateLoadAttempt((attempt) => attempt + 1);
+    }
 
     const actionState = useMemo(() => getPlanningActionState(candidate), [candidate]);
 
@@ -104,7 +113,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     if (error || candidate === null) {
-        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Execution candidate unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this execution candidate."}</p></div></PageFrame>;
+        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Execution candidate unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this execution candidate."}</p><button type="button" onClick={retryCandidateRead} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200">Retry loading proposal</button></div></PageFrame>;
     }
 
     return (

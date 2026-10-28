@@ -323,4 +323,18 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.queryByRole("heading", { name: "Change proposal not found" })).not.toBeInTheDocument();
     });
 
+    it("retries a temporary proposal read failure", async () => {
+        const user = userEvent.setup();
+        mockedGetExecutionCandidate.mockRejectedValueOnce(new Error("Core unavailable"))
+            .mockResolvedValueOnce(candidate());
+
+        renderPage();
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Core unavailable");
+        await user.click(screen.getByRole("button", { name: "Retry loading proposal" }));
+
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+    });
+
 });

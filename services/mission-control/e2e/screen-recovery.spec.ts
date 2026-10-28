@@ -325,6 +325,30 @@ test("provider registry retries an unavailable read", async ({ page }) => {
     expect(attempts).toBe(2);
 });
 
+for (const width of [390, 1280]) {
+    test(`change proposal details can retry after a temporary read failure at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/execution-candidates/candidate-retry", (route) => {
+            reads += 1;
+            return reads <= 2
+                ? route.fulfill({ status: 503, json: { detail: "PRIVATE_BACKEND_DETAIL" } })
+                : route.fulfill({ json: { ...executionCandidates[0], id: "candidate-retry" } });
+        });
+        await page.goto("/execution-candidates/candidate-retry");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Execution candidate unavailable");
+        await expect(alert).toContainText("Mission Control could not load this execution candidate.");
+        await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
+        await alert.getByRole("button", { name: "Retry loading proposal" }).click();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
+        expect(reads).toBe(3);
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
+
 for (const expires_at of [null, "2999-02-30T00:00:00Z"]) {
     test(`proposal planning stays review-only and validates expiry ${expires_at ?? "none"}`, async ({ page }) => {
         const proposal = { ...executionCandidates[0], expires_at };

@@ -946,3 +946,12 @@ including after a pagination request fails. The focused component test verifies
 that a filtered search is preserved; responsive browser checks verify recovery
 after a failed read at 390px and 1280px. No proposal mutation or approval
 behavior changed.
+
+## Change proposal detail recovery — 2026-10-28
+
+Transient proposal detail read errors now offer an explicit retry. A retry
+repeats only the detail GET and returns to the proposal summary on success;
+HTTP 404 still uses the separate missing-proposal screen. The focused component
+test and responsive browser checks verify recovery and confirm the backend
+detail remains hidden at 390px and 1280px. Planning and approval behavior are
+unchanged.
