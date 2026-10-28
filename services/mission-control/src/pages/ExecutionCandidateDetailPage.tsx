@@ -218,35 +218,46 @@ function PageFrame({ children }: { children: React.ReactNode }) {
 function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
     const message = planningMessage(response);
     const isError = !response.planning_allowed || response.planning_failure !== null || response.session_id === null;
+    const canContinuePlanning = response.planning_allowed === true && response.status === "ready_for_planning";
 
     return (
         <div role={isError ? "alert" : "status"} className={["mt-4 rounded-lg border p-4", isError ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"].join(" ")}>
             <p className={isError ? "font-semibold text-amber-200" : "font-semibold text-emerald-200"}>{message}</p>
-            {response.session_id && <p className="mt-1 break-all text-sm text-slate-200">Planning session ID: {response.session_id}</p>}
             {response.session_id && (
                 <Link to={`/candidate-planning/${encodeURIComponent(response.session_id)}`} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    Continue planning
+                    {canContinuePlanning ? "Continue planning" : "Open planning session"}
                 </Link>
             )}
-            <p className="mt-1 text-sm text-slate-400">Status: {formatLabel(response.status)}</p>
-            <p className="mt-1 text-sm text-slate-400">Intake status: {formatLabel(response.intake_status)}</p>
-            {response.intake_reason_codes.length > 0 && <p className="mt-1 text-sm text-slate-400">Reason codes: {response.intake_reason_codes.join(", ")}</p>}
-            {response.unsupported_reason && <p className="mt-1 text-sm text-slate-400">Unsupported reason: {response.unsupported_reason}</p>}
-            {response.planning_failure && <p className="mt-1 text-sm text-slate-400">Failure: {response.planning_failure.code} - {response.planning_failure.message}</p>}
+            <details className="mt-3 border-t border-slate-700 pt-3">
+                <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                    <DetailField label="Planning session ID" value={response.session_id ?? "Not created"} />
+                    <DetailField label="Candidate fingerprint" value={response.candidate_fingerprint ?? "Not reported"} />
+                    <DetailField label="Status" value={formatLabel(response.status)} />
+                    <DetailField label="Planning allowed" value={response.planning_allowed ? "Yes" : "No"} />
+                    <DetailField label="Intake status" value={formatLabel(response.intake_status)} />
+                    {response.intake_reason_codes.length > 0 && <DetailField label="Reason codes" value={response.intake_reason_codes.join(", ")} />}
+                    {response.unsupported_reason && <DetailField label="Unsupported reason" value={response.unsupported_reason} />}
+                    {response.planning_failure && <DetailField label="Failure" value={`${response.planning_failure.code} — ${response.planning_failure.message}`} />}
+                </dl>
+            </details>
         </div>
     );
 }
 
 function planningMessage(response: CandidatePlanningResponse): string {
-    if (response.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable during authoritative revalidation.";
-    if (response.planning_failure?.code === "persistence_failed") return "Planning session could not be persisted.";
-    if (response.status === "ready_for_planning" && response.session_id) {
-        return "Planning session created. Next step: generate a candidate plan.";
+    if (response.planning_failure?.code === "atlas_core_unavailable") return "Atlas could not check whether the proposal is current because Core is unavailable.";
+    if (response.planning_failure?.code === "persistence_failed") return "Atlas could not save the planning session. No session is ready to continue.";
+    if (response.planning_allowed && response.status === "ready_for_planning" && response.session_id) {
+        return "Planning is ready. Continue to review the proposal plan. No approval or change has been made.";
     }
-    if (response.status === "unsupported_intent") return "Unsupported intent. Atlas Agent cannot plan this candidate yet.";
-    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "Candidate is stale. Refresh the candidate and try again.";
-    if (response.status === "intake_rejected") return "Planning intake rejected by Atlas Core.";
-    return "Atlas Agent returned a planning intake response.";
+    if (response.status === "unsupported_intent") return "Atlas cannot plan this type of change yet.";
+    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Refresh it and open the current proposal before continuing.";
+    if (response.status === "intake_rejected") return "Atlas did not accept this proposal for planning. Review the recorded reason in technical details.";
+    if (response.status === "plan_ready" && response.session_id) return "A plan is ready to review. Open the planning session to continue.";
+    if (response.session_id && !response.planning_allowed) return "This planning session is not ready to continue. Open it to review its status.";
+    if (response.planning_allowed) return "Atlas allowed planning but did not return a session to continue. Review the response details.";
+    return "Planning could not start. Review the response details for the recorded reason.";
 }
 
 function formatExpiry(value: string | null | undefined): string {

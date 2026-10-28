@@ -611,6 +611,17 @@ search results or mark a newer search complete. The focused page suite passes
 (7 tests), responsive catalog browser checks pass at 390px and 1280px (2
 tests), and lint/build pass. API requests and read-only behavior are unchanged.
 
+## Proposal planning result — 2026-10-28
+
+Starting planning now shows a plain-language outcome and a clear next link.
+Session IDs, fingerprints, intake codes, and failure details are collapsed
+under “Technical details.” A response that is not allowed to continue labels
+its session link “Open planning session” for review, while only an allowed,
+ready session says “Continue planning.” Planning still does not approve or
+apply a change. The focused page suite passes (18 tests), the repository and
+maintenance browser journeys pass at 390px and 1280px (6 tests), and lint and
+production build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact
