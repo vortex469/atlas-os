@@ -70,7 +70,8 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
         && session.authenticated
         && permissions.includes("installation.execution.one_shot_controlled_dequeue.record")
         && permissions.includes("installation.execution.one_shot_controlled_dequeue.read")
-        && permissions.includes("installation.execution.controlled_dequeue_admission.read");
+        && permissions.includes("installation.execution.controlled_dequeue_admission.read")
+        && Boolean(session.csrfToken);
 
     const record = async () => {
         if (!session.csrfToken || submitting) return;

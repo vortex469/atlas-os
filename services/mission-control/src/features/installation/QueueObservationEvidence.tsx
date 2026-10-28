@@ -51,7 +51,10 @@ export function QueueObservationEvidence({ candidateId, oneShot }: { candidateId
     }, [candidateId, oneShot.enqueue_id]);
 
     const permissions = session.principal?.permissions ?? [];
-    const mayCreate = oneShot.lifecycle === "active" && session.authenticated && permissions.includes("installation.execution.queue_observation.record") && permissions.includes("installation.execution.one_shot_live_enqueue.read");
+    const mayCreate = oneShot.lifecycle === "active" && session.authenticated &&
+        permissions.includes("installation.execution.queue_observation.record") &&
+        permissions.includes("installation.execution.one_shot_live_enqueue.read") &&
+        Boolean(session.csrfToken);
     const record = async () => {
         if (!session.csrfToken || submitting) return;
         setSubmitting(true); setError(false); setBlockedResult(null);

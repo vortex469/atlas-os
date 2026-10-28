@@ -66,6 +66,16 @@ describe("InstallationExecutionAdmissions", () => {
         expect(createInstallationExecutionAdmission).toHaveBeenCalledWith(uuid4, expect.objectContaining({ permission_grant_id: uuid4, requested_scope: "future_installation_runner_consideration_only", execution_authorized: false, mutation_allowed: false, replay_allowed: false }), "csrf", "stable-admission-key");
     });
 
+    it("withholds admission evidence controls when the signed-in session has no CSRF token", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: null };
+        render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
+
+        expect(await screen.findByText(/admission evidence cannot be recorded yet/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review admission evidence statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Admission evidence confirmation")).not.toBeInTheDocument();
+        expect(createInstallationExecutionAdmission).not.toHaveBeenCalled();
+    });
+
     it("reports a failed record without retaining the empty state", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.admission.record"] }, csrfToken: "csrf" };
         vi.mocked(createInstallationExecutionAdmission).mockRejectedValue(new Error("private response"));

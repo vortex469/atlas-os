@@ -66,6 +66,16 @@ describe("QueueObservationEvidence", () => {
         }), "csrf", "stable-observation-key");
     });
 
+    it("withholds observation evidence controls when the signed-in session has no CSRF token", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: null };
+        render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
+
+        expect(await screen.findByText(/recording remains blocked/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Queue observation evidence confirmation")).not.toBeInTheDocument();
+        expect(createQueueObservation).not.toHaveBeenCalled();
+    });
+
     it("renders ambiguous create response as pending or blocked with no prohibited control", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         vi.mocked(createQueueObservation).mockResolvedValue(ambiguousQueueObservationResultFixture);

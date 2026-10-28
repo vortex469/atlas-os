@@ -1366,3 +1366,8 @@ missing that token could open the confirmation even though submission would
 silently return without making a request. A focused regression verifies the
 control remains unavailable in that state; backend permission and approval
 contracts are unchanged.
+
+The same guard now covers installation admission, queue observation, controlled
+dequeue admission, and one-shot dequeue evidence. Each panel has a regression
+that verifies the confirmation stays hidden without the session token; no
+dequeue, worker, installation, or execution authority was added.

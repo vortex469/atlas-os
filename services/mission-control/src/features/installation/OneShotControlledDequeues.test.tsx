@@ -88,6 +88,17 @@ describe("OneShotControlledDequeues", () => {
         }), "csrf", "stable-one-shot-controlled-key");
     });
 
+    it("withholds one-shot dequeue controls when the signed-in session has no CSRF token", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.one_shot_controlled_dequeue.record", "installation.execution.one_shot_controlled_dequeue.read", "installation.execution.controlled_dequeue_admission.read"] }, csrfToken: null };
+        render(<OneShotControlledDequeues {...props} />);
+
+        expect(await screen.findByText(/recording remains blocked/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review one-shot controlled dequeue statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("One-shot controlled dequeue confirmation")).not.toBeInTheDocument();
+        expect(createOneShotControlledDequeue).not.toHaveBeenCalled();
+        expect(getControlledDequeueAdmission).not.toHaveBeenCalled();
+    });
+
     it("renders blocked create response without prohibited downstream controls", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.one_shot_controlled_dequeue.record", "installation.execution.one_shot_controlled_dequeue.read", "installation.execution.controlled_dequeue_admission.read"] }, csrfToken: "csrf" };
         vi.mocked(createOneShotControlledDequeue).mockResolvedValue(blockedOneShotControlledDequeueResultFixture);

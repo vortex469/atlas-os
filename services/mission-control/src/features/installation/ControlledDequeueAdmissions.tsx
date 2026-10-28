@@ -64,7 +64,8 @@ export function ControlledDequeueAdmissions({ candidateId, observation }: { cand
         && session.authenticated
         && permissions.includes("installation.execution.controlled_dequeue_admission.record")
         && permissions.includes("installation.execution.controlled_dequeue_admission.read")
-        && permissions.includes("installation.execution.queue_observation.read");
+        && permissions.includes("installation.execution.queue_observation.read")
+        && Boolean(session.csrfToken);
 
     const record = async () => {
         if (!session.csrfToken || submitting) return;

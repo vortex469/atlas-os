@@ -88,6 +88,16 @@ describe("ControlledDequeueAdmissions", () => {
         }), "csrf", "stable-controlled-dequeue-key");
     });
 
+    it("withholds admission evidence controls when the signed-in session has no CSRF token", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.controlled_dequeue_admission.record", "installation.execution.controlled_dequeue_admission.read", "installation.execution.queue_observation.read"] }, csrfToken: null };
+        render(<ControlledDequeueAdmissions candidateId={queueObservationReceiptFixture.candidate_record_id} observation={queueObservationReceiptFixture} />);
+
+        expect(await screen.findByText(/recording remains blocked/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review controlled dequeue admission statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Controlled dequeue admission confirmation")).not.toBeInTheDocument();
+        expect(createControlledDequeueAdmission).not.toHaveBeenCalled();
+    });
+
     it("renders ambiguous create response as blocked with no prohibited control", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.controlled_dequeue_admission.record", "installation.execution.controlled_dequeue_admission.read", "installation.execution.queue_observation.read"] }, csrfToken: "csrf" };
         vi.mocked(createControlledDequeueAdmission).mockResolvedValue(ambiguousControlledDequeueAdmissionResultFixture);

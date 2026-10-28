@@ -30,7 +30,9 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
     }, [candidateId]);
 
     const activeGrant = grants.find((item) => item.grant && item.status?.lifecycle === "active");
-    const mayCreate = !homeAssistantBlocked && Boolean(activeGrant) && session.authenticated && session.principal?.permissions.includes("installation.execution.admission.record");
+    const mayCreate = !homeAssistantBlocked && Boolean(activeGrant) && session.authenticated &&
+        session.principal?.permissions.includes("installation.execution.admission.record") &&
+        Boolean(session.csrfToken);
     const record = async () => {
         if (!session.csrfToken || !activeGrant?.grant || submitting) return;
         setSubmitting(true); setError(null);
