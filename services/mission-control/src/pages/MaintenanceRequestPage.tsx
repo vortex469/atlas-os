@@ -68,7 +68,7 @@ export function MaintenanceRequestPage() {
     const [resources, setResources] = useState<OperatorIntentResource[]>([]);
     const [capability, setCapability] = useState<OperationalCapabilityDescriptor | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [proposalOutcomeUncertain, setProposalOutcomeUncertain] = useState(false);
@@ -230,6 +230,7 @@ export function MaintenanceRequestPage() {
             <section className="space-y-3" aria-label="Available virtual machines">
                 <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting || proposalOutcomeUncertain} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Loading available VMs…</p>}
+                {!loading && !error && resources.length === 0 && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-300">No VMs are available to select right now. Use Refresh to check again.</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">

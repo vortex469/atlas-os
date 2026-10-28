@@ -145,6 +145,25 @@ describe("MaintenanceRequestPage", () => {
         expect(screen.queryByText(/vmgenid|identity token|provider action/i)).not.toBeInTheDocument();
     });
 
+    it("explains when no VMs are available and keeps Refresh as the recovery", async () => {
+        vi.mocked(getCapabilityResources).mockResolvedValueOnce({
+            execution_intent: "restart-service",
+            provider_id: "proxmox",
+            resource_type: "qemu",
+            generated_at: "2026-08-14T00:00:00Z",
+            resources: [],
+        });
+        renderPage();
+
+        const resources = screen.getByRole("region", { name: "Available virtual machines" });
+        expect(within(resources).getByText("Loading available VMs…")).toBeVisible();
+        expect(within(resources).queryByText("No VMs are available to select right now. Use Refresh to check again.")).not.toBeInTheDocument();
+        expect(await within(resources).findByText("No VMs are available to select right now. Use Refresh to check again.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        expect(within(resources).queryByRole("radio")).not.toBeInTheDocument();
+    });
+
     it("does not leave a loading placeholder when no restart capability is available", async () => {
         vi.mocked(getOperationalCapabilities).mockResolvedValue({ capabilities: [] });
         renderPage();

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { journey } from "./repository-journey-fixture";
 import { installMaintenanceRequestJourney } from "./maintenance-request-journey-fixture";
+import { capability } from "./maintenance-selector-fixture";
 
 for (const width of [390, 1280]) {
     test(`maintenance request through audit keeps approval and execution separate at ${width}px`, async ({ page, baseURL }) => {
@@ -95,6 +96,41 @@ test("locks the request screen after an unconfirmed proposal response", async ({
     await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
     expect(proposalRequests).toBe(1);
     expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
+    expect(fixture.entryUnexpected).toEqual([]);
+    expect(fixture.unexpected).toEqual([]);
+});
+
+test("explains when the maintenance resource list is empty", async ({ page, baseURL }) => {
+    const fixture = await installMaintenanceRequestJourney(page, baseURL);
+    await page.setViewportSize({ width: 390, height: 844 });
+    let resourceReads = 0;
+    await page.route(`**/api/v1/execution-candidates/operator-intents/capabilities/${capability.selector_id}/resources`, async (route) => {
+        if (route.request().method() === "GET") {
+            resourceReads += 1;
+            return route.fulfill({ json: {
+                execution_intent: "restart-service",
+                provider_id: "proxmox",
+                resource_type: "qemu",
+                generated_at: "2026-10-26T00:00:00Z",
+                resources: [],
+            } });
+        }
+        return route.fallback();
+    });
+
+    await page.goto("/operations/request");
+    await page.getByLabel("Operator ID").fill("browser-operator");
+    await page.getByLabel("Password").fill("fixture-only-password");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+
+    await expect(page.getByText("No VMs are available to select right now. Use Refresh to check again.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+    await expect(page.getByRole("radio")).toHaveCount(0);
+    await page.getByRole("button", { name: "Refresh" }).click();
+    await expect.poll(() => resourceReads).toBe(2);
+    expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
+    expect(fixture.writes).toEqual([]);
     expect(fixture.entryUnexpected).toEqual([]);
     expect(fixture.unexpected).toEqual([]);
 });

@@ -1770,3 +1770,13 @@ last-known. The two focused component suites pass (81 tests), five development
 browser checks and one built-preview check pass, and the full Mission Control
 suite passes (2,786 tests across 181 files), lint and production build pass.
 Approval and execution behavior are unchanged.
+
+## Maintenance resource empty state — 2026-10-28
+
+The maintenance request screen now shows an explicit loading state before
+reporting that no VMs are available. After a successful empty result, it
+explains that there are no selectable VMs and keeps Refresh as the recovery;
+proposal submission stays disabled. The focused page suite passes (32 tests),
+the 390px fixture-backed browser check passes, the full Mission Control suite
+passes (2,787 tests across 181 files), lint passes, and the production build
+passes. No API contract or approval boundary changed.
