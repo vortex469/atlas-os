@@ -94,6 +94,29 @@ describe("MC overview evidence", () => {
         expect(attention.getAllByRole('listitem')).toHaveLength(5);
     });
 
+    it('lets operators expand and collapse all reported service checks', () => {
+        const services = Object.fromEntries(Array.from({ length: 6 }, (_, index) => [`service-${index}`, {
+            status: 'healthy',
+            message: `Service ${index} status detail`,
+        }]));
+        show({ health: { data: { atlas: 'healthy', services } } });
+
+        const checks = within(screen.getByRole('region', { name: 'Service checks' }));
+        expect(checks.getAllByRole('listitem')).toHaveLength(4);
+        expect(checks.queryByText('service-5')).not.toBeInTheDocument();
+
+        const expand = checks.getByRole('button', { name: 'Show all 6 service checks' });
+        expect(expand).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(expand);
+        expect(checks.getAllByRole('listitem')).toHaveLength(6);
+        expect(checks.getByText('service-5')).toBeVisible();
+
+        const collapse = checks.getByRole('button', { name: 'Show fewer service checks' });
+        expect(collapse).toHaveAttribute('aria-expanded', 'true');
+        fireEvent.click(collapse);
+        expect(checks.getAllByRole('listitem')).toHaveLength(4);
+    });
+
     it('does not repeat an approval stage already named by the workflow link', () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',

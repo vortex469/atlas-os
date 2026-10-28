@@ -92,6 +92,29 @@ for (const width of [320, 768, 1440]) {
     });
 }
 
+test('service check summary reveals every reported check on mobile', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.route('**/api/v1/health', route => route.fulfill({ json: {
+        atlas: 'healthy',
+        services: Object.fromEntries(Array.from({ length: 6 }, (_, index) => [`service-${index}`, {
+            status: 'healthy',
+            message: `Service ${index} is reachable.`,
+        }])),
+    } }));
+    await page.goto('/');
+
+    const checks = page.getByRole('region', { name: 'Service checks', exact: true });
+    await expect(checks.getByRole('listitem')).toHaveCount(4);
+    await checks.getByRole('button', { name: 'Show all 6 service checks' }).click();
+    await expect(checks.getByRole('listitem')).toHaveCount(6);
+    await expect(checks.getByText('service-5')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+    await checks.getByRole('button', { name: 'Show fewer service checks' }).click();
+    await expect(checks.getByRole('listitem')).toHaveCount(4);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 test('narrow overview preserves unknown evidence and distinct attention conditions', async ({ page, rejectedMutationRequests }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.route('**/health', route => route.fulfill({ json: {

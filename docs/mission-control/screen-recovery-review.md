@@ -1302,3 +1302,13 @@ The visible sidebar brand now says “Mission Control” without the design-only
 component and browser regressions check the plain product name. The shell suite
 passes (33 component tests and one focused browser test), along with lint and
 the production build. No routes, release metadata, or behavior changed.
+
+## Service check list access — 2026-10-28
+
+The dashboard now keeps its four-check summary compact while allowing the
+operator to expand and collapse every reported service check. This replaces
+the count-only message that hid additional checks without a way to reach them.
+The overview suite passes (57 tests), and a mobile browser regression verifies
+all six fixture checks can be revealed and hidden again without horizontal
+overflow. Lint, production build, and `git diff --check` pass. No health
+evidence or backend behavior changes.

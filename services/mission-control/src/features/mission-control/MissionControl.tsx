@@ -110,6 +110,7 @@ function AttentionListItem({ item }: { item: AttentionItem }) {
 
 export function Overview({ evidence, loading = false }: { evidence: OverviewEvidence; loading?: boolean }) {
     const [showAllAttention, setShowAllAttention] = useState(false);
+    const [showAllServices, setShowAllServices] = useState(false);
     const health = record(evidence.health?.data);
     const services = Object.entries(record(health.services)).sort((a, b) =>
         Number(status(record(a[1]).status) === "healthy") - Number(status(record(b[1]).status) === "healthy"));
@@ -164,6 +165,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         .sort((a, b) => attentionPriority(a.state, "actionRequired" in a && a.actionRequired === true)
             - attentionPriority(b.state, "actionRequired" in b && b.actionRequired === true));
     const displayedAttention = showAllAttention ? uniqueAttention : uniqueAttention.slice(0, 5);
+    const displayedServices = showAllServices ? services : services.slice(0, 4);
     return <>
         <Card title="Operator Attention" showSourceNote={false}>
             {!initialAttentionLoad && <>
@@ -194,8 +196,13 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Service checks" evidence={evidence.health} loading={loading}>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
-                {services.slice(0, 4).map(([name, raw]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>)}
-                {services.length > 4 && <p>Showing 4 of {services.length} reported services.</p>}
+                {displayedServices.length > 0 && <ul className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></li>)}</ul>}
+                {services.length > 4 && <button
+                    type="button"
+                    className="mc-control mc-focusable rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"
+                    aria-expanded={showAllServices}
+                    onClick={() => setShowAllServices(current => !current)}
+                >{showAllServices ? "Show fewer service checks" : `Show all ${services.length} service checks`}</button>}
                 <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">About service checks</summary>
                     <p>These checks show whether configured service endpoints responded. They do not measure Atlas Core’s own process health.</p>
                 </details>
