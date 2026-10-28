@@ -3,22 +3,8 @@ import { useEffect, useState } from "react";
 import { listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions } from "../../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
 import type { ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1 } from "../../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
-
 import { ControlledWorkerQueueReceipt } from "./ControlledWorkerQueueReceipt";
-
-const BLOCKERS: Record<string, string> = {
-    queue_adapter_not_defined: "Queue adapter is not defined",
-    queue_claim_not_defined: "Queue claim is not defined",
-    queue_lease_not_defined: "Queue lease is not defined",
-    queue_ack_not_defined: "Queue acknowledgement is not defined",
-    worker_activation_runtime_not_defined: "Worker activation runtime is not defined",
-    store_contact_not_defined: "Store contact is not defined",
-    runtime_contact_not_defined: "Runtime contact is not defined",
-    worker_start_admission_not_defined: "Worker start admission is not defined",
-    worker_start_not_defined: "Worker start is not defined",
-    agent_invocation_not_defined: "Agent invocation is not defined",
-    execution_start_boundary_not_defined: "Execution start boundary is not defined",
-};
+import { workerBindingActivationBlockerLabel } from "./workerBindingActivationBlockers";
 
 export function ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions({ candidateId, v049AdmissionId }: { candidateId: string; v049AdmissionId: string }) {
     return <AdmissionReader key={`${candidateId}:${v049AdmissionId}`} candidateId={candidateId} v049AdmissionId={v049AdmissionId} />;
@@ -39,12 +25,11 @@ function AdmissionReader({ candidateId, v049AdmissionId }: { candidateId: string
     }, [candidateId, v049AdmissionId]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Controlled worker queue claim lease acknowledgement admission evidence">
-        <h6 className="font-semibold">Controlled queue claim, lease, and acknowledgement admission</h6>
-        <p className="mt-2 text-sm">v0.51 state: admission evidence recorded for the completed v0.50 prerequisite. Queue adapter, claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain not defined.</p>
-        <p className="mt-1 text-sm">Mission Control reads this state from Core and presents it inside the existing installation workflow. No queue, worker, Agent, installation, deployment, rollback, retry, resend, or workflow control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading controlled queue claim lease acknowledgement admission evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Controlled queue claim lease acknowledgement admission evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue selector, claim token, lease token, acknowledgement handle, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No controlled queue claim lease acknowledgement admission evidence has been recorded for this claim admission. Queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Queue operation readiness</h6>
+        <p className="mt-2 text-sm">This is a read-only record from Core. It does not claim, lease, or acknowledge queue work, or start a worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Loading queue readiness...</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Queue readiness is unavailable.</p><p className="text-xs text-slate-400">Technical error details are hidden.</p></div>}
+        {items?.length === 0 && <p role="status" className="mt-3">No queue readiness record is available for this claim. Queue operations and worker start remain unavailable.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Controlled queue claim lease acknowledgement admissions">{items.map((item) => <Admission key={item.admission_id} item={item} />)}</ol>}
     </section>;
 }
@@ -52,11 +37,13 @@ function AdmissionReader({ candidateId, v049AdmissionId }: { candidateId: string
 function Admission({ item }: { item: ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1 }) {
     const prerequisite = item.controlled_worker_queue_claim_lease_acknowledgement_prerequisite;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded v0.51 admission evidence</p>
-        <p className="mt-1">Operator state: claim/lease/ack admission evidence recorded; queue adapter: not defined; queue claim: not defined; queue lease: not defined; queue acknowledgement: not defined; worker-start admission: not defined; blocked: yes.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never claims work, leases work, acknowledges work, admits worker start, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Queue readiness recorded</p>
+        <BlockerSummary blockers={item.blockers} />
+        <p className="mt-2">This record only lists requirements. It cannot operate the queue or start a worker.</p>
+        <p className="mt-1">Core may also show the queue receipt below. It reports recorded queue state and does not add actions here.</p>
+        <p className="mt-1">Recorded {formatDateTime(item.recorded_at)} · Expires {formatDateTime(item.valid_until)}. Expiry does not trigger an action.</p>
         <details className="mt-3">
-            <summary>Advanced v0.51 evidence</summary>
+            <summary>Advanced details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="v0.51 admission ID" value={item.admission_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -80,7 +67,7 @@ function Admission({ item }: { item: ControlledWorkerQueueClaimLeaseAcknowledgem
             </dl>
             <h6 className="mt-3 font-semibold">Ordered v0.51 blockers</h6>
             <ol aria-label="Ordered controlled queue claim lease acknowledgement admission blockers" className="mt-2 list-decimal pl-5">
-                {item.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? value} <code className="text-xs text-slate-400">{value}</code></li>)}
+                {item.blockers.map((value) => <li key={value}>{workerBindingActivationBlockerLabel(value)} <code className="text-xs text-slate-400">{value}</code></li>)}
             </ol>
             <dl aria-label="Controlled queue claim lease acknowledgement fixed-false authority fields" className="mt-3 grid gap-2 sm:grid-cols-2">
                 {["Queue adapter defined", "Queue polling allowed", "Queue claim allowed", "Queue claimed", "Queue lease allowed", "Queue leased", "Queue acknowledgement allowed", "Queue acknowledged", "Queue requeue allowed", "Queue mutation allowed", "Worker activation runtime allowed", "Worker start admission allowed", "Worker start admitted", "Worker start allowed", "Worker started", "Agent invocation allowed", "Agent invoked", "Execution start allowed", "Execution started", "Store contact allowed", "Runtime contact allowed", "Dispatch allowed", "Retry allowed", "Resend allowed", "Workflow start allowed", "Shell execution allowed", "Provider mutation allowed", "Repository mutation allowed", "In-guest mutation allowed", "Installation allowed", "Deployment allowed", "Rollback allowed", "Artifact publication allowed", "Tag push allowed", "Release publication allowed", "Replay bypass allowed"].map((name) => <Value key={name} name={name} value="false" />)}
@@ -91,5 +78,20 @@ function Admission({ item }: { item: ControlledWorkerQueueClaimLeaseAcknowledgem
     </li>;
 }
 
+function BlockerSummary({ blockers }: { blockers: ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1["blockers"] }) {
+    if (blockers.length === 0) return <p className="mt-1">No blockers are listed. This record still does not operate the queue.</p>;
+    return <div className="mt-1 rounded border border-amber-500/40 p-2" aria-label="Queue operation status">
+        <p className="font-semibold">Queue operations are blocked</p>
+        <p>{blockers.length} {blockers.length === 1 ? "requirement remains" : "requirements remain"} unavailable.</p>
+        <details className="mt-1">
+            <summary>Show what needs to be in place</summary>
+            <ul aria-label="Queue operation blockers" className="mt-2 list-disc pl-5">
+                {blockers.map((blocker) => <li key={blocker}>{workerBindingActivationBlockerLabel(blocker)}</li>)}
+            </ul>
+        </details>
+    </div>;
+}
+
+function formatDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date); }
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
 function Value({ name, value }: { name: string; value: string | FingerprintV1 }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{display(value)}</dd></div>; }

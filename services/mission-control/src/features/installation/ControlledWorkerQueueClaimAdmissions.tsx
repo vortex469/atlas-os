@@ -4,19 +4,7 @@ import { listControlledWorkerQueueClaimAdmissions } from "../../api/controlledWo
 import type { FingerprintV1 } from "../../types/installationReadinessReview";
 import type { ControlledWorkerQueueClaimAdmissionV1 } from "../../types/controlledWorkerQueueClaimAdmission";
 import { ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions } from "./ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions";
-
-const BLOCKERS: Record<string, string> = {
-    queue_claim_not_defined: "Queue claim is not defined",
-    queue_lease_not_defined: "Queue lease is not defined",
-    queue_ack_not_defined: "Queue acknowledgement is not defined",
-    worker_activation_runtime_not_defined: "Worker activation runtime is not defined",
-    store_contact_not_defined: "Store contact is not defined",
-    runtime_contact_not_defined: "Runtime contact is not defined",
-    worker_start_admission_not_defined: "Worker start admission is not defined",
-    worker_start_not_defined: "Worker start is not defined",
-    agent_invocation_not_defined: "Agent invocation is not defined",
-    execution_start_boundary_not_defined: "Execution start boundary is not defined",
-};
+import { workerBindingActivationBlockerLabel } from "./workerBindingActivationBlockers";
 
 const V050_PREREQUISITES = [
     "one active same-owner v0.49 controlled worker queue claim admission",
@@ -45,13 +33,11 @@ export function ControlledWorkerQueueClaimAdmissions({ candidateId, activationEv
     }, [candidateId, activationEvidenceId]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Controlled worker queue claim admission evidence">
-        <h6 className="font-semibold">Controlled worker queue claim admission</h6>
-        <p className="mt-2 text-sm">Mission Control shows v0.49 admission evidence inside the existing installation workflow. It records that one exact v0.48 activation evidence record reached readiness for later controlled queue claim consideration only.</p>
-        <p className="mt-1 text-sm">v0.50 prerequisite state: documentation-only prerequisite frozen; claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain not defined.</p>
-        <p className="mt-1 text-sm">No queue claim, queue lease, queue acknowledgement, worker-start admission, worker start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading controlled worker queue claim admission evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Controlled worker queue claim admission evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, claim material, lease material, acknowledgement handle, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No controlled worker queue claim admission evidence has been recorded. v0.50 remains documentation-only prerequisite closure; queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Queue claim readiness</h6>
+        <p className="mt-2 text-sm">This is a read-only readiness record. It cannot take queue work or start a worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Loading queue claim readiness...</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Queue claim readiness is unavailable.</p><p className="text-xs text-slate-400">Technical error details are hidden.</p></div>}
+        {items?.length === 0 && <p role="status" className="mt-3">No queue claim readiness record is available. Queue work and worker start remain unavailable.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Controlled worker queue claim admissions">{items.map((item) => <ClaimAdmission key={item.admission_id} item={item} />)}</ol>}
     </section>;
 }
@@ -63,11 +49,11 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
     const worker = binding.worker_intake_admission.worker_identity;
     const limits = binding.worker_intake_admission.inherited_limits;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded controlled worker queue claim admission evidence</p>
-        <p className="mt-1">Readiness/start-admission state: queue-claim admission evidence recorded; queue claim: not defined; worker-start admission: not defined; blocked: yes. Queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false.</p>
-        <p className="mt-1">v0.50 progress: prerequisite frozen, documentation-only. Queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable.</p>
-        <p className="mt-1">v0.51 state is shown below when Core has recorded it. It remains read-only evidence and does not create queue, lease, acknowledgement, worker-start, Agent, or execution authority.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never claims work, leases work, acknowledges work, admits worker start, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Queue claim admission recorded</p>
+        <BlockerSummary blockers={item.blockers} />
+        <p className="mt-2">Queue claiming is not available yet. This record only captures readiness; it cannot take queue work or start a worker.</p>
+        <p className="mt-1">A separate lease and acknowledgement readiness record may appear below. It is also read-only.</p>
+        <p className="mt-1">Recorded {formatDateTime(item.recorded_at)} · Expires {formatDateTime(item.valid_until)}. Expiry does not trigger an action.</p>
         <details className="mt-3">
             <summary>Advanced details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -97,7 +83,7 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
             </dl>
             <h6 className="mt-3 font-semibold">Blockers</h6>
             <ol aria-label="Ordered controlled worker queue claim admission blockers" className="mt-2 list-decimal pl-5">
-                {item.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? value} <code className="text-xs text-slate-400">{value}</code></li>)}
+                {item.blockers.map((value) => <li key={value}>{workerBindingActivationBlockerLabel(value)} <code className="text-xs text-slate-400">{value}</code></li>)}
             </ol>
             <h6 className="mt-3 font-semibold">v0.50 prerequisite details</h6>
             <p className="mt-2 text-xs">The strongest v0.50 state is documentation-only prerequisite closure. It does not create a runtime record, route, schema, permission, queue operation, worker operation, Agent operation, execution operation, deployment operation, or release operation.</p>
@@ -127,5 +113,20 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
     </li>;
 }
 
+function BlockerSummary({ blockers }: { blockers: ControlledWorkerQueueClaimAdmissionV1["blockers"] }) {
+    if (blockers.length === 0) return <p className="mt-1">No blockers are listed. This record still cannot take queue work.</p>;
+    return <div className="mt-1 rounded border border-amber-500/40 p-2" aria-label="Queue claim status">
+        <p className="font-semibold">Queue claim is blocked</p>
+        <p>{blockers.length} {blockers.length === 1 ? "requirement remains" : "requirements remain"} unavailable.</p>
+        <details className="mt-1">
+            <summary>Show what needs to be in place</summary>
+            <ul aria-label="Queue claim blockers" className="mt-2 list-disc pl-5">
+                {blockers.map((blocker) => <li key={blocker}>{workerBindingActivationBlockerLabel(blocker)}</li>)}
+            </ul>
+        </details>
+    </div>;
+}
+
+function formatDateTime(value: string) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? value : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(date); }
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{display(value)}</dd></div>; }
