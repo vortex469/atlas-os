@@ -23,7 +23,9 @@ Screen recovery keeps shared navigation available for missing pages and page
 rendering failures, with plain-language recovery actions. An initial workflow
 load failure offers a read-only retry. Provider absence is shown only after a
 successful catalog load; a loading or unavailable catalog is not reported as a
-missing provider. Maintenance history keeps unavailable diagnostics findable,
+missing provider. If a provider's supported-feature list is missing, its detail
+page identifies that information as unavailable and keeps unrelated sections
+usable. Maintenance history keeps unavailable diagnostics findable,
 leaves recovery guidance visible, and places secondary metadata under optional
 workflow details. Local filters can be cleared without fetching or executing
 work, and empty later pages retain a route back to earlier results. These

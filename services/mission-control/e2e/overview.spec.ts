@@ -27,7 +27,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
         atlas: null, services: { API: { provider_id: 'proxmox', status: 'offline', message: 'Endpoint offline' } },
     } }));
     await page.route('**/providers', route => route.fulfill({ json: [
-        { id: 'proxmox', name: 'Proxmox', health: { status: 'warning', message: 'Capacity limited' } },
+        { id: 'proxmox', name: 'Proxmox', workspace: 'operations', priority: 'critical', version: 'fixture-v1', description: 'Virtualization provider fixture.', icon: 'server', health: { status: 'warning', message: 'Capacity limited', details: {} } },
     ] }));
     await page.goto('/');
     const attention = page.getByRole('region', { name: 'Operator Attention' });
@@ -37,6 +37,9 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await attention.getByRole('link', { name: 'API', exact: true }).click();
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
+    await expect(page.getByText('Supported provider features could not be loaded. Some provider sections are hidden.')).toBeVisible();
+    await expect(page.getByText('Capabilities unavailable.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
 });
 

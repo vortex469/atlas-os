@@ -17,43 +17,58 @@ function position(name: string): Element {
     return screen.getByRole("heading", { name });
 }
 
+function providerPageState(capabilities: unknown, overrides: Record<string, unknown> = {}) {
+    return {
+        summary: { findings: [], recommendations: [] },
+        providers: [{
+            id: "proxmox",
+            name: "Proxmox",
+            workspace: "operations",
+            priority: "critical",
+            version: "1",
+            description: "Virtualization",
+            icon: "server",
+            capabilities,
+            health: { status: "online", latency_ms: null, http_status: null, message: null, details: {} },
+        }],
+        policies: { intelligence: { providers: {} } },
+        telemetryHistory: [],
+        lastUpdated: null,
+        error: null,
+        isLoading: false,
+        isRefreshing: false,
+        refresh: vi.fn(),
+        ...overrides,
+    } as unknown as ReturnType<typeof useMissionControl>;
+}
+
 describe("ProviderPage authority layout", () => {
     beforeEach(() => {
-        vi.mocked(useMissionControl).mockReturnValue({
-            summary: { findings: [], recommendations: [] },
-            providers: [{
-                id: "proxmox",
-                name: "Proxmox",
-                workspace: "operations",
-                priority: "critical",
-                version: "1",
-                description: "Virtualization",
-                icon: "server",
-                capabilities: ["resources", "connection"],
-                health: { status: "online", latency_ms: null, http_status: null, message: null, details: {} },
-            }],
-            policies: { intelligence: { providers: {} } },
-            telemetryHistory: [],
-            lastUpdated: null,
-            error: null,
-            isLoading: false,
-            isRefreshing: false,
-            refresh: vi.fn(),
-        } as unknown as ReturnType<typeof useMissionControl>);
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"]));
     });
 
     it("explains an empty provider catalog instead of leaving the detail screen blank", () => {
-        vi.mocked(useMissionControl).mockReturnValue({ ...vi.mocked(useMissionControl).getMockImplementation()!(), providers: [] });
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [] }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.getByRole("heading", { name: "Provider not found" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Return to Mission Control" })).toHaveAttribute("href", "/");
+    });
+
+    it("keeps provider details usable when supported-feature data is missing", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+        expect(screen.getByRole("status")).toHaveTextContent("Supported provider features could not be loaded. Some provider sections are hidden.");
+        expect(screen.getByRole("heading", { name: "Provider overview" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Diagnostics" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Resources and monitoring" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Connection" })).not.toBeInTheDocument();
     });
 
     it.each([
         { isLoading: true, error: null },
         { isLoading: false, error: "Could not load providers" },
     ])("does not call a provider missing before its catalog is available: %j", (state) => {
-        vi.mocked(useMissionControl).mockReturnValue({ ...vi.mocked(useMissionControl).getMockImplementation()!(), providers: [], ...state });
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [], ...state }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
         expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Atlas Core unavailable")).toBeInTheDocument();

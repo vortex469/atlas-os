@@ -20,6 +20,9 @@ function formatLabel(value: string): string {
 export function ProviderOverview({
     provider,
 }: ProviderOverviewProps) {
+    const capabilities = Array.isArray(provider.capabilities)
+        ? provider.capabilities
+        : null;
     const endpoint =
         typeof provider.health.details.url === "string"
             ? provider.health.details.url
@@ -116,9 +119,13 @@ export function ProviderOverview({
                         Capabilities
                     </p>
 
-                    {provider.capabilities.length > 0 ? (
+                    {capabilities === null ? (
+                        <p className="mt-2 text-sm text-slate-500">
+                            Capabilities unavailable.
+                        </p>
+                    ) : capabilities.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {provider.capabilities.map((capability) => (
+                            {capabilities.map((capability) => (
                                 <span
                                     key={capability}
                                     className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs font-medium text-slate-300"

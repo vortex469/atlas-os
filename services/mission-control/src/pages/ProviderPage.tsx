@@ -37,6 +37,9 @@ export function ProviderPage() {
     const provider = providers.find(
         (candidate) => candidate.id === providerId,
     );
+    const capabilities = Array.isArray(provider?.capabilities)
+        ? provider.capabilities
+        : null;
 
     const providerName =
         provider?.name ?? formatProviderId(providerId);
@@ -171,7 +174,9 @@ export function ProviderPage() {
                 <>
                     <ProviderOverview provider={provider} />
 
-                    {provider.capabilities.includes("resources") && (
+                    {capabilities === null && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">Supported provider features could not be loaded. Some provider sections are hidden.</p>}
+
+                    {capabilities?.includes("resources") && (
                         <section aria-label="Monitoring policy boundary">
                             <p className="mb-4 rounded-lg border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-300">
                                 Monitoring expectations describe monitoring policy. They do not start, stop, restart, or remediate resources.
@@ -249,7 +254,7 @@ export function ProviderPage() {
                         <Link to="/operations/request" className="mt-4 inline-flex rounded-lg border border-cyan-400/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300">Request operational maintenance</Link>
                     </section>}
 
-                    {provider.capabilities.includes("connection") && (
+                    {capabilities?.includes("connection") && (
                         <ProviderConnection provider={provider} />
                     )}
 
