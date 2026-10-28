@@ -288,7 +288,7 @@ for (const wrongIdentity of [false, true]) {
         } }));
         await page.goto("/candidate-planning/browser-session");
         if (wrongIdentity) {
-            await expect(page.getByRole("heading", { name: "Planning unavailable" })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Planning session unavailable" })).toBeVisible();
             await expect(page.getByRole("button", { name: "Reload page" })).toBeVisible();
         } else {
             await expect(page.getByText("Planning is unavailable for this session.")).toBeVisible();
@@ -474,7 +474,7 @@ for (const width of [390, 1280]) {
         await page.goto("/execution-candidates/candidate-retry");
 
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("Execution candidate unavailable");
+        await expect(alert).toContainText("Change proposal unavailable");
         await expect(alert).toContainText("Mission Control could not load this execution candidate.");
         await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
         await alert.getByRole("button", { name: "Retry loading proposal" }).click();
