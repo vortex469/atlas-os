@@ -1251,3 +1251,23 @@ checks confirm the unavailable state keeps the navigation and hides planning
 controls. The component suite (2,727 tests), lint, build, 124 development-browser
 checks, and 68 built-app journeys pass. Responses are simulated; this does not
 establish real Agent integration or operator acceptance.
+
+## Workflow approval response recovery — 2026-10-28
+
+If an implementation, verification, or commit approval request errors, the
+workflow page now reloads the authoritative workflow detail before re-enabling
+controls. This covers timeouts where the server may have recorded a decision
+even though the response did not reach Mission Control. Agent error details
+accept both the existing string form and the structured `{code, message}` form;
+unusable error payloads fall back to a readable request message. Tests confirm
+each stage refreshes after failure and removes a stale approval control when
+the server reports the decision. API and workflow page tests pass (106 tests),
+with lint and production build passing. No approval or Resume boundary changed.
+
+Successful implementation, verification, and commit approval responses are
+also checked against the requested workflow ID, a non-empty workflow state,
+the expected approved/rejected decision, and a nullable text message. A
+malformed or mismatched response enters the same read-before-retry recovery
+path. API and workflow page tests pass (109 tests), with lint and production
+build passing. These are source-level checks; they do not establish live Agent
+integration or operator acceptance.
