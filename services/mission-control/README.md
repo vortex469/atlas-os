@@ -48,10 +48,18 @@ The workflow directory keeps each card focused on its stage, latest result and
 whether approval is waiting. Candidate, planning-session and target references
 are available under optional workflow details.
 
+Workflow preparation and exact approval pages use the same approach: current
+state and the next permitted step stay visible, while IDs and fingerprints are
+optional details. Preparing a request remains separate from approving or
+running it.
+
 The exact-approval workflow detail resets when its URL changes and rejects
 details bearing another workflow ID. An unavailable read offers a read-only
 retry and a link to the workflow list; retry does not submit approval or resume
-an execution.
+an execution. Its summary keeps the current workflow state and relevant
+approval status visible; fingerprints, paths and reference IDs stay under
+optional workflow details. Exact action requests and approval controls remain
+visible in their own review sections.
 
 Read-only workflow audits and Discovery details reset when their subject URL
 changes. Audits check both reported workflow identities. Discovery checks the

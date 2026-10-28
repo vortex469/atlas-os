@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode } from "react";
@@ -192,6 +192,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage();
         await screen.findByRole("heading", { name: "Exact action request" });
+        expect(screen.getByText("Action approval: Pending", { exact: true })).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
@@ -512,7 +513,7 @@ describe("WorkflowPage", () => {
     it("does not show resume action when implementation is pending", async () => {
         renderPage();
 
-        expect(await screen.findByText(/Implementation approval status: Pending/i)).toBeInTheDocument();
+        expect(await screen.findByText("Implementation approval: Pending", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
     });
 
@@ -523,7 +524,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect(await screen.findByText("Implementation approval status: Rejected")).toBeInTheDocument();
+        expect(await screen.findByText("Implementation approval: Rejected", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
     });
 
@@ -659,7 +660,7 @@ describe("WorkflowPage", () => {
         );
         renderPage();
 
-        expect(await screen.findByText("Implementation approval status: Pending")).toBeInTheDocument();
+        expect(await screen.findByText("Implementation approval: Pending", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
     });
 
@@ -667,6 +668,13 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: /Workflow workflow-123/i })).toBeInTheDocument();
+        const summary = within(screen.getByRole("region", { name: "Workflow summary" }));
+        expect(summary.getByText("Implementation approval: Pending", { exact: true })).toBeVisible();
+        expect(summary.queryByText("Workflow State", { exact: true })).not.toBeInTheDocument();
+        const details = summary.getByText("Workflow details", { exact: true });
+        expect(details.closest("details")).not.toHaveAttribute("open");
+        expect(summary.getByText("Candidate ID", { exact: true })).not.toBeVisible();
+        fireEvent.click(details);
         expect(screen.getByText("candidate-plan-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
         expect(screen.getByText("candidate-fingerprint-123")).toBeInTheDocument();

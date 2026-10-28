@@ -20,10 +20,19 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await expect(page.getByRole("button", { name: "Prepare exact request", exact: true })).toBeEnabled();
+        const workflowShellSummary = page.getByRole("region", { name: "Workflow summary" });
+        await expect(workflowShellSummary.getByText("Candidate ID", { exact: true })).toBeHidden();
+        await workflowShellSummary.getByText("Workflow details", { exact: true }).click();
+        await expect(workflowShellSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
         await fitsViewport(page);
         await page.getByRole("button", { name: "Prepare exact request", exact: true }).click();
 
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
+        const workflowSummary = page.getByRole("region", { name: "Workflow summary" });
+        await expect(workflowSummary.getByText("Implementation approval: Pending", { exact: true })).toBeVisible();
+        await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeHidden();
+        await workflowSummary.getByText("Workflow details", { exact: true }).click();
+        await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
         await fitsViewport(page);
         expect(fixture.writes).toHaveLength(5);
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);

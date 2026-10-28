@@ -348,24 +348,24 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
-                        <p className="mt-1 text-sm text-slate-400">Implementation approval status: {formatLabel(workflow.implementation_approval_status)}</p>
+                        <p className="mt-1 text-sm text-slate-400">{isOperational ? "Action approval" : "Implementation approval"}: {formatLabel(workflow.implementation_approval_status)}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{formatLabel(workflow.workflow_state)}</span>
                 </div>
-                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Workflow ID" value={workflow.workflow_id} />
-                    <Detail label="Workflow Source" value={workflow.workflow_source} />
-                    <Detail label="Workflow State" value={formatLabel(workflow.workflow_state)} />
-                    <Detail label="Planning Session ID" value={workflow.planning_session_id ?? "Not exposed"} />
-                    <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not exposed"} />
-                    <Detail label="Candidate Fingerprint" value={workflow.candidate_fingerprint ?? "Not exposed"} />
-                    <Detail label="Plan Fingerprint" value={workflow.plan_fingerprint ?? "Not exposed"} />
-                    <Detail label="Implementation Approval Status" value={formatLabel(workflow.implementation_approval_status)} />
-                    <Detail label="Repository" value={workflow.repository ?? "Not exposed"} />
-                    <Detail label="Working Directory" value={workflow.working_directory ?? "Not exposed"} />
-                    <Detail label="Translator Version" value={workflow.translator_version ?? "Not exposed"} />
-                    <Detail label="Affected Files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
-                </dl>
+                <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
+                    <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Workflow source" value={workflow.workflow_source} />
+                        <Detail label="Planning session" value={workflow.planning_session_id ?? "Not available"} />
+                        <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not available"} />
+                        <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />
+                        <Detail label="Plan fingerprint" value={workflow.plan_fingerprint ?? "Not available"} />
+                        <Detail label="Repository" value={workflow.repository ?? "Not available"} />
+                        <Detail label="Working directory" value={workflow.working_directory ?? "Not available"} />
+                        <Detail label="Translator version" value={workflow.translator_version ?? "Not available"} />
+                        <Detail label="Affected files" value={workflow.affected_files.length > 0 ? workflow.affected_files.join(", ") : "None reported"} />
+                    </dl>
+                </details>
             </section>
 
             {isRepository && <ImplementationRequestSection workflow={workflow} />}

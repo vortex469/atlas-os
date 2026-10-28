@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -117,15 +117,19 @@ describe("WorkflowShellPage", () => {
 
         expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
         expect(screen.getAllByText("Workflow created.").length).toBeGreaterThan(0);
-        expect(screen.getByText("workflow-1")).toBeInTheDocument();
-        expect(screen.getByText("Atlas Agent candidate planning")).toBeInTheDocument();
         expect((await screen.findAllByText(/Awaiting Approval|Approval Pending/)).length).toBeGreaterThan(0);
+        const summary = within(screen.getByRole("region", { name: "Workflow summary" }));
+        const disclosure = summary.getByText("Workflow details", { exact: true });
+        expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(summary.getByText("Candidate ID", { exact: true })).not.toBeVisible();
+        expect(screen.queryByText("Not exposed by Atlas Agent API", { exact: true })).not.toBeInTheDocument();
+        await userEvent.setup().click(disclosure);
+        expect(summary.getByText("Candidate ID", { exact: true })).toBeVisible();
         expect(screen.getByText("candidate-1")).toBeInTheDocument();
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("plan-fingerprint-1")).toBeInTheDocument();
         expect(screen.getByText("Pending")).toBeInTheDocument();
         expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
-        expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
         expect(screen.getByText("Workflow").closest("li")).toHaveAttribute("aria-current", "step");
         expect(screen.queryByText("Implementation ○")).not.toBeInTheDocument();
         expect(screen.queryByText("Verification ○")).not.toBeInTheDocument();

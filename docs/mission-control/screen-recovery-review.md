@@ -18,7 +18,7 @@ runtime, tag, or publish a release.
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
 | Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
-| Repository workflow | Each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
+| Repository workflow | Preparation and detail summaries show current state and approval status first; reference metadata is optional; exact requests remain reviewable; each exact approval and resume remains separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
 | Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
 | Provider action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results | `src/pages/OperationsPage.test.tsx` includes delayed-response and failure regressions |
@@ -114,6 +114,16 @@ Candidate/session IDs and repository/target references are tucked under
 optional details, and the duplicate status field is removed. The focused
 component tests pass (8 tests), responsive browser checks pass at 390px and
 1280px (2 tests), and lint/build pass. The directory remains read-only.
+
+## Workflow review simplification follow-up — 2026-10-28
+
+Workflow preparation and detail summaries now keep the state and applicable
+approval status visible while reference IDs, fingerprints and paths stay
+collapsed. The API-only creation-time message was removed. The combined focused
+workflow page suites pass (95 tests); the complete repository journey passes at
+390px and 1280px (4 tests), with lint/build passing. The exact request remains
+visible before approval, and each approval and Resume request remains separate;
+browser writes are intercepted by the synthetic journey fixture.
 
 ## Acceptance status and remaining gaps
 
