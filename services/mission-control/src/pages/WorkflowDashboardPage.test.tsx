@@ -78,7 +78,7 @@ describe("WorkflowDashboardPage", () => {
 
         renderDashboard();
 
-        expect(await screen.findByText("workflow-123")).toBeInTheDocument();
+        expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(6);
         expect(screen.getByText("Execution running")).toBeInTheDocument();
         expect(screen.getByText("Blocked: stale candidate")).toBeInTheDocument();
         expect(screen.getByText("Commit completed")).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Progress")[0]).toBeInTheDocument();
 
-        const card = screen.getByRole("heading", { name: "workflow-123" }).closest("article");
+        const card = screen.getAllByRole("heading", { name: "Update Compose Stack" })[0].closest("article");
         expect(card).not.toBeNull();
         const details = within(card as HTMLElement);
         expect(details.getByText("Stage: Implementation")).toBeVisible();
@@ -100,8 +100,12 @@ describe("WorkflowDashboardPage", () => {
         expect(details.queryByText("Current State")).not.toBeInTheDocument();
         const disclosure = details.getByText("Workflow details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(details.getByText("Workflow ID", { exact: true })).not.toBeVisible();
+        expect(details.getByText("workflow-123", { exact: true })).not.toBeVisible();
         expect(details.getByText("Candidate ID", { exact: true })).not.toBeVisible();
         fireEvent.click(disclosure);
+        expect(details.getByText("Workflow ID", { exact: true })).toBeVisible();
+        expect(details.getByText("workflow-123", { exact: true })).toBeVisible();
         expect(details.getByText("Candidate ID", { exact: true })).toBeVisible();
         expect(details.getByText("candidate-123", { exact: true })).toBeVisible();
     });
@@ -109,12 +113,12 @@ describe("WorkflowDashboardPage", () => {
     it("keeps the common filters visible and tucks source and ID searches under More filters", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([
             workflow(),
-            workflow({ workflow_id: "workflow-999", workflow_state: "completed", candidate_id: "candidate-999" }),
+            workflow({ workflow_id: "workflow-999", workflow_state: "completed", candidate_id: "candidate-999", execution_intent: "restart-service" }),
         ]));
 
         renderDashboard();
 
-        await screen.findByText("workflow-123");
+        expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(1);
         expect(screen.getByLabelText("Workflow status")).toBeVisible();
         expect(screen.getByLabelText("Approval status")).toBeVisible();
         const moreFilters = screen.getByText("More filters", { exact: true });
@@ -129,22 +133,25 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getByLabelText("Approval status"), { target: { value: "waiting" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
 
-        expect(screen.getByText("workflow-123")).toBeInTheDocument();
-        expect(screen.queryByText("workflow-999")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
     });
 
     it("supports pagination when more returned workflows exist", async () => {
-        const items = Array.from({ length: 11 }, (_, index) => workflow({ workflow_id: `workflow-${index}` }));
+        const items = Array.from({ length: 11 }, (_, index) => workflow({
+            workflow_id: `workflow-${index}`,
+            execution_intent: index === 10 ? "update-container-image" : "update-compose-stack",
+        }));
         vi.mocked(listWorkflows).mockResolvedValue(response(items));
 
         renderDashboard();
 
-        expect(await screen.findByText("workflow-0")).toBeInTheDocument();
-        expect(screen.queryByText("workflow-10")).not.toBeInTheDocument();
+        expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(10);
+        expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: /Next/i }));
 
-        expect(screen.getByText("workflow-10")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
         expect(screen.getByText("Showing 11–11 of 11 loaded workflows")).toBeVisible();
     });
 
@@ -154,12 +161,13 @@ describe("WorkflowDashboardPage", () => {
             planning_session_id: null,
             repository: null,
             target_id: null,
+            execution_intent: null,
         })]));
 
         renderDashboard();
 
-        await screen.findByText("workflow-123");
-        const card = screen.getByRole("heading", { name: "workflow-123" }).closest("article");
+        await screen.findByRole("heading", { name: "Repository change" });
+        const card = screen.getByRole("heading", { name: "Repository change" }).closest("article");
         expect(card).not.toBeNull();
         const details = within(card as HTMLElement);
         fireEvent.click(details.getByText("Workflow details", { exact: true }));
@@ -176,14 +184,14 @@ describe("WorkflowDashboardPage", () => {
 
         renderDashboard();
 
-        await screen.findByText("workflow-123");
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
         fireEvent.click(screen.getByRole("button", { name: /Refresh/i }));
 
         expect(listWorkflows).toHaveBeenCalledTimes(2);
         expect(screen.getByText("Refreshing workflows...")).toBeInTheDocument();
-        resolveRefresh(response([workflow({ workflow_id: "workflow-refreshed" })]));
-        expect(await screen.findByText("workflow-refreshed")).toBeInTheDocument();
+        resolveRefresh(response([workflow({ workflow_id: "workflow-refreshed", execution_intent: "restart-service" })]));
+        expect(await screen.findByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
     });
 
     it("renders empty, filtered empty, and Agent unavailable states", async () => {
@@ -194,7 +202,7 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockReset();
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]));
         renderDashboard();
-        await screen.findByText("workflow-123");
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         fireEvent.click(screen.getAllByText("More filters", { exact: true })[1]);
         fireEvent.change(screen.getAllByLabelText("Workflow ID contains")[1], { target: { value: "missing" } });
         fireEvent.click(screen.getAllByRole("button", { name: /Apply filters/i })[1]);
@@ -216,7 +224,7 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByRole("status")).toHaveTextContent("Loading workflows");
         expect(listWorkflows).toHaveBeenCalledTimes(2);
         resolveRetry(response([workflow({ workflow_state: "completed" })]));
-        expect(await screen.findByText("workflow-123")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -225,7 +233,7 @@ describe("WorkflowDashboardPage", () => {
 
         renderDashboard();
 
-        await screen.findByText("workflow-123");
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
         const main = screen.getByRole("main");
         expect(within(main).queryByRole("button", { name: /Approve/i })).not.toBeInTheDocument();
         expect(within(main).queryByRole("button", { name: /Reject/i })).not.toBeInTheDocument();

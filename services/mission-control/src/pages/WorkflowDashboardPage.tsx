@@ -289,11 +289,16 @@ export function WorkflowDashboardPage() {
 function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
     const actionRequired = workflowActionRequired(workflow.workflow_state);
     const railId = `workflow-rail-${workflow.workflow_id}`;
+    const title = workflow.execution_intent
+        ? formatWorkflowLabel(workflow.execution_intent)
+        : workflow.effect_kind === "operational_action"
+            ? "Maintenance workflow"
+            : "Repository change";
     return (
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h3 className="break-all text-lg font-semibold text-white">{workflow.workflow_id}</h3>
+                    <h3 className="break-words text-lg font-semibold text-white">{title}</h3>
                     <p className="mt-1 text-sm text-slate-400">Stage: {workflowStageLabel(workflow.workflow_state)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
@@ -307,6 +312,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
             <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
                 <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
                 <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+                    <Detail label="Workflow ID" value={workflow.workflow_id} />
                     <Detail label="Started from" value={formatWorkflowLabel(workflow.workflow_source)} />
                     <Detail label="Candidate ID" value={formatWorkflowValue(workflow.candidate_id, "Not available")} />
                     <Detail label="Planning session" value={formatWorkflowValue(workflow.planning_session_id, "Not available")} />

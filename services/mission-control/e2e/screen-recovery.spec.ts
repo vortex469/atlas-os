@@ -171,7 +171,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
         const navigation = page.getByRole("navigation", { name: "Primary" }).filter({ visible: true });
         await navigation.getByRole("link", { name: "Workflows", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
-        await expect(page.getByText("workflow-browser-baseline")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }
@@ -202,7 +202,7 @@ test("workflows recover from an initial outage without reloading", async ({ page
     await page.goto("/workflows");
     await expect(page.getByRole("heading", { name: "Workflows unavailable" })).toBeVisible();
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByText("workflow-browser-baseline")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Workflows unavailable" })).not.toBeVisible();
     expect(attempts).toBe(2);
 });

@@ -786,6 +786,16 @@ details remain redacted by the API error handler. The focused page suite passes
 1280px), and lint, production build, and `git diff --check` pass. The browser
 fixture rejects unexpected mutations.
 
+## Workflow list card names — 2026-10-28
+
+Workflow cards now use the reported action as their heading; when it is absent,
+they use a plain workflow-type fallback. The workflow ID moved under collapsed
+Workflow details alongside other references. Stage, latest result, approval
+status, progress, and the Open workflow link remain visible. The component suite
+passes (8 tests), responsive workflow/navigation/recovery browser checks pass
+(6 tests at 390px and 1280px), and lint, production build, and
+`git diff --check` pass. No API contract or approval behavior changed.
+
 ## Missing change proposal recovery — 2026-10-28
 
 The 404 screen now says that the proposal is no longer available and directs

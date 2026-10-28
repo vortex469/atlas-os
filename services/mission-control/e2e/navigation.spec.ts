@@ -51,7 +51,7 @@ const routes = [
         path: "/workflows",
         assertion: async (page) => {
             await expect(page.getByRole("heading", { name: "Workflows" })).toBeVisible();
-            await expect(page.getByText("workflow-browser-baseline")).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
         },
     },
     {
