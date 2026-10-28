@@ -24,7 +24,7 @@ for (const width of [320, 390, 1280]) for (const kind of ['metadata', 'timeline'
         await expect(page.getByText('private-detail', {exact: true})).toHaveCount(0);
         phase = 'good-initial';
         await page.getByRole('button', {name: 'Try again', exact: true}).click();
-        await expect(page.getByRole('heading', {name: base.workflow_id, exact: true})).toBeVisible();
+        await expect(page.getByRole('heading', {name: 'Update Compose Stack', exact: true})).toBeVisible();
         await expect(page.getByText(base.repository, {exact: true})).toBeVisible();
         phase = 'bad-refresh';
         await page.getByRole('button', {name: 'Refresh', exact: true}).click();
@@ -39,7 +39,7 @@ for (const width of [320, 390, 1280]) for (const kind of ['metadata', 'timeline'
         await expect(page.getByRole('heading', {name: 'Totals for this search', exact: true})).toBeVisible();
         await expect(page.getByRole('alert')).toHaveCount(0);
         await expect(page.getByText('Last loaded state', {exact: true})).toHaveCount(0);
-        const card = page.getByRole('article').filter({has: page.getByRole('heading', {name: base.workflow_id, exact: true})});
+        const card = page.getByRole('article').filter({has: page.getByRole('heading', {name: 'Update Compose Stack', exact: true})});
         if (kind === 'identity') {
             await expect(card.getByText('Unknown — open workflow to review', {exact: true})).toBeVisible();
             await expect(card.getByText('Not waiting for approval', {exact: true})).toHaveCount(0);
