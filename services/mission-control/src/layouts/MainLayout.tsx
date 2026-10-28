@@ -274,6 +274,10 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
             location.pathname,
         )?.label ?? routeContextForPath(location.pathname);
 
+    useEffect(() => {
+        document.title = `${contextLabel ?? "Overview"} | Atlas Mission Control`;
+    }, [contextLabel]);
+
     return (
         <div className="mc-app-shell">
             <a href="#mc-page-content" inert={mobileNavOpen || navigationPending}

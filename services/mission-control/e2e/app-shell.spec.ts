@@ -8,6 +8,7 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+    await expect(page).toHaveTitle("Overview | Atlas Mission Control");
 
     await expect(page.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("href", "/");
     await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
@@ -76,15 +77,18 @@ test.describe("Mobile navigation", () => {
 
     test("mobile links preserve history and resize clears the drawer", async ({ page }) => {
         await page.goto("/forge");
+        await expect(page).toHaveTitle("Deployment analysis | Atlas Mission Control");
         const trigger = page.getByRole("button", { name: "Open navigation" });
         await trigger.click();
         await page.getByRole("dialog").getByRole("link", { name: "Catalog", exact: true }).click();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.getByTestId("mc-context")).toContainText("Current page: Catalog");
+        await expect(page).toHaveTitle("Catalog | Atlas Mission Control");
         await trigger.click();
         await page.goBack();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await expect(page.getByTestId("mc-context")).toContainText("Current page: Deployment analysis");
+        await expect(page).toHaveTitle("Deployment analysis | Atlas Mission Control");
         await page.goForward();
         await expect(page.getByRole("dialog")).toHaveCount(0);
         await trigger.click();

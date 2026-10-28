@@ -172,6 +172,7 @@ describe("MainLayout", () => {
             const context = screen.getByTestId("mc-context");
             expect(context).toHaveAttribute("role", "status");
             expect(context).toHaveTextContent(`Current page: ${label}`);
+            expect(document.title).toBe(`${label} | Atlas Mission Control`);
         });
 
         it("does not repeat the home screen label in the header", () => {
@@ -179,6 +180,7 @@ describe("MainLayout", () => {
 
             expect(screen.queryByTestId("mc-context")).not.toBeInTheDocument();
             expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(1);
+            expect(document.title).toBe("Overview | Atlas Mission Control");
         });
     });
 

@@ -2008,3 +2008,13 @@ The full Mission Control suite passes (2,793 tests across 181 files), responsive
 shell and recovery browser checks pass (69 checks at 390px and 1280px), and
 lint and production build pass. Browser API responses are synthetic; no
 navigation or API behavior changed.
+
+## Browser tab page title — 2026-10-28
+
+The browser tab now identifies the current Mission Control page, including
+after in-app navigation and browser back/forward. The default title is useful
+before client-side code loads, and record identifiers are not included. The
+full Mission Control suite passes (2,793 tests across 181 files), all 8
+Mission Control shell browser checks pass, and lint and production build pass.
+The browser checks cover 390px and 1280px plus route changes and browser
+history. This is a presentation-only change.
