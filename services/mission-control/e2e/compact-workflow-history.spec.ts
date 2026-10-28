@@ -24,7 +24,14 @@ for (const width of [320, 390, 1280]) for (const mode of ['completed', 'blocked'
         await expect(overview.getByText(journey.workflow, {exact: true})).not.toBeVisible();
         if (mode === 'blocked') await expect(overview.getByText(saved.blocked_reason!, {exact: true})).toBeVisible();
         if (mode === 'invalid') await expect(overview.getByRole('alert')).toContainText('Audit validation failed.');
-        if (mode === 'missing') await expect(page.getByRole('region', {name: 'Implementation Request', exact: true}).getByRole('alert')).toContainText('Required artifact is missing.');
+        if (mode === 'missing') {
+            const alert = page.getByRole('region', {name: 'Overview', exact: true}).getByRole('alert');
+            await expect(alert).toContainText('The implementation request is missing.');
+            await expect(alert.getByText('Audit code: missing_implementation_request', {exact: true})).toBeHidden();
+            await alert.getByText('Technical details', {exact: true}).click();
+            await expect(alert.getByText('Audit code: missing_implementation_request', {exact: true})).toBeVisible();
+            await expect(page.getByRole('region', {name: 'Implementation Request', exact: true}).getByRole('alert')).toContainText('Required artifact is missing.');
+        }
         const candidate = page.getByRole('region', {name: 'Candidate', exact: true});
         await expect(candidate.getByText(journey.candidate, {exact: true})).not.toBeVisible();
         const toggle = candidate.locator('summary');
