@@ -239,8 +239,8 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getAllByText("Workflow State").length).toBe(1);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
         expect(screen.getByText("Overall audit status")).toBeInTheDocument();
-        expect(screen.getAllByText("Audit validation").length).toBe(1);
-        expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Audit check").length).toBe(1);
+        expect(screen.getAllByText("Passed").length).toBeGreaterThan(0);
     });
 
     it("shows in-progress stages as Not reached", async () => {
@@ -318,7 +318,7 @@ describe("WorkflowAuditPage", () => {
 
         expect(await screen.findByText(/Overall audit status/i)).toBeInTheDocument();
         expect(screen.getAllByText("Awaiting Verification Approval").length).toBeGreaterThan(0);
-        expect(screen.getByText("Valid")).toBeInTheDocument();
+        expect(screen.getAllByText("Passed").length).toBeGreaterThan(0);
     });
 
     it("keeps audit validation separate from chain status when validation is invalid", async () => {
@@ -336,8 +336,8 @@ describe("WorkflowAuditPage", () => {
 
         expect((await screen.findAllByText("Blocked")).length).toBe(2);
         expect(screen.getByText("Overall audit status")).toBeInTheDocument();
-        expect(screen.getByText("Invalid")).toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent("Inconsistent audit:");
+        expect(screen.getByText("Needs review")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("The candidate plan does not match this workflow.");
     });
 
     it("shows inconsistent alert for failed validation", async () => {
@@ -362,7 +362,14 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText(/Inconsistent audit:\s*candidate_plan_mismatch/i)).toBeInTheDocument();
+        const overview = await screen.findByRole("region", { name: "Overview" });
+        const alert = within(overview).getByRole("alert");
+        expect(alert).toHaveTextContent("The candidate plan does not match this workflow.");
+        expect(alert).toHaveTextContent("Stage to review: Candidate.");
+        const technicalDetails = within(alert).getByText("Technical details", { exact: true });
+        expect(within(alert).getByText("Audit code: candidate_plan_mismatch", { exact: true })).not.toBeVisible();
+        fireEvent.click(technicalDetails);
+        expect(within(alert).getByText("Audit code: candidate_plan_mismatch", { exact: true })).toBeVisible();
         expect(screen.getByText("This stage is inconsistent with audit-chain validation.")).toBeInTheDocument();
         expect((await screen.findAllByText(/Inconsistent/i)).length).toBeGreaterThan(1);
     });

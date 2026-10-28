@@ -263,7 +263,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                     <Detail label="Verification status" value={formatStatusLabel(audit.verification.verification_status ?? "not_reported")} />
                     <Detail label="Commit SHA" value={audit.commit.commit_sha ?? "Not reported"} />
                     <Detail label="Committed files" value={audit.commit.committed_files.length ? audit.commit.committed_files.join(", ") : "None reported"} />
-                    <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
+                    <Detail label="Audit check" value={audit.validation.valid ? "Passed" : "Needs review"} />
                 </dl>
                 {audit.blocked_reason && <p className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100"><strong className="block">Blocked reason</strong><span>{audit.blocked_reason}</span></p>}
                 <AuditValidationWarning validation={audit.validation} />
@@ -443,7 +443,41 @@ function formatStatusLabel(value: string): string {
 
 function AuditValidationWarning({ validation }: { validation: WorkflowAuditResponse["validation"] }) {
     if (validation.valid && validation.failure_code === null) return null;
-    return <p role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-        {validation.failure_code === null ? "Audit validation failed. Review the recorded details." : <>Inconsistent audit: {validation.failure_code}{validation.failure_stage ? ` at ${validation.failure_stage}` : ""}</>}
-    </p>;
+    return <div role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        <p>{validation.failure_code === null
+            ? "Audit validation failed. Review the recorded details."
+            : `The workflow history needs review. ${AUDIT_FAILURE_MESSAGES[validation.failure_code] ?? "Atlas could not confirm that the recorded workflow history is complete and consistent."}`}</p>
+        {validation.failure_stage && <p className="mt-2">Stage to review: {formatStatusLabel(validation.failure_stage)}.</p>}
+        {validation.failure_code !== null && <details className="mt-3">
+            <summary className="cursor-pointer">Technical details</summary>
+            <p className="mt-2">Audit code: {validation.failure_code}</p>
+        </details>}
+    </div>;
 }
+
+const AUDIT_FAILURE_MESSAGES: Record<string, string> = {
+    not_candidate_workflow: "This record is not a candidate workflow.",
+    missing_candidate_metadata: "Candidate details are missing.",
+    missing_planning_session: "The planning session record is missing.",
+    missing_candidate_plan: "The candidate plan is missing.",
+    missing_implementation_request: "The implementation request is missing.",
+    missing_implementation_approval: "The implementation approval record is missing.",
+    missing_execution_result: "The execution result is missing.",
+    missing_verification_plan: "The verification plan is missing.",
+    missing_verification_approval: "The verification approval record is missing.",
+    missing_verification_evidence: "The verification evidence is missing.",
+    missing_review_result: "The review result is missing.",
+    missing_review_report: "The review report is missing.",
+    missing_commit_request: "The commit request is missing.",
+    missing_commit_approval: "The commit approval record is missing.",
+    missing_commit_result: "The commit result is missing.",
+    identity_mismatch: "The saved record identities do not match.",
+    fingerprint_mismatch: "The saved record fingerprints do not match.",
+    approval_mismatch: "The approval records do not match this workflow.",
+    execution_mismatch: "The execution result does not match the approved request.",
+    verification_mismatch: "The verification records do not match the execution result.",
+    review_mismatch: "The review records do not match the changed files.",
+    commit_mismatch: "The commit record does not match the reviewed change.",
+    duplicate_identifier: "A record identifier appears more than once.",
+    candidate_plan_mismatch: "The candidate plan does not match this workflow.",
+};
