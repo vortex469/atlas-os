@@ -1511,3 +1511,13 @@ run the request and that starting maintenance remains a separate step. The
 maintenance page test confirms that rejection does not run it, and the browser
 journey verifies the separate approval and run requests; no API contract or
 permission boundary changed.
+
+## Workflow setup preparation wording — 2026-10-28
+
+Workflow setup now calls its action “Prepare change for review” and explains
+that the request must be reviewed, approved, and started in separate steps.
+Uncertain preparation results direct the operator to reload and check status;
+they do not invite a duplicate request. The focused page suite passes (31
+tests), both repository and maintenance browser journeys pass (10 tests across
+390px and 1280px), and lint, build, and `git diff --check` pass. Request
+contracts and approval/run boundaries are unchanged.

@@ -176,7 +176,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             if (!response || response.candidate_planning_session_id !== sessionId
                 || (response.workflow_session_id !== null && response.workflow_session_id !== workflow.workflow_session_id)) {
                 setImplementationOutcomeUnknown(true);
-                setImplementationError("Mission Control could not match the request result to this workflow. Reload this workflow to check its status before continuing.");
+                setImplementationError("Mission Control could not match the change request to this workflow. Reload this workflow to check its status before continuing.");
                 return;
             }
             setImplementationResult(response);
@@ -189,13 +189,13 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             } else {
                 setImplementationOutcomeUnknown(true);
                 setImplementationError(
-                    "The exact request result is incomplete. Reload this workflow to check its status before continuing.",
+                    "The change request result is incomplete. Reload this workflow to check its status before continuing.",
                 );
             }
         } catch (error) {
             if (generation !== viewGeneration.current) return;
             setImplementationOutcomeUnknown(true);
-            setImplementationError("Mission Control could not confirm whether the exact request was prepared. Reload this workflow to check its status before continuing.");
+            setImplementationError("Mission Control could not confirm whether the change request is ready. Reload this workflow to check its status before continuing.");
             setImplementationErrorDetails(getAtlasAgentErrorMessage(error, "Request preparation returned no details."));
         } finally {
             if (generation === viewGeneration.current) setIsCreatingImplementation(false);
@@ -274,7 +274,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow preparation</p>
                     <h1 className="mt-3 text-3xl font-bold text-white">Workflow setup</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Review this workflow and prepare its exact request for approval. Preparing a request does not run the change.
+                        Prepare the planned change for review. You will approve it and start it in separate steps.
                     </p>
                 </div>
                 <PlanningProgress current="Workflow" />
@@ -314,9 +314,9 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 )}
                 {canCreateImplementation && (
                     <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-                        <h2 className="text-base font-semibold text-emerald-200">Prepare exact request</h2>
+                        <h2 className="text-base font-semibold text-emerald-200">Prepare change for review</h2>
                         <p className="mt-2 text-sm text-slate-300">
-                            Prepare the exact request from this plan. You will review and approve it separately before running the change.
+                            Atlas will create a request from this plan for you to review. It does not approve or run the change.
                         </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                     <button
@@ -325,9 +325,9 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         disabled={isCreatingImplementation || isLoadingWorkflow}
                         className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {isCreatingImplementation ? "Preparing exact request..." : "Prepare exact request"}
+                        {isCreatingImplementation ? "Preparing…" : "Prepare change for review"}
                     </button>
-                            {isCreatingImplementation && <p className="text-sm text-slate-200">Preparing exact request...</p>}
+                            {isCreatingImplementation && <p role="status" className="text-sm text-slate-200">Preparing the change request for review. This does not run it.</p>}
                         </div>
                     </div>
                 )}
@@ -357,11 +357,11 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     </div>
                 )}
                 {workflow.workflow_status === "awaiting_implementation_approval" && (
-                    <p className="mt-4 text-sm text-slate-300">The exact request has already been prepared.</p>
+                    <p className="mt-4 text-sm text-slate-300">A change request is ready for review and approval.</p>
                 )}
                 {implementationResult && isSuccessfulImplementationResponse(implementationResult) && (
                     <p className="mt-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                        The exact request is ready. Opening the workflow for review and approval.
+                        Change request ready. Opening it for review and approval.
                     </p>
                 )}
                 {implementationResult && (
@@ -440,7 +440,7 @@ function workflowMessage(workflow: CandidateWorkflowResponse): string {
 function implementationFailureMessage(response: CandidateImplementationTranslationResponse): string {
     switch (response.failure?.code) {
         case "repository_stale":
-            return "The repository changed after plan review. Start a new planning session before preparing another request.";
+            return "The repository changed after plan review. Start a new planning session before preparing again.";
         case "candidate_fingerprint_mismatch":
             return "The proposal changed after review. Open the current proposal and plan it again.";
         case "plan_fingerprint_mismatch":
@@ -451,9 +451,9 @@ function implementationFailureMessage(response: CandidateImplementationTranslati
         case "atlas_core_unavailable":
             return "Atlas Core could not confirm the current proposal and plan. Try again when Core is available.";
         case "persistence_failed":
-            return "Atlas could not save the exact request. Reload this workflow before trying again.";
+            return "Atlas could not save the change request. Reload this workflow before trying again.";
         default:
-            return "Atlas could not prepare the exact request. Review technical details before trying again.";
+            return "Atlas could not prepare the change request. Review technical details before trying again.";
     }
 }
 

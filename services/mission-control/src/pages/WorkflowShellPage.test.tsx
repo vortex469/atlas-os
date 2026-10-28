@@ -138,9 +138,9 @@ describe("WorkflowShellPage", () => {
         expect(screen.queryByText("Verification ○")).not.toBeInTheDocument();
         expect(screen.queryByText("Review ○")).not.toBeInTheDocument();
         expect(screen.queryByText("Commit ○")).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /approve|execute|verify|review|commit/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|execute|verify|commit/i })).not.toBeInTheDocument();
         expect(screen.queryByText(/argv|commands|execution metadata/i)).not.toBeInTheDocument();
-        expect(await screen.findByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: /prepare change for review/i })).toBeInTheDocument();
         expect(mockedGetCandidatePlanningSession).not.toHaveBeenCalled();
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
             expected_candidate_fingerprint: "fingerprint-1",
@@ -165,7 +165,7 @@ describe("WorkflowShellPage", () => {
 
         expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
         expect((await screen.findAllByText("Blocked")).length).toBeGreaterThan(0);
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
         expect(screen.getByText("Recovery: blocked workflow")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
@@ -187,11 +187,11 @@ describe("WorkflowShellPage", () => {
         });
 
         expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
 
         resolveShell(workflow({ workflow_status: "awaiting_approval", implementation_approval_request_id: "approval-shell" }));
-        expect(await screen.findByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: /prepare change for review/i })).toBeInTheDocument();
         expect(mockedCreateCandidateImplementationRequest).not.toHaveBeenCalled();
     });
 
@@ -217,7 +217,7 @@ describe("WorkflowShellPage", () => {
         resolveSession(planningSession());
     });
 
-	it("renders a prepare exact request button for awaiting_approval shells", async () => {
+	it("prepares a change request for separate review and approval", async () => {
 		const user = userEvent.setup();
         const currentWorkflow = workflow({
             workflow_status: "awaiting_approval",
@@ -226,7 +226,9 @@ describe("WorkflowShellPage", () => {
         });
         renderPage({ workflow: currentWorkflow });
 
-        const button = await screen.findByRole("button", { name: /prepare exact request/i });
+        expect(await screen.findByRole("heading", { name: "Prepare change for review" })).toBeVisible();
+        expect(screen.getByText("Atlas will create a request from this plan for you to review. It does not approve or run the change.")).toBeVisible();
+        const button = await screen.findByRole("button", { name: /prepare change for review/i });
 
         await user.click(button);
 
@@ -260,9 +262,9 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+		await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 
-		expect(await screen.findByRole("alert")).toHaveTextContent("The repository changed after plan review. Start a new planning session before preparing another request.");
+		expect(await screen.findByRole("alert")).toHaveTextContent("The repository changed after plan review. Start a new planning session before preparing again.");
 		const requestDetails = screen.getByText("Request technical details").closest("details");
 		expect(requestDetails).not.toHaveAttribute("open");
 		expect(within(requestDetails as HTMLElement).getByText("Failure code: repository_stale")).not.toBeVisible();
@@ -272,7 +274,7 @@ describe("WorkflowShellPage", () => {
 		expect(within(requestDetails as HTMLElement).getByText("Failure code: repository_stale")).toBeVisible();
 		expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
-			expect(screen.getByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /prepare change for review/i })).toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 		});
 
@@ -294,7 +296,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+			await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 
 			expect(await screen.findByRole("alert")).toHaveTextContent("The plan no longer matches the proposal. Return to planning and review the current version.");
 			const requestDetails = screen.getByText("Request technical details").closest("details");
@@ -319,7 +321,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+			await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
@@ -347,7 +349,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+			await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 
 			mockedCreateSuccessorCandidatePlanningSession.mockResolvedValue(
@@ -388,7 +390,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+			await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
@@ -418,7 +420,7 @@ describe("WorkflowShellPage", () => {
 				}),
 			});
 
-			await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+			await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 			expect(await screen.findByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 			await user.dblClick(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
@@ -497,11 +499,11 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		const button = await screen.findByRole("button", { name: /prepare exact request/i });
+		const button = await screen.findByRole("button", { name: /prepare change for review/i });
 		await user.click(button);
 
 		expect(await screen.findByRole("alert"))
-			.toHaveTextContent("The repository changed after plan review. Start a new planning session before preparing another request.");
+			.toHaveTextContent("The repository changed after plan review. Start a new planning session before preparing again.");
 		expect(button).not.toBeDisabled();
 		expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
 	});
@@ -521,11 +523,11 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+		await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 
-        expect(await screen.findByText("The exact request result is incomplete. Reload this workflow to check its status before continuing.")).toBeInTheDocument();
+        expect(await screen.findByText("The change request result is incomplete. Reload this workflow to check its status before continuing.")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 	});
 
@@ -544,11 +546,11 @@ describe("WorkflowShellPage", () => {
 			}),
 		});
 
-		await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+		await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 
-        expect(await screen.findByText("The exact request result is incomplete. Reload this workflow to check its status before continuing.")).toBeInTheDocument();
+        expect(await screen.findByText("The change request result is incomplete. Reload this workflow to check its status before continuing.")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 	});
 
@@ -568,11 +570,12 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        const button = await screen.findByRole("button", { name: /prepare exact request/i });
+        const button = await screen.findByRole("button", { name: /prepare change for review/i });
         await user.dblClick(button);
 
         expect(mockedCreateCandidateImplementationRequest).toHaveBeenCalledTimes(1);
-        expect(screen.getByRole("button", { name: /preparing exact request/i })).toBeDisabled();
+        expect(screen.getByRole("button", { name: /preparing…/i })).toBeDisabled();
+        expect(await screen.findByText("Preparing the change request for review. This does not run it.")).toBeVisible();
         resolveRequest(implementationTranslationResponse());
     });
 
@@ -587,7 +590,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+        await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Implementation unavailable");
     });
@@ -633,7 +636,7 @@ describe("WorkflowShellPage", () => {
         mockedCreateCandidateWorkflowShell.mockRejectedValue(new Error("unavailable"));
         renderPage({ workflow: workflow({ workflow_status }) });
         await screen.findByRole("alert");
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
     });
 
@@ -656,7 +659,7 @@ describe("WorkflowShellPage", () => {
         mockedCreateCandidateWorkflowShell.mockResolvedValue(workflow({ candidate_planning_session_id: "other-session" }));
         renderPage();
         expect(await screen.findByRole("alert")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
     });
 
     it("does not let a late implementation response navigate away from another session", async () => {
@@ -670,7 +673,7 @@ describe("WorkflowShellPage", () => {
             { path: "/workflows/:workflowId", element: <div>Wrong workflow navigation</div> },
         ], { initialEntries: ["/candidate-planning/candidate-plan-1/workflow"] });
         render(<RouterProvider router={router} />);
-        await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+        await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
         await screen.findByRole("heading", { name: "Workflow setup" });
         await act(async () => resolveTranslation(implementationTranslationResponse({ workflow_session_id: "workflow-candidate-plan-1" })));
@@ -682,11 +685,11 @@ describe("WorkflowShellPage", () => {
         const user = userEvent.setup();
         mockedCreateCandidateImplementationRequest.mockResolvedValue(implementationTranslationResponse({ workflow_session_id: "other-workflow" }));
         renderPage({ workflow: workflow() });
-        await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+        await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not match the request result to this workflow.");
+        expect(alert).toHaveTextContent("Mission Control could not match the change request to this workflow.");
         expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
         expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
     });
 
@@ -695,13 +698,13 @@ describe("WorkflowShellPage", () => {
         mockedCreateCandidateImplementationRequest.mockRejectedValue(new Error("Malformed candidate implementation response."));
         renderPage({ workflow: workflow() });
 
-        await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
+        await user.click(await screen.findByRole("button", { name: /prepare change for review/i }));
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not confirm whether the exact request was prepared.");
+        expect(alert).toHaveTextContent("Mission Control could not confirm whether the change request is ready.");
         expect(screen.getByRole("button", { name: "Reload workflow" })).toBeInTheDocument();
         expect(within(alert).getByText("Technical details").closest("details")).not.toHaveAttribute("open");
-        expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /prepare change for review/i })).not.toBeInTheDocument();
         expect(mockedCreateCandidateImplementationRequest).toHaveBeenCalledTimes(1);
         expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
     });
@@ -710,7 +713,7 @@ describe("WorkflowShellPage", () => {
         render(<StrictMode><MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state: { workflow: workflow() } }]}>
             <Routes><Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} /></Routes>
         </MemoryRouter></StrictMode>);
-        await screen.findByRole("button", { name: /prepare exact request/i });
+        await screen.findByRole("button", { name: /prepare change for review/i });
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
     });
 

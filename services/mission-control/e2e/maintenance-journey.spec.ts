@@ -37,7 +37,7 @@ for (const width of [390, 1280]) {
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await expect(progress.locator('[aria-current="step"]')).toHaveText("WorkflowCurrent step");
         await expect(progress.getByRole("listitem")).toHaveCount(4);
-        await page.getByRole("button", { name: "Prepare exact request", exact: true }).click();
+        await page.getByRole("button", { name: "Prepare change for review", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Maintenance request", exact: true })).toBeVisible();
         await expect(page.getByRole("button", { name: "Approve maintenance request", exact: true })).toBeEnabled();
         await expect(page.getByRole("button", { name: "Run approved maintenance", exact: true })).toHaveCount(0);
