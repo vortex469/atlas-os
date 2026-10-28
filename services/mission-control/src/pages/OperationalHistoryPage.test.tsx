@@ -66,6 +66,10 @@ describe("OperationalHistoryPage", () => {
         expect(targetReference).toBeVisible();
         expect(screen.getByText("Result recorded (local time)")).toBeVisible();
         expect(screen.getByText("Request stage", { exact: true })).toBeVisible();
+        expect(screen.getByText("Status record check", { exact: true })).toBeVisible();
+        expect(screen.getByText("Records match", { exact: true })).toBeVisible();
+        expect(screen.getByText("Verification result", { exact: true })).toBeVisible();
+        expect(screen.getByText("Passed", { exact: true })).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
         expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
@@ -232,6 +236,44 @@ describe("OperationalHistoryPage", () => {
         expect(within(disclosure).getByText("Request stage", { exact: true })).toBeVisible();
         expect(within(disclosure).getByText(label, { exact: true })).toBeVisible();
         expect(within(disclosure).queryByText(workflow_state, { exact: true })).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["consistent", "Records match"],
+        ["agent_only", "Matching service record not found"],
+        ["core_unavailable", "Status service unavailable"],
+        ["immutable_mismatch", "Request details differ"],
+        ["transition_mismatch", "Status history is out of order"],
+        ["terminal_mismatch", "Completion status differs"],
+    ] as const)("summarizes the %s record check in plain language", async (consistency, label) => {
+        mockedDiagnostic.mockResolvedValue(operationalDiagnostic({
+            consistency,
+            correlation: { workflow_id: "workflow-operational-1", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true },
+        }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        const details = await screen.findByText("Request details", { exact: true });
+        fireEvent.click(details);
+        const disclosure = details.closest("details") as HTMLElement;
+        expect(within(disclosure).getByText("Status record check", { exact: true })).toBeVisible();
+        expect(within(disclosure).getByText(label, { exact: true })).toBeVisible();
+        expect(within(disclosure).queryByText(consistency, { exact: true })).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["succeeded", "Passed"],
+        ["failed", "Did not pass"],
+        ["pending", "In progress"],
+        [null, "Not reported"],
+    ] as const)("shows the %s verification result in plain language", async (verification_status, label) => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ verification_status }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        const details = await screen.findByText("Request details", { exact: true });
+        fireEvent.click(details);
+        const disclosure = details.closest("details") as HTMLElement;
+        expect(within(disclosure).getByText("Verification result", { exact: true })).toBeVisible();
+        expect(within(disclosure).getByText(label, { exact: true })).toBeVisible();
     });
 });
 

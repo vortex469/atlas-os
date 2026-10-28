@@ -186,15 +186,40 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
                 <summary className="cursor-pointer text-sm font-medium text-slate-200">Request details</summary>
                 <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <HistoryDetail label="Request stage" value={maintenanceStageLabel(workflow.workflow_state)} />
-                    <HistoryDetail label="Consistency" value={diagnostic?.consistency ?? "unavailable"} />
-                    <HistoryDetail label="Verification" value={lifecycle?.verification_status ?? "Not reported"} />
-                    <HistoryDetail label="Support Evidence" value={diagnostic ? "Available" : "Unavailable"} />
+                    <HistoryDetail label="Status record check" value={diagnostic ? consistencyLabel(diagnostic.consistency) : "Not available"} />
+                    <HistoryDetail label="Verification result" value={verificationLabel(lifecycle?.verification_status ?? null)} />
+                    <HistoryDetail label="Support evidence" value={diagnostic ? "Available" : "Unavailable"} />
                     <HistoryDetail label="Result recorded (local time)" value={formatTimestamp(resultTimestamp)} />
                     <HistoryDetail label="Target reference" value={lifecycle?.target_label ?? workflow.target_id ?? "Not reported"} />
                 </dl>
             </details>
         </article>
     );
+}
+
+function consistencyLabel(value: WorkflowRecoveryDiagnostic["consistency"]): string {
+    const labels: Record<WorkflowRecoveryDiagnostic["consistency"], string> = {
+        consistent: "Records match",
+        agent_only: "Matching service record not found",
+        core_unavailable: "Status service unavailable",
+        immutable_mismatch: "Request details differ",
+        transition_mismatch: "Status history is out of order",
+        terminal_mismatch: "Completion status differs",
+    };
+    return labels[value];
+}
+
+function verificationLabel(value: string | null): string {
+    if (value === null) return "Not reported";
+    const labels: Record<string, string> = {
+        failed: "Did not pass",
+        not_applicable: "Not applicable",
+        not_started: "Not started",
+        passed: "Passed",
+        pending: "In progress",
+        succeeded: "Passed",
+    };
+    return labels[value] ?? value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function HistoryDetail({ label, value }: { label: string; value: string }) {

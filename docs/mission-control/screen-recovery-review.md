@@ -2248,3 +2248,12 @@ coverage passes for the workflow at 320px, 390px and 1280px; history recovery
 at those widths; and unavailable status at 390px and 1280px (8 checks total).
 Mission Control lint and build pass. Browser requests use synthetic fixtures;
 approval and execution boundaries are unchanged.
+
+## Maintenance history detail labels — 2026-10-28
+
+The optional request details now translate record consistency and verification
+states into readable results such as “Records match,” “Request details differ,”
+and “Passed.” The history no longer exposes their backend state names. The
+focused history and recovery-summary suites pass (51 tests), the unavailable
+history browser checks pass at 320px, 390px and 1280px (3 checks), and lint and
+build pass. Filtering, request links and maintenance actions are unchanged.
