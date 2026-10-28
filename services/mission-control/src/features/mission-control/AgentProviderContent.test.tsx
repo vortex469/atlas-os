@@ -17,7 +17,7 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.getByText("Unknown")).toBeInTheDocument();
         expect(agent.getByRole("link", { name: "View agent workflows" })).toHaveAttribute("href", "/workflows");
         expect(registry().getByText("Healthy")).toBeInTheDocument();
-        expect(registry().getByText("Source status: failed")).toBeInTheDocument();
+        expect(registry().getByText("Reported status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
         expect(registry().getByText("Unknown")).toBeInTheDocument();
         expect(registry().getByRole("link", { name: "Inspect alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
@@ -27,7 +27,7 @@ describe("integrated agent/provider evidence", () => {
     it("retains stale observations without presenting cached success as current", () => {
         const view = show({ providers: { data: [provider("alpha", "healthy")], stale: true, unavailable: true }, agent: { unavailable: true } });
         expect(registry().queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(registry().getByText(/Last-known status: Healthy/)).toBeInTheDocument();
+        expect(registry().getByText(/Last known status: Healthy/)).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
         expect(registry().getByText(/current configuration unknown/)).toBeInTheDocument();

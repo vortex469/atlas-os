@@ -18,12 +18,18 @@ describe("authoritative health presentation", () => {
     ])("presents %j as %s without treating operational states as health", (status, label) => {
         render(<HealthEvidence status={status} />);
         expect(screen.getByText(label)).toBeInTheDocument();
-        expect(screen.getByText(/Evidence age unknown/)).toBeInTheDocument();
+        expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
+    });
+
+    it("explains when neither a health status nor check time is available", () => {
+        render(<HealthEvidence status="unknown" />);
+        expect(screen.getByText("No status information is available.")).toBeInTheDocument();
+        expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
     });
 
     it("retains source critical severity and renders reasons as plain text", () => {
         render(<HealthEvidence status="critical" reason="<script>bad()</script>" />);
-        expect(screen.getByText("Source status: critical")).toBeInTheDocument();
+        expect(screen.getByText("Reported status: critical")).toBeInTheDocument();
         expect(screen.getByText("<script>bad()</script>")).toBeInTheDocument();
         expect(document.querySelector("script")).toBeNull();
     });
@@ -32,18 +38,19 @@ describe("authoritative health presentation", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-09-13T12:00:00Z"));
         render(<HealthEvidence status="healthy" checkedAt="2026-09-13T12:00:00Z" />);
-        expect(screen.getByText(/Current evidence/)).toBeInTheDocument();
+        expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
         act(() => vi.advanceTimersByTime(90_000));
         expect(screen.getByText(/Stale evidence/)).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(screen.getByText(/Last-known status: Healthy/)).toBeInTheDocument();
+        expect(screen.getByText(/Last checked \(UTC\)/)).toBeInTheDocument();
+        expect(screen.getByText(/Last known status: Healthy/)).toBeInTheDocument();
         expect(document.querySelector("time")).toHaveAttribute("dateTime", "2026-09-13T12:00:00Z");
     });
 
     it.each([null, "yesterday", "2026-09-13", {}, "2099-01-01T00:00:00Z", "2026-02-30T00:00:00Z", "2026-09-13T24:00:00Z", "2026-09-13T12:00Z"])("does not claim freshness for timestamp %j", (checkedAt) => {
         render(<HealthEvidence status="healthy" checkedAt={checkedAt} reason={{ unsafe: true }} />);
-        expect(screen.getByText(/Evidence age unknown/)).toBeInTheDocument();
-        expect(screen.queryByText(/Current evidence/)).not.toBeInTheDocument();
+        expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
+        expect(screen.queryByText(/Checked \(UTC\)/)).not.toBeInTheDocument();
     });
 
     it.each(["2024-02-29T12:00:00.123456Z", "2026-09-13T14:00:00+02:00", "2026-09-13T07:00:00-05:00"])("accepts authoritative timestamp %s", (timestamp) => {
@@ -60,14 +67,14 @@ describe("authoritative health presentation", () => {
         render(<SystemHealthSummary evidence={{ policyHealth: { data: { status: "degraded", error: "Policy validation failed", checked_at: "2026-09-13T11:59:45Z" } } }} />);
         expect(screen.getByText("Degraded")).toBeInTheDocument();
         expect(screen.getByText("Policy validation failed")).toBeInTheDocument();
-        expect(screen.getByText(/Current evidence/)).toBeInTheDocument();
+        expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
     });
 
     it("marks retained dashboard evidence stale until refresh recovers", () => {
         const { rerender } = render(<HealthEvidenceContext.Provider value={{ stale: true }}><HealthEvidence status="online" /></HealthEvidenceContext.Provider>);
-        expect(screen.getByText(/Last-known status/)).toBeInTheDocument();
+        expect(screen.getByText(/Last known status/)).toBeInTheDocument();
         rerender(<HealthEvidenceContext.Provider value={{ stale: false }}><HealthEvidence status="offline" reason="Connection refused" /></HealthEvidenceContext.Provider>);
-        expect(screen.queryByText(/Last-known status/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Last known status/)).not.toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
         expect(screen.getByText("Connection refused")).toBeInTheDocument();
     });

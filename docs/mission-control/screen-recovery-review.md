@@ -294,6 +294,14 @@ these reports are not combined into one score and marks data over a minute old
 as out of date. Focused overview tests and responsive system-health browser
 checks, lint and build cover the display; health calculations are unchanged.
 
+## Health status wording — 2026-10-28
+
+Unknown health states now say that status or check time is unavailable, and
+source values are labeled “Reported status.” Timestamp labels name UTC
+explicitly. Last-known status and the existing freshness cutoff remain
+unchanged. Focused health and Agent/provider tests, lint, build and responsive
+system-health browser checks cover current, old, invalid and missing timestamps.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its
