@@ -1584,3 +1584,11 @@ reloads both the records and retention summary. The page test verifies that
 refresh only reads and that deletion becomes available again after both reads
 succeed. The recovery refresh performs only reads and never invokes a provider
 action.
+
+## Maintenance proposal response recovery — 2026-10-28
+
+Server and network failures during restart-proposal creation now say that the
+proposal result is unconfirmed and make clear that the VM has not restarted.
+The page links to Change proposals so an operator can check before retrying.
+Tests cover HTTP 503 and a lost-response case, and verify the link does not
+submit a second request. No approval or execution step changed.

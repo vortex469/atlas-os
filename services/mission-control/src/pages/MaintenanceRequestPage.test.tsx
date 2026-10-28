@@ -65,7 +65,7 @@ function authenticated(invalidate = vi.fn()) {
 }
 
 function renderPage(state?: unknown) {
-    render(<MemoryRouter initialEntries={[{ pathname: "/operations/request", state }]}><Routes><Route path="/operations/request" element={<MaintenanceRequestPage />} /><Route path="/operator/login" element={<LoginDestination />} /><Route path="/execution-candidates/:candidateId" element={<p>Candidate destination</p>} /></Routes></MemoryRouter>);
+    render(<MemoryRouter initialEntries={[{ pathname: "/operations/request", state }]}><Routes><Route path="/operations/request" element={<MaintenanceRequestPage />} /><Route path="/operator/login" element={<LoginDestination />} /><Route path="/execution-candidates" element={<p>Change proposal list</p>} /><Route path="/execution-candidates/:candidateId" element={<p>Candidate destination</p>} /></Routes></MemoryRouter>);
 }
 
 function LoginDestination() {
@@ -384,7 +384,7 @@ describe("MaintenanceRequestPage", () => {
     it.each([
         [403, "does not have permission"],
         [429, "Too many maintenance requests"],
-        [503, "VM list is temporarily unavailable"],
+        [503, "Atlas could not confirm whether a restart proposal was created"],
     ])("renders controlled status %i without automatic retry", async (status, message) => {
         vi.mocked(requestRestartServiceIntent).mockRejectedValue({ isAxiosError: true, response: { status } });
         const user = userEvent.setup();
@@ -392,6 +392,22 @@ describe("MaintenanceRequestPage", () => {
         await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
         await user.click(screen.getByRole("button", { name: "Request restart proposal" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(message);
+        expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
+        if (status === 503) {
+            expect(screen.getByRole("link", { name: "Check Change proposals before trying again" })).toHaveAttribute("href", "/execution-candidates");
+        }
+    });
+
+    it("directs an uncertain proposal response to read existing proposals without resubmitting", async () => {
+        vi.mocked(requestRestartServiceIntent).mockRejectedValueOnce(new Error("Network unavailable"));
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole("radio", { name: /Frigate/i }));
+        await user.click(screen.getByRole("button", { name: "Request restart proposal" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas could not confirm whether a restart proposal was created. The VM has not restarted.");
+        await user.click(screen.getByRole("link", { name: "Check Change proposals before trying again" }));
+        expect(await screen.findByText("Change proposal list")).toBeInTheDocument();
         expect(requestRestartServiceIntent).toHaveBeenCalledTimes(1);
     });
 

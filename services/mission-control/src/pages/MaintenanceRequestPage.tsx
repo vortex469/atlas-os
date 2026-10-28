@@ -21,10 +21,10 @@ import type {
 } from "../types/operatorIntent";
 
 function errorMessage(status: number | undefined): string {
+    if (status === undefined || status >= 500) return "Atlas could not confirm whether a restart proposal was created. The VM has not restarted.";
     if (status === 403) return "Your account does not have permission to request maintenance.";
     if (status === 409) return "This VM changed. Refresh the list and choose it again.";
     if (status === 429) return "Too many maintenance requests. Wait before trying again.";
-    if (status === 503) return "The VM list is temporarily unavailable. Try again shortly.";
     return "The maintenance request could not be completed.";
 }
 
@@ -71,6 +71,7 @@ export function MaintenanceRequestPage() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [proposalOutcomeUncertain, setProposalOutcomeUncertain] = useState(false);
     const [result, setResult] = useState<OperatorIntentCreationResponse | null>(null);
     const [resultExpired, setResultExpired] = useState(false);
     const [proposal, setProposal] = useState<DiscoveryProposalNavigation | null>(null);
@@ -92,6 +93,7 @@ export function MaintenanceRequestPage() {
         setResultExpired(false);
         setLoading(true);
         setError(null);
+        setProposalOutcomeUncertain(false);
         try {
             const capabilities = await getOperationalCapabilities();
             if (generation !== selectorGeneration.current) return;
@@ -163,6 +165,7 @@ export function MaintenanceRequestPage() {
         const generation = ++submissionGeneration.current;
         setSubmitting(true);
         setError(null);
+        setProposalOutcomeUncertain(false);
         setResult(null);
         setResultExpired(false);
         try {
@@ -194,6 +197,7 @@ export function MaintenanceRequestPage() {
                 setSelectedId(null);
                 await loadResources();
             }
+            setProposalOutcomeUncertain(status === undefined || status >= 500);
             setError(errorMessage(status));
         } finally {
             if (generation === submissionGeneration.current) setSubmitting(false);
@@ -222,14 +226,14 @@ export function MaintenanceRequestPage() {
                 <FixedField label="Resource type" value={descriptorLabel(capability.resource_type)} />
             </section>}
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your account does not have permission to request maintenance.</p>}
-            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
+            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Check Change proposals before trying again</Link>}</div>}
             <section className="space-y-3" aria-label="Available virtual machines">
                 <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p className="text-sm text-slate-400">Loading available VMs…</p>}
                 {resources.map((resource) => (
                     <label key={resource.resource_id} className={`block rounded-xl border p-4 ${resource.requestable ? "border-slate-700 bg-slate-900/70" : "border-slate-800 bg-slate-900/30 text-slate-500"}`}>
                         <span className="flex gap-3">
-                            <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted || loading || submitting} onChange={() => { setSelectedId(resource.resource_id); setResult(null); setResultExpired(false); setError(null); }} />
+                            <input type="radio" name="resource" checked={selectedId === resource.resource_id} disabled={!resource.requestable || !permitted || loading || submitting} onChange={() => { setSelectedId(resource.resource_id); setResult(null); setResultExpired(false); setError(null); setProposalOutcomeUncertain(false); }} />
                             <span className="min-w-0 flex-1">
                                 <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                     <strong className="text-slate-100">{resource.display_name}</strong>
