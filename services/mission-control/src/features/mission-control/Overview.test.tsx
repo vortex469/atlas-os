@@ -33,7 +33,7 @@ describe("MC overview evidence", () => {
         for (const name of ['System status','Service health','Worker / Execution','Agent state','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
-        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
+        expect(screen.getByText(/Workflow details are missing or incomplete/)).toBeInTheDocument();
     });
     it.each([false, true])("keeps every service accessible with stale=%s", (stale) => {
         const services = Object.fromEntries(Array.from({ length: 9 }, (_, index) => [`Service ${index + 1}`, { status: "healthy", message: `Reported service ${index + 1}` }]));
@@ -64,7 +64,7 @@ describe("MC overview evidence", () => {
         expect(screen.getByRole('link', { name: 'Inspect Alpha →' })).toHaveAttribute('href', '/providers/alpha');
         expect(screen.getByRole('link', { name: 'w/1' })).toHaveAttribute('href', '/workflows/w%2F1');
         expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Beta')).toHaveLength(1);
-        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
+        expect(screen.getByText(/Workflow details are missing or incomplete/)).toBeInTheDocument();
         expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
@@ -112,7 +112,7 @@ describe('operational activity and runtime evidence', () => {
 describe('overview fail-closed regressions', () => {
     it.each(['', 'idle', 'future_state', null, {}])('does not count malformed or unsupported workflow states: %s', state => {
         show({ workflows: { data: { items: [{ workflow_id: 'w', workflow_state: state }] } } });
-        expect(screen.getByText(/Execution evidence unknown or incomplete/)).toBeInTheDocument();
+        expect(screen.getByText(/Workflow details are missing or incomplete/)).toBeInTheDocument();
         expect(screen.queryByText(/Active: 0/)).not.toBeInTheDocument();
     });
     it('retains distinct conditions for the same provider and does not call approval waits blocked', () => {
@@ -142,7 +142,7 @@ describe('overview fail-closed regressions', () => {
 it('distinguishes executing workflows from verification and commit activity', () => {
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
     expect(screen.getByText("1 executing workflow")).toBeInTheDocument();
-    expect(screen.getByText(/Worker readiness and queue size are unknown/)).toBeInTheDocument();
+    expect(screen.getByText(/Worker availability and queue size are not reported/)).toBeInTheDocument();
 });
 
 it('preserves the most urgent duplicate condition at equal freshness', () => {
@@ -185,8 +185,8 @@ it('keeps stale AI conditions explicitly unknown', () => {
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
     show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Workflow attention evidence unknown or incomplete.')).toBeInTheDocument();
-    expect(attention.getByText('Operational findings unknown or incomplete.')).toBeInTheDocument();
+    expect(attention.getByText('Workflow status could not be confirmed.')).toBeInTheDocument();
+    expect(attention.getByText('Operational findings could not be confirmed.')).toBeInTheDocument();
     expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
     expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });
@@ -226,7 +226,7 @@ it('integrates one health summary with independent source freshness and safe rea
     expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     const policy = within(screen.getByRole('article', { name: 'Policy status' }));
-    expect(policy.getByText('Evidence unavailable.')).toBeInTheDocument();
+    expect(policy.getByText('Could not load this information.')).toBeInTheDocument();
     expect(policy.getByText('Unknown')).toBeInTheDocument();
 });
 
@@ -248,7 +248,7 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.getByText('Execution completed')).toBeInTheDocument();
     expect(worker.queryByText('Commit failed')).not.toBeInTheDocument();
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
-    expect(worker.getByText(/current execution state unknown/)).toBeInTheDocument();
+    expect(worker.getByText(/current execution state is unknown/)).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getAllByRole('link', { name: 'blocked/1' })).toHaveLength(1);
     expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();

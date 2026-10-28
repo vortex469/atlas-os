@@ -16,9 +16,9 @@ import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
 function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }) {
     const prefix = label ? `${label}: ` : "";
-    if (evidence?.stale) return <p role="status">{prefix}Stale evidence — refresh failed. Last-known observations only.</p>;
-    if (evidence?.unavailable) return <p>{prefix}Evidence unavailable.</p>;
-    if (evidence?.data === undefined) return <p>{prefix}Evidence unknown.</p>;
+    if (evidence?.stale) return <p role="status">{prefix}Refresh failed. Showing previously reported information only; current status is unknown.</p>;
+    if (evidence?.unavailable) return <p>{prefix}Could not load this information.</p>;
+    if (evidence?.data === undefined) return <p>{prefix}Information has not been received yet.</p>;
     return null;
 }
 function Card({ title, children, evidence }: { title: string; children: ReactNode; evidence?: Evidence }) {
@@ -116,9 +116,9 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         <Card title="Operator Attention" evidence={evidence.summary}>
             <p>Review the conditions below and open a workflow when it needs your decision.</p>
             <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" /><SourceNote evidence={evidence.policyHealth} label="Policy status" />
-            {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
-            {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
-            {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
+            {!workflowKnown && <p>Workflow status could not be confirmed.</p>}
+            {!findingsKnown && <p>Operational findings could not be confirmed.</p>}
+            {uniqueAttention.length === 0 && <p>No attention items appear in the information received. Atlas cannot confirm an all-clear while information is missing.</p>}
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(renderAttentionItem)}</ul>
             {uniqueAttention.length > 5 && <details className="rounded-lg border border-mc-border-subtle p-3">
                 <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">More conditions ({uniqueAttention.length - 5})</summary>

@@ -27,7 +27,7 @@ for (const width of [320, 390, 1280]) for (const mode of ['updated', 'stale'] as
             await expect(more).toHaveText('More conditions (3)');
             await expect(attention.getByRole('link', {name: 'Reported problem 6', exact: true})).toBeVisible();
         } else {
-            await expect(attention.getByText('Providers: Stale evidence — refresh failed. Last-known observations only.', {exact: true})).toBeVisible();
+            await expect(attention.getByText('Providers: Refresh failed. Showing previously reported information only; current status is unknown.', {exact: true})).toBeVisible();
             const extra = attention.getByRole('link', {name: 'Reported problem 5', exact: true}).locator('..');
             await expect(extra.getByText('Last-known condition; current state unknown.', {exact: true})).toBeVisible();
             await expect(extra.getByText('Blocked', {exact: true})).toHaveCount(0);
