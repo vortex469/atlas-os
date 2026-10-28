@@ -1953,3 +1953,14 @@ labels under “What it supports.” The full Mission Control suite passes (2,79
 tests across 181 files), the compatibility and catalog summary browser checks
 pass at 390px and 1280px, and lint and production build pass. Browser reads use
 synthetic fixtures; catalog data and approval boundaries are unchanged.
+
+## Missing catalog item recovery — 2026-10-28
+
+A missing catalog item now explains that it is no longer available and gives a
+direct way back to the catalog. Its item ID stays under collapsed Technical
+details. Mission Control waits for the catalog entry before requesting its
+related plan, relationships, evidence, compatibility, image grounding, and
+proposals, so a missing item produces only the catalog lookup. The full
+Mission Control suite passes (2,792 tests across 181 files), the missing-item
+browser checks pass at 390px and 1280px, and lint and production build pass.
+Browser checks use synthetic fixtures and reject mutations.

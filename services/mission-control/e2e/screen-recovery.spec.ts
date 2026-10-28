@@ -141,6 +141,32 @@ test("discovery refuses another catalog item's details", async ({ page }) => {
 });
 
 for (const width of [390, 1280]) {
+    test(`missing catalog item gives a simple recovery path at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        const dependentReads: string[] = [];
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items/missing-item", route => route.fulfill({ status: 404, json: { detail: "Catalog item not found" } }));
+        page.on("request", request => {
+            const path = new URL(request.url()).pathname;
+            if (path.startsWith("/api/v1/discovery/items/missing-item/") || path === "/api/v1/discovery/proposals") {
+                dependentReads.push(path);
+            }
+        });
+        await page.goto("/discovery/items/missing-item");
+
+        const notFound = page.getByRole("heading", { name: "Catalog item not found" }).locator("xpath=..");
+        await expect(notFound.getByText("This catalog item is no longer available. Return to the catalog and choose a current item.", { exact: true })).toBeVisible();
+        await expect(notFound.getByText("Catalog item ID: missing-item", { exact: true })).toBeHidden();
+        await notFound.getByText("Technical details", { exact: true }).click();
+        await expect(notFound.getByText("Catalog item ID: missing-item", { exact: true })).toBeVisible();
+        await page.getByRole("link", { name: "← Catalog" }).click();
+        await expect(page.getByRole("heading", { name: "Browse the catalog", exact: true })).toBeVisible();
+        expect(dependentReads).toEqual([]);
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate(maxWidth => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`compatibility findings use clear labels and keep references optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         const entry = discoveryItemsPage.entries[0];
         const checkedAt = "2026-10-28T12:00:00.000Z";

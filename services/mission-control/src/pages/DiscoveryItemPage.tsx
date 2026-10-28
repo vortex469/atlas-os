@@ -83,6 +83,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [proposalLoadAttempt, setProposalLoadAttempt] = useState(0);
     const compatibilityRequestId = useRef(0);
     const compatibilityLoadHandle = useRef<number | null>(null);
+    const hasCatalogItem = state.entry?.item.id === itemId;
 
     const loadCompatibility = useCallback(() => {
         const requestId = ++compatibilityRequestId.current;
@@ -120,6 +121,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     }, [itemId]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -139,13 +141,14 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 }
             });
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, hasCatalogItem]);
 
     const currentInstallationPlan = installationPlanState.itemId === itemId
         ? installationPlanState
         : { itemId, plan: null, loading: true, unavailable: false };
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -179,7 +182,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             });
 
         return () => { cancelled = true; };
-    }, [itemId, groundingLoadAttempt]);
+    }, [itemId, groundingLoadAttempt, hasCatalogItem]);
 
     useEffect(() => {
         let cancelled = false;
@@ -220,6 +223,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     }, [itemId]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -250,9 +254,10 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             });
 
         return () => { cancelled = true; };
-    }, [itemId, relationshipsLoadAttempt]);
+    }, [itemId, relationshipsLoadAttempt, hasCatalogItem]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -284,9 +289,10 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             });
 
         return () => { cancelled = true; };
-    }, [itemId, evidenceLoadAttempt]);
+    }, [itemId, evidenceLoadAttempt, hasCatalogItem]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         const handle = window.setTimeout(() => {
             loadCompatibility();
         }, 0);
@@ -299,9 +305,10 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 compatibilityLoadHandle.current = null;
             }
         };
-    }, [itemId, loadCompatibility]);
+    }, [itemId, loadCompatibility, hasCatalogItem]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -325,7 +332,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 if (!cancelled) setProposalsLoading(false);
             });
         return () => { cancelled = true; };
-    }, [itemId, proposalLoadAttempt]);
+    }, [itemId, proposalLoadAttempt, hasCatalogItem]);
 
     function retryRelatedProposals() {
         setProposals([]);
@@ -385,8 +392,12 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                         Catalog item not found
                     </h1>
                     <p className="mt-2 text-sm text-slate-400">
-                        Atlas could not find a catalog entry for {itemId}.
+                        This catalog item is no longer available. Return to the catalog and choose a current item.
                     </p>
+                    <details className="mt-4 border-t border-slate-800 pt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-all text-sm text-slate-400">Catalog item ID: {itemId}</p>
+                    </details>
                 </section>
             </main>
         );

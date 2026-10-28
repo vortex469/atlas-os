@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -439,6 +439,8 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        await waitFor(() => expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("frigate"));
         expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
         await act(async () => request.reject(new Error("unavailable")));
         expect(await screen.findByText("Installation plan is currently unavailable.")).toBeInTheDocument();
@@ -454,11 +456,12 @@ describe("DiscoveryItemPage", () => {
                 itemId === "item-a" ? itemARequest.promise : itemBRequest.promise,
             );
             renderNavigablePage();
-            expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-a");
+            expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+            await waitFor(() => expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-a"));
 
             await act(async () => screen.getByRole("button", { name: "Show item B" }).click());
             expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
-            expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-b");
+            await waitFor(() => expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-b"));
 
             await act(async () => itemARequest.resolve(installationPlan("item-a")));
             expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
@@ -723,11 +726,13 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByText("Loading compatibility assessment…")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Compatibility assessment" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Compatibility assessment" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
 
-        expect(compatibilityPromise).toBeDefined();
-        expect(resolveCompatibility).toBeDefined();
+        await waitFor(() => {
+            expect(compatibilityPromise).toBeDefined();
+            expect(resolveCompatibility).toBeDefined();
+        });
         resolveCompatibility!(compatibilityAssessment());
         const summary = await screen.findByRole("heading", { name: "Compatibility summary" });
         expect(within(summary.closest("section") as HTMLElement).getByText("Compatible")).toBeInTheDocument();
@@ -802,7 +807,17 @@ describe("DiscoveryItemPage", () => {
         expect(
             await screen.findByRole("heading", { name: "Catalog item not found" }),
         ).toBeInTheDocument();
-        expect(screen.getByText(/could not find a catalog entry/i)).toBeInTheDocument();
+        expect(screen.getByText("This catalog item is no longer available. Return to the catalog and choose a current item.")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).toBeVisible();
+        expect(mockedGetDiscoveryRelationships).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryCompatibility).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryItemEvidence).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryImageGrounding).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryInstallationPlan).not.toHaveBeenCalled();
+        expect(mockedListDiscoveryProposals).not.toHaveBeenCalled();
     });
 
     it("renders unavailable state", async () => {
