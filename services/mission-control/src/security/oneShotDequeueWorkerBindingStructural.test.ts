@@ -26,13 +26,14 @@ describe("v0.46 one-shot dequeue worker binding Mission Control boundary", () =>
     });
 
     it("keeps operator state simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/State: eligible; bound: readiness gated; blocked: yes/);
-        expect(component).toMatch(/Advanced details/);
+        expect(component).toMatch(/links the saved queue reference to a possible future worker setup/i);
+        expect(component).toMatch(/does not contact a store or runtime or start a worker/i);
+        expect(component).toMatch(/Worker and queue details/);
+        expect(component).toMatch(/Exact safety and authority details/);
         expect(component).toMatch(/Worker capability fingerprint/);
-        expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
-        expect(component).toMatch(/Blockers/);
+        expect(component).toMatch(/Limits recorded for a future worker/);
+        expect(component).toMatch(/Why a worker cannot start/);
         expect(component).toMatch(/One-shot dequeue worker binding fixed-false authority fields/);
-        expect(component).toMatch(/No worker-start, Agent invocation, execution, installation, deployment, rollback, retry, resend/);
         expect(component).not.toMatch(/worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /oneShotDequeueWorkerBinding|OneShotDequeueWorkerBinding|one-shot-dequeue-worker-bindings/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
