@@ -2,6 +2,7 @@ import {
     act,
     render,
     screen,
+    within,
     waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -125,6 +126,9 @@ describe("OperationsPage", () => {
         expect(
             await screen.findByText("Unload Model"),
         ).toBeInTheDocument();
+        const action = screen.getByRole("article");
+        expect(within(action).getByText("Succeeded", { exact: true })).toBeVisible();
+        expect(within(action).queryByText("succeeded", { exact: true })).not.toBeInTheDocument();
         expect(screen.getAllByText("Ollama")).toHaveLength(3);
         expect(screen.getByText("model")).toBeInTheDocument();
         expect(
@@ -141,6 +145,24 @@ describe("OperationsPage", () => {
             "href",
             "/operations/actions/audit-1",
         );
+    });
+
+    it("labels failed action results in plain language", async () => {
+        mockedGetProviderActionHistory.mockResolvedValue({
+            items: [{
+                id: "audit-failed", provider_id: "ollama", provider_name: "Ollama",
+                action_id: "unload-model", action_label: "Unload Model", status: "failed", success: false,
+                message: "The provider did not complete this action.", confirmed: false, destructive: false,
+                parameter_names: [], request_id: null, started_at: "2026-07-25T17:00:00Z",
+                completed_at: "2026-07-25T17:00:01Z", duration_ms: 12.5,
+            }],
+            total: 1, offset: 0, limit: 25, has_more: false,
+        });
+        renderPage();
+
+        const action = await screen.findByRole("article");
+        expect(within(action).getByText("Failed", { exact: true })).toBeVisible();
+        expect(within(action).queryByText("failed", { exact: true })).not.toBeInTheDocument();
     });
 
     it("requests failed actions when filtered", async () => {

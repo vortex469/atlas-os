@@ -10,6 +10,7 @@ import type {
     ActionHistoryStatus,
     ProviderActionAuditEntry,
 } from "../types/actionHistory";
+import { actionHistoryStatusLabel } from "../utils/actionHistoryPresentation";
 
 function formatTimestamp(timestamp: string): string {
     const parsed = evidenceTimestamp(timestamp);
@@ -164,7 +165,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                                         entry.status,
                                     )}`}
                                 >
-                                    {entry.status}
+                                    {actionHistoryStatusLabel(entry.status)}
                                 </span>
                                 {entry.confirmed && (
                                     <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
