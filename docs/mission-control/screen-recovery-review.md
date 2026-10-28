@@ -838,3 +838,11 @@ activity. Its remaining navigation is deployment analysis; workflow review
 stays in Work activity. The focused Agent/provider suite and responsive
 overview browser checks pass, along with lint, production build, and
 `git diff --check`.
+
+## Action history loading status — 2026-10-28
+
+The Manage history panel now identifies its separate retention read while the
+action list is loading, and names retention details in its unavailable state.
+This clarifies why the expired-entry control is disabled without repeating the
+action-list loading message. The focused Operations page suite, action-history
+browser checks, lint, production build, and `git diff --check` pass.

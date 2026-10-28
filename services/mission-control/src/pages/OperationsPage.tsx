@@ -445,7 +445,7 @@ export function OperationsPage() {
                         <p className="mt-1 text-sm text-slate-400">
                             {summary
                                 ? `Atlas is keeping ${summary.entry_count} of ${summary.max_entries} entries for up to ${summary.retention_days} days.`
-                                : isLoading ? "Loading history details..." : "History retention is unavailable."}
+                                : isLoading ? "Loading retention details…" : "Retention details are unavailable."}
                         </p>
                     </div>
                 </div>

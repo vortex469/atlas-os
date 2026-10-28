@@ -107,6 +107,16 @@ describe("OperationsPage", () => {
         });
     });
 
+    it("distinguishes loading action history from retention details", async () => {
+        renderPage();
+
+        expect(screen.getByText("Loading action history...")).toBeInTheDocument();
+        expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
+        await screen.findByText("Unload Model");
+        expect(screen.queryByText("Loading action history...")).not.toBeInTheDocument();
+        expect(screen.queryByText("Loading retention details…")).not.toBeInTheDocument();
+    });
+
     it("renders sanitized action audit details", async () => {
         renderPage();
 
@@ -173,7 +183,7 @@ describe("OperationsPage", () => {
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         expect(await screen.findByRole("alert")).toHaveTextContent("Filtered history unavailable");
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
-        expect(screen.getByText("History retention is unavailable.")).toBeInTheDocument();
+        expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {
