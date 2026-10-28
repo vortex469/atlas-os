@@ -280,6 +280,9 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
         await expect(page.getByText("Healthy", { exact: true })).toHaveCount(1);
         await expect(page.getByText("Status", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("HTTP response code", { exact: true })).toBeHidden();
+        await page.getByText("Technical details", { exact: true }).click();
+        await expect(page.getByText("HTTP response code", { exact: true })).toBeVisible();
         await page.getByRole("link", { name: /All providers/ }).click();
         await expect(page).toHaveURL(/\/providers$/);
         await expect(page.getByRole("link", { name: "Open Proxmox provider" })).toBeVisible();

@@ -46,52 +46,18 @@ export function ProviderOverview({
                     </p>
                 </div>
 
-                <StatusBadge status={formatLabel(provider.health.status)} />
+                <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                    <StatusBadge status={formatLabel(provider.health.status)} />
+                    {provider.health.latency_ms !== null && (
+                        <p className="text-sm text-slate-400">
+                            {"Response time "}
+                            <span className="font-semibold text-slate-200">
+                                {provider.health.latency_ms} ms
+                            </span>
+                        </p>
+                    )}
+                </div>
             </div>
-
-            <dl className="mt-8 grid gap-4 border-t border-slate-800 pt-6 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Latency
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {provider.health.latency_ms === null
-                            ? "—"
-                            : `${provider.health.latency_ms} ms`}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        HTTP Status
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {provider.health.http_status ?? "—"}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Priority
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {formatLabel(provider.priority)}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Version
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {provider.version}
-                    </dd>
-                </div>
-            </dl>
 
             <div className="mt-6 grid gap-6 border-t border-slate-800 pt-6 lg:grid-cols-2">
                 <div>
@@ -132,17 +98,51 @@ export function ProviderOverview({
                 </div>
             </div>
 
-            {endpoint && (
-                <div className="mt-6 border-t border-slate-800 pt-6">
-                    <p className="text-xs uppercase tracking-wider text-slate-500">
-                        Health Endpoint
-                    </p>
+            <details className="mt-6 border-t border-slate-800 pt-5">
+                <summary className="cursor-pointer text-sm font-medium text-slate-400 hover:text-slate-200">
+                    Technical details
+                </summary>
 
-                    <p className="mt-2 break-all font-mono text-sm text-slate-300">
-                        {endpoint}
-                    </p>
-                </div>
-            )}
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            HTTP response code
+                        </dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-200">
+                            {provider.health.http_status ?? "Not reported"}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Provider priority
+                        </dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-200">
+                            {formatLabel(provider.priority)}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Version
+                        </dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-200">
+                            {provider.version}
+                        </dd>
+                    </div>
+
+                    {endpoint && (
+                        <div className="sm:col-span-2 lg:col-span-3">
+                            <dt className="text-xs uppercase tracking-wider text-slate-500">
+                                Health endpoint
+                            </dt>
+                            <dd className="mt-2 break-all font-mono text-sm text-slate-300">
+                                {endpoint}
+                            </dd>
+                        </div>
+                    )}
+                </dl>
+            </details>
 
             {provider.health.message && (
                 <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">

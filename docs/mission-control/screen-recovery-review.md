@@ -208,6 +208,15 @@ when the catalog does not supply check times. Health state and reported reason
 remain visible. The focused registry test and 390px and 1280px browser checks
 cover the summary; provider reads and actions are unchanged.
 
+## Provider detail information hierarchy — 2026-10-28
+
+The provider detail card leads with health, available response time, workspace,
+and capabilities. HTTP response code, provider priority, version, and health
+endpoint are available under collapsed Technical details; missing response
+time is omitted. Focused component checks and the 390px and 1280px detail
+browser checks verify the hierarchy and disclosure. Provider contracts and
+actions are unchanged.
+
 ## Provider action recovery — 2026-10-28
 
 Action-catalog read failures now offer a read-only reload and have their own
