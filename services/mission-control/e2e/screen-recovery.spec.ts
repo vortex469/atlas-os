@@ -2,6 +2,61 @@ import { discoveryItemsPage, executionCandidates, expect, providers, test } from
 import { operationalDiagnostic, operationalLifecycle } from "../src/test/operationalLifecycle";
 import { workflowAudit } from "../src/test/workflowAudit";
 import { workflowDetail } from "../src/test/workflowDetail";
+import type { Locator } from "@playwright/test";
+
+async function expectResponsiveMainPadding(content: Locator, width: number) {
+    const padding = await content.evaluate((element) => {
+        const main = element.closest("main");
+        return main ? getComputedStyle(main).paddingLeft : null;
+    });
+    if (width < 640) {
+        expect(padding).toBe("16px");
+    } else {
+        expect(Number.parseFloat(padding ?? "0px")).toBeGreaterThan(16);
+    }
+}
+
+for (const width of [320, 1280]) {
+    test(`workflow review and audit keep responsive spacing while loading at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let releaseWorkflowRead!: () => void;
+        let releaseAuditRead!: () => void;
+        const workflowRead = new Promise<void>((resolve) => { releaseWorkflowRead = resolve; });
+        const auditRead = new Promise<void>((resolve) => { releaseAuditRead = resolve; });
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows/loading-workflow/implementation-request", async (route) => {
+            await workflowRead;
+            return route.fulfill({ json: workflowDetail({ workflow_id: "loading-workflow" }) });
+        });
+        await page.route("**/agent-api/api/v1/agent/workflows/loading-workflow/audit", async (route) => {
+            await auditRead;
+            const fixture = workflowAudit();
+            return route.fulfill({ json: workflowAudit({
+                workflow_id: "loading-workflow",
+                workflow: { ...fixture.workflow, workflow_id: "loading-workflow" },
+            }) });
+        });
+
+        try {
+            await page.goto("/workflows/loading-workflow");
+            const workflowLoading = page.getByRole("status").filter({ hasText: "Loading workflow..." });
+            await expect(workflowLoading).toBeVisible();
+            await expectResponsiveMainPadding(workflowLoading, width);
+            releaseWorkflowRead();
+            await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
+
+            await page.getByRole("link", { name: "Open Audit", exact: true }).click();
+            const auditLoading = page.getByRole("status").filter({ hasText: "Loading workflow audit..." });
+            await expect(auditLoading).toBeVisible();
+            await expectResponsiveMainPadding(auditLoading, width);
+            releaseAuditRead();
+            await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();
+            expect(rejectedMutationRequests).toEqual([]);
+        } finally {
+            releaseWorkflowRead();
+            releaseAuditRead();
+        }
+    });
+}
 
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
     let reads = 0;
@@ -520,7 +575,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`workflow read failure hides technical errors and keeps recovery at ${width}px`, async ({ page }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 844 });
@@ -533,6 +588,7 @@ for (const width of [390, 1280]) {
         await page.goto("/workflows/recovery-workflow");
         const alert = page.getByRole("alert");
         await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
+        await expectResponsiveMainPadding(alert, width);
         await expect(alert).toContainText("Mission Control could not load this workflow, so its current status is unknown.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open");
@@ -542,6 +598,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
         expect(reads).toBe(2);
         await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        await expectResponsiveMainPadding(page.getByRole("alert"), width);
         expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
         await page.getByRole("link", { name: "← All workflows" }).click();
         await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
@@ -1112,7 +1169,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`malformed workflow audit can recover with a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 900 });
@@ -1129,6 +1186,7 @@ for (const width of [390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow audit unavailable");
+        await expectResponsiveMainPadding(alert, width);
         await expect(alert).toContainText("Mission Control could not load the workflow record.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open", "");
@@ -1138,6 +1196,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();
+        await expectResponsiveMainPadding(page.getByRole("heading", { name: "Workflow audit", exact: true }), width);
         await expect(page.getByText("candidate-123", { exact: true })).toHaveCount(1);
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -1145,7 +1204,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`unreadable workflow details hide stage controls until a valid read at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         await page.setViewportSize({ width, height: 900 });
@@ -1159,6 +1218,7 @@ for (const width of [390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow unavailable");
+        await expectResponsiveMainPadding(alert, width);
         await expect(alert).toContainText("Mission Control could not read this workflow response. Refresh to try again.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open");
@@ -1169,6 +1229,7 @@ for (const width of [390, 1280]) {
 
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
+        await expectResponsiveMainPadding(page.getByRole("heading", { name: "Review workflow", exact: true }), width);
         await expect(page.getByRole("button", { name: "Approve Implementation" })).toBeVisible();
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

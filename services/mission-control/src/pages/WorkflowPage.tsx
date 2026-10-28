@@ -276,7 +276,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-6xl p-8">
+            <main className="mx-auto max-w-6xl p-4 sm:p-8">
                 <p role="status" className="text-slate-300">Loading workflow...</p>
             </main>
         );
@@ -284,7 +284,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     if (loadError) {
         return (
-            <main className="mx-auto max-w-6xl space-y-4 p-8">
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
                 <WorkflowRail />
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow unavailable</h1>
@@ -304,7 +304,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     if (!workflow) {
         return (
-            <main className="mx-auto max-w-6xl space-y-4 p-8">
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
                 <WorkflowRail />
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
@@ -391,7 +391,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
 
     return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
+        <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and resume controls are unavailable until this check finishes.</p>}
             <header className="space-y-4">
                 <div>

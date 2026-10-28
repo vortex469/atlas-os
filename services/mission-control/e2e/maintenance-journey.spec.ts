@@ -109,9 +109,19 @@ for (const width of [320, 390, 1280]) {
         expect(fixture.repositoryPlanReads).toBe(0);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
         await page.getByRole("link", { name: "Open Audit", exact: true }).click();
-        await expect(page.getByRole("heading", { name: "Maintenance audit", exact: true })).toBeVisible();
+        const auditHeading = page.getByRole("heading", { name: "Maintenance audit", exact: true });
+        await expect(auditHeading).toBeVisible();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Commit Request", exact: true })).toHaveCount(0);
+        const auditPadding = await auditHeading.evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(auditPadding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(auditPadding ?? "0px")).toBeGreaterThan(16);
+        }
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
         expect(fixture.unexpected).toEqual([]);

@@ -206,7 +206,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-6xl space-y-8 p-8">
+            <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
                 <p role="status" className="text-blue-200">Loading workflow audit...</p>
             </main>
         );
@@ -214,7 +214,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
 
     if (loadError) {
         return (
-            <main className="mx-auto max-w-6xl space-y-4 p-8">
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
                 <Link to={`/workflows/${workflowId}`} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow audit unavailable</h1>
@@ -231,7 +231,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
 
     if (!audit) {
         return (
-            <main className="mx-auto max-w-6xl space-y-4 p-8">
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
                 <Link to="/workflows" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow Dashboard</Link>
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
@@ -246,7 +246,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     if (audit.effect_kind === "operational_action") return <MaintenanceAudit audit={audit} />;
 
     return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
+        <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Read-only record</p>
                 <h1 className="text-3xl font-bold text-white">Workflow audit</h1>
@@ -358,7 +358,7 @@ function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
         void Promise.resolve().then(() => { if (active) void load(); });
         return () => { active = false; generation.current += 1; };
     }, [load]);
-    return <main className="mx-auto max-w-6xl space-y-6 p-8">
+    return <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
         <header>
             <h1 className="break-all text-3xl font-bold text-white">Maintenance audit</h1>
             <p className="mt-3 text-sm text-slate-300">Review recorded approvals, dispatch and verification. This page only reads information.</p>

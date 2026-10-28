@@ -6,6 +6,18 @@ async function fitsViewport(page: Page) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
+async function expectResponsiveMainPadding(page: Page, heading: string, width: number) {
+    const padding = await page.getByRole("heading", { name: heading, exact: true }).evaluate((element) => {
+        const main = element.closest("main");
+        return main ? getComputedStyle(main).paddingLeft : null;
+    });
+    if (width < 640) {
+        expect(padding).toBe("16px");
+    } else {
+        expect(Number.parseFloat(padding ?? "0px")).toBeGreaterThan(16);
+    }
+}
+
 for (const width of [320, 390, 1280]) {
     test(`an uncertain implementation approval refreshes before allowing another decision at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, false, { baseURL, uncertainApproval: true });
@@ -75,6 +87,7 @@ for (const width of [320, 390, 1280]) {
         await expect(workflowShellSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
         await fitsViewport(page);
         await page.getByRole("button", { name: "Prepare change for review", exact: true }).click();
+        await expectResponsiveMainPadding(page, "Review workflow", width);
 
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
         const workflowSummary = page.getByRole("region", { name: "Workflow summary" });
@@ -156,6 +169,7 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("link", { name: "Open Audit", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit$`));
         await expect(page.getByRole("heading", { name: "Stage status", exact: true })).toBeVisible();
+        await expectResponsiveMainPadding(page, "Workflow audit", width);
         await expect(page.getByText("Workflow status", { exact: true })).toBeVisible();
         await expect(page.getByText("Audit validation", { exact: true })).toBeVisible();
         await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);

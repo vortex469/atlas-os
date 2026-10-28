@@ -2129,3 +2129,13 @@ and the empty resource list at 320px, 390px, and 1280px (11 checks). The
 maintenance request page suite passes (32 tests), as do lint and the production
 build. Target selection, proposal submission, approval, and execution behavior
 are unchanged.
+
+## Workflow review and audit phone spacing — 2026-10-28
+
+Workflow review and both repository and maintenance audit screens now use
+compact page spacing on phones across their loading, unavailable, missing, and
+loaded states, while retaining desktop spacing. Synthetic browser coverage
+checks the full repository and maintenance journeys, loading states, and
+read-recovery flows at 320px, 390px, and 1280px (17 checks). The focused
+workflow and audit page suites pass (102 tests), as do lint and the production
+build. Approval, resume, audit, and execution behavior are unchanged.
