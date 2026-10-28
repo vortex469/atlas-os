@@ -1,11 +1,11 @@
 import { atlas } from "./atlas";
 import { parseControlledWorkerQueueClaimLeaseAcknowledgementAdmissionResult } from "./controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
-import { CLOSED_QUEUE_AUTHORITY, type ControlledWorkerQueueReceipt } from "../types/controlledWorkerQueueReceipt";
+import { CLOSED_QUEUE_AUTHORITY, type ControlledWorkerQueueReceipt, type ControlledWorkerQueueReceiptBlocker } from "../types/controlledWorkerQueueReceipt";
 import type { FingerprintV1 } from "../types/installationReadinessReview";
 
 const SCHEMA = "controlled-worker-queue-claim-lease-acknowledgement";
 const RECORDED = "controlled_worker_queue_claim_lease_acknowledgement_recorded";
-const BLOCKERS = ["worker_activation_runtime_not_defined", "store_contact_not_defined", "runtime_contact_not_defined", "worker_start_admission_not_defined", "worker_start_not_defined", "agent_invocation_not_defined", "execution_start_boundary_not_defined"];
+const BLOCKERS: ControlledWorkerQueueReceiptBlocker[] = ["worker_activation_runtime_not_defined", "store_contact_not_defined", "runtime_contact_not_defined", "worker_start_admission_not_defined", "worker_start_not_defined", "agent_invocation_not_defined", "execution_start_boundary_not_defined"];
 const FINGERPRINTS = ["v051_admission_record", "v051_admission_status", "v050_prerequisite_record", "v050_prerequisite_status", "v049_admission_record", "v049_admission_status", "binding_subject", "worker_subject", "queue_item_reference", "inherited_limits", "adapter_identity", "queue_subject", "claim_receipt", "lease_receipt", "acknowledgement_receipt", "subject", "idempotency_key", "receipt_record"];
 function check(condition: unknown): asserts condition {
     if (!condition) throw new Error("Queue receipt evidence is unavailable.");

@@ -18,9 +18,14 @@ describe("v0.52 installation receipt presentation", () => {
         vi.mocked(getControlledWorkerQueueReceipt).mockResolvedValue(receipt);
         const { container } = render(<ControlledWorkerQueueReceipt {...props} />);
         expect(screen.getByRole("status")).toHaveTextContent(/Loading/);
-        expect(await screen.findByText(/Core recorded the queue claim/)).toBeVisible();
+        expect(await screen.findByText(/Core recorded evidence for a queue claim, lease, and acknowledgement/)).toBeVisible();
         expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
-        const details = screen.getByText("Advanced v0.52 evidence").closest("details");
+        expect(screen.getByText("Worker start remains blocked")).toBeVisible();
+        expect(screen.getByText("7 requirements remain unavailable.")).toBeVisible();
+        const blockers = screen.getByText("Show what remains").closest("details");
+        expect(blockers).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("Worker start blockers")).toHaveTextContent(/The worker activation runtime is not available.*Contact with the worker store is not available.*Contact with the worker runtime is not available/i);
+        const details = screen.getByText("Advanced details").closest("details");
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(props.admissionId)).not.toBeVisible();
         expect(details).toHaveTextContent(/Reservation before effecttrue/);
@@ -29,11 +34,11 @@ describe("v0.52 installation receipt presentation", () => {
     it("presents Core expiry and redacts unavailable, unauthorized and missing evidence", async () => {
         vi.mocked(getControlledWorkerQueueReceipt).mockResolvedValue({ ...receipt, lifecycle: "expired" });
         const { unmount } = render(<ControlledWorkerQueueReceipt {...props} />);
-        expect(await screen.findByText(/Core reports this evidence has expired/)).toBeVisible();
+        expect(await screen.findByText(/This receipt has expired/)).toBeVisible();
         unmount();
         vi.mocked(getControlledWorkerQueueReceipt).mockRejectedValue(new Error("secret internal endpoint 403"));
         render(<ControlledWorkerQueueReceipt {...props} />);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/unavailable or has not been recorded/));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/receipt is unavailable or not recorded/i));
         expect(screen.queryByText(/secret internal/)).not.toBeInTheDocument();
     });
     it("clears prior evidence on scope change and ignores late responses", async () => {
@@ -53,7 +58,7 @@ describe("v0.52 installation receipt presentation", () => {
         vi.mocked(listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions).mockResolvedValue({ items: [admission] } as never);
         vi.mocked(getControlledWorkerQueueReceipt).mockResolvedValue(receipt);
         render(<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={props.candidateId} v049AdmissionId={admission.controlled_worker_queue_claim_lease_acknowledgement_prerequisite.admission_id} />);
-        expect(await screen.findByText(/Core recorded the queue claim/)).toBeVisible();
+        expect(await screen.findByText(/Core recorded evidence for a queue claim, lease, and acknowledgement/)).toBeVisible();
         expect(getControlledWorkerQueueReceipt).toHaveBeenCalledWith(props.candidateId, props.admissionId, props.operatorId);
     });
 });

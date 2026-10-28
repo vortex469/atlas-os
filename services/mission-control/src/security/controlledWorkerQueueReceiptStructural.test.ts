@@ -16,7 +16,9 @@ describe("v0.52 read-only Mission Control isolation", () => {
     it("stays under the existing admission with no route or navigation", () => {
         expect(parent).toContain("<ControlledWorkerQueueReceipt candidateId={item.candidate_record_id} admissionId={item.admission_id} operatorId={item.operator_id}");
         expect(router + navigation).not.toMatch(/ControlledWorkerQueueReceipt|controlled-worker-queue-claim-lease-acknowledgements/);
-        expect(component).toContain("Advanced v0.52 evidence");
+        expect(component).toContain("Advanced details");
+        expect(component).toContain("Core recorded evidence for a queue claim, lease, and acknowledgement.");
+        expect(component).toContain("Worker start remains blocked");
         expect(component).not.toMatch(/<details[^>]*\bopen/);
         const consumers = Object.entries(modules).filter(([, source]) => /controlledWorkerQueueReceipt|ControlledWorkerQueueReceipt/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([

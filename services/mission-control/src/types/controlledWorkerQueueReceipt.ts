@@ -1,5 +1,14 @@
 import type { FingerprintV1 } from "./installationReadinessReview";
 
+export type ControlledWorkerQueueReceiptBlocker =
+    | "worker_activation_runtime_not_defined"
+    | "store_contact_not_defined"
+    | "runtime_contact_not_defined"
+    | "worker_start_admission_not_defined"
+    | "worker_start_not_defined"
+    | "agent_invocation_not_defined"
+    | "execution_start_boundary_not_defined";
+
 // Fixed-false fields from Core v0.52 ClosedAuthorityV1.
 export const CLOSED_QUEUE_AUTHORITY = [
     "caller_supplied_credentials_allowed",
@@ -69,7 +78,7 @@ export interface ControlledWorkerQueueReceipt {
     validUntil: string;
     lifecycle: "active" | "expired";
     evaluatedAt: string;
-    blockers: string[];
+    blockers: ControlledWorkerQueueReceiptBlocker[];
     fingerprints: Record<string, FingerprintV1>;
     authority: Record<typeof CLOSED_QUEUE_AUTHORITY[number], false>;
     reservationBeforeEffect: true;
