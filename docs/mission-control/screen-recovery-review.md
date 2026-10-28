@@ -127,6 +127,15 @@ journey passes at 320, 390, and 1280 pixels, and Mission Control lint and build
 pass. The change is presentational; it does not change backend contracts,
 approval decisions, execution, or audit behavior.
 
+## Maintenance history stage wording — 2026-10-28
+
+Maintenance history now calls its optional disclosure “Request details” and
+shows “Request stage” with plain labels such as “Waiting for maintenance
+approval” and “Completed” instead of the backend state slug. The outcome
+summary remains the primary status. All 17 focused history component tests, the
+history browser recovery journey at 320, 390, and 1280 pixels, lint, and build
+pass.
+
 ## Workflow directory simplification follow-up — 2026-10-28
 
 Workflow cards now lead with the stage, latest result and approval status.

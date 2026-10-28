@@ -62,9 +62,10 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText(/^Requested \(local time\):/)).toBeVisible();
         const targetReference = screen.getByText("proxmox/qemu/110");
         expect(targetReference).not.toBeVisible();
-        fireEvent.click(screen.getByText("Workflow details", { exact: true }));
+        fireEvent.click(screen.getByText("Request details", { exact: true }));
         expect(targetReference).toBeVisible();
         expect(screen.getByText("Result recorded (local time)")).toBeVisible();
+        expect(screen.getByText("Request stage", { exact: true })).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
         expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
@@ -208,6 +209,29 @@ describe("OperationalHistoryPage", () => {
 
         await screen.findByRole("heading", { name: "Virtual machine 110" });
         expect(document.body.textContent).not.toMatch(/vmgenid|Authorization|Bearer|CSRF|cookie/i);
+    });
+
+    it.each([
+        ["awaiting_implementation_approval", "Waiting for maintenance approval"],
+        ["executing", "Running"],
+        ["completed", "Completed"],
+        ["blocked", "Blocked"],
+    ])("shows a readable request stage for %s", async (workflow_state, label) => {
+        mockedList.mockResolvedValue({
+            items: [{ workflow_id: "workflow-operational-1", workflow_source: "candidate", workflow_state,
+                effect_kind: "operational_action", execution_intent: "restart-service", candidate_id: "candidate-1",
+                planning_session_id: "planning-1", repository: null, target_id: "110", last_result_summary: "verified", timeline: [] }],
+            total: 1, limit: 10, offset: 0,
+        });
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        const details = await screen.findByText("Request details", { exact: true });
+        expect(details.closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(details);
+        const disclosure = details.closest("details") as HTMLElement;
+        expect(within(disclosure).getByText("Request stage", { exact: true })).toBeVisible();
+        expect(within(disclosure).getByText(label, { exact: true })).toBeVisible();
+        expect(within(disclosure).queryByText(workflow_state, { exact: true })).not.toBeInTheDocument();
     });
 });
 

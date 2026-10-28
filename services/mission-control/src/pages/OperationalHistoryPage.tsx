@@ -183,9 +183,9 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
             {lifecycleUnavailable && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.</p>}
             <OperationalRecoverySummary diagnostic={diagnostic} error={diagnosticUnavailable ? "Could not load the latest status for this request." : null} supportEvidenceAvailable={diagnostic !== null} compact />
             <details className="rounded-lg border border-slate-800 p-3">
-                <summary className="cursor-pointer text-sm font-medium text-slate-200">Workflow details</summary>
+                <summary className="cursor-pointer text-sm font-medium text-slate-200">Request details</summary>
                 <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <HistoryDetail label="Workflow State" value={workflow.workflow_state} />
+                    <HistoryDetail label="Request stage" value={maintenanceStageLabel(workflow.workflow_state)} />
                     <HistoryDetail label="Consistency" value={diagnostic?.consistency ?? "unavailable"} />
                     <HistoryDetail label="Verification" value={lifecycle?.verification_status ?? "Not reported"} />
                     <HistoryDetail label="Support Evidence" value={diagnostic ? "Available" : "Unavailable"} />
@@ -199,6 +199,24 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
 
 function HistoryDetail({ label, value }: { label: string; value: string }) {
     return <div><dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value.replaceAll("_", " ")}</dd></div>;
+}
+
+function maintenanceStageLabel(value: string): string {
+    const labels: Record<string, string> = {
+        planned: "Ready for review",
+        awaiting_approval: "Waiting for review",
+        awaiting_implementation_approval: "Waiting for maintenance approval",
+        awaiting_execution: "Approved and ready to run",
+        executing: "Running",
+        awaiting_verification_approval: "Waiting for verification approval",
+        verifying: "Checking the result",
+        awaiting_commit_approval: "Waiting for commit approval",
+        committing: "Recording commit",
+        blocked: "Blocked",
+        implementation_rejected: "Request rejected",
+        completed: "Completed",
+    };
+    return labels[value] ?? value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 const FILTER_LABELS: Record<string, string> = {

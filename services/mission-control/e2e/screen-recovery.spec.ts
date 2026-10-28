@@ -948,8 +948,8 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("A diagnostic network failure is not an operational failure.")).toBeVisible();
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
         await expect(page.getByText("Workflow State", { exact: true })).toBeHidden();
-        await page.getByText("Workflow details", { exact: true }).click();
-        await expect(page.getByText("Workflow State", { exact: true })).toBeVisible();
+        await page.getByText("Request details", { exact: true }).click();
+        await expect(page.getByText("Request stage", { exact: true })).toBeVisible();
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
         await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
