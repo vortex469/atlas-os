@@ -364,7 +364,7 @@ describe("DiscoveryPage", () => {
 
     it("retries the initial catalog load and keeps technical errors collapsed", async () => {
         const user = userEvent.setup();
-        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("Catalog unavailable"));
+        mockedListDiscoveryItems.mockRejectedValueOnce(new Error("Catalog unavailable"));
 
         renderPage();
 
@@ -381,7 +381,30 @@ describe("DiscoveryPage", () => {
         await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
+        expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps catalog results available when status fails and retries status alone", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryMetadata
+            .mockRejectedValueOnce(new Error("Status endpoint unavailable"))
+            .mockResolvedValueOnce(metadata());
+
+        renderPage();
+
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(await screen.findByText("Catalog status could not be checked. Catalog items remain available.")).toBeInTheDocument();
+        expect(screen.getByText("Catalog status unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Catalog total").nextElementSibling).toHaveTextContent("Unavailable");
+        expect(screen.getByText("1 item listed")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry status check" }));
+
+        expect(await screen.findByText("Catalog loaded")).toBeInTheDocument();
+        expect(screen.getByText("Home Assistant")).toBeInTheDocument();
         expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(2);
+        expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
     });
 
     it("clears previous results and retries the exact failed search", async () => {

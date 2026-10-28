@@ -1101,10 +1101,12 @@ retrieves or reuses it; implementation still requires separate approval.
 
 ## Discovery search recovery — 2026-10-28
 
-If catalog metadata or results fail to load, Discovery now clears the previous
-cards, shows an unavailable state instead of an empty grid, and offers a
-read-only retry of the exact filters and page. Raw server details stay
-collapsed, and an unavailable result is not reported as zero matches.
+Catalog status and catalog results load independently. If the status read fails,
+valid results remain visible, the unavailable status and total are identified,
+and a status-only retry is available. If the results read fails, previous cards
+are cleared, an unavailable state is shown instead of an empty grid, and a
+read-only retry repeats the exact filters and page. Raw server details stay
+collapsed, and unavailable results are not reported as zero matches.
 
 ## Workflow list refresh recovery — 2026-10-28
 

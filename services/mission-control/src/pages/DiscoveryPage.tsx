@@ -65,6 +65,8 @@ const emptyFilters: FilterState = {
 
 export function DiscoveryPage() {
     const [metadata, setMetadata] = useState<DiscoveryMetadata | null>(null);
+    const [metadataError, setMetadataError] = useState<string | null>(null);
+    const [isMetadataLoading, setIsMetadataLoading] = useState(true);
     const [filters, setFilters] = useState<FilterState>(emptyFilters);
     const [submittedFilters, setSubmittedFilters] =
         useState<FilterState>(emptyFilters);
@@ -75,27 +77,42 @@ export function DiscoveryPage() {
         hasMore: false,
     });
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [catalogError, setCatalogError] = useState<string | null>(null);
     const requestGeneration = useRef(0);
+    const metadataGeneration = useRef(0);
     const lastRequestedQuery = useRef<DiscoveryRequest>({ filters: emptyFilters, offset: 0 });
+
+    const loadMetadata = useCallback(async () => {
+        const generation = ++metadataGeneration.current;
+        setIsMetadataLoading(true);
+        setMetadataError(null);
+
+        try {
+            const nextMetadata = await getDiscoveryMetadata();
+            if (generation === metadataGeneration.current) setMetadata(nextMetadata);
+        } catch (requestError) {
+            if (generation === metadataGeneration.current) {
+                setMetadataError(
+                    getAtlasErrorMessage(requestError, "Mission Control could not load catalog status."),
+                );
+            }
+        } finally {
+            if (generation === metadataGeneration.current) setIsMetadataLoading(false);
+        }
+    }, []);
 
     const loadCatalog = useCallback(
         async (nextFilters: FilterState, offset: number) => {
             const generation = ++requestGeneration.current;
             lastRequestedQuery.current = { filters: { ...nextFilters }, offset };
             setIsLoading(true);
-            setError(null);
-            setMetadata(null);
+            setCatalogError(null);
             setResult({ entries: [], total: 0, offset, hasMore: false });
 
             try {
-                const [nextMetadata, page] = await Promise.all([
-                    getDiscoveryMetadata(),
-                    fetchDiscoveryPage(nextFilters, offset),
-                ]);
+                const page = await fetchDiscoveryPage(nextFilters, offset);
 
                 if (generation === requestGeneration.current) {
-                    setMetadata(nextMetadata);
                     setResult({
                         entries: page.entries,
                         total: page.total,
@@ -106,7 +123,7 @@ export function DiscoveryPage() {
             } catch (requestError) {
                 if (generation === requestGeneration.current) {
                     console.error("Unable to load Discovery catalog:", requestError);
-                    setError(
+                    setCatalogError(
                         getAtlasErrorMessage(
                             requestError,
                             "Mission Control could not load the catalog.",
@@ -125,13 +142,17 @@ export function DiscoveryPage() {
     useEffect(() => {
         let active = true;
         void Promise.resolve().then(() => {
-            if (active) return loadCatalog(emptyFilters, 0);
+            if (active) {
+                void loadMetadata();
+                void loadCatalog(emptyFilters, 0);
+            }
         });
         return () => {
             active = false;
             requestGeneration.current += 1;
+            metadataGeneration.current += 1;
         };
-    }, [loadCatalog]);
+    }, [loadCatalog, loadMetadata]);
 
     const hasSubmittedFilters = Object.values(submittedFilters).some((value) => value.trim().length > 0);
     const hasFiltersToClear = hasSubmittedFilters || Object.values(filters).some((value) => value.trim().length > 0);
@@ -165,7 +186,7 @@ export function DiscoveryPage() {
 
     const resultSummary = isLoading
         ? "Loading items…"
-        : error
+        : catalogError
           ? "Items unavailable"
           : `${result.total} ${hasSubmittedFilters ? "matching " : ""}item${result.total === 1 ? "" : "s"} ${hasSubmittedFilters ? "found" : "listed"}`;
 
@@ -184,10 +205,15 @@ export function DiscoveryPage() {
                     </p>
                 </div>
 
-                <DiscoveryStatus metadata={metadata} isLoading={isLoading} />
+                <DiscoveryStatus
+                    metadata={metadata}
+                    error={metadataError}
+                    isLoading={isMetadataLoading}
+                    onRetry={() => void loadMetadata()}
+                />
             </header>
 
-            {error && (
+            {catalogError && (
                 <div
                     role="alert"
                     className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"
@@ -201,7 +227,7 @@ export function DiscoveryPage() {
                     </button>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{catalogError}</p>
                     </details>
                 </div>
             )}
@@ -336,7 +362,7 @@ export function DiscoveryPage() {
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                         Loading catalog…
                     </div>
-                ) : error ? (
+                ) : catalogError ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">Results unavailable</p>
                         <p className="mt-2 text-sm text-slate-500">Retry catalog load above to try this search again.</p>
@@ -413,10 +439,14 @@ function normalizeFilters(filters: FilterState): FilterState {
 
 function DiscoveryStatus({
     metadata,
+    error,
     isLoading,
+    onRetry,
 }: {
     metadata: DiscoveryMetadata | null;
+    error: string | null;
     isLoading: boolean;
+    onRetry: () => void;
 }) {
     const label = metadata
         ? metadata.catalog_loaded
@@ -425,8 +455,10 @@ function DiscoveryStatus({
                 : "Catalog empty"
             : "Catalog unavailable"
         : isLoading
-          ? "Loading catalog"
-          : "Catalog status unknown";
+          ? "Checking catalog status"
+          : error
+            ? "Catalog status unavailable"
+            : "Catalog status unknown";
 
     return (
         <>
@@ -434,9 +466,21 @@ function DiscoveryStatus({
                 <StatusTile label="Status" value={label} />
                 <StatusTile
                     label="Catalog total"
-                    value={metadata ? String(metadata.entry_count) : "…"}
+                    value={metadata ? String(metadata.entry_count) : isLoading ? "Loading" : "Unavailable"}
                 />
             </div>
+            {error && (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <p className="text-sm text-amber-100">Catalog status could not be checked. Catalog items remain available.</p>
+                    <button type="button" onClick={onRetry} disabled={isLoading} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
+                        Retry status check
+                    </button>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
+                    </details>
+                </div>
+            )}
             <details className="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <summary className="cursor-pointer text-sm font-medium text-slate-300">
                     Technical details
