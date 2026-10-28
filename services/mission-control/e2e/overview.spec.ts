@@ -209,6 +209,31 @@ test('service check summary reveals every reported check on mobile', async ({ pa
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+for (const width of [320, 1280]) {
+    test(`service check explains where Atlas tested iFileshare at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 800 });
+        await page.route('**/api/v1/health', route => route.fulfill({ json: {
+            atlas: 'degraded',
+            services: { iFileshare: {
+                status: 'offline',
+                message: 'The service could not be reached over the network.',
+                details: { url: 'http://10.10.60.30:8080/', critical: false },
+            } },
+        } }));
+        await page.goto('/');
+
+        const checks = page.getByRole('region', { name: 'Service checks', exact: true });
+        await expect(checks.getByText('iFileshare', { exact: true })).toBeVisible();
+        const location = checks.getByText('Where Atlas checked');
+        await expect(location).toBeVisible();
+        await location.click();
+        await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
+        await expect(checks.getByText(/Atlas Core checks from its own machine/)).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 test('work activity reveals all workflow records on mobile without horizontal overflow', async ({ page, rejectedMutationRequests }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     const workflows = [

@@ -58,6 +58,28 @@ function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unk
     return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} />;
 }
 
+function ServiceCheckLocation({ service }: { service: unknown }) {
+    const url = record(record(service).details).url;
+    const address = formatHealthCheckAddress(url);
+    return <details className="mt-2 text-xs text-mc-text-muted">
+        <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Where Atlas checked</summary>
+        <div className="mt-2 space-y-1">
+            <p>Atlas Core checks from its own machine. A service can open in your browser and still be unreachable from Atlas Core.</p>
+            <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
+        </div>
+    </details>;
+}
+
+function formatHealthCheckAddress(value: unknown): string | null {
+    if (typeof value !== "string" || !value.trim()) return null;
+    try {
+        const url = new URL(value);
+        return `${url.protocol}//${url.host}${url.pathname}${url.search ? "?…" : ""}`;
+    } catch {
+        return null;
+    }
+}
+
 function attentionPriority(value: unknown, actionRequired = false) {
     const reported = typeof value === "string" ? value.trim().toLowerCase() : "";
     const state = status(value);
@@ -234,7 +256,11 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Service checks" evidence={evidence.health} loading={loading}>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
-                {displayedServices.length > 0 && <ul className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></li>)}</ul>}
+                {displayedServices.length > 0 && <ul className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>
+                    <p>{safeText(name)}</p>
+                    <ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} />
+                    <ServiceCheckLocation service={raw} />
+                </li>)}</ul>}
                 {services.length > 4 && <button
                     type="button"
                     className="mc-control mc-focusable rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"

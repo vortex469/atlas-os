@@ -145,6 +145,24 @@ describe("MC overview evidence", () => {
         expect(checks.getAllByRole('listitem')).toHaveLength(4);
     });
 
+    it("shows the Core-side check location on demand without exposing URL secrets", () => {
+        show({ health: { data: { atlas: "degraded", services: { iFileshare: {
+            status: "offline",
+            message: "No route to host",
+            details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        const location = checks.getByText("Where Atlas checked");
+        const disclosure = location.closest("details");
+
+        expect(disclosure).not.toHaveAttribute("open");
+        fireEvent.click(location);
+
+        expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
+        expect(disclosure).toHaveTextContent("Atlas Core checks from its own machine.");
+        expect(disclosure).not.toHaveTextContent(/password|private/);
+    });
+
     it('keeps the workflow action and approval stage on separate lines without repeating the result', () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',
