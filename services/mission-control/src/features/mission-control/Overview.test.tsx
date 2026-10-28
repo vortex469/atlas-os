@@ -203,6 +203,15 @@ describe("MC overview evidence", () => {
         expect(activity().getByText('Checking recent provider actions…')).toBeVisible();
         expect(screen.queryByText('No current information is available.')).not.toBeInTheDocument();
     });
+    it("describes partial first-load evidence as still checking, not missing", () => {
+        show({ summary: { data: { findings: [] } } }, true);
+
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('status')).toHaveTextContent("Checking current reports. The attention list may change when the remaining checks finish.");
+        expect(attention.queryByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).not.toBeInTheDocument();
+        expect(attention.queryByText('Checking current information…')).not.toBeInTheDocument();
+        expect(attention.queryByText('Source status')).not.toBeInTheDocument();
+    });
     it("reports no attention only after all current sources are checked", () => {
         show({
             summary: { data: { findings: [] } },

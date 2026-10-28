@@ -44,6 +44,10 @@ test('overview separates initial loading from unavailable data across dashboard 
             await expect(report.getByRole('status')).toHaveText('Checking…');
             await expect(report.getByText('Unknown', { exact: true })).toHaveCount(0);
         }
+        releaseHealth();
+        const attention = page.getByRole('region', { name: 'Operator Attention' });
+        await expect(attention.getByRole('status')).toHaveText("Checking current reports. The attention list may change when the remaining checks finish.");
+        await expect(attention).not.toContainText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.');
     } finally {
         releaseAgent();
         releaseProviders();

@@ -2027,3 +2027,14 @@ available so an operator can choose a working screen. The full Mission Control
 suite passes (2,794 tests across 181 files), both missing-page browser checks
 pass at 390px and 1280px, and lint and production build pass. Navigation and API
 behavior are unchanged.
+
+## Dashboard attention loading state — 2026-10-28
+
+When only some dashboard reports have returned, Operator Attention now says
+that the remaining checks are still running and that the list may change. It
+shows the missing-information warning after the refresh completes, when the
+source gaps are known. This removes a temporary failure message while reads
+are pending. The full Mission Control suite passes (2,795 tests across 181
+files), overview browser checks pass (14 tests at 320px, 390px, 768px, 1280px,
+and 1440px), and lint/build pass. API reads and attention decisions are
+unchanged.

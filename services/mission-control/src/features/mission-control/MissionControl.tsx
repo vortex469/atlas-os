@@ -187,7 +187,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const displayedServices = showAllServices ? services : services.slice(0, 4);
     return <>
         <Card title="Operator Attention" showSourceNote={false}>
-            {!initialAttentionLoad && !attentionEvidenceComplete && <>
+            {!initialAttentionLoad && loading && <p role="status">Checking current reports. The attention list may change when the remaining checks finish.</p>}
+            {!loading && !initialAttentionLoad && !attentionEvidenceComplete && <>
                 <p role="status">Some information is missing. Atlas cannot confirm this list includes everything that needs attention.</p>
                 {attentionSourceIssues.length > 0 && <details>
                     <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Source status</summary>
@@ -196,7 +197,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                     </ul>
                 </details>}
             </>}
-            {uniqueAttention.length === 0 && loading && <p>Checking current information…</p>}
+            {uniqueAttention.length === 0 && loading && initialAttentionLoad && <p>Checking current information…</p>}
             {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>The current reports show no items needing attention.</p>}
             <ul aria-label="Reported attention conditions" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{displayedAttention.map(item => <AttentionListItem key={item.key} item={item} />)}</ul>
             {uniqueAttention.length > 5 && <button
