@@ -220,8 +220,8 @@ export function ProviderPage() {
 
                     <section>
                         <SectionHeader
-                            title="Advisory recommendations"
-                            description="Suggested operator review only. Recommendations do not apply monitoring policy or authorize provider or operational execution."
+                            title="Recommendations"
+                            description="Suggestions for you to review. They don't change settings or run actions."
                         />
 
                         {relatedRecommendations.length > 0 ? (
@@ -237,7 +237,7 @@ export function ProviderPage() {
                             </div>
                         ) : (
                             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                ACE has no current recommendations for this provider.
+                                No recommendations for this provider right now.
                             </div>
                         )}
                     </section>

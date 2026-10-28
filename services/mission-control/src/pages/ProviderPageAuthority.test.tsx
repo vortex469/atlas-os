@@ -145,7 +145,7 @@ describe("ProviderPage monitoring and legacy authority", () => {
         expect(within(monitoring!).getByText("Configured — matches observed state")).toBeInTheDocument();
         expect(within(monitoring!).queryByText("Expected stopped")).not.toBeInTheDocument();
         expect(screen.getByText(/Advisory finding · Proxmox/)).toBeInTheDocument();
-        expect(screen.getByText("Advisory recommendation")).toBeInTheDocument();
+        expect(screen.getByText("Atlas suggestion")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Provider actions" })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");
         expect(within(legacy!).getByText("110: stopped")).toBeInTheDocument();

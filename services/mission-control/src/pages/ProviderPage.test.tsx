@@ -81,7 +81,7 @@ describe("ProviderPage authority layout", () => {
             position("Provider overview"),
             position("Resources and monitoring"),
             position("Diagnostics"),
-            position("Advisory recommendations"),
+            position("Recommendations"),
             position("Provider actions"),
             position("Operational maintenance"),
             position("Connection"),
@@ -100,5 +100,13 @@ describe("ProviderPage authority layout", () => {
         expect(screen.getByText(/Monitoring expectations describe monitoring policy/)).toHaveTextContent("do not start, stop, restart, or remediate resources");
         expect(screen.getByText(/start a request, review its proposal and plan, then approve the exact action/)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");
+    });
+
+    it("explains recommendations are suggestions and shows a plain empty state", () => {
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByRole("heading", { name: "Recommendations" })).toBeInTheDocument();
+        expect(screen.getByText("Suggestions for you to review. They don't change settings or run actions.")).toBeInTheDocument();
+        expect(screen.getByText("No recommendations for this provider right now.")).toBeInTheDocument();
     });
 });

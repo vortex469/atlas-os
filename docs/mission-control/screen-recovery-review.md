@@ -260,6 +260,14 @@ state simply says when there are no messages for the provider. The provider
 page test covers both; diagnostic selection and action boundaries are
 unchanged.
 
+## Provider recommendations wording — 2026-10-28
+
+Provider recommendations are labeled as Atlas suggestions, with a short
+explanation that review does not change settings or run actions. The empty
+state no longer mentions ACE. Provider-page and advisory-card tests cover the
+suggestion label and empty state; recommendation data and action boundaries
+are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

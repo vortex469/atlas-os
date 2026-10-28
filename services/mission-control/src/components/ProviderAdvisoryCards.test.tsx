@@ -25,7 +25,7 @@ describe("provider advisory cards", () => {
         expect(screen.queryByText(/Start|Restart|Apply|Remediate/i)).not.toBeInTheDocument();
     });
 
-    it("labels recommendations as advisory rather than executable actions", () => {
+    it("labels recommendations as Atlas suggestions rather than executable actions", () => {
         const recommendation = {
             title: "Review provider capacity",
             reason: "Capacity is approaching its configured threshold.",
@@ -35,7 +35,7 @@ describe("provider advisory cards", () => {
             estimated_effort: "low",
         } as AceRecommendation;
         render(<RecommendationCard recommendation={recommendation} />);
-        expect(screen.getByText("Advisory recommendation")).toBeInTheDocument();
+        expect(screen.getByText("Atlas suggestion")).toBeInTheDocument();
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
         expect(screen.queryByText("Recommended Action")).not.toBeInTheDocument();
     });
