@@ -66,10 +66,9 @@ describe("authoritative health presentation", () => {
         expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(Date.parse("2026-09-13T12:00:00Z")));
         expect(time).not.toHaveTextContent("2026-09-13T");
         act(() => vi.advanceTimersByTime(90_000));
-        expect(screen.getByText(/Stale evidence/)).toBeInTheDocument();
+        expect(screen.getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText(/Last checked \(UTC\)/)).toBeInTheDocument();
-        expect(screen.getByText(/Last known status: Healthy/)).toBeInTheDocument();
         expect(document.querySelector("time")).toHaveAttribute("dateTime", "2026-09-13T12:00:00Z");
     });
 
@@ -114,9 +113,9 @@ describe("authoritative health presentation", () => {
 
     it("marks retained dashboard evidence stale until refresh recovers", () => {
         const { rerender } = render(<HealthEvidenceContext.Provider value={{ stale: true }}><HealthEvidence status="online" /></HealthEvidenceContext.Provider>);
-        expect(screen.getByText(/Last known status/)).toBeInTheDocument();
+        expect(screen.getByText(/Current status unknown/)).toBeInTheDocument();
         rerender(<HealthEvidenceContext.Provider value={{ stale: false }}><HealthEvidence status="offline" reason="Connection refused" /></HealthEvidenceContext.Provider>);
-        expect(screen.queryByText(/Last known status/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Current status unknown/)).not.toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
         expect(screen.getByText("Connection refused")).toBeInTheDocument();
     });

@@ -359,6 +359,19 @@ explicitly. Last-known status and the existing freshness cutoff remain
 unchanged. Focused health and Agent/provider tests, lint, build and responsive
 system-health browser checks cover current, old, invalid and missing timestamps.
 
+## Dashboard refresh and unavailable-state wording — 2026-10-28
+
+When a report is out of date, the badge remains “Unknown” and now says what the
+last report showed and that the current status is unknown. The duplicate
+“stale evidence” label is removed, and old check times read “Last checked.”
+Dashboard source notes use plain language for failed refreshes and unavailable
+information, and they stay hidden while the first read is pending. Recent
+activity has its own checking, failed-read and last-available messages. Core
+health no longer says no subsystem status was reported when its read failed.
+Freshness rules and health calculations are unchanged. The focused health and
+dashboard suites pass 191 tests, 24 responsive browser checks pass across the
+overview, health, unavailable-state and app-shell screens, and lint/build pass.
+
 ## AI provider overview wording — 2026-10-28
 
 The home card is now labeled “AI provider” and describes configured provider

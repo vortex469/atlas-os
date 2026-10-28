@@ -14,20 +14,20 @@ import { RecentActivity } from "./RecentActivity";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
-function SourceNote({ evidence, label }: { evidence?: Evidence; label?: string }) {
+function SourceNote({ evidence, label, loading = false }: { evidence?: Evidence; label?: string; loading?: boolean }) {
     const prefix = label ? `${label}: ` : "";
-    if (evidence?.stale) return <p role="status">{prefix}Stale evidence — refresh failed. Last-known observations only.</p>;
-    if (evidence?.unavailable) return <p>{prefix}Evidence unavailable.</p>;
-    if (evidence?.data === undefined) return <p>{prefix}Evidence unknown.</p>;
+    if (evidence?.stale) return <p role="status">{prefix}Refresh failed. Showing the last available information.</p>;
+    if (evidence?.unavailable) return <p>{prefix}Current information could not be loaded.</p>;
+    if (evidence?.data === undefined && !loading) return <p>{prefix}No current information is available.</p>;
     return null;
 }
 function sourceIsCurrent(evidence?: Evidence): boolean {
     return evidence?.data !== undefined && evidence.unavailable !== true && evidence.stale !== true;
 }
-function Card({ title, children, evidence, showSourceNote = true }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean }) {
+function Card({ title, children, evidence, showSourceNote = true, loading = false }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean; loading?: boolean }) {
     return <section aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
         <h2 className="mb-3 text-lg font-semibold text-mc-text-primary">{title}</h2>
-        <div className="space-y-3 text-sm text-mc-text-secondary">{showSourceNote && <SourceNote evidence={evidence} />}{children}</div>
+        <div className="space-y-3 text-sm text-mc-text-secondary">{showSourceNote && <SourceNote evidence={evidence} loading={loading} />}{children}</div>
     </section>;
 }
 function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
@@ -121,11 +121,11 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         <Card title="Operator Attention" showSourceNote={false}>
             {uniqueAttention.length > 0 && <p>Review each item and use its link to see the details.</p>}
             {!initialAttentionLoad && <>
-                <SourceNote evidence={evidence.summary} label="System findings" />
-                <SourceNote evidence={evidence.workflows} label="Workflows" />
-                <SourceNote evidence={evidence.health} label="System health" />
-                <SourceNote evidence={evidence.providers} label="Providers" />
-                <SourceNote evidence={evidence.ai} label="AI provider" />
+                <SourceNote evidence={evidence.summary} label="System findings" loading={loading} />
+                <SourceNote evidence={evidence.workflows} label="Workflows" loading={loading} />
+                <SourceNote evidence={evidence.health} label="System health" loading={loading} />
+                <SourceNote evidence={evidence.providers} label="Providers" loading={loading} />
+                <SourceNote evidence={evidence.ai} label="AI provider" loading={loading} />
                 {evidence.workflows?.data !== undefined && !workflowKnown && <p>Workflow results are incomplete.</p>}
                 {evidence.summary?.data !== undefined && !findingsKnown && <p>System findings are incomplete.</p>}
             </>}
@@ -152,14 +152,15 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             </div>
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
-            <Card title="Atlas overall state" evidence={evidence.health}>
+            <Card title="Atlas overall state" evidence={evidence.health} loading={loading}>
                 <SystemHealthSummary evidence={evidence} />
                 <p>Atlas-reported state from Core health.</p>
                 <p>Core aggregate update time is not supplied.</p>
                 <Link to="/operations">Open operations →</Link>
             </Card>
-            <Card title="Core health" evidence={evidence.health}>
-                {services.length === 0 && <ObservedStatus value={null} reason="No subsystem evidence reported." />}
+            <Card title="Core health" evidence={evidence.health} loading={loading}>
+                {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking Core health…</p>}
+                {services.length === 0 && evidence.health?.data !== undefined && health.services !== null && typeof health.services === "object" && !Array.isArray(health.services) && <ObservedStatus value={null} reason="Core did not report subsystem health." stale={evidence.health.stale} />}
                 {services.slice(0, 4).map(([name, raw]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>)}
                 <p>{services.length > 4 ? `Showing 4 of ${services.length} reported services. ` : ""}Core process health is not separately reported.</p>
                 <Link to="/operations">Inspect operations →</Link>
@@ -168,15 +169,15 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Agent state" showSourceNote={false}>
                 <AgentOverviewContent evidence={evidence.agent} />
             </Card>
-            <Card title="AI provider" evidence={evidence.ai}>
+            <Card title="AI provider" evidence={evidence.ai} loading={loading}>
                 <LocalAiContent evidence={evidence.ai} />
             </Card>
-            <Card title="Providers" evidence={evidence.providers}>
+            <Card title="Providers" evidence={evidence.providers} loading={loading}>
                 <ProviderOverviewContent evidence={evidence.providers} />
             </Card>
         </div>
-        <Card title="Recent Activity" evidence={evidence.activity}>
-            <RecentActivity evidence={evidence.activity} />
+        <Card title="Recent Activity" showSourceNote={false}>
+            <RecentActivity evidence={evidence.activity} loading={loading} />
         </Card>
     </>;
 }

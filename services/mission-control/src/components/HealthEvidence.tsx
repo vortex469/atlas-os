@@ -34,7 +34,6 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false, compa
         <div className="min-w-0 space-y-1 break-words text-sm" data-health-state={isStale ? "Unknown" : state}>
             <div className="flex flex-wrap items-center gap-2">
                 <HealthStatusBadge state={state.toLowerCase() as HealthState} isStale={isStale} />
-                {isStale && <span className="text-mc-text-muted">Last known status: {state} · Current status unknown</span>}
             </div>
             {showReportedStatus && (
                 <p className="text-xs text-mc-text-muted">Reported status: {raw}</p>

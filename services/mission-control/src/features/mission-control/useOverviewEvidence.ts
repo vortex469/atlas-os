@@ -20,7 +20,7 @@ export type OverviewEvidence = Partial<Record<Source, Evidence>>;
 
 export function useOverviewEvidence() {
     const [evidence, setEvidence] = useState<OverviewEvidence>({});
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const pending = useRef(false);
     const mounted = useRef(false);
     const refresh = useCallback(async () => {

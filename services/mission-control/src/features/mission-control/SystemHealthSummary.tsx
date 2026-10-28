@@ -8,6 +8,7 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
     const core = record(evidence.health?.data);
     const ace = record(evidence.summary?.data);
     const policy = record(evidence.policyHealth?.data);
+    const hasServiceMap = core.services !== null && typeof core.services === "object" && !Array.isArray(core.services);
     const sources = [
         { title: "Atlas Core health", evidence: evidence.health, status: core.atlas },
         { title: "System findings", evidence: evidence.summary, status: ace.status, reason: ace.summary },
@@ -23,7 +24,7 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
             {sources.map(source => (
                 <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
                     <h4 className="font-semibold">{source.title}</h4>
-                    {source.evidence?.unavailable && <p>Evidence unavailable.{source.evidence.stale ? " Last-known observations only." : ""}</p>}
+                    {source.evidence?.unavailable && <p>{source.evidence.stale ? "Refresh failed. Showing the last available information." : "Current information could not be loaded."}</p>}
                     <HealthEvidenceContext.Provider value={{ stale: source.evidence?.stale === true }}>
                         <HealthEvidence
                             compact
@@ -34,7 +35,7 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
                     </HealthEvidenceContext.Provider>
                 </article>
             ))}
-            {Object.keys(record(core.services)).length === 0 && <p>No subsystem health evidence returned.</p>}
+            {hasServiceMap && Object.keys(record(core.services)).length === 0 && <p>Core did not report subsystem health.</p>}
         </section>
     );
 }

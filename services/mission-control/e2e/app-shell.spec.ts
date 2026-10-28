@@ -122,7 +122,7 @@ test.describe("Atlas Core unavailable", () => {
     test("renders the unavailable state safely", async ({ page }) => {
         await page.goto("/");
 
-        await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Evidence unavailable.");
+        await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Current information could not be loaded.");
         await expect(page.getByRole("region", { name: "Atlas overall state" })).toContainText("Unknown");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
         await expect(page.getByText("Release unavailable", { exact: true })).toBeVisible();

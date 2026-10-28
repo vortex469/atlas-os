@@ -60,7 +60,8 @@ describe("integrated Local AI runtime observations", () => {
     it("retains stale inventories explicitly as last-known and suppresses current health", () => {
         const card = show({ data: data(), stale: true, unavailable: true });
         expect(card.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(card.getByText("Unknown · Stale evidence")).toBeInTheDocument();
+        expect(card.getByText("Unknown", { exact: true })).toBeInTheDocument();
+        expect(card.getByText("Last report: Healthy. Current status unknown.")).toBeInTheDocument();
         expect(card.getByText("Last known running models: running-model")).toBeInTheDocument();
         expect(card.getByText(/Current version, response time, and model list are unknown/)).toBeInTheDocument();
     });

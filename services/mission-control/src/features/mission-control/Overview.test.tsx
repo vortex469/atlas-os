@@ -61,6 +61,9 @@ describe("MC overview evidence", () => {
         expect(attention.getByText('Checking current information…')).toBeVisible();
         expect(attention.queryByText('No attention items were reported by the checked sources.')).not.toBeInTheDocument();
         expect(attention.queryByText('System findings: Evidence unknown.')).not.toBeInTheDocument();
+        expect(within(screen.getByRole('region', { name: 'Core health' })).getByText('Checking Core health…')).toBeVisible();
+        expect(activity().getByText('Checking recent activity…')).toBeVisible();
+        expect(screen.queryByText('No current information is available.')).not.toBeInTheDocument();
     });
     it("reports no attention only after all current sources are checked", () => {
         show({
@@ -74,6 +77,12 @@ describe("MC overview evidence", () => {
         expect(attention.getByText('No attention items were reported by the checked sources.')).toBeVisible();
         expect(attention.queryByText(/cannot confirm whether attention is needed/)).not.toBeInTheDocument();
     });
+    it("does not report missing subsystem health after the Core health read fails", () => {
+        show({ health: { unavailable: true } });
+        const summary = within(screen.getByRole('region', { name: 'System health' }));
+        expect(summary.getByText('Current information could not be loaded.')).toBeInTheDocument();
+        expect(summary.queryByText('Core did not report subsystem health.')).not.toBeInTheDocument();
+    });
     it("does not repeat an incomplete-workflow warning when the source is unavailable", () => {
         show({
             summary: { data: { findings: [] } },
@@ -83,14 +92,14 @@ describe("MC overview evidence", () => {
             ai: { data: { health: { status: 'healthy' } } },
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Workflows: Evidence unavailable.')).toBeVisible();
+        expect(attention.getByText('Workflows: Current information could not be loaded.')).toBeVisible();
         expect(attention.queryByText('Workflow results are incomplete.')).not.toBeInTheDocument();
         expect(attention.getByText('Some information is missing. Atlas cannot confirm whether attention is needed.')).toBeVisible();
     });
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
-        expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
+        expect(screen.getByText('Some recent activity records could not be read.')).toBeInTheDocument();
     });
     it("presents reported state, reasons, providers and safe detail links; deduplicates subsystem attention", () => {
         show({ health: { data: { atlas: 'degraded', services: { Beta: { provider_id: 'beta', status: 'offline', message: 'Connection refused' } } } }, providers: { data: [{ id: 'alpha', name: 'Alpha', health: { status: 'healthy' }, secret: 'private-credential' }, { id: 'beta', name: 'Beta', health: { status: 'offline', message: 'Connection refused', details: { token: 'private-credential' } } }] }, workflows: { data: { items: [{ workflow_id: 'w/1', workflow_state: 'blocked', last_result_summary: 'Approval expired' }, { workflow_id: 'w2', workflow_state: 'executing' }] } } });
@@ -109,7 +118,7 @@ describe("MC overview evidence", () => {
     it("marks failed refresh evidence stale and never displays cached health as current", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
-        expect(screen.getAllByText(/Stale evidence/).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Refresh failed/).length).toBeGreaterThan(0);
         expect(activity().getByText(/Past provider actions and their recorded results\. These do not show current system health or alerts\./)).toBeVisible();
         expect(activity().queryByText(/Historical evidence/)).not.toBeInTheDocument();
     });
@@ -213,7 +222,7 @@ it('deduplicates configured AI and provider evidence and preserves freshness', (
 it('keeps stale AI conditions explicitly unknown', () => {
     show({ ai: { stale: true, data: { health: { status: 'offline', message: 'Last connection failed' } } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+    expect(attention.getByText('Last report: Unavailable. Current status unknown.')).toBeInTheDocument();
     expect(attention.getByText('Last-known condition; current state unknown.')).toBeInTheDocument();
 });
 
@@ -222,7 +231,7 @@ it('surfaces incomplete attention evidence and rejects uninspectable activity', 
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getByText('Workflow results are incomplete.')).toBeInTheDocument();
     expect(attention.getByText('System findings are incomplete.')).toBeInTheDocument();
-    expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
+    expect(screen.getByText('Some recent activity records could not be read.')).toBeInTheDocument();
     expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });
 
@@ -253,11 +262,11 @@ it('integrates one health summary with independent source freshness and safe rea
     expect(core.getByText('Healthy')).toBeInTheDocument();
     const ace = within(screen.getByRole('article', { name: 'System findings' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();
-    expect(ace.getByText('Unknown · Stale evidence')).toBeInTheDocument();
+    expect(ace.getByText('Last report: Healthy. Current status unknown.')).toBeInTheDocument();
     expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     const policy = within(screen.getByRole('article', { name: 'Policy settings check' }));
-    expect(policy.getByText('Evidence unavailable.')).toBeInTheDocument();
+    expect(policy.getByText('Current information could not be loaded.')).toBeInTheDocument();
     expect(policy.getByText('Unknown')).toBeInTheDocument();
 });
 

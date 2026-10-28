@@ -77,10 +77,7 @@ function formatLastUpdated(date: Date, isStale?: boolean): string {
         timeStr = `${diffDays}d ago`;
     }
 
-    if (isStale) {
-        return `${timeStr} (stale)`;
-    }
-    return timeStr;
+    return isStale ? `Last checked ${timeStr}` : timeStr;
 }
 
 /**
@@ -94,7 +91,8 @@ export function HealthStatusBadge({
     lastUpdated,
     isStale,
 }: HealthStatusProps) {
-    const config = isStale ? stateConfig.unknown : stateConfig[state] ?? stateConfig.unknown;
+    const reportedConfig = stateConfig[state] ?? stateConfig.unknown;
+    const config = isStale ? stateConfig.unknown : reportedConfig;
 
     return (
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -104,8 +102,13 @@ export function HealthStatusBadge({
             >
                 <span className="mc-status-dot" aria-hidden="true" />
                 {isStale ? config.label : title || config.label}
-                {isStale && " · Stale evidence"}
             </span>
+
+            {isStale && (
+                <span className="text-xs text-mc-text-secondary">
+                    Last report: {reportedConfig.label}. Current status unknown.
+                </span>
+            )}
 
             {reason && (
                 <span className="text-xs text-mc-text-secondary">

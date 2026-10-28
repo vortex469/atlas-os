@@ -14,7 +14,9 @@ describe('overview loading isolation', () => {
     });
     it('loads independently and marks retained evidence stale after failure; recovers', async () => {
         const { result } = renderHook(useOverviewEvidence);
+        expect(result.current.loading).toBe(true);
         await waitFor(() => expect(result.current.evidence.health?.data).toEqual({ atlas: 'healthy' }));
+        await waitFor(() => expect(result.current.loading).toBe(false));
         expect(result.current.evidence.agent?.unavailable).toBe(true);
         expect(result.current.evidence.workflows?.data).toEqual({ items: [], total: 0, limit: 200, offset: 0 });
         vi.mocked(atlas.get).mockRejectedValue(new Error('Authorization: secret'));

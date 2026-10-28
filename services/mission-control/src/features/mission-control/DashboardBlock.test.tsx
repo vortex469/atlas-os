@@ -70,19 +70,19 @@ describe("integrated attention and activity", () => {
         render(dashboard({ activity: { data: { items: [null, { ...event, status: { toString: null }, completed_at: "bad", provider_name: "token=private", message: "https://user:pass@host", details: { secret: "private-value" }, href: "javascript:alert(1)" }] } } }));
         expect(activity().getByText("Outcome unknown · Restart")).toBeVisible();
         expect(activity().getByText("Completion time unknown.")).toBeVisible();
-        expect(activity().getByText("Some activity records are malformed or incomplete.")).toBeVisible();
+        expect(activity().getByText("Some recent activity records could not be read.")).toBeVisible();
         expect(screen.queryByText(/private-value|token=private|user:pass/)).not.toBeInTheDocument();
         expect(activity().getByRole("link", { name: "Inspect action →" })).toHaveAttribute("href", "/operations/actions/audit%2F1");
     });
     it("shows unavailable, stale, and recovered history without accumulating a client audit log", () => {
         const view = render(dashboard({ activity: { unavailable: true } }));
-        expect(activity().getByText("Evidence unavailable.")).toBeVisible();
+        expect(activity().getByText("Recent activity could not be loaded.")).toBeVisible();
         view.rerender(dashboard({ activity: { stale: true, unavailable: true, data: { items: [event] } } }));
-        expect(activity().getByText(/Stale evidence/)).toBeVisible();
+        expect(activity().getByText("Refresh failed. Showing the last available actions; current activity may have changed.")).toBeVisible();
         expect(activity().getAllByRole("listitem")).toHaveLength(1);
         view.rerender(dashboard({ activity: { data: { items: [] } } }));
         expect(activity().getByText("No recent actions recorded.")).toBeVisible();
         expect(activity().queryByRole("listitem")).not.toBeInTheDocument();
-        expect(activity().queryByText(/Stale evidence/)).not.toBeInTheDocument();
+        expect(activity().queryByText(/Refresh failed/)).not.toBeInTheDocument();
     });
 });

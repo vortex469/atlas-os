@@ -4,7 +4,7 @@ import type { Evidence } from "./useOverviewEvidence";
 
 // A view of Core's returned history only; fetching and freshness belong to the
 // shared evidence hook. No local history is accumulated between snapshots.
-export function RecentActivity({ evidence }: { evidence?: Evidence }) {
+export function RecentActivity({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
     const page = record(evidence?.data);
     const returned = rows(page.items);
     const inspectable = returned.filter(event => detailPath("/operations/actions", event.id)
@@ -20,10 +20,13 @@ export function RecentActivity({ evidence }: { evidence?: Evidence }) {
         (timestamp(b.completed_at)?.getTime() ?? 0) - (timestamp(a.completed_at)?.getTime() ?? 0));
     return <>
         <p>Past provider actions and their recorded results. These do not show current system health or alerts.</p>
+        {evidence?.stale && <p role="status">Refresh failed. Showing the last available actions; current activity may have changed.</p>}
         {activity.length === 0 && <p>{Array.isArray(page.items)
-            ? (returned.length === 0 && (page.total === undefined || page.total === 0) && (page.has_more === undefined || page.has_more === false) ? "No recent actions recorded." : "Activity evidence malformed or incomplete.")
-            : "Activity evidence unknown."}</p>}
-        {activity.length > 0 && incomplete && <p>Some activity records are malformed or incomplete.</p>}
+            ? (returned.length === 0 && (page.total === undefined || page.total === 0) && (page.has_more === undefined || page.has_more === false) ? "No recent actions recorded." : "Some recent activity records could not be read.")
+            : evidence?.unavailable ? "Recent activity could not be loaded."
+                : evidence?.data === undefined && loading ? "Checking recent activity…"
+                    : "Recent activity information is unavailable."}</p>}
+        {activity.length > 0 && incomplete && <p>Some recent activity records could not be read.</p>}
         <ol className="grid gap-3 md:grid-cols-2">{activity.slice(0, 5).map(event => {
             const date = timestamp(event.completed_at);
             const outcome = event.status === "failed" ? "Failed" : event.status === "succeeded" ? "Succeeded" : "Outcome unknown";
