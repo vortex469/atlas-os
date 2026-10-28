@@ -1677,3 +1677,13 @@ delete automatically. Backend diagnostics stay collapsed. The lifecycle suite
 passes (8 tests), the full Mission Control suite passes (2,782 tests across
 181 files), lint and production build pass. API and approval contracts are
 unchanged.
+
+## Saved candidate record read recovery — 2026-10-28
+
+The saved-record list and individual record review now have separate failure
+states. A failed review read leaves the saved-record list available; both read
+paths show a plain summary, collapsed technical details, and a retry that
+repeats only the same GET. The lifecycle suite passes (9 tests), the full
+Mission Control suite passes (2,783 tests across 181 files), lint and
+production build pass. Mutation, approval, and execution behavior is
+unchanged.

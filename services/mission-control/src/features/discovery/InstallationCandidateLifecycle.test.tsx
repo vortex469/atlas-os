@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,18 +42,25 @@ const admission = (admitted = true): InstallationCandidateAdmissionV1 => ({
 describe("installation candidate lifecycle", () => {
     beforeEach(() => { vi.resetAllMocks(); vi.mocked(listInstallationCandidateRecords).mockResolvedValue([]); });
 
-    it("renders loading, empty, and redacted error states", async () => {
+    it("renders loading, redacted list errors, and retries the saved-record read", async () => {
         let reject: (error: Error) => void = () => undefined;
-        vi.mocked(listInstallationCandidateRecords).mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }));
+        vi.mocked(listInstallationCandidateRecords)
+            .mockReturnValueOnce(new Promise((_, rejectPromise) => { reject = rejectPromise; }))
+            .mockResolvedValueOnce([]);
+        const user = userEvent.setup();
         const view = render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken={null} />);
         expect(screen.getByText(/loading saved candidate records/i)).toBeInTheDocument();
         reject(new Error("secret 10.0.0.1 /internal/path"));
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        const message = await screen.findByText("Atlas could not load the saved candidate records. Retry to check the current list.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not load the saved candidate records.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Saved candidate records are currently unavailable.")).toBeInTheDocument();
         expect(view.container).not.toHaveTextContent(/secret|10\.0\.0\.1|internal\/path/i);
-        view.unmount();
-        vi.mocked(listInstallationCandidateRecords).mockResolvedValueOnce([]);
-        render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken={null} />);
+        await user.click(screen.getByRole("button", { name: "Retry saved records" }));
         expect(await screen.findByText("No saved candidate records.")).toBeInTheDocument();
+        expect(listInstallationCandidateRecords).toHaveBeenCalledTimes(2);
     });
 
     it("lists active and expired records, gets details, and visibly preserves five false flags", async () => {
@@ -68,6 +75,33 @@ describe("installation candidate lifecycle", () => {
         const flags = container.querySelector<HTMLElement>('[aria-label="Saved candidate record authority flags"]');
         expect(flags).not.toBeNull();
         expect(within(flags!).getAllByText("false")).toHaveLength(5);
+    });
+
+    it("keeps the saved-record list visible after a review read fails and retries that read", async () => {
+        const apiError = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Installation candidate record was not found." } } },
+        };
+        vi.mocked(listInstallationCandidateRecords).mockResolvedValueOnce([envelope("active"), envelope("expired")]);
+        vi.mocked(getInstallationCandidateRecord)
+            .mockRejectedValueOnce(apiError)
+            .mockResolvedValueOnce(envelope("expired"));
+        const user = userEvent.setup();
+        render(<InstallationCandidateLifecycle admission={null} itemId="example" selectionId={null} csrfToken="csrf" />);
+
+        await user.click((await screen.findAllByRole("button", { name: "Review saved record" }))[1]);
+        const message = await screen.findByText("Atlas could not load this saved record. The saved-record list is still available.");
+        const alert = message.closest("[role=alert]") as HTMLElement;
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Installation candidate record was not found.")).toBeInTheDocument();
+        expect(screen.getByText("example · active")).toBeInTheDocument();
+        expect(screen.getByText("example · expired")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry record review" }));
+        expect(await screen.findByText("candidate-fingerprint")).toBeInTheDocument();
+        expect(getInstallationCandidateRecord).toHaveBeenCalledTimes(2);
+        expect(listInstallationCandidateRecords).toHaveBeenCalledTimes(1);
     });
 
     it("preserves only a positive candidate with non-authorizing language", async () => {
