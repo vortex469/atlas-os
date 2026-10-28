@@ -8,14 +8,17 @@ const show = (evidence: OverviewEvidence = {}) => render(<MemoryRouter><Overview
 
 describe("MC overview evidence", () => {
     it.each(['awaiting_implementation_approval', 'awaiting_verification_approval', 'awaiting_commit_approval'])("shows %s as a workflow decision rather than degraded health", workflow_state => {
-        show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
+        show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, execution_intent: 'update-compose-stack', last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByText('Human action required')).toBeVisible();
         expect(attention.getByText(/^Workflow stage: Awaiting/)).not.toBeVisible();
+        const workflow = attention.getByRole('link', { name: 'Update Compose Stack' });
+        expect(workflow).toHaveAttribute('href', '/workflows/review-me');
+        expect(attention.queryByText('Workflow ID: review-me', { exact: true })).not.toBeVisible();
         fireEvent.click(attention.getByText('Workflow details'));
         expect(attention.getByText(/^Workflow stage: Awaiting/)).toBeVisible();
+        expect(attention.getByText('Workflow ID: review-me', { exact: true })).toBeVisible();
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
-        expect(attention.getByRole('link', { name: 'review-me' })).toHaveAttribute('href', '/workflows/review-me');
     });
 
     it('keeps a stale approval requirement explicitly last-known', () => {
@@ -62,7 +65,7 @@ describe("MC overview evidence", () => {
     it("presents reported state, reasons, providers and safe detail links; deduplicates subsystem attention", () => {
         show({ health: { data: { atlas: 'degraded', services: { Beta: { provider_id: 'beta', status: 'offline', message: 'Connection refused' } } } }, providers: { data: [{ id: 'alpha', name: 'Alpha', health: { status: 'healthy' }, secret: 'private-credential' }, { id: 'beta', name: 'Beta', health: { status: 'offline', message: 'Connection refused', details: { token: 'private-credential' } } }] }, workflows: { data: { items: [{ workflow_id: 'w/1', workflow_state: 'blocked', last_result_summary: 'Approval expired' }, { workflow_id: 'w2', workflow_state: 'executing' }] } } });
         expect(screen.getByRole('link', { name: 'Inspect Alpha →' })).toHaveAttribute('href', '/providers/alpha');
-        expect(screen.getByRole('link', { name: 'w/1' })).toHaveAttribute('href', '/workflows/w%2F1');
+        expect(screen.getByRole('link', { name: 'Workflow needs attention' })).toHaveAttribute('href', '/workflows/w%2F1');
         expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Beta')).toHaveLength(1);
         expect(screen.getByText(/Workflow details are missing or incomplete/)).toBeInTheDocument();
         expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
@@ -125,7 +128,7 @@ describe('overview fail-closed regressions', () => {
         expect(attention.getByText('Endpoint offline')).toBeInTheDocument();
         expect(attention.getByText('Capacity limited')).toBeInTheDocument();
         expect(attention.queryByText('Blocked')).not.toBeInTheDocument();
-        expect(attention.getByRole('link', { name: 'w' })).toHaveAttribute('href', '/workflows/w');
+        expect(attention.getByRole('link', { name: 'Workflow needs attention' })).toHaveAttribute('href', '/workflows/w');
     });
     it('keeps a malformed provider unknown even in the expanded list', () => {
         show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: String(i) })), { health: { status: 'healthy' } }] } });
@@ -250,7 +253,7 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
     expect(worker.getByText(/current execution state is unknown/)).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getAllByRole('link', { name: 'blocked/1' })).toHaveLength(1);
+    expect(attention.getAllByRole('link', { name: 'Workflow needs attention' })).toHaveLength(1);
     expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();
     expect(attention.getByText('Last-known condition; current state unknown.')).toBeVisible();
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
@@ -297,10 +300,10 @@ describe('overflow attention access', () => {
         const more = attention.getByText('More conditions (2)');
         expect(more.closest('details')).not.toHaveAttribute('open');
         expect(attention.getByText('Problem 5')).not.toBeVisible();
-        expect(attention.getByText('review/last')).not.toBeVisible();
+        expect(attention.queryByRole('link', {name: 'Workflow needs attention'})).not.toBeVisible();
         fireEvent.click(more);
         expect(attention.getByRole('link', {name: 'Problem 5'})).toBeVisible();
-        expect(attention.getByRole('link', {name: 'review/last'})).toHaveAttribute('href', '/workflows/review%2Flast');
+        expect(attention.getByRole('link', {name: 'Workflow needs attention'})).toHaveAttribute('href', '/workflows/review%2Flast');
         expect(attention.getByText('Human action required')).toBeVisible();
         expect(attention.getAllByRole('listitem')).toHaveLength(7);
     });

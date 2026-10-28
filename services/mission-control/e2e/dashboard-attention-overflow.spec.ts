@@ -12,7 +12,7 @@ for (const width of [320, 390, 1280]) for (const mode of ['updated', 'stale'] as
         await page.goto('/');
         await expect(page.getByRole('button', {name: 'Refresh', exact: true})).toBeEnabled();
         const attention = page.getByRole('region', {name: 'Operator Attention', exact: true});
-        const workflow = attention.getByRole('link', {name: 'workflow-browser-baseline', exact: true});
+        const workflow = attention.getByRole('link', {name: 'Update Compose Stack', exact: true});
         await expect(attention.getByRole('link', {name: 'Reported problem 4', exact: true})).toBeVisible();
         await expect(attention.getByText('Reported problem 5', {exact: true})).not.toBeVisible();
         await expect(workflow).not.toBeVisible();
@@ -21,6 +21,11 @@ for (const width of [320, 390, 1280]) for (const mode of ['updated', 'stale'] as
         await more.focus(); await page.keyboard.press('Enter');
         await expect(attention.getByRole('link', {name: 'Reported problem 5', exact: true})).toBeVisible();
         await expect(workflow).toBeVisible();
+        const workflowItem = workflow.locator('..');
+        await expect(workflowItem.getByText('Workflow ID: workflow-browser-baseline', {exact: true})).toBeHidden();
+        await workflowItem.getByText('Workflow details', {exact: true}).click();
+        await expect(workflowItem.getByText('Workflow ID: workflow-browser-baseline', {exact: true})).toBeVisible();
+        await workflowItem.getByText('Workflow details', {exact: true}).click();
         refreshed = true;
         await page.getByRole('button', {name: 'Refresh', exact: true}).click();
         if (mode === 'updated') {
