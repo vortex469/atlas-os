@@ -29,7 +29,7 @@ export function ProviderOverview({
             : null;
 
     return (
-        <section className="rounded-lg border border-slate-800 bg-slate-900 p-8">
+        <section className="rounded-lg border border-slate-800 bg-slate-900 p-5 sm:p-8">
             <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">

@@ -80,7 +80,7 @@ export function ProviderPage() {
         ) ?? [];
 
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <Link
@@ -134,7 +134,7 @@ export function ProviderPage() {
             )}
 
             {isLoading && providers.length === 0 && (
-                <section className="rounded-lg border border-slate-800 bg-slate-900 p-8">
+                <section className="rounded-lg border border-slate-800 bg-slate-900 p-5 sm:p-8">
                     <p className="font-medium text-slate-200">
                         Loading provider details...
                     </p>
@@ -148,7 +148,7 @@ export function ProviderPage() {
             {!isLoading &&
                 !providerCatalogUnavailable &&
                 !provider && (
-                    <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-8">
+                    <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 sm:p-8">
                         <h1 className="mt-3 text-2xl font-bold text-slate-100">
                             Provider not found
                         </h1>

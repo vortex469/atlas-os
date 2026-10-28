@@ -2089,3 +2089,13 @@ item, the screen refuses it and offers an in-page retry for the requested item.
 Browser checks cover catalog filtering and recovery at 320px, 390px, and 1280px
 (20 checks); the focused catalog page suites pass (50 tests), as do lint and the
 production build. Catalog reads and all action/approval behavior are unchanged.
+
+## Provider detail phone layout — 2026-10-28
+
+Provider detail, loading, and missing-provider screens now use compact phone
+spacing, including the provider summary card, while retaining desktop spacing.
+Browser checks cover loaded details and the missing-provider route at 320px,
+390px, and 1280px, plus the loading state at phone and desktop widths (8 checks);
+provider action-field labels are also checked at 320px. The three focused
+page/component suites pass (17 tests), as do lint and the production build.
+Provider reads, actions, and approval behavior are unchanged.

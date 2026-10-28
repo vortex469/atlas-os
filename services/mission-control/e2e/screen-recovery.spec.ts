@@ -20,7 +20,66 @@ test("provider action catalog reload recovers after an unavailable read", async 
     expect(rejectedMutationRequests).toEqual([]);
 });
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
+    test(`provider details fit the screen at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/providers/proxmox");
+        const heading = page.getByRole("heading", { name: "Proxmox", exact: true });
+        await expect(heading).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Recommendations" })).toBeVisible();
+        const spacing = await heading.evaluate((element) => {
+            const page = element.closest("main");
+            const overview = element.closest("section");
+            return {
+                page: page ? getComputedStyle(page).paddingLeft : null,
+                overview: overview ? getComputedStyle(overview).paddingLeft : null,
+            };
+        });
+        if (width < 640) {
+            expect(spacing).toEqual({ page: "16px", overview: "20px" });
+        } else {
+            expect(Number.parseFloat(spacing.page ?? "0px")).toBeGreaterThan(16);
+            expect(Number.parseFloat(spacing.overview ?? "0px")).toBeGreaterThan(20);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 1280]) {
+    test(`provider loading state keeps compact phone spacing at ${width}px`, async ({ page }) => {
+        let releaseProviderRead!: () => void;
+        const providerRead = new Promise<void>((resolve) => { releaseProviderRead = resolve; });
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/providers", async (route) => {
+            await providerRead;
+            await route.fulfill({ json: providers });
+        });
+        await page.goto("/providers/proxmox");
+        const loadingMessage = page.getByText("Loading provider details...");
+        await expect(loadingMessage).toBeVisible();
+        const spacing = await loadingMessage.evaluate((element) => {
+            const page = element.closest("main");
+            const panel = element.closest("section");
+            return {
+                page: page ? getComputedStyle(page).paddingLeft : null,
+                panel: panel ? getComputedStyle(panel).paddingLeft : null,
+            };
+        });
+        if (width < 640) {
+            expect(spacing).toEqual({ page: "16px", panel: "20px" });
+        } else {
+            expect(Number.parseFloat(spacing.page ?? "0px")).toBeGreaterThan(16);
+            expect(Number.parseFloat(spacing.panel ?? "0px")).toBeGreaterThan(20);
+        }
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        releaseProviderRead();
+        await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
+    });
+}
+
+for (const width of [320, 390, 1280]) {
     test(`provider action fields use readable labels at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/providers/proxmox/actions", route => route.fulfill({ json: [{
@@ -529,16 +588,26 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`an empty provider catalog has a clear way back at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/providers", (route) => route.fulfill({
             status: 200, contentType: "application/json", body: "[]",
         }));
         await page.goto("/providers/proxmox");
-        await expect(page.getByRole("heading", { name: "Provider not found" })).toBeVisible();
+        const heading = page.getByRole("heading", { name: "Provider not found" });
+        await expect(heading).toBeVisible();
         await expect(page.getByText("Not updated yet")).not.toBeVisible();
         await expect(page.getByText("This provider is not in the current catalog.")).toBeVisible();
+        const pagePadding = await heading.evaluate((element) => {
+            const main = element.closest("main");
+            return main ? getComputedStyle(main).paddingLeft : null;
+        });
+        if (width < 640) {
+            expect(pagePadding).toBe("16px");
+        } else {
+            expect(Number.parseFloat(pagePadding ?? "0px")).toBeGreaterThan(16);
+        }
         await page.getByRole("link", { name: "← All providers" }).click();
         await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
