@@ -1557,3 +1557,12 @@ inventory remains visible. Service errors are optional Technical details. The
 provider resources suite passes (54 tests), along with lint, build, and
 `git diff --check`. Resource and monitoring reads, edit permissions, and
 monitoring mutation rules are unchanged.
+
+## Action history read-error wording — 2026-10-28
+
+When action history cannot be read, the page now gives a plain recovery message
+and explains that the failed read did not run a provider action. Backend error
+text is under collapsed Technical details. The existing Refresh history control
+retries the read; expired-entry deletion remains disabled until history loads.
+The focused page test checks the error detail visibility, read-only retry, and
+deletion guard. No history or provider action behavior changed.

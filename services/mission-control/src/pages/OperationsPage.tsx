@@ -530,8 +530,12 @@ export function OperationsPage() {
                         History unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {historyError}
+                        Action history could not be loaded. Refresh history to try again. This read did not run a provider action.
                     </p>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{historyError}</p>
+                    </details>
                 </div>
             )}
 

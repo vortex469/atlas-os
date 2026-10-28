@@ -205,13 +205,24 @@ describe("OperationsPage", () => {
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
-        expect(await screen.findByRole("alert")).toHaveTextContent("Filtered history unavailable");
+        const historyAlert = await screen.findByRole("alert");
+        expect(historyAlert).toHaveTextContent("Action history could not be loaded. Refresh history to try again. This read did not run a provider action.");
+        const technicalDetails = within(historyAlert).getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        expect(within(historyAlert).queryByText("Filtered history unavailable")).not.toBeVisible();
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(historyAlert).getByText("Filtered history unavailable")).toBeVisible();
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
         fireEvent.click(screen.getByText("More filters", { exact: true }));
         expect(within(screen.getByLabelText("Provider")).getByRole("option", { name: "Ollama" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.getByRole("status")).toHaveTextContent("Expired entries cannot be deleted until action history loads successfully.");
+        await user.click(screen.getByRole("button", { name: "Refresh history" }));
+        expect(await screen.findByText("Unload Model")).toBeInTheDocument();
+        expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(3);
+        expect(mockedExportProviderActionHistory).not.toHaveBeenCalled();
+        expect(mockedPruneProviderActionHistory).not.toHaveBeenCalled();
     });
 
     it("shows the empty-history state when no filters are applied", async () => {
