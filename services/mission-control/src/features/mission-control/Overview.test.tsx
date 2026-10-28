@@ -51,7 +51,7 @@ describe("MC overview evidence", () => {
         expect(within(screen.getByRole('region', { name: 'System health' })).getByRole('link', { name: 'Open operations →' })).toHaveAttribute('href', '/operations');
     });
 
-    it('keeps a workflow approval visible ahead of routine degraded services', () => {
+    it('prioritizes decisions and lets operators expand the full attention list', () => {
         const services = Object.fromEntries(Array.from({ length: 6 }, (_, index) => [`service-${index}`, {
             provider_id: `provider-${index}`,
             status: 'degraded',
@@ -83,7 +83,15 @@ describe("MC overview evidence", () => {
         expect(within(visibleItems[2]).getByRole('link', {
             name: 'Update Compose Stack · Waiting for commit approval',
         })).toBeVisible();
-        expect(attention.getByText('Showing 5 of 9 reported conditions. Open the detail views for more.')).toBeVisible();
+        const expand = attention.getByRole('button', { name: 'Show all 9 attention items' });
+        expect(expand).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(expand);
+        expect(attention.getAllByRole('listitem')).toHaveLength(9);
+        expect(attention.getByRole('link', { name: 'service-5' })).toBeVisible();
+        const collapse = attention.getByRole('button', { name: 'Show fewer conditions' });
+        expect(collapse).toHaveAttribute('aria-expanded', 'true');
+        fireEvent.click(collapse);
+        expect(attention.getAllByRole('listitem')).toHaveLength(5);
     });
 
     it('does not repeat an approval stage already named by the workflow link', () => {

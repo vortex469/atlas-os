@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { SystemHealthSummary } from "./SystemHealthSummary";
@@ -13,6 +13,22 @@ import { providerDetailPath } from "./agentProviderEvidence";
 import { RecentActivity } from "./RecentActivity";
 import { WorkerExecutionSection } from "./WorkerExecutionSection";
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
+
+type AttentionItem = {
+    key: string;
+    label: string;
+    reason: string;
+    state: unknown;
+    to: string;
+    stale?: boolean;
+    actionRequired?: boolean;
+    workflowId?: string;
+    workflowState?: string;
+};
+
+function isWorkflowAttention(item: AttentionItem): item is AttentionItem & { workflowId: string; workflowState: string } {
+    return typeof item.workflowId === "string" && typeof item.workflowState === "string";
+}
 
 function SourceNote({ evidence, label, loading = false }: { evidence?: Evidence; label?: string; loading?: boolean }) {
     const prefix = label ? `${label}: ` : "";
@@ -76,7 +92,24 @@ function attentionKey(finding: Record<string, unknown>, providers: Record<string
     return conditionKey("finding", finding.id, finding.source, finding.title, finding.message);
 }
 
+function AttentionListItem({ item }: { item: AttentionItem }) {
+    return <li>
+        <Link to={item.to}>{item.label || "Inspect condition"}</Link>
+        {item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
+        {isWorkflowAttention(item) ? <>
+            {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
+            {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState) && <p>{item.reason}</p>}
+            <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Technical details</summary>
+                <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
+                <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
+            </details>
+        </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
+        {item.stale && <p>Last-known condition; current state unknown.</p>}
+    </li>;
+}
+
 export function Overview({ evidence, loading = false }: { evidence: OverviewEvidence; loading?: boolean }) {
+    const [showAllAttention, setShowAllAttention] = useState(false);
     const health = record(evidence.health?.data);
     const services = Object.entries(record(health.services)).sort((a, b) =>
         Number(status(record(a[1]).status) === "healthy") - Number(status(record(b[1]).status) === "healthy"));
@@ -104,7 +137,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const initialAttentionLoad = loading && !attentionSources.some(source =>
         source?.data !== undefined || source?.unavailable === true);
     // One row per authoritative source condition. Do not synthesize alerts from counts.
-    const attention = [
+    const attention: AttentionItem[] = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
             key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale,
         })),
@@ -130,6 +163,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const uniqueAttention = [...deduplicated.values()]
         .sort((a, b) => attentionPriority(a.state, "actionRequired" in a && a.actionRequired === true)
             - attentionPriority(b.state, "actionRequired" in b && b.actionRequired === true));
+    const displayedAttention = showAllAttention ? uniqueAttention : uniqueAttention.slice(0, 5);
     return <>
         <Card title="Operator Attention" showSourceNote={false}>
             {!initialAttentionLoad && <>
@@ -144,20 +178,13 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             {uniqueAttention.length === 0 && loading && <p>Checking current information…</p>}
             {uniqueAttention.length === 0 && !loading && !attentionEvidenceComplete && <p>Some information is missing. Atlas cannot confirm whether attention is needed.</p>}
             {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>The current reports show no items needing attention.</p>}
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
-                <Link to={item.to}>{item.label || "Inspect condition"}</Link>
-                {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
-                {"workflowId" in item && typeof item.workflowId === "string" && "workflowState" in item && typeof item.workflowState === "string" ? <>
-                    {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
-                    {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState) && <p>{item.reason}</p>}
-                    <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Technical details</summary>
-                        <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
-                        <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
-                    </details>
-                </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
-                {item.stale && <p>Last-known condition; current state unknown.</p>}
-            </li>)}</ul>
-            {uniqueAttention.length > 5 && <p>Showing 5 of {uniqueAttention.length} reported conditions. Open the detail views for more.</p>}
+            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{displayedAttention.map(item => <AttentionListItem key={item.key} item={item} />)}</ul>
+            {uniqueAttention.length > 5 && <button
+                type="button"
+                className="mc-control mc-focusable rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"
+                aria-expanded={showAllAttention}
+                onClick={() => setShowAllAttention(current => !current)}
+            >{showAllAttention ? "Show fewer conditions" : `Show all ${uniqueAttention.length} attention items`}</button>}
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="System health" showSourceNote={false}>

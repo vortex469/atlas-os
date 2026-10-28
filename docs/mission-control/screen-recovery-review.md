@@ -1291,5 +1291,6 @@ conditions first, then critical findings, then workflow approvals. Routine
 degraded checks no longer push a human decision out of the visible list;
 unavailable information follows approvals. The overview suite passes (56
 tests), with lint, production build, and `git diff --check` passing. The card
-still caps the visible list at five and links each condition to its owning
-screen; no source state or authority changed.
+shows five items by default and has a Show all / Show fewer control for the
+remaining conditions. Each row links to its owning screen; no source state or
+authority changed.
