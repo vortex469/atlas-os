@@ -622,6 +622,18 @@ apply a change. The focused page suite passes (18 tests), the repository and
 maintenance browser journeys pass at 390px and 1280px (6 tests), and lint and
 production build pass.
 
+## Planning session review — 2026-10-28
+
+The planning page now leads with “Plan this change” or “Review the plan,”
+describes unavailable and stale states in plain language, and keeps session
+IDs, raw statuses, fingerprints, lineage, and failure codes under “Technical
+details.” Workflow creation reports that no implementation ran and that
+implementation still needs separate approval; workflow IDs and conversion
+codes are collapsed. A saved plan that cannot create a workflow is explicitly
+labeled read-only. The page suite passes (32 tests), repository and maintenance
+browser journeys pass at 390px and 1280px (6 tests), and lint and production
+build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

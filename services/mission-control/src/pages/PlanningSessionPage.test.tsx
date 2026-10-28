@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -183,15 +183,24 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlan.mockResolvedValue(plan());
     });
 
-    it("renders planning session metadata, workflow rail, and no execution controls", async () => {
+    it("leads with the next planning step and keeps identifiers in collapsed details", async () => {
+        const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: /Planning Session candidate-plan-1/i })).toBeInTheDocument();
-        expect(screen.getByText("candidate-1")).toBeInTheDocument();
-        expect(screen.getAllByText("Ready For Planning").length).toBeGreaterThan(0);
-        expect(screen.getByText("Not exposed by Atlas Agent API")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Plan this change" })).toBeInTheDocument();
+        expect(screen.getByText("Generate a plan for review. It will not apply changes or grant approval.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/candidate-1");
+        expect(screen.queryByText("Not exposed by Atlas Agent API")).not.toBeInTheDocument();
         expect(screen.queryByText("Supported intent")).not.toBeInTheDocument();
-        expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toBeNull();
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-1")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Ready For Planning")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("fingerprint-1")).not.toBeVisible();
+        await user.click(screen.getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-1")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Ready For Planning")).toBeVisible();
         expect(screen.getByText("Proposal")).toBeInTheDocument();
         expect(screen.getByText("Planning").closest("li")).toHaveAttribute("aria-current", "step");
         expect(screen.getByText("Plan")).toBeInTheDocument();
@@ -199,7 +208,8 @@ describe("PlanningSessionPage", () => {
         expect(screen.queryByRole("button", { name: /execute|approve|create workflow|implementation|commit/i })).not.toBeInTheDocument();
     });
 
-    it("renders lineage links for successor sessions and predecessor metadata", async () => {
+    it("links to the latest session and keeps session lineage IDs technical", async () => {
+        const user = userEvent.setup();
         mockedGetCandidatePlanningSession.mockResolvedValue(
             session({
                 session_id: "candidate-plan-2",
@@ -209,10 +219,14 @@ describe("PlanningSessionPage", () => {
         );
         renderPage("/candidate-planning/candidate-plan-2");
 
-        expect(await screen.findByText("Successor of")).toBeInTheDocument();
-        expect(screen.getByText("candidate-plan-1")).toBeInTheDocument();
-        const link = screen.getByRole("link", { name: "candidate-plan-3" });
+        expect(await screen.findByText(/A newer planning session is available/)).toBeInTheDocument();
+        const link = screen.getByRole("link", { name: "Open the latest session" });
         expect(link).toHaveAttribute("href", "/candidate-planning/candidate-plan-3");
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await user.click(screen.getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-1")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-3")).toBeVisible();
     });
 
     it("generates a plan and renders the read-only plan viewer", async () => {
@@ -250,7 +264,7 @@ describe("PlanningSessionPage", () => {
         await user.dblClick(button);
 
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
-        expect(screen.getAllByText("Generating plan...").length).toBeGreaterThan(0);
+        expect(screen.getByRole("button", { name: "Generating plan..." })).toBeDisabled();
         resolveRequest(session({ status: "plan_ready", plan: plan() }));
         expect(await screen.findByText("Plan details")).toBeInTheDocument();
     });
@@ -266,32 +280,33 @@ describe("PlanningSessionPage", () => {
     it("renders planning failure, unsupported, stale, Core unavailable, persistence, and Agent unavailable states", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "planning_failed", planning_failure: { code: "planning_validation_failed", message: "Plan validation failed" } }));
         renderPage();
-        expect(await screen.findByText("Planning failed.")).toBeInTheDocument();
-        expect(screen.getByText("Plan validation failed")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas could not create a plan. Review Technical details above for the recorded reason.")).toBeInTheDocument();
+        let technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Plan validation failed", { exact: false })).not.toBeVisible();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Plan validation failed", { exact: false })).toBeVisible();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "unsupported_intent", unsupported_reason: "Unsupported intent" }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Planning not supported.")).toBeInTheDocument();
-        expect(screen.getByText("Unsupported intent")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas cannot plan this type of change yet.")).toBeInTheDocument();
+        technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Unsupported intent")).not.toBeVisible();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "stale_before_planning" }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Stale candidate.")).toBeInTheDocument();
-        expect(screen.getByText(/Candidate is stale/i)).toBeInTheDocument();
+        expect(await screen.findByText("This proposal is out of date. Return to the proposal and refresh before trying again.")).toBeInTheDocument();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "planning_failed", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Atlas Core unavailable.")).toBeInTheDocument();
-        expect(screen.getByText("Atlas Core unavailable during planning.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas could not check whether this proposal is current because Core is unavailable.")).toBeInTheDocument();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "planning_failed", planning_failure: { code: "persistence_failed", message: "Persistence failed" } }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Persistence failure.")).toBeInTheDocument();
-        expect(screen.getByText("Planning session could not be persisted.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas could not save the planning session. No plan is ready to review.")).toBeInTheDocument();
 
         mockedGetCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         cleanup();
@@ -308,13 +323,17 @@ describe("PlanningSessionPage", () => {
 
         await waitFor(() => expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1"));
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
-        expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
-        expect(screen.getByText("Workflow ID")).toBeInTheDocument();
-        expect(screen.getByText("workflow-1")).toBeInTheDocument();
-        expect(screen.getByText("Approval Pending")).toBeInTheDocument();
-        expect(screen.getByText("Implementation approval pending")).toBeInTheDocument();
-        expect(screen.getByText("Yes")).toBeInTheDocument();
+        const successMessage = "Workflow created. Implementation has not run and still needs separate approval.";
+        expect(await screen.findByText(successMessage)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
+        const workflowResult = screen.getByText(successMessage).closest("[role='status']");
+        const technicalDetails = within(workflowResult as HTMLElement).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("workflow-1")).not.toBeVisible();
+        await user.click(within(workflowResult as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("workflow-1")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Approval Pending")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Implementation approval request")).toBeVisible();
         expect(screen.getByText("Workflow").closest("li")).toHaveAttribute("aria-current", "step");
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
@@ -334,7 +353,7 @@ describe("PlanningSessionPage", () => {
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
         expect(screen.getAllByText("Creating workflow...").length).toBeGreaterThan(0);
         resolveRequest(workflow());
-        expect(await screen.findByText("Workflow created.")).toBeInTheDocument();
+        expect(await screen.findByText("Workflow created. Implementation has not run and still needs separate approval.")).toBeInTheDocument();
     });
 
     it("handles workflow creation errors and rejected conversion states", async () => {
@@ -350,7 +369,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
 
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
-        expect(await screen.findByText("Workflow already exists.")).toBeInTheDocument();
+        expect(await screen.findByText("A workflow already exists for this plan, but no session was returned to open.")).toBeInTheDocument();
 
         mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Agent unavailable"));
         cleanup();
@@ -375,12 +394,16 @@ describe("PlanningSessionPage", () => {
             ? Promise.resolve(session()) : new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/candidate-planning/:sessionId", element: <PlanningSessionPage /> }], { initialEntries: ["/candidate-planning/candidate-plan-1"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "Planning Session candidate-plan-1" });
+        await screen.findByRole("heading", { name: "Plan this change" });
         await act(() => router.navigate("/candidate-planning/candidate-plan-2"));
-        expect(screen.queryByRole("heading", { name: "Planning Session candidate-plan-1" })).not.toBeInTheDocument();
+        expect(screen.getByText("Loading planning session…")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         resolveNext(session({ session_id: "candidate-plan-2" }));
-        expect(await screen.findByRole("heading", { name: "Planning Session candidate-plan-2" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Plan this change" })).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-2")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).queryByText("candidate-plan-1")).not.toBeInTheDocument();
     });
 
     it("does not attach a late generated plan to the next session", async () => {
@@ -392,7 +415,7 @@ describe("PlanningSessionPage", () => {
         render(<RouterProvider router={router} />);
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2"));
-        await screen.findByRole("heading", { name: "Planning Session candidate-plan-2" });
+        await screen.findByRole("heading", { name: "Plan this change" });
         await act(async () => resolvePlan(session({ status: "plan_ready", plan: plan() })));
         expect(screen.queryByText("Update Home Assistant compose stack")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Generate Plan" })).toBeEnabled();
@@ -435,7 +458,7 @@ describe("PlanningSessionPage", () => {
     it("does not offer generation when planning is explicitly disallowed", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ planning_allowed: false }));
         renderPage();
-        await screen.findByRole("heading", { name: "Planning Session candidate-plan-1" });
+        await screen.findByRole("heading", { name: "Plan this change" });
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
     });
@@ -445,6 +468,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
         await screen.findByText("Update Home Assistant compose stack");
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(screen.getByText("This plan is available for review, but this session cannot create a workflow. Check Technical details for its status.")).toBeInTheDocument();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
 

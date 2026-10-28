@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
 
@@ -92,8 +92,6 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             cancelled = true;
         };
     }, [sessionId]);
-
-    const sessionState = useMemo(() => describeSessionState(session, error), [session, error]);
 
     async function generatePlan() {
         if (!session || session.planning_allowed !== true || session.status !== "ready_for_planning" || isGenerating) {
@@ -198,69 +196,54 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         <main className="mx-auto max-w-6xl space-y-8 p-8">
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Candidate Planning
-                    </p>
-                    <h1 className="mt-3 break-all text-3xl font-bold text-white">
-                        Planning Session {session.session_id ?? sessionId}
-                    </h1>
+                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Change plan</p>
+                    <h1 className="mt-3 text-3xl font-bold text-white">{hasPlan ? "Review the plan" : "Plan this change"}</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Review or generate a plan for this proposal. A ready plan can be passed to a workflow; changes still need separate approvals.
+                        {hasPlan
+                            ? "Review the proposed steps before creating a workflow. No implementation is run here; it still needs separate approval."
+                            : "Generate a plan to review before creating a workflow. Planning does not apply changes or grant approval."}
                     </p>
                 </div>
                 <PlanningProgress current={workflow ? "Workflow" : hasPlan ? "Candidate Plan" : "Planning Session"} />
             </header>
 
-            <section aria-labelledby="session-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                    <h2 id="session-summary-heading" className="text-lg font-semibold text-white">
-                        Planning session
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-400">{sessionState}</p>
-                    </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
-                        {formatLabel(session.status)}
-                    </span>
+            <section aria-labelledby="planning-context-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <h2 id="planning-context-heading" className="text-lg font-semibold text-white">Planning context</h2>
+                    <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Review original proposal</Link>
                 </div>
-                {session.predecessor_session_id && (
-                    <p className="mt-3 text-sm text-slate-300">
-                        Successor of <span className="font-mono">{session.predecessor_session_id}</span>
-                    </p>
-                )}
                 {session.successor_session_id && (
-                    <p className="mt-2 text-sm text-slate-300">
-                        <span>Successor planning session: </span>
-                        <Link to={`/candidate-planning/${encodeURIComponent(session.successor_session_id)}`} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            {session.successor_session_id}
-                        </Link>
+                    <p className="mt-3 text-sm text-slate-300">
+                        A newer planning session is available. <Link to={`/candidate-planning/${encodeURIComponent(session.successor_session_id)}`} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Open the latest session</Link>.
                     </p>
                 )}
-                <dl className="mt-5 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Planning Session ID" value={session.session_id ?? sessionId} />
-                    <Detail label="Candidate ID" value={session.candidate_id} />
-                    <Detail label="Planning status" value={formatLabel(session.status)} />
-                    <Detail label="Created time" value="Not exposed by Atlas Agent API" />
-                    <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
-                </dl>
-                <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Review original proposal</Link>
+                <details className="mt-4 border-t border-slate-800 pt-4">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Planning session ID" value={session.session_id ?? sessionId} />
+                        <Detail label="Candidate ID" value={session.candidate_id} />
+                        <Detail label="Planning status" value={formatLabel(session.status)} />
+                        <Detail label="Planning allowed" value={session.planning_allowed ? "Yes" : "No"} />
+                        <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
+                        {session.predecessor_session_id && <Detail label="Previous session ID" value={session.predecessor_session_id} />}
+                        {session.successor_session_id && <Detail label="Newer session ID" value={session.successor_session_id} />}
+                        {session.intake_status && <Detail label="Intake status" value={formatLabel(session.intake_status)} />}
+                        {session.intake_reason_codes.length > 0 && <Detail label="Reason codes" value={session.intake_reason_codes.join(", ")} />}
+                        {session.unsupported_reason && <Detail label="Unsupported reason" value={session.unsupported_reason} />}
+                        {session.planning_failure && <Detail label="Failure" value={`${session.planning_failure.code} — ${session.planning_failure.message}`} />}
+                    </dl>
+                </details>
             </section>
 
             <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
-                <p className="mt-2 text-sm text-slate-400">
-                    Generate a plan to review. This does not apply changes or grant approval.
-                </p>
+                <p className="mt-2 text-sm text-slate-400">{planSectionDescription(session, hasPlan)}</p>
                 {session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             {isGenerating ? "Generating plan..." : "Generate Plan"}
                         </button>
-                        {isGenerating && <p className="text-sm text-slate-400">Generating plan...</p>}
                     </div>
-                )}
-                {(session.status !== "ready_for_planning" || session.planning_allowed !== true) && !hasPlan && (
-                    <p className="mt-4 text-sm text-slate-400">{nonReadyMessage(session)}</p>
                 )}
                 {generateError && (
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
@@ -294,6 +277,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         </div>
                     )}
                     {workflow && <WorkflowCreationResult workflow={workflow} />}
+                    {hasPlan && session.planning_allowed !== true && (
+                        <p className="mt-4 text-sm text-slate-300">This plan is available for review, but this session cannot create a workflow. Check Technical details for its status.</p>
+                    )}
                 </section>
             )}
         </main>
@@ -306,32 +292,36 @@ function WorkflowCreationResult({ workflow }: { workflow: CandidateWorkflowRespo
     return (
         <div role={isSuccessful ? "status" : "alert"} className={["mt-4 rounded-lg border p-4", isSuccessful ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"].join(" ")}>
             <p className={isSuccessful ? "font-semibold text-emerald-200" : "font-semibold text-amber-200"}>{workflowMessage(workflow)}</p>
-            <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
-                <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
-                <Detail label="Workflow status" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
-                <Detail label="Implementation approval pending" value={workflow.implementation_approval_request_id ? "Yes" : "Not reported"} />
-                <Detail label="Conversion status" value={formatLabel(workflow.conversion_status)} />
-            </dl>
-            {workflow.reason_codes.length > 0 && <p className="mt-3 text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
-            {workflow.failure && <p className="mt-3 text-sm text-slate-400">Failure: {workflow.failure.code} - {workflow.failure.message}</p>}
             {workflow.workflow_session_id && (
-                <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}/workflow`} state={{ workflow }} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}/workflow`} state={{ workflow }} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     Open Workflow
                 </Link>
             )}
+            <details className="mt-3 border-t border-slate-700 pt-3">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                    <Detail label="Workflow ID" value={workflow.workflow_session_id ?? "Not available"} />
+                    <Detail label="Workflow status" value={workflow.workflow_status ? formatLabel(workflow.workflow_status) : "Not available"} />
+                    <Detail label="Implementation approval request" value={workflow.implementation_approval_request_id ?? "Not reported"} />
+                    <Detail label="Conversion status" value={formatLabel(workflow.conversion_status)} />
+                    <Detail label="Core revalidation status" value={workflow.core_revalidation_status ? formatLabel(workflow.core_revalidation_status) : "Not reported"} />
+                </dl>
+                {workflow.reason_codes.length > 0 && <p className="mt-3 break-words text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
+                {workflow.failure && <p className="mt-3 break-words text-sm text-slate-400">Failure: {workflow.failure.code} — {workflow.failure.message}</p>}
+            </details>
         </div>
     );
 }
 
 function workflowMessage(workflow: CandidateWorkflowResponse): string {
-    if (workflow.workflow_session_id && workflow.failure === null) return "Workflow created.";
-    if (workflow.conversion_status === "workflow_exists") return "Workflow already exists.";
-    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "Stale candidate.";
-    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "Plan mismatch.";
-    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Unsupported intent.";
-    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
-    if (workflow.failure?.code === "persistence_failed") return "Persistence failure.";
-    return "Workflow creation did not complete.";
+    if (workflow.workflow_session_id && workflow.failure === null) return "Workflow created. Implementation has not run and still needs separate approval.";
+    if (workflow.conversion_status === "workflow_exists") return workflow.workflow_session_id ? "A workflow already exists for this plan. Open it to review." : "A workflow already exists for this plan, but no session was returned to open.";
+    if (workflow.failure?.code === "candidate_stale" || workflow.conversion_status.includes("stale")) return "This proposal is out of date. Open it again and refresh before creating a workflow.";
+    if (workflow.failure?.code === "candidate_fingerprint_mismatch" || workflow.failure?.code === "plan_fingerprint_mismatch") return "This plan no longer matches the proposal. Refresh the proposal and create a new plan before continuing.";
+    if (workflow.failure?.code === "workflow_translation_unsupported" || workflow.failure?.code === "unsupported_intent") return "Atlas cannot create a workflow for this type of change yet.";
+    if (workflow.failure?.code === "atlas_core_unavailable") return "Atlas could not check whether the proposal is current because Core is unavailable.";
+    if (workflow.failure?.code === "persistence_failed") return "Atlas could not save the workflow. No workflow is ready to open.";
+    return "Atlas could not create the workflow. Review technical details for the recorded reason.";
 }
 
 function validOperationalPlan(plan: OperationalCandidatePlanApiResponse, session: CandidatePlanningResponse): boolean {
@@ -425,29 +415,16 @@ function ListPanel({ title, values, empty, ordered = false }: { title: string; v
     );
 }
 
-function describeSessionState(session: CandidatePlanningResponse | null, error: string | null): string {
-    if (error) return "Atlas Agent unavailable.";
-    if (!session) return "Planning session not found.";
-    if (session.status === "ready_for_planning") return "Planning ready.";
-    if (session.status === "planning") return "Generating plan...";
-    if (session.status === "plan_ready") return "Plan ready.";
-    if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
-    if (session.planning_failure?.code === "persistence_failed") return "Persistence failure.";
-    if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "Stale candidate.";
-    if (session.status === "planning_failed") return "Planning failed.";
-    if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return "Planning not supported.";
-    return formatLabel(session.status);
-}
-
-function nonReadyMessage(session: CandidatePlanningResponse): string {
-    if (session.planning_allowed !== true) return "Planning is not available for this session.";
-    if (session.status === "plan_ready") return "Plan is ready.";
-    if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable during planning.";
-    if (session.planning_failure?.code === "persistence_failed") return "Planning session could not be persisted.";
-    if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "Candidate is stale. Refresh from the execution candidate view and try again.";
-    if (session.status === "planning_failed") return session.planning_failure?.message ?? "Planning failed.";
-    if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return session.unsupported_reason ?? "Planning is not supported for this candidate.";
-    return "Generate Plan is unavailable for this planning session state.";
+function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boolean): string {
+    if (hasPlan) return "Review this read-only plan. No approval or change has been made.";
+    if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas could not check whether this proposal is current because Core is unavailable.";
+    if (session.planning_failure?.code === "persistence_failed") return "Atlas could not save the planning session. No plan is ready to review.";
+    if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Return to the proposal and refresh before trying again.";
+    if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return "Atlas cannot plan this type of change yet.";
+    if (session.status === "planning_failed") return "Atlas could not create a plan. Review Technical details above for the recorded reason.";
+    if (session.status === "planning") return "Atlas is still creating the plan. Refresh this page to check the result.";
+    if (session.status === "ready_for_planning" && session.planning_allowed === true) return "Generate a plan for review. It will not apply changes or grant approval.";
+    return "Planning is not available in this session. Review Technical details above for its status.";
 }
 
 function formatLabel(value: string): string {
