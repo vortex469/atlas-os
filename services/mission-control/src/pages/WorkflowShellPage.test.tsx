@@ -115,15 +115,18 @@ describe("WorkflowShellPage", () => {
     it("renders from route state while still reconciling against server state", async () => {
         renderPage({ workflow: workflow() });
 
-        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
         expect(screen.getAllByText("Workflow created.").length).toBeGreaterThan(0);
         expect((await screen.findAllByText(/Awaiting Approval|Approval Pending/)).length).toBeGreaterThan(0);
         const summary = within(screen.getByRole("region", { name: "Workflow summary" }));
         const disclosure = summary.getByText("Workflow details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(summary.getByText("Workflow ID", { exact: true })).not.toBeVisible();
         expect(summary.getByText("Candidate ID", { exact: true })).not.toBeVisible();
         expect(screen.queryByText("Not exposed by Atlas Agent API", { exact: true })).not.toBeInTheDocument();
         await userEvent.setup().click(disclosure);
+        expect(summary.getByText("Workflow ID", { exact: true })).toBeVisible();
+        expect(summary.getByText("workflow-1")).toBeVisible();
         expect(summary.getByText("Candidate ID", { exact: true })).toBeVisible();
         expect(screen.getByText("candidate-1")).toBeInTheDocument();
         expect(screen.getByText("fingerprint-1")).toBeInTheDocument();
@@ -160,7 +163,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
         expect((await screen.findAllByText("Blocked")).length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
         expect(screen.getByText("Recovery: blocked workflow")).toBeInTheDocument();
@@ -183,7 +186,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /prepare exact request/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /re-plan against current repository/i })).not.toBeInTheDocument();
 
@@ -195,7 +198,7 @@ describe("WorkflowShellPage", () => {
     it("loads the workflow shell when opened directly from planning session URL", async () => {
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: /Workflow workflow-1/i })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
         expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", {
             expected_candidate_fingerprint: "fingerprint-1",
@@ -267,7 +270,7 @@ describe("WorkflowShellPage", () => {
 		expect(within(requestDetails as HTMLElement).getByText("Reason codes: repository_stale")).not.toBeVisible();
 		await user.click(within(requestDetails as HTMLElement).getByText("Request technical details"));
 		expect(within(requestDetails as HTMLElement).getByText("Failure code: repository_stale")).toBeVisible();
-		expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+		expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		expect(screen.queryByText("Workflow detail")).not.toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /prepare exact request/i })).toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /re-plan against current repository/i })).toBeInTheDocument();
@@ -364,7 +367,7 @@ describe("WorkflowShellPage", () => {
 			await user.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
 			expect(technicalDetails).toHaveAttribute("open");
 			expect(technicalDetails).toHaveTextContent("conflicting_active_session");
-			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+			expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		});
 
 		it("does not navigate when successor call errors", async () => {
@@ -391,7 +394,7 @@ describe("WorkflowShellPage", () => {
 			await user.click(screen.getByRole("button", { name: /re-plan against current repository/i }));
 
 			expect((await screen.findAllByRole("alert")).some((alert) => alert.textContent === "Successor failed")).toBe(true);
-			expect(screen.getByRole("heading", { name: "Workflow workflow-1" })).toBeInTheDocument();
+			expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		});
 
 		it("blocks duplicate successor creation submissions", async () => {
@@ -615,7 +618,7 @@ describe("WorkflowShellPage", () => {
             }),
         });
 
-        expect(screen.getByRole("heading", { name: "Workflow not created" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
 		expect(screen.getByText("This proposal changed after review. Open the current proposal and plan it again.")).toBeInTheDocument();
 		const technicalDetails = screen.getByText("Technical details").closest("details");
 		expect(technicalDetails).not.toHaveAttribute("open");
@@ -636,8 +639,8 @@ describe("WorkflowShellPage", () => {
 
     it("ignores cached workflow data for a different planning session", async () => {
         renderPage({ workflow: workflow({ candidate_planning_session_id: "other-session", workflow_session_id: "other-workflow", candidate_fingerprint: "other-fingerprint" }) });
-        expect(screen.queryByRole("heading", { name: "Workflow other-workflow" })).not.toBeInTheDocument();
-        await screen.findByRole("heading", { name: "Workflow workflow-1" });
+        expect(screen.queryByText("other-workflow", { exact: true })).not.toBeInTheDocument();
+        await screen.findByRole("heading", { name: "Workflow setup" });
         expect(mockedGetCandidatePlanningSession).toHaveBeenCalledWith("candidate-plan-1");
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledWith("candidate-plan-1", { expected_candidate_fingerprint: "fingerprint-1" });
     });
@@ -669,7 +672,7 @@ describe("WorkflowShellPage", () => {
         render(<RouterProvider router={router} />);
         await user.click(await screen.findByRole("button", { name: /prepare exact request/i }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
-        await screen.findByRole("heading", { name: "Workflow workflow-candidate-plan-2" });
+        await screen.findByRole("heading", { name: "Workflow setup" });
         await act(async () => resolveTranslation(implementationTranslationResponse({ workflow_session_id: "workflow-candidate-plan-1" })));
         expect(router.state.location.pathname).toBe("/candidate-planning/candidate-plan-2/workflow");
         expect(screen.queryByText("Wrong workflow navigation")).not.toBeInTheDocument();
@@ -724,7 +727,7 @@ describe("WorkflowShellPage", () => {
         render(<RouterProvider router={router} />);
         await user.click(await screen.findByRole("button", { name: /re-plan against current repository/i }));
         await act(() => router.navigate("/candidate-planning/candidate-plan-2/workflow"));
-        await screen.findByRole("heading", { name: "Workflow workflow-candidate-plan-2" });
+        await screen.findByRole("heading", { name: "Workflow setup" });
         await act(async () => resolveSuccessor(planningSession({ session_id: "successor-session" })));
         expect(router.state.location.pathname).toBe("/candidate-planning/candidate-plan-2/workflow");
         expect(screen.queryByText("Wrong recovery navigation")).not.toBeInTheDocument();

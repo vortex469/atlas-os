@@ -43,9 +43,13 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await expect(page.getByRole("button", { name: "Prepare exact request", exact: true })).toBeEnabled();
+        await expect(page.getByRole("heading", { name: "Workflow setup", exact: true })).toBeVisible();
         const workflowShellSummary = page.getByRole("region", { name: "Workflow summary" });
+        await expect(workflowShellSummary.getByText("Workflow ID", { exact: true })).toBeHidden();
         await expect(workflowShellSummary.getByText("Candidate ID", { exact: true })).toBeHidden();
         await workflowShellSummary.getByText("Workflow details", { exact: true }).click();
+        await expect(workflowShellSummary.getByText("Workflow ID", { exact: true })).toBeVisible();
+        await expect(workflowShellSummary.getByText(journey.workflow, { exact: true })).toBeVisible();
         await expect(workflowShellSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
         await fitsViewport(page);
         await page.getByRole("button", { name: "Prepare exact request", exact: true }).click();

@@ -272,9 +272,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow preparation</p>
-                    <h1 className="mt-3 break-all text-3xl font-bold text-white">
-                        Workflow {workflow.workflow_session_id ?? "not created"}
-                    </h1>
+                    <h1 className="mt-3 text-3xl font-bold text-white">Workflow setup</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         Review this workflow and prepare its exact request for approval. Preparing a request does not run the change.
                     </p>
@@ -295,6 +293,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
                     <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        {workflow.workflow_session_id && <Detail label="Workflow ID" value={workflow.workflow_session_id} />}
                         <Detail label="Started from" value="Candidate planning" />
                         <Detail label="Candidate ID" value={workflow.candidate_id || "Not available"} />
                         <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />

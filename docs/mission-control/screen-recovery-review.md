@@ -1461,3 +1461,13 @@ When Atlas reports that it is still creating a plan, the page now offers a
 shows the ready plan when available and does not submit another planning
 request. The focused test verifies the read and confirms no generation call is
 made.
+
+## Workflow setup title — 2026-10-28
+
+The workflow preparation screen now opens with the operator-facing title
+“Workflow setup” instead of a workflow UUID. The ID is under collapsed Workflow
+details beside the other references. Component tests and the repository browser
+journey verify the title, hidden-by-default ID, and access to the ID when
+details are opened. The workflow shell suite passes 31 tests, the repository
+journey passes all eight checks at 390px and 1280px, and lint/build pass.
+Approval and execution steps are unchanged.
