@@ -234,10 +234,11 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getByText("candidate-123")).toBeInTheDocument();
         expect(screen.getByText("def456")).toBeInTheDocument();
         expect(screen.getByText("Commit SHA")).toBeInTheDocument();
-        expect(screen.getAllByText("Workflow State").length).toBe(1);
+        expect(screen.getAllByText("Workflow status").length).toBe(1);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
-        expect(screen.getByText("Overall audit status")).toBeInTheDocument();
+        expect(screen.queryByText("Overall audit status")).not.toBeInTheDocument();
         expect(screen.getAllByText("Audit validation").length).toBe(1);
+        expect(screen.queryByText(/Overall chain state:/)).not.toBeInTheDocument();
         expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
     });
 
@@ -301,7 +302,7 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getByText("Blocked: safety gate open failed due to policy")).toBeInTheDocument();
     });
 
-    it("renders overall audit status and chain state from workflow_state", async () => {
+    it("shows workflow status separately from audit validation", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({
                 workflow_state: "awaiting_verification_approval",
@@ -314,12 +315,13 @@ describe("WorkflowAuditPage", () => {
         );
         renderAuditPage();
 
-        expect(await screen.findByText(/Overall audit status/i)).toBeInTheDocument();
+        expect(await screen.findByText("Workflow status")).toBeInTheDocument();
         expect(screen.getAllByText("Awaiting Verification Approval").length).toBeGreaterThan(0);
         expect(screen.getByText("Valid")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "How to read this audit" })).toBeInTheDocument();
     });
 
-    it("keeps audit validation separate from chain status when validation is invalid", async () => {
+    it("keeps workflow status separate from audit validation when validation is invalid", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({
                 workflow_state: "blocked",
@@ -332,8 +334,9 @@ describe("WorkflowAuditPage", () => {
         );
         renderAuditPage();
 
-        expect((await screen.findAllByText("Blocked")).length).toBe(2);
-        expect(screen.getByText("Overall audit status")).toBeInTheDocument();
+        expect((await screen.findAllByText("Blocked")).length).toBe(1);
+        expect(screen.getByText("Workflow status")).toBeInTheDocument();
+        expect(screen.queryByText("Overall audit status")).not.toBeInTheDocument();
         expect(screen.getByText("Invalid")).toBeInTheDocument();
         expect(screen.getByRole("alert")).toHaveTextContent("Inconsistent audit:");
     });

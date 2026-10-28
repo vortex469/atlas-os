@@ -71,6 +71,11 @@ for (const width of [390, 1280]) {
         await page.getByRole("link", { name: "Open Audit", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit$`));
         await expect(page.getByRole("heading", { name: "Stage status", exact: true })).toBeVisible();
+        await expect(page.getByText("Workflow status", { exact: true })).toBeVisible();
+        await expect(page.getByText("Audit validation", { exact: true })).toBeVisible();
+        await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "How to read this audit", exact: true })).toBeVisible();
+        await expect(page.getByText("This page is read-only.", { exact: true })).toBeVisible();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await fitsViewport(page);
         expect(fixture.writes).toEqual(fixture.expectedWrites);

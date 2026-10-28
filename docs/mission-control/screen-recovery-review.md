@@ -378,6 +378,15 @@ tests pass (10 tests), lint/build pass, and all 23 recovery browser checks pass,
 including the history screen at 390px and 1280px. The bounded query and
 maintenance action boundary are unchanged.
 
+## Workflow audit overview — 2026-10-28
+
+The audit overview now shows workflow status once and keeps audit validation
+separate. Duplicate status readouts were removed, and the technical trust
+boundary copy now explains in plain language where stage statuses come from
+and that the page is read-only. The focused audit suite passes (18 tests), lint
+and build pass, and the built repository journey passes all 4 cases, including
+the audit view at 390px and 1280px.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

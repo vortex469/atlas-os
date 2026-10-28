@@ -235,7 +235,6 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     }
 
     const timeline = audit.timeline;
-    const overallLifecycleLabel = formatStatusLabel(audit.workflow_state);
 
     if (audit.effect_kind === "operational_action") return <MaintenanceAudit audit={audit} />;
 
@@ -253,10 +252,9 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                 <h2 id="audit-overview-heading" className="text-lg font-semibold text-white">Overview</h2>
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-3">
                     <Detail label="Workflow ID" value={audit.workflow_id} />
-                    <Detail label="Workflow State" value={formatStatusLabel(audit.workflow_state)} />
+                    <Detail label="Workflow status" value={formatStatusLabel(audit.workflow_state)} />
                     <Detail label="Workflow Source" value={audit.workflow_source} />
                     {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
-                    <Detail label="Overall audit status" value={overallLifecycleLabel} />
                     <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
                     <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
                 </dl>
@@ -303,12 +301,9 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             })}
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 className="text-lg font-semibold text-white">Audit trust boundary</h2>
-                <p className="mt-2 text-sm text-slate-300">Stage statuses are derived from the server-provided audit timeline and validation result. Read-only fields below are not reconstructed.</p>
-                <p className={`mt-4 rounded-lg p-3 text-sm ${overallLifecycleLabel === "Completed" ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border border-amber-500/30 bg-amber-500/10 text-amber-100"}`}>
-                    Overall chain state: {overallLifecycleLabel}
-                </p>
-                <p className="mt-3 text-xs uppercase tracking-[0.3em] text-slate-500">No mutation controls are available in this explorer.</p>
+                <h2 className="text-lg font-semibold text-white">How to read this audit</h2>
+                <p className="mt-2 text-sm text-slate-300">Stage statuses come from the recorded workflow timeline and audit validation. The fields above show what Atlas received.</p>
+                <p className="mt-3 text-sm text-slate-400">This page is read-only.</p>
             </section>
 
             <Link
