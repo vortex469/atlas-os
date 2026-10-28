@@ -286,6 +286,14 @@ Focused overview and dashboard-block tests, lint and build cover the wording;
 the six built overview browser checks also pass. Attention selection and
 destinations are unchanged.
 
+## Home health summary wording — 2026-10-28
+
+The health summary names its three separate inputs in plain language: Atlas
+Core health, system findings, and policy settings check. The explanation says
+these reports are not combined into one score and marks data over a minute old
+as out of date. Focused overview tests and responsive system-health browser
+checks, lint and build cover the display; health calculations are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

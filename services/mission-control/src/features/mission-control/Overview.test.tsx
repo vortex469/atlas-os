@@ -196,14 +196,14 @@ it('integrates one health summary with independent source freshness and safe rea
     });
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
-    const core = within(screen.getByRole('article', { name: 'Atlas Core health aggregate' }));
+    const core = within(screen.getByRole('article', { name: 'Atlas Core health' }));
     expect(core.getByText('Healthy')).toBeInTheDocument();
-    const ace = within(screen.getByRole('article', { name: 'ACE assessment' }));
+    const ace = within(screen.getByRole('article', { name: 'System findings' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();
     expect(ace.getByText('Unknown · Stale evidence')).toBeInTheDocument();
     expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
-    const policy = within(screen.getByRole('article', { name: 'Policy reload' }));
+    const policy = within(screen.getByRole('article', { name: 'Policy settings check' }));
     expect(policy.getByText('Evidence unavailable.')).toBeInTheDocument();
     expect(policy.getByText('Unknown')).toBeInTheDocument();
 });

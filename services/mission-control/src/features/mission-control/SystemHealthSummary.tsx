@@ -9,16 +9,16 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
     const ace = record(evidence.summary?.data);
     const policy = record(evidence.policyHealth?.data);
     const sources = [
-        { title: "Atlas Core health aggregate", evidence: evidence.health, status: core.atlas },
-        { title: "ACE assessment", evidence: evidence.summary, status: ace.status, reason: ace.summary },
-        { title: "Policy reload", evidence: evidence.policyHealth, status: policy.status, reason: policy.error, checkedAt: policy.checked_at },
+        { title: "Atlas Core health", evidence: evidence.health, status: core.atlas },
+        { title: "System findings", evidence: evidence.summary, status: ace.status, reason: ace.summary },
+        { title: "Policy settings check", evidence: evidence.policyHealth, status: policy.status, reason: policy.error, checkedAt: policy.checked_at },
     ];
     return (
         <section aria-label="System health" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
             <h3 className="font-semibold text-mc-text-primary">System health</h3>
-            <p>Health reported by Atlas Core.</p>
+            <p>Separate status reports from Atlas Core.</p>
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
-                <p>No combined health score is calculated here. Timestamped evidence older than 60 seconds is marked stale.</p>
+                <p>Atlas does not combine these reports into one score. Data older than a minute is marked out of date.</p>
             </details>
             {sources.map(source => (
                 <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">
