@@ -209,6 +209,30 @@ test('service check summary reveals every reported check on mobile', async ({ pa
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+test('service check preview puts blocked and offline services first', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.route('**/api/v1/health', route => route.fulfill({ json: {
+        atlas: 'degraded',
+        services: {
+            Degraded: { status: 'degraded' },
+            Healthy: { status: 'healthy' },
+            Offline: { status: 'offline' },
+            Blocked: { status: 'blocked' },
+            Unknown: { status: 'future_state' },
+        },
+    } }));
+    await page.goto('/');
+
+    const checks = page.getByRole('region', { name: 'Service checks', exact: true });
+    const visibleNames = await checks.getByRole('listitem').evaluateAll(items =>
+        items.map(item => item.querySelector('p')?.textContent));
+    expect(visibleNames).toEqual(['Blocked', 'Offline', 'Degraded', 'Unknown']);
+    await checks.getByRole('button', { name: 'Show all 5 service checks' }).click();
+    await expect(checks.getByRole('listitem').nth(4)).toContainText('Healthy');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 for (const width of [320, 1280]) {
     test(`service check explains where Atlas tested iFileshare at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 800 });

@@ -145,6 +145,22 @@ describe("MC overview evidence", () => {
         expect(checks.getAllByRole('listitem')).toHaveLength(4);
     });
 
+    it("shows the most urgent service checks before the four-item preview cutoff", () => {
+        show({ health: { data: { services: {
+            Degraded: { status: "degraded" },
+            Healthy: { status: "healthy" },
+            Offline: { status: "offline" },
+            Blocked: { status: "blocked" },
+            Unknown: { status: "future_state" },
+        } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        const visibleNames = checks.getAllByRole("listitem")
+            .map(item => item.querySelector("p")?.textContent);
+
+        expect(visibleNames).toEqual(["Blocked", "Offline", "Degraded", "Unknown"]);
+        expect(checks.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
+    });
+
     it("shows the Core-side check location on demand without exposing URL secrets", () => {
         show({ health: { data: { atlas: "degraded", services: { iFileshare: {
             status: "offline",

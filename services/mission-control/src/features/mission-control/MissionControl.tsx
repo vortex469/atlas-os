@@ -103,6 +103,16 @@ function attentionPriority(value: unknown, actionRequired = false) {
     return 4;
 }
 
+function serviceCheckPriority(value: unknown) {
+    switch (status(value)) {
+        case "blocked": return 0;
+        case "unavailable": return 1;
+        case "degraded": return 2;
+        case "unknown": return 3;
+        default: return 4;
+    }
+}
+
 function workflowAttentionStage(state: string, effectKind?: string): string {
     switch (state) {
         case "awaiting_approval": return "Waiting for approval";
@@ -165,7 +175,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const [showAllServices, setShowAllServices] = useState(false);
     const health = record(evidence.health?.data);
     const services = Object.entries(record(health.services)).sort((a, b) =>
-        Number(status(record(a[1]).status) === "healthy") - Number(status(record(b[1]).status) === "healthy"));
+        serviceCheckPriority(record(a[1]).status) - serviceCheckPriority(record(b[1]).status));
     const providers = rows(evidence.providers?.data).sort((a, b) =>
         Number(status(record(a.health).status) === "healthy") - Number(status(record(b.health).status) === "healthy"));
     const workflows = rows(record(evidence.workflows?.data).items);
