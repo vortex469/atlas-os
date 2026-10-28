@@ -20,7 +20,6 @@ import {
 import { OperationsPage } from "./OperationsPage";
 
 vi.mock("../api/atlas", () => ({
-    getAtlasDoctorReport: vi.fn(),
     getAtlasErrorMessage: (
         error: unknown,
         fallback: string,
@@ -115,6 +114,7 @@ describe("OperationsPage", () => {
         await screen.findByText("Unload Model");
         expect(screen.queryByText("Loading action history...")).not.toBeInTheDocument();
         expect(screen.queryByText("Loading retention details…")).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Atlas Doctor" })).not.toBeInTheDocument();
     });
 
     it("keeps action records available when retention details fail to load", async () => {

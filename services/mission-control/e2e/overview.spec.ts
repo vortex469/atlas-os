@@ -95,6 +95,35 @@ for (const width of [320, 768, 1440]) {
     });
 }
 
+test('Atlas Doctor stays collapsed under System health until an operator runs it', async ({ page, rejectedMutationRequests }) => {
+    let doctorReads = 0;
+    await page.route('**/api/v1/ops/doctor', route => {
+        doctorReads += 1;
+        return route.fulfill({ json: {
+            status: 'healthy', score: 100, checked_at: '2026-10-28T12:00:00Z',
+            configuration_ok: true,
+            checks: [{ name: 'Core', passed: true, error: null }],
+            critical: [], warnings: [], information: [],
+        } });
+    });
+    await page.goto('/');
+    const health = page.getByRole('region', { name: 'System health' });
+    const disclosure = health.locator('details').filter({ hasText: 'Use Atlas Doctor' });
+    const doctorButton = disclosure.locator('button', { hasText: 'Run Doctor' });
+    await expect(disclosure.locator('summary')).toBeVisible();
+    await expect(disclosure).not.toHaveAttribute('open', '');
+    await expect(doctorButton).toBeHidden();
+    expect(doctorReads).toBe(0);
+
+    await disclosure.locator('summary').click();
+    await expect(doctorButton).toBeVisible();
+    expect(doctorReads).toBe(0);
+    await doctorButton.click();
+    await expect.poll(() => doctorReads).toBe(1);
+    await expect(disclosure.getByText('100/100')).toBeVisible();
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 test('service check summary reveals every reported check on mobile', async ({ page, rejectedMutationRequests }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.route('**/api/v1/health', route => route.fulfill({ json: {

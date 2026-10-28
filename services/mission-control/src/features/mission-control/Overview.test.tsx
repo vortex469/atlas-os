@@ -176,6 +176,18 @@ describe("MC overview evidence", () => {
         fireEvent.click(checks.getByText('About service checks'));
         expect(coreLimit).toBeVisible();
     });
+    it('keeps Atlas Doctor under a collapsed health disclosure', () => {
+        show();
+        const health = within(screen.getByRole('region', { name: 'System health' }));
+        const summary = health.getByText('Use Atlas Doctor');
+        const disclosure = summary.closest('details') as HTMLDetailsElement;
+        expect(disclosure.open).toBe(false);
+        const runButton = within(disclosure).getByText('Run Doctor').closest('button') as HTMLButtonElement;
+        expect(runButton).not.toBeVisible();
+        fireEvent.click(summary);
+        expect(disclosure.open).toBe(true);
+        expect(runButton).toBeVisible();
+    });
     it("describes an empty health report as missing service checks", () => {
         show({ health: { data: { atlas: 'healthy', services: {} } } });
         expect(screen.getAllByText('No configured service checks were reported.')).toHaveLength(2);

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { SystemHealthSummary } from "./SystemHealthSummary";
 import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
@@ -208,6 +209,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="System health" showSourceNote={false}>
                 <SystemHealthSummary evidence={evidence} loading={loading} />
+                <details>
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Use Atlas Doctor</summary>
+                    <div className="mt-3"><AtlasDoctorPanel /></div>
+                </details>
             </Card>
             <Card title="Service checks" evidence={evidence.health} loading={loading}>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}

@@ -1813,3 +1813,13 @@ suite passes (59 tests), responsive dashboard browser checks pass (25 tests in
 development and 25 against the built app), and the full suite passes (2,787
 tests across 181 files). Lint and production build pass. No route, API, or
 authority changed.
+
+## Atlas Doctor placement — 2026-10-28
+
+Atlas Doctor no longer interrupts Action history between retention controls
+and action records. It is now under System health in a collapsed disclosure;
+the diagnostic request still runs only after an explicit “Run Doctor” click.
+Focused Operations/overview/Doctor tests pass (77 tests), browser checks pass
+(16 tests in development and 16 against the built app), the full suite passes
+(2,788 tests across 181 files), and lint and production build pass. No API or
+authority behavior changed.
