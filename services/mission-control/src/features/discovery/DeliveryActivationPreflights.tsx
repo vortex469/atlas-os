@@ -58,9 +58,9 @@ export function DeliveryActivationPreflights({ preparations = [], csrfToken }: {
         {!loading && !error && records.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No readiness checks saved yet.</p>}
         {!loading && !error && records.length > 0 && <ul aria-label="Saved delivery readiness checks" className="mt-4 space-y-3">{records.map((record) => <li key={record.result.preflight_id} className="rounded-md border border-slate-700 p-3">
             <p className="font-semibold text-slate-200">{preflightLifecycleLabel(record.status.lifecycle)} · Delivery remains off</p>
-            <details className="mt-1 text-xs text-slate-400"><summary className="cursor-pointer">Check ID and time limit</summary>
+            <p className="mt-1 text-xs text-slate-400">Checked <DateTime value={record.result.evaluated_at} />; expires <DateTime value={record.result.expires_at} />.</p>
+            <details className="mt-1 text-xs text-slate-400"><summary className="cursor-pointer">Check ID</summary>
                 <p className="mt-1 break-all">Check ID: {record.result.preflight_id}</p>
-                <p>Checked {record.result.evaluated_at}; expires {record.result.expires_at}</p>
             </details>
             <button type="button" aria-label={`Review readiness check ${record.result.preflight_id}`} onClick={() => void review(record.result.preflight_id)} className="mt-3 rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200">Review details</button>
         </li>)}</ul>}
@@ -93,7 +93,7 @@ function PreflightDetails({ record }: { record: DeliveryActivationPreflightOpera
         <p className="mt-1 text-sm font-semibold text-amber-200">{status.lifecycle === "eligible" ? "Current evidence passed this check for separate review. Delivery is still off." : `${preflightLifecycleLabel(status.lifecycle)}. Delivery is still off.`}</p>
         <p className="mt-1 text-sm text-slate-300">This result records what Core checked. It is not approval to send work.</p>
         <details className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400"><summary className="cursor-pointer font-medium text-slate-300">Technical check details</summary>
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Lifecycle code" value={status.lifecycle} /><Value name="Decision code" value={result.decision} /><Value name="Reason codes" value={result.reason_codes.join(", ") || "none"} /><Value name="Observed at" value={status.observed_at} /><Value name="Checked at" value={result.evaluated_at} /><Value name="Expires at" value={result.expires_at} /><Value name="Time limit" value="expires at the earlier of preparation validity or 30 seconds after the check; never extended" /><Value name="Ownership" value="authenticated operator-scoped; foreign records are indistinguishable from absence" /><Value name="Statement" value={result.statement} /><Value name="Source" value={result.source} /><Value name="Check ID" value={result.preflight_id} /><Value name="Check fingerprint" value={result.preflight_fingerprint.value} /><Value name="Preparation ID" value={result.delivery_preparation_id} /><Value name="Preparation fingerprint" value={result.preparation_fingerprint.value} /><Value name="Endpoint fingerprint" value={result.endpoint_fingerprint.value} /></dl>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2"><Value name="Lifecycle code" value={status.lifecycle} /><Value name="Decision code" value={result.decision} /><Value name="Reason codes" value={result.reason_codes.join(", ") || "none"} /><DateTimeValue name="Observed at" value={status.observed_at} /><DateTimeValue name="Checked at" value={result.evaluated_at} /><DateTimeValue name="Expires at" value={result.expires_at} /><Value name="Time limit" value="expires at the earlier of preparation validity or 30 seconds after the check; never extended" /><Value name="Ownership" value="authenticated operator-scoped; foreign records are indistinguishable from absence" /><Value name="Statement" value={result.statement} /><Value name="Source" value={result.source} /><Value name="Check ID" value={result.preflight_id} /><Value name="Check fingerprint" value={result.preflight_fingerprint.value} /><Value name="Preparation ID" value={result.delivery_preparation_id} /><Value name="Preparation fingerprint" value={result.preparation_fingerprint.value} /><Value name="Endpoint fingerprint" value={result.endpoint_fingerprint.value} /></dl>
         </details>
         <details className="mt-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-400"><summary className="cursor-pointer font-medium text-slate-300">Earlier evidence linked to this check</summary>
             <dl aria-label="Exact v0.20 through v0.28 linkage" className="mt-3 grid gap-3 text-sm sm:grid-cols-2">{Object.entries(result.linkage).map(([name, value]) => <Value key={name} name={name.replaceAll("_", " ")} value={typeof value === "string" ? value : value.value} />)}</dl>
@@ -116,4 +116,13 @@ function preflightLifecycleLabel(lifecycle: DeliveryActivationPreflightOperation
     return "Unavailable";
 }
 
+function DateTime({ value }: { value: string }) {
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf())
+        ? <>{value}</>
+        : <time dateTime={value}>{new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(date)}</time>;
+}
+function DateTimeValue({ name, value }: { name: string; value: string }) {
+    return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300"><DateTime value={value} /></dd></div>;
+}
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{value}</dd></div>; }
