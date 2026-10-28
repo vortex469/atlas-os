@@ -1294,3 +1294,11 @@ tests), with lint, production build, and `git diff --check` passing. The card
 shows five items by default and has a Show all / Show fewer control for the
 remaining conditions. Each row links to its owning screen; no source state or
 authority changed.
+
+## Shell product label — 2026-10-28
+
+The visible sidebar brand now says “Mission Control” without the design-only
+“2.0” suffix, which could be mistaken for the product release version. Shell
+component and browser regressions check the plain product name. The shell suite
+passes (33 component tests and one focused browser test), along with lint and
+the production build. No routes, release metadata, or behavior changed.

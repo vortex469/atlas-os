@@ -95,7 +95,7 @@ function Brand() {
                     ATLAS
                 </p>
                 <p className="truncate text-[11px] text-mc-text-muted">
-                    Mission Control 2.0
+                    Mission Control
                 </p>
             </div>
         </div>

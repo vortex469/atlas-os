@@ -3,7 +3,8 @@ import { expect, test } from "./mission-control-fixtures";
 test("Mission Control application shell renders with primary navigation", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByText("Mission Control 2.0").first()).toBeVisible();
+    await expect(page.getByText("Mission Control", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Mission Control 2.0", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Mission Control", exact: true })).toBeVisible();

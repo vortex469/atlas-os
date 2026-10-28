@@ -74,7 +74,7 @@ describe("MainLayout", () => {
             renderAt();
 
             expect(screen.getAllByText("ATLAS").length).toBeGreaterThan(0);
-            expect(screen.getAllByText("Mission Control 2.0").length).toBeGreaterThan(0);
+            expect(screen.getAllByText("Mission Control", { exact: true }).length).toBeGreaterThan(0);
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
             expect(await screen.findByText("Core API online")).toBeInTheDocument();
             expect(screen.getByText("Atlas Core API")).toBeInTheDocument();
