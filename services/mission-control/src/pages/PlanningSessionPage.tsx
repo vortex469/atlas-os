@@ -307,9 +307,6 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     </h2>
                     <p className="mt-1 text-sm text-slate-400">{sessionState}</p>
                     </div>
-                    <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
-                        {formatLabel(session.status)}
-                    </span>
                 </div>
                 {session.predecessor_session_id && (
                     <p className="mt-3 text-sm text-slate-300">
@@ -336,6 +333,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         <Detail label="Candidate fingerprint" value={session.candidate_fingerprint ?? "Not available"} />
                         {session.predecessor_session_id && <Detail label="Earlier planning session ID" value={session.predecessor_session_id} />}
                         {session.successor_session_id && <Detail label="Newer planning session ID" value={session.successor_session_id} />}
+                        {session.unsupported_reason && <Detail label="Unsupported reason" value={session.unsupported_reason} />}
+                        {session.planning_failure && <Detail label="Failure code" value={session.planning_failure.code} />}
+                        {session.planning_failure && <Detail label="Failure message" value={session.planning_failure.message} />}
                     </dl>
                 </details>
                 <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Review original proposal</Link>
@@ -538,28 +538,52 @@ function ListPanel({ title, values, empty, ordered = false }: { title: string; v
 }
 
 function describeSessionState(session: CandidatePlanningResponse | null, error: string | null): string {
-    if (error) return "Atlas Agent unavailable.";
+    if (error) return "Atlas Agent is unavailable.";
     if (!session) return "Planning session not found.";
-    if (session.status === "ready_for_planning") return "Planning ready.";
-    if (session.status === "planning") return "Generating plan...";
-    if (session.status === "plan_ready") return "Plan ready.";
-    if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable.";
-    if (session.planning_failure?.code === "persistence_failed") return "Persistence failure.";
-    if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "Stale candidate.";
+    if (session.status === "ready_for_planning") return "Ready to generate a plan.";
+    if (session.status === "planning") return "Atlas Agent is generating a plan.";
+    if (session.status === "plan_ready") return "Plan ready to review.";
+    if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core is unavailable.";
+    if (session.planning_failure?.code === "persistence_failed") return "Planning session could not be saved.";
+    if (session.status.includes("stale") || ["candidate_stale", "candidate_expired", "candidate_fingerprint_mismatch"].includes(session.planning_failure?.code ?? "")) return "Proposal needs refresh.";
     if (session.status === "planning_failed") return "Planning failed.";
-    if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return "Planning not supported.";
+    if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return "Planning unavailable.";
     return formatLabel(session.status);
 }
 
 function nonReadyMessage(session: CandidatePlanningResponse): string {
-    if (session.planning_allowed !== true) return "Planning is not available for this session.";
-    if (session.status === "plan_ready") return "Plan is ready.";
-    if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas Core unavailable during planning.";
-    if (session.planning_failure?.code === "persistence_failed") return "Planning session could not be persisted.";
-    if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "Candidate is stale. Refresh from the execution candidate view and try again.";
-    if (session.status === "planning_failed") return session.planning_failure?.message ?? "Planning failed.";
-    if (session.status === "planning_not_supported" || session.status === "unsupported_intent") return session.unsupported_reason ?? "Planning is not supported for this candidate.";
+    const failureCode = session.planning_failure?.code;
+    if (failureCode === "atlas_core_unavailable") return "Atlas Core is unavailable. Try again later.";
+    if (failureCode === "persistence_failed") return "Atlas Agent could not save the planning session. Reload before trying again.";
+    if (session.status.includes("stale") || ["candidate_stale", "candidate_expired", "candidate_fingerprint_mismatch"].includes(failureCode ?? "")) return "The proposal changed or expired. Refresh it before planning again.";
+    if (session.status === "planning_not_supported" || session.status === "unsupported_intent" || failureCode === "unsupported_intent") return "This change type is not supported for planning.";
+    if (session.status === "plan_ready") return "Plan is ready to review.";
+    if (session.status === "planning_failed" || failureCode !== undefined) return planningFailureMessage(failureCode);
+    if (session.planning_allowed !== true) return "Planning is not available for this session. Review the technical details and refresh to check its latest status.";
     return "Generate Plan is unavailable for this planning session state.";
+}
+
+function planningFailureMessage(code: string | undefined): string {
+    switch (code) {
+        case "planning_validation_failed":
+        case "unsafe_plan_content":
+        case "plan_integrity_failed":
+            return "Atlas could not produce a plan that passed safety checks. Refresh the proposal and try again.";
+        case "repository_mapping_unavailable":
+        case "repository_inspection_failed":
+            return "Atlas could not read the trusted repository for this proposal. Check its repository mapping, then try again.";
+        case "candidate_not_eligible":
+            return "This proposal is not currently eligible for planning. Review its status before trying again.";
+        case "evidence_unavailable":
+        case "target_unavailable":
+            return "Required proposal or target information is unavailable. Refresh and try again.";
+        case "plan_not_ready":
+            return "The plan is not ready yet. Refresh this page to check its status.";
+        case "intake_rejected":
+            return "Atlas Core did not accept this proposal for planning. Review its current status.";
+        default:
+            return "Atlas could not create a plan. Review the technical details and refresh before trying again.";
+    }
 }
 
 function formatLabel(value: string): string {

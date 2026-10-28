@@ -35,6 +35,9 @@ for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }
             await page.goto(`/candidate-planning/${planning.session_id}`);
             await expect(page.getByRole("heading", { name: "Plan this change", exact: true })).toBeVisible();
             await expect(page.getByRole("heading", { name: "Plan", exact: true, level: 2 })).toBeVisible();
+            const sessionSummary = page.getByRole("region", {name: "Planning session", exact: true});
+            await expect(sessionSummary.getByText("Ready to generate a plan.", {exact: true})).toBeVisible();
+            await expect(sessionSummary.getByText("Ready For Planning", {exact: true})).toBeHidden();
             const disclosure = page.locator("details").filter({ has: page.getByText("Technical details", { exact: true }) });
             await expect(disclosure).not.toHaveAttribute("open");
             await expect(page.getByText(planning.candidate_fingerprint!, { exact: true })).toBeHidden();
@@ -59,3 +62,30 @@ for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }
         });
     });
 }
+
+for (const width of [320, 390, 1280]) test(`planning failure gives a clear next step at ${width}px`, async ({page, rejectedMutationRequests}) => {
+    const failed = {
+        ...planning,
+        status: "planning_failed",
+        planning_allowed: false,
+        planning_failure: {code: "planning_validation_failed", message: "Candidate plan could not be generated."},
+    };
+    await page.setViewportSize({width, height: 900});
+    await page.route(`**/agent-api/candidate-planning/${planning.session_id}`, route => {
+        expect(route.request().method()).toBe("GET");
+        return route.fulfill({json: failed});
+    });
+    await page.goto(`/candidate-planning/${planning.session_id}`);
+
+    const summary = page.getByRole("region", {name: "Planning session", exact: true});
+    await expect(summary.getByText("Planning failed.", {exact: true})).toBeVisible();
+    await expect(summary.getByText("Planning Failed", {exact: true})).toBeHidden();
+    await expect(page.getByText("Atlas could not produce a plan that passed safety checks. Refresh the proposal and try again.", {exact: true})).toBeVisible();
+    const failureCode = page.getByText("Failure code", {exact: true});
+    await expect(failureCode).toBeHidden();
+    await page.getByText("Technical details", {exact: true}).click();
+    await expect(page.getByText("Failure code", {exact: true})).toBeVisible();
+    await expect(page.getByText("planning_validation_failed", {exact: true})).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(rejectedMutationRequests).toEqual([]);
+});
