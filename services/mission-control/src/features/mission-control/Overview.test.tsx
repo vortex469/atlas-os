@@ -167,8 +167,8 @@ it('keeps stale AI conditions explicitly unknown', () => {
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
     show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Workflow attention evidence unknown or incomplete.')).toBeInTheDocument();
-    expect(attention.getByText('Operational findings unknown or incomplete.')).toBeInTheDocument();
+    expect(attention.getByText('Some workflow information is missing or incomplete.')).toBeInTheDocument();
+    expect(attention.getByText('Some system findings could not be checked.')).toBeInTheDocument();
     expect(screen.getByText('Activity evidence malformed or incomplete.')).toBeInTheDocument();
     expect(screen.queryByText('Informational · Restart')).not.toBeInTheDocument();
 });

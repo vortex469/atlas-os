@@ -87,11 +87,11 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         .sort((a, b) => attentionPriority(a.state) - attentionPriority(b.state));
     return <>
         <Card title="Operator Attention" evidence={evidence.summary}>
-            <p>Review the conditions below and open a workflow when it needs your decision.</p>
+            <p>Review each item and use its link to see the details.</p>
             <SourceNote evidence={evidence.workflows} label="Workflows" /><SourceNote evidence={evidence.health} label="System health" /><SourceNote evidence={evidence.providers} label="Providers" /><SourceNote evidence={evidence.ai} label="AI provider" />
-            {!workflowKnown && <p>Workflow attention evidence unknown or incomplete.</p>}
-            {!findingsKnown && <p>Operational findings unknown or incomplete.</p>}
-            {uniqueAttention.length === 0 && <p>No attention items in the returned evidence. Missing sources do not establish an all-clear.</p>}
+            {!workflowKnown && <p>Some workflow information is missing or incomplete.</p>}
+            {!findingsKnown && <p>Some system findings could not be checked.</p>}
+            {uniqueAttention.length === 0 && <p>No issues were reported in the available data. If a source is missing, Atlas cannot confirm everything is healthy.</p>}
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{uniqueAttention.slice(0, 5).map(item => <li key={item.key}>
                 <Link to={item.to}>{item.label || "Inspect condition"}</Link>
                 {"actionRequired" in item && item.actionRequired === true && <p>{item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}

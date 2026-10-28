@@ -276,6 +276,16 @@ affects system health, and place the category and score reduction under
 finding in health. Focused card and provider tests, lint and build cover the
 collapsed details and health-impact cases; Core scoring is unchanged.
 
+## Home attention wording — 2026-10-28
+
+The attention panel now tells operators to follow each item's link rather than
+suggesting every condition needs a workflow. Missing-data messages name the
+workflow or finding information that could not be checked, and the no-issues
+message keeps the limit that missing sources cannot confirm full health.
+Focused overview and dashboard-block tests, lint and build cover the wording;
+the six built overview browser checks also pass. Attention selection and
+destinations are unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its
