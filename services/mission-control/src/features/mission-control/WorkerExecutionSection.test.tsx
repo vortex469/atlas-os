@@ -154,7 +154,7 @@ describe("Work activity summary", () => {
         expect(within(section).getByRole("button", { name: "Show all 8 running workflows" })).toBeVisible();
         expect(section.querySelectorAll("button")).toHaveLength(1);
         expect(section.querySelectorAll("form,input,select,textarea")).toHaveLength(0);
-        expect(section).toHaveTextContent("This page does not start work.");
+        expect(section).toHaveTextContent("This summary is read-only.");
     });
     it("rejects malformed JSON fields before the shared dashboard consumes them", () => {
         expect(isWorkflowEvidencePage({ ...page([]), total: Infinity })).toBe(false);

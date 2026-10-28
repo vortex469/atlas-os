@@ -2047,3 +2047,11 @@ shows “Not reported” when the version is absent, and displays the service's
 removed. The full Mission Control suite passes (2,796 tests across 181 files),
 all 14 overview browser checks pass, and lint and production build pass. Browser
 API reads use synthetic fixtures; no API or approval behavior changed.
+
+## Work activity summary wording — 2026-10-28
+
+The dashboard now says its workflow counts and results are a read-only summary,
+instead of saying “this page does not start work,” which was unclear beside the
+link to review workflows. The focused Work activity suite passes (28 tests),
+all 14 overview browser checks pass, and lint and production build pass. No
+workflow action, approval, or API behavior changed.

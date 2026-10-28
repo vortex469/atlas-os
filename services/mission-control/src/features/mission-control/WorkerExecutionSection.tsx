@@ -54,7 +54,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Review workflows →</Link>
             </div>
             <p className="mt-2 text-sm text-mc-text-muted">
-                Counts and results come from recorded workflows. This page does not start work.
+                Counts and results come from recorded workflows. This summary is read-only.
             </p>
             <p className="mt-2 text-sm text-mc-text-secondary">Atlas does not report whether a worker is available.</p>
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}

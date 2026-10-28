@@ -177,6 +177,7 @@ test('work activity reveals all workflow records on mobile without horizontal ov
     await page.goto('/');
 
     const section = page.getByRole('region', { name: 'Work activity' });
+    await expect(section.getByText('Counts and results come from recorded workflows. This summary is read-only.')).toBeVisible();
     const running = section.getByRole('list', { name: 'Running workflows' });
     await expect(running.getByRole('listitem')).toHaveCount(3);
     await section.getByRole('button', { name: 'Show all 5 running workflows' }).click();
