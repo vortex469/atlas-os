@@ -20,6 +20,32 @@ test("provider action catalog reload recovers after an unavailable read", async 
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+for (const width of [390, 1280]) {
+    test(`provider action fields use readable labels at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/providers/proxmox/actions", route => route.fulfill({ json: [{
+            id: "inspect-resource",
+            label: "Inspect Resource",
+            description: "Read provider resource details.",
+            icon: "info",
+            requires_confirmation: false,
+            destructive: false,
+            enabled: true,
+            parameters: { resource_id: {
+                type: "string", required: true, description: "Provider resource to inspect.", example: "110",
+            } },
+        }] }));
+        await page.goto("/providers/proxmox");
+
+        const action = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Inspect Resource" }) });
+        await expect(action.getByLabel("Resource ID")).toBeVisible();
+        await expect(action.getByLabel("Resource ID")).toHaveAttribute("placeholder", "110");
+        await expect(action.getByText("resource_id", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(maxWidth => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 test("switching provider routes clears action parameters before the next catalog arrives", async ({ page }) => {
     const action = { id: "review-model", label: "Review model", description: "Mock action for form isolation.",
         icon: "info", requires_confirmation: true, destructive: false, enabled: true,

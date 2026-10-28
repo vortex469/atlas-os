@@ -215,6 +215,45 @@ describe("ProviderActions", () => {
         expect(actionButton).toBeEnabled();
     });
 
+    it("shows readable parameter labels and preserves the original request key", async () => {
+        const user = userEvent.setup();
+        mockedGetProviderActions.mockResolvedValue([{
+            ...diagnosticsAction,
+            id: "inspect-resource",
+            label: "Inspect Resource",
+            parameters: {
+                resource_id: {
+                    type: "string",
+                    required: true,
+                    description: "Provider resource to inspect.",
+                    example: "110",
+                },
+            },
+        }]);
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "inspect-resource",
+            status: "succeeded",
+            success: true,
+            message: "Resource inspected.",
+            data: {},
+            warnings: [],
+        });
+        renderActions();
+
+        const resourceId = await screen.findByLabelText(/Resource ID/);
+        expect(resourceId).toHaveAttribute("placeholder", "110");
+        await user.type(resourceId, "guest-110");
+        await user.click(screen.getByRole("button", { name: "Inspect Resource" }));
+
+        await waitFor(() => expect(mockedRunProviderAction).toHaveBeenCalledWith(
+            "ollama",
+            "inspect-resource",
+            { confirmed: false, parameters: { resource_id: "guest-110" } },
+        ));
+        expect(await screen.findByText("Resource inspected.")).toBeInTheDocument();
+    });
+
     it("does not execute when confirmation is declined", async () => {
         const user = userEvent.setup();
         mockedGetProviderActions.mockResolvedValue([

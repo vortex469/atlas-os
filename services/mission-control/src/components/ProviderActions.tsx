@@ -32,6 +32,26 @@ type ActionParameterDefinition = {
     example?: string;
 };
 
+const parameterLabelTerms = new Map([
+    ["api", "API"],
+    ["id", "ID"],
+    ["ip", "IP"],
+    ["mac", "MAC"],
+    ["ssh", "SSH"],
+    ["url", "URL"],
+    ["vm", "VM"],
+    ["vmid", "VM ID"],
+]);
+
+function formatParameterLabel(value: string): string {
+    return value
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .split(/[_-]+/)
+        .filter(Boolean)
+        .map((part) => parameterLabelTerms.get(part.toLowerCase()) ?? `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+        .join(" ");
+}
+
 function getParameterDefinition(
     value: unknown,
 ): ActionParameterDefinition {
@@ -369,9 +389,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                                                                 }
                                                                 className="text-sm font-medium text-slate-300"
                                                             >
-                                                                {
-                                                                    parameterName
-                                                                }
+                                                                {formatParameterLabel(parameterName)}
                                                                 {definition.required && (
                                                                     <span className="text-red-300">
                                                                         {" "}

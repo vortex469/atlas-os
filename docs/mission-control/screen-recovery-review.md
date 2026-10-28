@@ -1972,3 +1972,12 @@ catalog item ID is available under collapsed Technical details. The full
 Mission Control suite passes (2,792 tests across 181 files), catalog browser
 checks pass at 390px and 1280px, and lint and production build pass. Browser
 checks use synthetic fixtures and reject mutations.
+
+## Provider action field labels — 2026-10-28
+
+Provider action forms now turn parameter keys such as `resource_id` into
+readable field labels such as “Resource ID.” Requests retain the exact
+provider-supplied parameter keys. The full Mission Control suite passes (2,793
+tests across 181 files), responsive browser checks pass at 390px and 1280px,
+and lint and production build pass. Tests confirm no backend contract or
+approval behavior changed.
