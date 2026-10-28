@@ -5,7 +5,7 @@ const routes = [
         label: "Mission Control",
         path: "/",
         assertion: async (page) => {
-            await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+            await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
         },
     },
     {
@@ -43,7 +43,7 @@ const routes = [
         path: "/execution-candidates",
         assertion: async (page) => {
             await expect(page.getByRole("heading", { name: "Change proposals" })).toBeVisible();
-            await expect(page.getByText("candidate-browser-baseline")).toBeVisible();
+            await expect(page.getByRole("link", { name: "Review Update Compose Stack proposal" })).toBeVisible();
         },
     },
     {

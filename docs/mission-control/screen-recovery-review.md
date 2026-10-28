@@ -318,6 +318,13 @@ findings were reported for the Compose file; it no longer claims that the
 deployment has no security or operational concerns. The Forge test checks the
 scoped empty state; analysis and deployment authority are unchanged.
 
+## Mission Control page title — 2026-10-28
+
+The home page title and main landmark now use “Mission Control” without the
+extra “command center” wording. Shell, navigation and screen-recovery browser
+checks cover the visible title and landmark; routes and page content are
+unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

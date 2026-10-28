@@ -183,7 +183,7 @@ test("an empty provider catalog has a clear way back", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Provider not found" })).toBeVisible();
     await expect(page.getByText("Not updated yet")).not.toBeVisible();
     await page.getByRole("link", { name: "Return to Mission Control" }).click();
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
 });
 
 test("workflows recover from an initial outage without reloading", async ({ page }) => {
@@ -218,7 +218,7 @@ test("a broken page keeps navigation and hides raw error details", async ({ page
     await expect(page.getByText("Unexpected Application Error!")).toHaveCount(0);
     await expect(page.getByText(/TypeError:|Cannot read properties/)).toHaveCount(0);
     await page.getByRole("link", { name: "Return to Mission Control" }).click();
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
 });
 
 test("maintenance history keeps unavailable requests findable and details optional", async ({ page }) => {

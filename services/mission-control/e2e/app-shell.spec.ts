@@ -4,9 +4,9 @@ test("Mission Control application shell renders with primary navigation", async 
     await page.goto("/");
 
     await expect(page.getByText("Mission Control 2.0").first()).toBeVisible();
-    await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
     await expect(page.getByText("browser-regression-baseline")).toBeVisible();
-    await expect(page.getByText("Mission Control command center", { exact: true })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Mission Control", exact: true })).toBeVisible();
 
     await expect(page.getByRole("link", { name: "Mission Control", exact: true })).toHaveAttribute("href", "/");
     await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
@@ -28,7 +28,7 @@ test("Mission Control dashboard loads from controlled Core and Agent responses",
 
     await expect(page.getByRole("heading", { name: "Operator Attention" })).toBeVisible();
     await expect(page.getByText("workflow-browser-baseline")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Inspect executions →", exact: true })).toHaveAttribute("href", "/workflows");
+    await expect(page.getByRole("link", { name: "Review workflows →", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("heading", { name: "Agent state" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Recent Activity" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
@@ -67,7 +67,7 @@ test.describe("Mobile navigation", () => {
         await expect(page.getByRole("dialog")).toHaveCount(0);
 
         // The main content stays reachable and unobstructed at narrow widths.
-        await expect(page.getByRole("main", { name: "Mission Control command center" })).toBeVisible();
+        await expect(page.getByRole("main", { name: "Mission Control" })).toBeVisible();
         await expect(page.getByLabel("Current page: Mission Control")).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
