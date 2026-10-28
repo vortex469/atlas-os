@@ -200,7 +200,11 @@ describe("ExecutionCandidateDetailPage", () => {
         );
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
         expect(await screen.findByText("Planning session created. Next step: generate a candidate plan.")).toBeInTheDocument();
-        expect(screen.getByText("Planning session ID: candidate-plan-1")).toBeInTheDocument();
+        const details = screen.getByText("Planning details", { exact: true });
+        expect(screen.getByText("Planning session ID: candidate-plan-1")).not.toBeVisible();
+        await user.click(details);
+        expect(screen.getByText("Planning session ID: candidate-plan-1")).toBeVisible();
+        expect(screen.getByText("Status: Ready For Planning")).toBeVisible();
     });
 
     it.each([
@@ -242,7 +246,9 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage();
         await user.click(await screen.findByRole("button", { name: "Start planning" }));
         expect(await screen.findByRole("link", { name: "Continue planning" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
-        expect(screen.getByText("Reason codes: future_reason")).toBeInTheDocument();
+        expect(screen.getByText("Reason codes: future_reason")).not.toBeVisible();
+        await user.click(screen.getByText("Planning details", { exact: true }));
+        expect(screen.getByText("Reason codes: future_reason")).toBeVisible();
     });
 
     it("prevents duplicate planning submissions", async () => {
@@ -262,7 +268,7 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
         expect(screen.getByText("Planning request is already pending.")).toBeInTheDocument();
         resolveRequest(planningResponse());
-        expect(await screen.findByText("Planning session ID: candidate-plan-1")).toBeInTheDocument();
+        expect(await screen.findByText("Planning session ID: candidate-plan-1")).not.toBeVisible();
     });
 
     it("disables planning when the proposal expires while open without another read", async () => {
@@ -383,6 +389,9 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.queryByText("Planning session ID: candidate-plan-1")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         expect(await screen.findByText("Planning session ID: candidate-plan-2")).toBeInTheDocument();
+        expect(screen.getByText("Planning session ID: candidate-plan-2")).not.toBeVisible();
+        await user.click(screen.getByText("Planning details", { exact: true }));
+        expect(screen.getByText("Planning session ID: candidate-plan-2")).toBeVisible();
         expect(mockedCreateCandidatePlanningSession).toHaveBeenLastCalledWith({ candidate_id: "candidate-2" });
     });
 
