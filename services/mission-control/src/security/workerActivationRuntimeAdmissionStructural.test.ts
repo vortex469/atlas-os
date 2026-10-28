@@ -12,7 +12,9 @@ describe("v0.54 read-only Mission Control isolation", () => {
         expect(api + component).not.toMatch(/atlas\.(post|put|patch|delete)|setInterval|setTimeout|WebSocket|EventSource|Worker\(|localStorage|sessionStorage|document\.cookie|Authorization|Bearer|Date\.now|crypto\./);
         expect(component).not.toMatch(/<(button|form|input|select|textarea)\b|dangerouslySetInnerHTML/i);
         expect(component).not.toMatch(/<details[^>]*\bopen/);
-        expect(component).toContain("Runtime prerequisites remain incomplete");
+        expect(component).toContain("This is not runtime readiness");
+        expect(component).toContain("Runtime requirements remain incomplete");
+        expect(component).toContain("Show what remains");
     });
     it("has only exact evidence consumers nested beneath the prerequisite, with no navigation", () => {
         expect(parent).toContain("<WorkerActivationRuntimeAdmission prerequisite={state} />");
