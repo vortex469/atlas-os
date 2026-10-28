@@ -2277,3 +2277,11 @@ status. Core health evidence and status mapping are unchanged. The full
 Mission Control component suite passes (2,830 tests), the full synthetic
 browser suite passes (212 tests), and lint and production build pass. These
 fixtures do not establish live backend connectivity or operator acceptance.
+
+## Service health check address — 2026-10-28
+
+The service detail drawer now shows the host and path Atlas checked in a
+readable field. URL credentials are omitted, and query strings appear only as
+`?…`; other technical details are collapsed. The focused service-health suite
+passes (4 tests), as do Mission Control lint and production build. No endpoint,
+health result, or network request behavior changed.

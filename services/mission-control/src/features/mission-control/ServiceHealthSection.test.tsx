@@ -37,7 +37,7 @@ function service(
         latency_ms: latency,
         http_status: 200,
         message: "Service ready.",
-        details: { version: "1.0.0" },
+        details: { url: "http://10.10.60.30:8080/", version: "1.0.0" },
     };
 }
 
@@ -102,6 +102,11 @@ describe("ServiceHealthSection", () => {
         expect(
             screen.getByText("Operations for Docker"),
         ).toBeInTheDocument();
+        expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
+        expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
+        expect(screen.getByText(/"version"/)).not.toBeVisible();
+        await user.click(screen.getByText("Technical details"));
+        expect(screen.getByText(/"version"/)).toBeVisible();
         expect(screen.getAllByText("8 ms")).toHaveLength(2);
 
         rerender(
@@ -140,6 +145,27 @@ describe("ServiceHealthSection", () => {
         expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.getByText("This service is absent from the latest health response.")).toBeInTheDocument();
         expect(screen.queryByText("Operations for Docker")).not.toBeInTheDocument();
+    });
+
+    it("shows the checked host and path without URL credentials or query values", async () => {
+        const user = userEvent.setup();
+        const fileShare = {
+            ...service("ifileshare", 7),
+            details: { url: "http://operator:password@10.10.60.30:8080/health?token=private" },
+        };
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: fileShare }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "View details for iFileshare" }));
+
+        expect(screen.getByText("http://10.10.60.30:8080/health?…")).toBeInTheDocument();
+        expect(screen.queryByText(/password|private/)).not.toBeInTheDocument();
     });
 
     it("closes the details drawer with Escape and the backdrop", async () => {

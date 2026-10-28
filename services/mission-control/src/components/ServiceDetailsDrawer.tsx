@@ -51,7 +51,11 @@ export function ServiceDetailsDrawer({
         };
     }, [onClose]);
 
-    const hasDetails = Object.keys(health.details).length > 0;
+    const healthCheckAddress = formatHealthCheckAddress(health.details.url);
+    const technicalDetails = Object.fromEntries(
+        Object.entries(health.details).filter(([key]) => key !== "url"),
+    );
+    const hasTechnicalDetails = Object.keys(technicalDetails).length > 0;
 
     return (
         <div
@@ -121,6 +125,20 @@ export function ServiceDetailsDrawer({
                         </div>
                     </dl>
 
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+                            Health check
+                        </h3>
+                        <dl className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
+                            <dt className="text-xs uppercase tracking-wider text-slate-500">
+                                Address Atlas checked
+                            </dt>
+                            <dd className="mt-2 break-all font-mono text-sm text-slate-200">
+                                {healthCheckAddress ?? "Not reported"}
+                            </dd>
+                        </dl>
+                    </section>
+
                     {provider ? (
                         <ProviderActions
                             provider={provider}
@@ -161,14 +179,16 @@ export function ServiceDetailsDrawer({
                     </section>
 
                     <section>
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                            Details
-                        </h3>
-                        <pre className="mt-3 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-4 text-xs leading-6 text-slate-300">
-                            {hasDetails
-                                ? JSON.stringify(health.details, null, 2)
-                                : "No additional details returned."}
-                        </pre>
+                        <details>
+                            <summary className="cursor-pointer text-sm font-semibold text-slate-400">
+                                Technical details
+                            </summary>
+                            <pre className="mt-3 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-4 text-xs leading-6 text-slate-300">
+                                {hasTechnicalDetails
+                                    ? JSON.stringify(technicalDetails, null, 2)
+                                    : "No additional details returned."}
+                            </pre>
+                        </details>
                     </section>
 
                     <p className="text-xs text-slate-500">
@@ -178,4 +198,14 @@ export function ServiceDetailsDrawer({
             </aside>
         </div>
     );
+}
+
+function formatHealthCheckAddress(value: unknown): string | null {
+    if (typeof value !== "string" || !value.trim()) return null;
+    try {
+        const url = new URL(value);
+        return `${url.protocol}//${url.host}${url.pathname}${url.search ? "?…" : ""}`;
+    } catch {
+        return null;
+    }
 }
