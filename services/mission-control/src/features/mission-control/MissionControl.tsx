@@ -110,7 +110,7 @@ function AttentionListItem({ item }: { item: AttentionItem }) {
                 <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
             </details>
         </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
-        {item.stale && <p>Last-known condition; current state unknown.</p>}
+        {item.stale && !isWorkflowAttention(item) && <p>Last-known condition; current state unknown.</p>}
     </li>;
 }
 

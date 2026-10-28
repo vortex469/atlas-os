@@ -139,6 +139,13 @@ describe("MC overview evidence", () => {
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
     });
 
+    it('does not repeat the stale warning for a blocked workflow', () => {
+        show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-blocked', workflow_state: 'blocked', last_result_summary: 'Previous failure', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();
+        expect(attention.queryByText('Last-known condition; current state unknown.')).not.toBeInTheDocument();
+    });
+
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
@@ -441,7 +448,7 @@ it('integrates execution outcomes and stale attention without duplicating health
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getAllByRole('link', { name: 'Last known · Workflow · Blocked' })).toHaveLength(1);
     expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();
-    expect(attention.getByText('Last-known condition; current state unknown.')).toBeVisible();
+    expect(attention.queryByText('Last-known condition; current state unknown.')).not.toBeInTheDocument();
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
 });

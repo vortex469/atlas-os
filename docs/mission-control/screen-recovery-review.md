@@ -1446,3 +1446,10 @@ navigation. No Agent status or execution capability was added.
 The Agent/provider and main overview suites pass 69 tests, and the built-app
 navigation journey passes all nine checks, including direct access to
 Deployment analysis. Mission Control lint and production build pass.
+
+## Operator Attention stale workflow copy — 2026-10-28
+
+Operator Attention no longer repeats the generic stale-condition sentence
+after the more specific last-known workflow warning. Stale provider, service,
+and AI conditions retain their generic freshness explanation. Overview tests
+cover both cases; workflow state and source evidence are unchanged.
