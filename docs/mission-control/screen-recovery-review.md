@@ -1843,3 +1843,16 @@ state values and approval controls are unchanged. The full Mission Control
 suite passes (2,790 tests across 181 files), responsive workflow/dashboard
 browser checks pass (14 tests), and lint and production build pass. Browser
 workflow mutations remain intercepted by synthetic fixtures.
+
+## Workflow verification details — 2026-10-28
+
+The verification and review screen keeps planned checks, recorded check
+results, review findings, and changed files visible. Plan IDs, verifier
+versions, paths, repository references, hashes, and review fingerprints are
+available under a collapsed “Technical details” disclosure. Verification
+approval and Resume remain separate controls. The WorkflowPage suite passes
+(80 tests), the fixture-backed repository journey passes at 390px and 1280px
+(8 browser tests), the full Mission Control suite passes (2,790 tests across
+181 files), and lint and production build pass. Browser workflow writes remain
+intercepted by synthetic fixtures; no API contract or authority behavior
+changed.

@@ -281,8 +281,9 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: buttonName }));
 
-        expect(await screen.findByText(new RegExp(expectedFailureMessage))).toBeVisible();
-        const technicalDetails = screen.getByText("Technical details").closest("details");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(expectedFailureMessage);
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(technicalDetails).toHaveTextContent("Approval already decided");
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
@@ -607,7 +608,7 @@ describe("WorkflowPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Mission Control could not confirm the workflow result.");
-        const technicalDetails = screen.getByText("Technical details").closest("details");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(technicalDetails).toHaveTextContent("Workflow blocked");
         expect(screen.getByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
@@ -967,17 +968,33 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Verification Plan" })).toBeInTheDocument();
-        expect(screen.getByText("verification-plan-123")).toBeInTheDocument();
-        expect(screen.getByText("verifier-v1")).toBeInTheDocument();
-        expect(screen.getAllByText("changed-digest-123").length).toBeGreaterThan(0);
+        const verificationReview = within(screen.getByRole("region", { name: "Verification and review" }));
+        const technicalDetails = verificationReview.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(verificationReview.getByText("verification-plan-123")).not.toBeVisible();
+        expect(verificationReview.getByText("verifier-v1")).not.toBeVisible();
+        for (const digest of verificationReview.getAllByText("changed-digest-123")) expect(digest).not.toBeVisible();
+        expect(verificationReview.getByText("/opt/atlas/services/demo")).not.toBeVisible();
         expect(screen.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
         expect(screen.getByRole("heading", { name: "Verification Evidence" })).toBeInTheDocument();
-        expect(screen.getAllByText("abc123").length).toBeGreaterThan(0);
-        expect(screen.getByText("compose-config: passed")).toBeInTheDocument();
+        expect(verificationReview.getByText("abc123")).not.toBeVisible();
+        expect(verificationReview.getByText("compose-config: passed")).toBeVisible();
         expect(screen.getByRole("heading", { name: "Review" })).toBeInTheDocument();
-        expect(screen.getByText("Deterministic review")).toBeInTheDocument();
-        expect(screen.getByText("review-fingerprint-123")).toBeInTheDocument();
+        expect(verificationReview.getByText("Deterministic review")).toBeVisible();
+        expect(verificationReview.getByText("0 findings, 0 recommendations")).toBeVisible();
+        expect(verificationReview.getByText("compose.yaml")).toBeVisible();
+        expect(verificationReview.getByText("review-fingerprint-123")).not.toBeVisible();
         expect(screen.getAllByText("Disabled").length).toBeGreaterThan(0);
+
+        fireEvent.click(verificationReview.getByText("Technical details"));
+
+        expect(technicalDetails).toHaveAttribute("open");
+        expect(verificationReview.getByText("verification-plan-123")).toBeVisible();
+        expect(verificationReview.getByText("verifier-v1")).toBeVisible();
+        for (const digest of verificationReview.getAllByText("changed-digest-123")) expect(digest).toBeVisible();
+        expect(verificationReview.getByText("/opt/atlas/services/demo")).toBeVisible();
+        expect(verificationReview.getByText("abc123")).toBeVisible();
+        expect(verificationReview.getByText("review-fingerprint-123")).toBeVisible();
     });
 
     it("submits verification approval with only workflow id and decision", async () => {
@@ -1163,7 +1180,7 @@ describe("WorkflowPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Mission Control could not confirm the implementation approval decision.");
-        const technicalDetails = screen.getByText("Technical details").closest("details");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(technicalDetails).toHaveTextContent("approval already approved");
     });

@@ -86,6 +86,15 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Implementation approved. Resume to run this change.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Resume Approved/ })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(7);
+        const verificationReview = page.getByRole("region", { name: "Verification and review" });
+        const plannedCheck = verificationReview.getByRole("definition").filter({ hasText: "compose-config" }).last();
+        await expect(plannedCheck).toBeVisible();
+        await expect(verificationReview.getByText("Verification check IDs", { exact: true })).toBeHidden();
+        await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeHidden();
+        await verificationReview.getByText("Technical details", { exact: true }).click();
+        await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeVisible();
+        await verificationReview.getByText("Technical details", { exact: true }).click();
+        await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeHidden();
         await page.getByRole("button", { name: "Approve Verification", exact: true }).click();
         await expect(page.getByRole("button", { name: "Resume Approved Verification", exact: true })).toBeVisible();
         await expect(page.getByText("Verification approved. Resume to run the checks.", { exact: true })).toBeVisible();

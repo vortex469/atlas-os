@@ -666,16 +666,25 @@ function VerificationReviewSection({
                 <p className="mt-2 text-sm text-slate-400">Review the proposed checks and their recorded results. Verification needs its own approval and a separate Resume step.</p>
             </div>
 
-            <section aria-labelledby="verification-plan-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="verification-plan-heading" className="text-base font-semibold text-white">Verification Plan</h3>
+            <details className="rounded-lg border border-slate-800 bg-slate-950/50 px-4 py-3">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Verification Plan ID" value={plan.verification_plan_id ?? "Not available"} />
                     <Detail label="Verifier Version" value={plan.verifier_version ?? "Not available"} />
                     <Detail label="Changed-files digest" value={plan.changed_files_digest ?? "Not available"} />
                     <Detail label="Verification check IDs" value={plan.verification_check_ids.length > 0 ? plan.verification_check_ids.join(", ") : "None reported"} />
-                    <Detail label="Command-backed checks" value={plan.command_backed_checks.length > 0 ? plan.command_backed_checks.join(", ") : "None reported"} />
                     <Detail label="Working directory" value={plan.working_directory ?? "Not available"} />
                     <Detail label="Repository" value={plan.repository ?? "Not available"} />
+                    <Detail label="Repository HEAD" value={evidence.repository_head ?? "Not available"} />
+                    <Detail label="Evidence changed-files digest" value={evidence.changed_files_digest ?? "Not available"} />
+                    <Detail label="Review fingerprint" value={review.review_fingerprint ?? "Not available"} />
+                </dl>
+            </details>
+
+            <section aria-labelledby="verification-plan-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <h3 id="verification-plan-heading" className="text-base font-semibold text-white">Verification Plan</h3>
+                <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    <Detail label="Command-backed checks" value={plan.command_backed_checks.length > 0 ? plan.command_backed_checks.join(", ") : "None reported"} />
                     <Detail label="Verification status" value={formatLabel(plan.verification_status)} />
                 </dl>
             </section>
@@ -687,8 +696,6 @@ function VerificationReviewSection({
                     <Detail label="Completed time" value={evidence.completed_time ?? "Not available"} />
                     <Detail label="Executed checks" value={evidence.executed_checks.length > 0 ? evidence.executed_checks.join(", ") : "None reported"} />
                     <Detail label="Check results" value={evidence.check_results.length > 0 ? evidence.check_results.map((check) => `${String(check.identifier)}: ${String(check.status)}`).join(", ") : "None reported"} />
-                    <Detail label="Repository HEAD" value={evidence.repository_head ?? "Not available"} />
-                    <Detail label="Changed-files digest" value={evidence.changed_files_digest ?? "Not available"} />
                 </dl>
             </section>
 
@@ -701,7 +708,6 @@ function VerificationReviewSection({
                     <Detail label="Approved / Failed" value={review.approved === null ? "Not available" : review.approved ? "Approved" : "Failed"} />
                     <Detail label="Evidence summary" value={review.evidence_summary ?? "Not available"} />
                     <Detail label="Changed files" value={review.changed_files.length > 0 ? review.changed_files.join(", ") : "None reported"} />
-                    <Detail label="Review fingerprint" value={review.review_fingerprint ?? "Not available"} />
                     <Detail label="Model-assisted review" value={review.model_assisted_review} />
                 </dl>
             </section>
