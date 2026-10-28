@@ -522,34 +522,45 @@ describe("PlanningSessionPage", () => {
     });
 
     it("renders planning failure, unsupported, stale, Core unavailable, persistence, and Agent unavailable states", async () => {
+        const user = userEvent.setup();
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "planning_failed", planning_failure: { code: "planning_validation_failed", message: "Plan validation failed" } }));
         renderPage();
         expect(await screen.findByText("Planning failed.")).toBeInTheDocument();
-        expect(screen.getByText("Plan validation failed")).toBeInTheDocument();
+        expect(screen.getByText("Atlas could not produce a plan that passed safety checks. Refresh the proposal and try again.")).toBeVisible();
+        const failureMessage = screen.getByText("Plan validation failed", { exact: true });
+        expect(failureMessage).not.toBeVisible();
+        const technicalDetails = screen.getByText("Technical details", { exact: true });
+        expect(technicalDetails.closest("details")).not.toHaveAttribute("open");
+        await user.click(technicalDetails);
+        expect(failureMessage).toBeVisible();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "unsupported_intent", unsupported_reason: "Unsupported intent" }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Planning not supported.")).toBeInTheDocument();
-        expect(screen.getByText("Unsupported intent")).toBeInTheDocument();
+        expect(await screen.findByText("Planning unavailable.")).toBeVisible();
+        expect(screen.getByText("This change type is not supported for planning.")).toBeVisible();
+        const unsupportedReason = screen.getByText("Unsupported intent", { exact: true });
+        expect(unsupportedReason).not.toBeVisible();
+        await user.click(screen.getByText("Technical details", { exact: true }));
+        expect(unsupportedReason).toBeVisible();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "stale_before_planning" }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Stale candidate.")).toBeInTheDocument();
-        expect(screen.getByText(/Candidate is stale/i)).toBeInTheDocument();
+        expect(await screen.findByText("Proposal needs refresh.")).toBeVisible();
+        expect(screen.getByText("The proposal changed or expired. Refresh it before planning again.")).toBeVisible();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "planning_failed", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Atlas Core unavailable.")).toBeInTheDocument();
-        expect(screen.getByText("Atlas Core unavailable during planning.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas Core is unavailable.")).toBeVisible();
+        expect(screen.getByText("Atlas Core is unavailable. Try again later.")).toBeVisible();
 
         mockedGetCandidatePlanningSession.mockResolvedValueOnce(session({ status: "planning_failed", planning_failure: { code: "persistence_failed", message: "Persistence failed" } }));
         cleanup();
         renderPage();
-        expect(await screen.findByText("Persistence failure.")).toBeInTheDocument();
-        expect(screen.getByText("Planning session could not be persisted.")).toBeInTheDocument();
+        expect(await screen.findByText("Planning session could not be saved.")).toBeVisible();
+        expect(screen.getByText("Atlas Agent could not save the planning session. Reload before trying again.")).toBeVisible();
 
         mockedGetCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         cleanup();
