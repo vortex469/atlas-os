@@ -114,6 +114,24 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
 });
 
 for (const width of [390, 1280]) {
+    test(`health explanations stay available without crowding the dashboard at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto('/');
+        const health = page.getByRole('region', { name: 'System health', exact: true });
+        await expect(health.getByRole('article', { name: 'Atlas Core health' })).toBeVisible();
+        await expect(health.getByText(/overall check time/)).toBeHidden();
+        await health.getByText('How to read health').click();
+        await expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
+        const core = page.getByRole('region', { name: 'Core health', exact: true });
+        await expect(core.getByText(/Core process health is not reported separately/)).toBeHidden();
+        await core.getByText('About Core health').click();
+        await expect(core.getByText(/Core process health is not reported separately/)).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`work activity names the action and keeps workflow IDs optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route('**/agent-api/api/v1/agent/workflows**', route => route.fulfill({ json: {

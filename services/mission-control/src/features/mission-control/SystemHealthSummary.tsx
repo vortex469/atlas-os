@@ -15,11 +15,9 @@ export function SystemHealthSummary({ evidence }: { evidence: OverviewEvidence }
         { title: "Policy settings check", evidence: evidence.policyHealth, status: policy.status, reason: policy.error, checkedAt: policy.checked_at },
     ];
     return (
-        <section aria-label="System health" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
-            <h3 className="font-semibold text-mc-text-primary">System health</h3>
-            <p>Separate status reports from Atlas Core.</p>
+        <section aria-label="Health reports" className="min-w-0 space-y-3 [overflow-wrap:anywhere]">
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
-                <p>Atlas does not combine these reports into one score. Data older than a minute is marked out of date.</p>
+                <p>Atlas shows each source separately; it does not calculate one overall score. Core does not supply an overall check time. Reports older than a minute are marked out of date.</p>
             </details>
             {sources.map(source => (
                 <article key={source.title} aria-label={source.title} className="min-w-0 space-y-1">

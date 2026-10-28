@@ -152,17 +152,18 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             </div>
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
-            <Card title="Atlas overall state" evidence={evidence.health} loading={loading}>
+            <Card title="System health" showSourceNote={false}>
                 <SystemHealthSummary evidence={evidence} />
-                <p>Atlas-reported state from Core health.</p>
-                <p>Core aggregate update time is not supplied.</p>
                 <Link to="/operations">Open operations →</Link>
             </Card>
             <Card title="Core health" evidence={evidence.health} loading={loading}>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking Core health…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && health.services !== null && typeof health.services === "object" && !Array.isArray(health.services) && <ObservedStatus value={null} reason="Core did not report subsystem health." stale={evidence.health.stale} />}
                 {services.slice(0, 4).map(([name, raw]) => <div key={name}><p>{safeText(name)}</p><ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} /></div>)}
-                <p>{services.length > 4 ? `Showing 4 of ${services.length} reported services. ` : ""}Core process health is not separately reported.</p>
+                {services.length > 4 && <p>Showing 4 of {services.length} reported services.</p>}
+                <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">About Core health</summary>
+                    <p>The listed items are subsystem reports. Core process health is not reported separately.</p>
+                </details>
                 <Link to="/operations">Inspect operations →</Link>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />

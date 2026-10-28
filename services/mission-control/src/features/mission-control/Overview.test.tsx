@@ -50,10 +50,25 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['Atlas overall state','Core health','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System health','Core health','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent Activity']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Workflow status is unknown or incomplete.")).toBeInTheDocument();
+    });
+    it('keeps health source limitations available without crowding the dashboard scan', () => {
+        show({ health: { data: { atlas: 'healthy', services: { api: { status: 'healthy' } } } } });
+        const health = within(screen.getByRole('region', { name: 'System health' }));
+        expect(health.getByRole('article', { name: 'Atlas Core health' })).toBeVisible();
+        expect(health.queryByText(/overall check time/)).not.toBeVisible();
+        fireEvent.click(health.getByText('How to read health'));
+        expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
+        expect(health.getByText(/does not calculate one overall score/)).toBeVisible();
+
+        const core = within(screen.getByRole('region', { name: 'Core health' }));
+        const coreLimit = core.getByText(/Core process health is not reported separately/);
+        expect(coreLimit).not.toBeVisible();
+        fireEvent.click(core.getByText('About Core health'));
+        expect(coreLimit).toBeVisible();
     });
     it("shows a checking state instead of an empty result during the first load", () => {
         show({}, true);

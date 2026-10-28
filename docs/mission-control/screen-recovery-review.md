@@ -717,3 +717,15 @@ section. The confirmation says that deleting old records does not undo provider
 actions. Status labels and page title use sentence case. The focused page suite
 passes (8 tests), responsive browser checks pass at 390px and 1280px (2 tests),
 and lint, production build, and `git diff --check` pass.
+
+## Dashboard health scan simplification — 2026-10-28
+
+The dashboard's health card now has one “System health” heading. Its source
+reports remain separate, with source-specific unavailable and stale states.
+Explanations about separate reports, the absent overall check time, and the
+missing Core process-health report are available in collapsed help. The
+duplicate card-level failure note was removed. No status calculation or data
+source changed. The focused health and overview suites pass (100 tests), the
+phone and desktop browser checks pass (2 tests at 390px and 1280px), and lint,
+production build, and `git diff --check` pass. The browser fixture rejected
+unexpected mutation requests.
