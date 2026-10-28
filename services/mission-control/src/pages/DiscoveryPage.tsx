@@ -42,6 +42,11 @@ type DiscoveryResult = {
     hasMore: boolean;
 };
 
+type DiscoveryRequest = {
+    filters: FilterState;
+    offset: number;
+};
+
 type FilterState = {
     query: string;
     type: "" | DiscoveryItemType;
@@ -72,12 +77,16 @@ export function DiscoveryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const requestGeneration = useRef(0);
+    const lastRequestedQuery = useRef<DiscoveryRequest>({ filters: emptyFilters, offset: 0 });
 
     const loadCatalog = useCallback(
         async (nextFilters: FilterState, offset: number) => {
             const generation = ++requestGeneration.current;
+            lastRequestedQuery.current = { filters: { ...nextFilters }, offset };
             setIsLoading(true);
             setError(null);
+            setMetadata(null);
+            setResult({ entries: [], total: 0, offset, hasMore: false });
 
             try {
                 const [nextMetadata, page] = await Promise.all([
@@ -150,6 +159,16 @@ export function DiscoveryPage() {
         void loadCatalog(submittedFilters, result.offset + PAGE_SIZE);
     }
 
+    function retryLastSearch() {
+        void loadCatalog(lastRequestedQuery.current.filters, lastRequestedQuery.current.offset);
+    }
+
+    const resultSummary = isLoading
+        ? "Loading items…"
+        : error
+          ? "Items unavailable"
+          : `${result.total} ${hasSubmittedFilters ? "matching " : ""}item${result.total === 1 ? "" : "s"} ${hasSubmittedFilters ? "found" : "listed"}`;
+
     return (
         <main className="mx-auto max-w-7xl space-y-8 p-8">
             <header className="space-y-4">
@@ -176,7 +195,14 @@ export function DiscoveryPage() {
                     <p className="font-semibold text-red-300">
                         Catalog could not be loaded
                     </p>
-                    <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    <p className="mt-1 text-sm text-red-200/80">Mission Control could not load these catalog results. Your search filters are still selected.</p>
+                    <button type="button" onClick={retryLastSearch} disabled={isLoading} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
+                        Retry catalog load
+                    </button>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
+                    </details>
                 </div>
             )}
 
@@ -280,7 +306,7 @@ export function DiscoveryPage() {
                             {hasSubmittedFilters ? "Search results" : "Catalog items"}
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            {result.total} {hasSubmittedFilters ? "matching " : ""}item{result.total === 1 ? "" : "s"} {hasSubmittedFilters ? "found" : "listed"}
+                            {resultSummary}
                         </p>
                     </div>
 
@@ -310,7 +336,12 @@ export function DiscoveryPage() {
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                         Loading catalog…
                     </div>
-                ) : result.entries.length === 0 && !error ? (
+                ) : error ? (
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
+                        <p className="font-semibold text-slate-200">Results unavailable</p>
+                        <p className="mt-2 text-sm text-slate-500">Retry catalog load above to try this search again.</p>
+                    </div>
+                ) : result.entries.length === 0 ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
                             {catalogIsEmpty

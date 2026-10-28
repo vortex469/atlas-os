@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -362,12 +362,50 @@ describe("DiscoveryPage", () => {
         expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
     });
 
-    it("shows a recoverable unavailable state", async () => {
-        mockedGetDiscoveryMetadata.mockRejectedValue(new Error("Catalog unavailable"));
+    it("retries the initial catalog load and keeps technical errors collapsed", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("Catalog unavailable"));
 
         renderPage();
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Catalog could not be loaded");
+        expect(alert).toHaveTextContent("Mission Control could not load these catalog results. Your search filters are still selected.");
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Items unavailable")).toBeInTheDocument();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
+        expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears previous results and retries the exact failed search", async () => {
+        const user = userEvent.setup();
+        mockedSearchDiscoveryItems.mockRejectedValueOnce(new Error("Search unavailable"))
+            .mockResolvedValueOnce(searchPage([entry({
+                item: { ...entry().item, id: "ollama", name: "Ollama" },
+            })]));
+
+        renderPage();
+        await screen.findByText("Home Assistant");
+        await user.type(screen.getByLabelText("Keyword search"), "ollama");
+        await user.click(screen.getByRole("button", { name: "Search" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Your search filters are still selected.");
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        expect(screen.queryByText("Ollama")).not.toBeInTheDocument();
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Items unavailable")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
+        expect(await screen.findByText("Ollama")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith(expect.objectContaining({ q: "ollama", offset: 0 }));
     });
 });

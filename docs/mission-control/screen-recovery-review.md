@@ -1098,3 +1098,10 @@ Technical details. A plan result that Mission Control cannot verify requires a
 page reload before another generation attempt. Workflow creation explains that
 a submitted request may have created a workflow and that repeating the request
 retrieves or reuses it; implementation still requires separate approval.
+
+## Discovery search recovery — 2026-10-28
+
+If catalog metadata or results fail to load, Discovery now clears the previous
+cards, shows an unavailable state instead of an empty grid, and offers a
+read-only retry of the exact filters and page. Raw server details stay
+collapsed, and an unavailable result is not reported as zero matches.
