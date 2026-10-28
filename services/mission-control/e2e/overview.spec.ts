@@ -115,6 +115,45 @@ test('service check summary reveals every reported check on mobile', async ({ pa
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+test('work activity reveals all workflow records on mobile without horizontal overflow', async ({ page, rejectedMutationRequests }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    const workflows = [
+        ...Array.from({ length: 5 }, (_, index) => ({ workflow_id: `running-${index}`, workflow_state: 'executing', execution_intent: 'restart-service', timeline: [{ name: 'Execution', status: 'current' }] })),
+        ...Array.from({ length: 5 }, (_, index) => ({ workflow_id: `blocked-${index}`, workflow_state: 'blocked', execution_intent: 'restart-service', timeline: [{ name: 'Execution', status: 'waiting' }] })),
+        ...Array.from({ length: 5 }, (_, index) => ({ workflow_id: `outcome-${index}`, workflow_state: 'completed', execution_intent: 'restart-service', timeline: [{ name: 'Execution', status: 'completed' }] })),
+    ].map(workflow => ({
+        ...workflow,
+        workflow_source: 'candidate',
+        effect_kind: 'repository_change',
+        candidate_id: null,
+        planning_session_id: null,
+        repository: null,
+        target_id: null,
+        last_result_summary: 'Recorded workflow result',
+    }));
+    await page.route(/\/agent-api\/api\/v1\/agent\/workflows(?:\?.*)?$/, route => route.fulfill({ json: {
+        items: workflows, total: workflows.length, offset: 0, limit: 200,
+    } }));
+    await page.goto('/');
+
+    const section = page.getByRole('region', { name: 'Work activity' });
+    const running = section.getByRole('list', { name: 'Running workflows' });
+    await expect(running.getByRole('listitem')).toHaveCount(3);
+    await section.getByRole('button', { name: 'Show all 5 running workflows' }).click();
+    await expect(running.getByRole('listitem')).toHaveCount(5);
+
+    const blocked = section.getByRole('list', { name: 'Blocked workflows' });
+    await section.getByRole('button', { name: 'Show all 5 blocked workflows' }).click();
+    await expect(blocked.getByRole('listitem')).toHaveCount(5);
+
+    await section.getByText('More about execution data').click();
+    const outcomes = section.getByRole('list', { name: 'Recorded execution outcomes' });
+    await section.getByRole('button', { name: 'Show all 5 recorded execution outcomes' }).click();
+    await expect(outcomes.getByRole('listitem')).toHaveCount(5);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 test('narrow overview preserves unknown evidence and distinct attention conditions', async ({ page, rejectedMutationRequests }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.route('**/health', route => route.fulfill({ json: {

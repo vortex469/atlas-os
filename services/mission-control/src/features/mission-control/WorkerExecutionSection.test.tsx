@@ -84,6 +84,37 @@ describe("Work activity summary", () => {
         expect(screen.queryByText("Commit completed")).not.toBeInTheDocument();
         expect(screen.getByText(/Execution times are not available/)).toBeInTheDocument();
     });
+    it("lets operators expand each workflow and outcome list beyond three records", () => {
+        const records = [
+            ...Array.from({ length: 5 }, (_, index) => workflow(`running-${index}`, "executing")),
+            ...Array.from({ length: 5 }, (_, index) => workflow(`blocked-${index}`, "blocked", "waiting")),
+            ...Array.from({ length: 5 }, (_, index) => workflow(`outcome-${index}`, "completed", "completed")),
+        ];
+        view(page(records));
+
+        const section = within(screen.getByRole("region", { name: "Work activity" }));
+        const running = section.getByRole("list", { name: "Running workflows" });
+        expect(within(running).getAllByRole("listitem")).toHaveLength(3);
+        fireEvent.click(section.getByRole("button", { name: "Show all 5 running workflows" }));
+        expect(within(running).getAllByRole("listitem")).toHaveLength(5);
+        fireEvent.click(section.getByRole("button", { name: "Show fewer running workflows" }));
+        expect(within(running).getAllByRole("listitem")).toHaveLength(3);
+
+        const blocked = section.getByRole("list", { name: "Blocked workflows" });
+        expect(within(blocked).getAllByRole("listitem")).toHaveLength(3);
+        fireEvent.click(section.getByRole("button", { name: "Show all 5 blocked workflows" }));
+        expect(within(blocked).getAllByRole("listitem")).toHaveLength(5);
+        fireEvent.click(section.getByRole("button", { name: "Show fewer blocked workflows" }));
+        expect(within(blocked).getAllByRole("listitem")).toHaveLength(3);
+
+        fireEvent.click(section.getByText("More about execution data"));
+        const outcomes = section.getByRole("list", { name: "Recorded execution outcomes" });
+        expect(within(outcomes).getAllByRole("listitem")).toHaveLength(3);
+        fireEvent.click(section.getByRole("button", { name: "Show all 5 recorded execution outcomes" }));
+        expect(within(outcomes).getAllByRole("listitem")).toHaveLength(5);
+        fireEvent.click(section.getByRole("button", { name: "Show fewer recorded execution outcomes" }));
+        expect(within(outcomes).getAllByRole("listitem")).toHaveLength(3);
+    });
     it("hides old observations on refresh failure and recovers on a new response", () => {
         const { rerender } = view(page([workflow("old")]), true);
         expect(screen.queryByRole("link", { name: "Workflow · Running" })).not.toBeInTheDocument();
@@ -116,11 +147,13 @@ describe("Work activity summary", () => {
         expect(screen.getByText("Some workflow statuses are not recognized, so counts are unavailable.")).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector(":scope > dl")).toBeNull();
     });
-    it("caps records and exposes no mutation controls or raw payloads", () => {
+    it("starts with a short summary and exposes no mutation controls or raw payloads", () => {
         view(page(Array.from({ length: 8 }, (_, index) => workflow(`item-${index}`))));
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getAllByRole("link")).toHaveLength(4);
-        expect(section.querySelectorAll("button,form,input,select,textarea")).toHaveLength(0);
+        expect(within(section).getByRole("button", { name: "Show all 8 running workflows" })).toBeVisible();
+        expect(section.querySelectorAll("button")).toHaveLength(1);
+        expect(section.querySelectorAll("form,input,select,textarea")).toHaveLength(0);
         expect(section).toHaveTextContent("This page does not start work.");
     });
     it("rejects malformed JSON fields before the shared dashboard consumes them", () => {

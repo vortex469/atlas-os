@@ -1312,3 +1312,12 @@ The overview suite passes (57 tests), and a mobile browser regression verifies
 all six fixture checks can be revealed and hidden again without horizontal
 overflow. Lint, production build, and `git diff --check` pass. No health
 evidence or backend behavior changes.
+
+## Work activity list access — 2026-10-28
+
+Running, blocked, and recorded-outcome lists in the Work activity card now
+start with three rows and provide an explicit control to reveal or collapse the
+full returned list. The card still links to workflow review, and no approval,
+execution, or backend behavior changes. The focused Work activity suite passes
+(28 tests), as does a 320px browser regression covering all three lists and
+horizontal overflow. Lint and production build pass.

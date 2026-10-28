@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { WorkflowSummary } from "../../types/atlasAgent";
 import { formatWorkflowLabel, WORKFLOW_STATES } from "../../utils/workflowState";
@@ -68,8 +69,8 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized, so counts are unavailable.</p>}
             {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running workflows are listed.</p>}
             <div className="mt-4 grid gap-4">
-                {active.length > 0 && <EvidenceList title="Running workflows" items={active} available={!!items} empty="Unknown" />}
-                {blocked.length > 0 && <EvidenceList title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
+                {active.length > 0 && <EvidenceList key="running" title="Running workflows" items={active} available={!!items} empty="Unknown" />}
+                {blocked.length > 0 && <EvidenceList key="blocked" title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
             </div>
             <details className="mt-4 text-sm text-mc-text-secondary">
                 <summary className="mc-focusable cursor-pointer text-mc-primary">More about execution data</summary>
@@ -77,8 +78,8 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                     <dl className="grid gap-4 sm:grid-cols-2">
                         <Metric label="Queue size" value="Not reported" />
                     </dl>
-                    <EvidenceList title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
-                    <p className="text-xs text-mc-text-muted">Only the first 3 records are shown. Execution times are not available, so outcomes cannot be sorted by recency. A workflow may be blocked before it starts running.</p>
+                    <EvidenceList key="outcomes" title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
+                    <p className="text-xs text-mc-text-muted">Execution times are not available, so outcomes cannot be sorted by recency. A workflow may be blocked before it starts running.</p>
                 </div>
             </details>
             {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
@@ -94,11 +95,14 @@ function Metric({ label, value }: { label: string; value: string }) {
 function EvidenceList({ title, items, available, empty, outcomes = false }: {
     title: string; items: WorkflowSummary[]; available: boolean; empty: string; outcomes?: boolean;
 }) {
+    const [showAll, setShowAll] = useState(false);
+    const ordered = [...items].sort((a, b) => a.workflow_id.localeCompare(b.workflow_id));
+    const displayed = showAll ? ordered : ordered.slice(0, 3);
     return <div>
         <h3 className="text-sm font-semibold text-mc-text-primary">{title}</h3>
         {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Unknown"}</p> :
-            <ul className="mt-2 space-y-2 text-sm">
-                {[...items].sort((a, b) => a.workflow_id.localeCompare(b.workflow_id)).slice(0, 3).map((item) => <li key={item.workflow_id}>
+            <ul aria-label={title} className="mt-2 space-y-2 text-sm">
+                {displayed.map((item) => <li key={item.workflow_id}>
                     <Link to={detailPath("/workflows", item.workflow_id)!} className="text-mc-primary focus-visible:outline-2">{workflowActionLabel(item.execution_intent)} · {workflowStatusLabel(item, outcomes)}</Link>
                     <details className="mt-1 text-xs text-mc-text-muted">
                         <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Technical details</summary>
@@ -106,5 +110,11 @@ function EvidenceList({ title, items, available, empty, outcomes = false }: {
                     </details>
                 </li>)}
             </ul>}
+        {available && items.length > 3 && <button
+            type="button"
+            className="mc-control mc-focusable mt-2 rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"
+            aria-expanded={showAll}
+            onClick={() => setShowAll(current => !current)}
+        >{showAll ? `Show fewer ${title.toLowerCase()}` : `Show all ${items.length} ${title.toLowerCase()}`}</button>}
     </div>;
 }
