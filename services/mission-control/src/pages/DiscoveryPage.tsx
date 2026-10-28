@@ -182,7 +182,7 @@ export function DiscoveryPage() {
                     </p>
                 </div>
 
-                <DiscoveryStatus metadata={metadata} isLoading={summaryLoading} />
+                <DiscoveryStatus metadata={metadata} isLoading={summaryLoading} resultsUnavailable={error !== null} />
                 {summaryError && (
                     <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
                         <p>Catalog summary unavailable. Item results are shown separately.</p>
@@ -414,9 +414,11 @@ function normalizeFilters(filters: FilterState): FilterState {
 function DiscoveryStatus({
     metadata,
     isLoading,
+    resultsUnavailable,
 }: {
     metadata: DiscoveryMetadata | null;
     isLoading: boolean;
+    resultsUnavailable: boolean;
 }) {
     const label = metadata
         ? metadata.catalog_loaded
@@ -431,9 +433,10 @@ function DiscoveryStatus({
     return (
         <div className="space-y-3">
             <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-                <StatusTile label="Status" value={label} />
-                <StatusTile label="Entries" value={metadata ? String(metadata.entry_count) : "…"} />
+                <StatusTile label="Catalog source" value={label} />
+                <StatusTile label="Catalog entries" value={metadata ? String(metadata.entry_count) : "…"} />
             </div>
+            {resultsUnavailable && <p className="text-sm text-slate-400">These counts describe the catalog; the current item results could not be read.</p>}
             <details className="rounded-lg border border-slate-800 p-3">
                 <summary className="mc-focusable cursor-pointer text-sm text-blue-300">Catalog details</summary>
                 <dl className="mt-3 text-sm text-slate-300">
