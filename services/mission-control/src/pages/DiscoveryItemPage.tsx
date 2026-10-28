@@ -65,6 +65,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     const [imageGroundingLoading, setImageGroundingLoading] = useState(true);
     const [imageGroundingError, setImageGroundingError] =
         useState<ImageGroundingErrorKind | null>(null);
+    const [groundingLoadAttempt, setGroundingLoadAttempt] = useState(0);
     const [installationPlanState, setInstallationPlanState] = useState<{
         itemId: string;
         plan: InstallationPlan | null;
@@ -173,7 +174,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             });
 
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, groundingLoadAttempt]);
 
     useEffect(() => {
         let cancelled = false;
@@ -310,6 +311,13 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         setEvidenceLoadAttempt((attempt) => attempt + 1);
     }
 
+    function retryImageGrounding() {
+        setImageGrounding(null);
+        setImageGroundingLoading(true);
+        setImageGroundingError(null);
+        setGroundingLoadAttempt((attempt) => attempt + 1);
+    }
+
     if (isLoading) {
         return (
             <main className="mx-auto max-w-5xl p-8">
@@ -430,6 +438,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 projection={imageGrounding}
                 isLoading={imageGroundingLoading}
                 errorKind={imageGroundingError}
+                onRetry={retryImageGrounding}
             />
 
             <InstallationPlanReview

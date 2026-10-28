@@ -184,6 +184,43 @@ for (const width of [390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`temporary image-grounding failures can retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        const entry = discoveryItemsPage.entries[0];
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items/fixture-app", (route) => route.fulfill({ json: entry }));
+        await page.route("**/api/v1/discovery/items/fixture-app/relationships", (route) => route.fulfill({ json: {
+            item_id: "fixture-app", incoming: [], outgoing: [],
+        } }));
+        await page.route("**/api/v1/discovery/items/fixture-app/image-grounding", (route) => {
+            reads += 1;
+            return reads <= 2
+                ? route.fulfill({ status: 503, json: { detail: "PRIVATE_GROUNDING_ERROR" } })
+                : route.fulfill({ json: {
+                    schema_version: "discovery-image-grounding-projection-v1",
+                    catalog_item_id: "fixture-app",
+                    status: "no_deployment_binding",
+                    release_version: null,
+                    deployment_binding: null,
+                    observed_image: null,
+                    accepted_evidence: [],
+                } });
+        });
+        await page.goto("/discovery/items/fixture-app");
+
+        const grounding = page.getByRole("region", { name: "Image grounding" });
+        await expect(grounding.getByRole("status")).toContainText("Image grounding is currently unavailable due to a local source or read failure.");
+        await expect(grounding.getByRole("status")).not.toContainText("PRIVATE_GROUNDING_ERROR");
+        await grounding.getByRole("button", { name: "Retry image grounding" }).click();
+        await expect(grounding.getByText("No deployment binding").first()).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
+        expect(reads).toBe(3);
+        expect(rejectedMutationRequests).toEqual([]);
+        expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
+    });
+}
+
 test("workflow recovery retries only the read and keeps a way back", async ({ page }) => {
     let reads = 0;
     await page.setViewportSize({ width: 390, height: 844 });

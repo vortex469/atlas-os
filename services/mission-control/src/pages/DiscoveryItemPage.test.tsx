@@ -532,6 +532,22 @@ describe("DiscoveryItemPage", () => {
         expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });
 
+    it("retries temporary image-grounding failures without reloading the catalog item", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryImageGrounding.mockRejectedValueOnce(httpError(503, "Source temporarily unavailable"))
+            .mockResolvedValueOnce(imageGrounding());
+
+        renderPage();
+
+        expect(await screen.findByText("Image grounding is currently unavailable due to a local source or read failure.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry image grounding" }));
+
+        const deploymentBindingLabels = await screen.findAllByText("No deployment binding");
+        expect(deploymentBindingLabels.some((element) => element.tagName === "P")).toBe(true);
+        expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
+    });
+
     it.each([
         [404, "Item grounding projection unavailable or not found."],
         [503, "Image grounding is currently unavailable due to a local source or read failure."],

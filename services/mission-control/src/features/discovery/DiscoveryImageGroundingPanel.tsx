@@ -73,10 +73,12 @@ export function DiscoveryImageGroundingPanel({
     projection,
     isLoading,
     errorKind,
+    onRetry,
 }: {
     projection: DiscoveryImageGroundingProjection | null;
     isLoading: boolean;
     errorKind: ImageGroundingErrorKind | null;
+    onRetry?: () => void;
 }) {
     return (
         <section aria-labelledby="image-grounding-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
@@ -86,22 +88,22 @@ export function DiscoveryImageGroundingPanel({
             </p>
 
             {isLoading && <p className="mt-4 text-sm text-slate-400">Loading image-grounding context…</p>}
-            {!isLoading && errorKind && <UnavailableState kind={errorKind} />}
+            {!isLoading && errorKind && <UnavailableState kind={errorKind} onRetry={onRetry} />}
             {!isLoading && !errorKind && !projection && (
-                <UnavailableState kind="unavailable" />
+                <UnavailableState kind="unavailable" onRetry={onRetry} />
             )}
             {!isLoading && !errorKind && projection && <ProjectionDetails projection={projection} />}
         </section>
     );
 }
 
-function UnavailableState({ kind }: { kind: ImageGroundingErrorKind }) {
+function UnavailableState({ kind, onRetry }: { kind: ImageGroundingErrorKind; onRetry?: () => void }) {
     const copy = kind === "not_found"
         ? "Item grounding projection unavailable or not found."
         : kind === "source_unavailable"
           ? "Image grounding is currently unavailable due to a local source or read failure."
           : "Image grounding is currently unavailable.";
-    return <p role="status" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">{copy}</p>;
+    return <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p role="status">{copy}</p>{kind !== "not_found" && onRetry && <button type="button" onClick={onRetry} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">Retry image grounding</button>}</div>;
 }
 
 function ProjectionDetails({ projection }: { projection: DiscoveryImageGroundingProjection }) {

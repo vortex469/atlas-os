@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
     DiscoveryImageGroundingProjection,
@@ -102,9 +102,18 @@ describe("DiscoveryImageGroundingPanel", () => {
         ["source_unavailable", "Image grounding is currently unavailable due to a local source or read failure."],
         ["unavailable", "Image grounding is currently unavailable."],
     ] as const)("renders bounded %s errors without backend details", (errorKind, copy) => {
-        render(<DiscoveryImageGroundingPanel projection={null} isLoading={false} errorKind={errorKind} />);
+        const onRetry = vi.fn();
+        render(<DiscoveryImageGroundingPanel projection={null} isLoading={false} errorKind={errorKind} onRetry={onRetry} />);
         expect(screen.getByRole("status")).toHaveTextContent(copy);
         expect(screen.queryByText(/SECRET|token=hidden|private\/repository/)).not.toBeInTheDocument();
+        const retryButton = screen.queryByRole("button", { name: "Retry image grounding" });
+        if (errorKind === "not_found") {
+            expect(retryButton).not.toBeInTheDocument();
+        } else {
+            expect(retryButton).toBeInTheDocument();
+            retryButton?.click();
+            expect(onRetry).toHaveBeenCalledOnce();
+        }
     });
 
     it("renders a bounded loading state and advisory authority copy without actions", () => {

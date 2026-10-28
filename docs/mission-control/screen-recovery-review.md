@@ -970,3 +970,10 @@ When supplemental release evidence is unavailable, the panel now retries that
 read independently while preserving the curated catalog view. Focused panel and
 page tests plus mobile and desktop browser checks verify the recovery. No other
 catalog evidence is reloaded, and curated data remains authoritative.
+
+## Discovery image-grounding recovery — 2026-10-28
+
+Temporary image-grounding read failures now offer an in-place retry. A genuine
+404 remains an unavailable projection without a retry control. Focused component
+and page tests plus mobile and desktop browser checks verify both the transient
+recovery and the separate missing state. No deployment action is introduced.
