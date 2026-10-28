@@ -102,7 +102,9 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     const worker = page.getByRole('region', { name: 'Work activity' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();
-    await expect(worker.getByText('Worker availability is not reported.', { exact: true })).toBeVisible();
+    await expect(worker.getByText('Atlas does not report whether a worker is available.', { exact: true })).toBeVisible();
+    await expect(worker.getByText('No running workflows are listed.', { exact: true })).toBeVisible();
+    await expect(worker.getByText('No running workflows are listed. Worker availability is unknown.', { exact: true })).toHaveCount(0);
     const workerToggle = worker.locator('summary', { hasText: 'More about execution data' });
     await workerToggle.focus();
     await page.keyboard.press('Enter');

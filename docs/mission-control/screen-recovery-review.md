@@ -594,6 +594,15 @@ continues to be labeled separately. Focused evidence/dashboard suites pass
 (85 tests), all 16 built app-shell and overview browser checks pass, and
 lint/build pass.
 
+## Work activity empty state — 2026-10-28
+
+The dashboard states once that Atlas does not report worker availability.
+When there are no active records, the separate empty message now only says
+that no running workflows are listed. This avoids repeating the availability
+uncertainty. Workflow counts, stale-data handling, and execution boundaries are
+unchanged. Focused component suites pass (77 tests), all 8 built overview
+browser checks pass, and lint/build pass.
+
 ## Acceptance status and remaining gaps
 
 - Maintenance request submission through the returned proposal, planning, exact

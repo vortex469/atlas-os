@@ -55,7 +55,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <p className="mt-2 text-sm text-mc-text-muted">
                 Counts and results come from recorded workflows. This page does not start work.
             </p>
-            <p className="mt-2 text-sm text-mc-text-secondary">Worker availability is not reported.</p>
+            <p className="mt-2 text-sm text-mc-text-secondary">Atlas does not report whether a worker is available.</p>
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}
             {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing workflow information; displayed results may be stale.</p>}
             {items && knownStates && (
@@ -66,7 +66,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             )}
             {loading && !items && <p role="status" className="mt-3 text-sm text-mc-text-secondary">Checking workflow status…</p>}
             {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized, so counts are unavailable.</p>}
-            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running workflows are listed. Worker availability is unknown.</p>}
+            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running workflows are listed.</p>}
             <div className="mt-4 grid gap-4">
                 {active.length > 0 && <EvidenceList title="Running workflows" items={active} available={!!items} empty="Unknown" />}
                 {blocked.length > 0 && <EvidenceList title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}

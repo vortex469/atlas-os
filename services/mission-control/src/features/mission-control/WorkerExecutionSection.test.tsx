@@ -39,8 +39,9 @@ describe("Work activity summary", () => {
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getByText("Running workflows").nextElementSibling).toHaveTextContent("0");
         expect(within(section).getByText("Blocked workflows").nextElementSibling).toHaveTextContent("0");
-        expect(within(section).getByText("No running workflows are listed. Worker availability is unknown.")).toBeInTheDocument();
-        expect(within(section).getByText("Worker availability is not reported.")).toBeInTheDocument();
+        expect(within(section).getByText("No running workflows are listed.")).toBeInTheDocument();
+        expect(within(section).getByText("Atlas does not report whether a worker is available.")).toBeInTheDocument();
+        expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
         expect(within(section).getByText("Queue size").closest("details")?.open).toBe(false);
         fireEvent.click(within(section).getByText("More about execution data"));
         expect(within(section).getByText("Queue size")).toBeInTheDocument();

@@ -186,7 +186,7 @@ it('distinguishes running workflows from verification and commit activity', () =
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
     const activity = within(screen.getByRole('region', { name: 'Work activity' }));
     expect(activity.getAllByText('Running workflows')[0].nextElementSibling).toHaveTextContent('1');
-    expect(activity.getByText('Worker availability is not reported.')).toBeInTheDocument();
+    expect(activity.getByText('Atlas does not report whether a worker is available.')).toBeInTheDocument();
 });
 
 it('preserves the most urgent duplicate condition at equal freshness', () => {
