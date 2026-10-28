@@ -44,6 +44,10 @@ explicit availability flag; missing saved plans offer a reload instead of
 presenting another generation action. Workflow creation and later exact
 approvals remain separate steps.
 
+The workflow directory keeps each card focused on its stage, latest result and
+whether approval is waiting. Candidate, planning-session and target references
+are available under optional workflow details.
+
 The exact-approval workflow detail resets when its URL changes and rejects
 details bearing another workflow ID. An unavailable read offers a read-only
 retry and a link to the workflow list; retry does not submit approval or resume

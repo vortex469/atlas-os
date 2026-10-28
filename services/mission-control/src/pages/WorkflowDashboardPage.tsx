@@ -8,6 +8,7 @@ import type { WorkflowListResponse, WorkflowSummary } from "../types/atlasAgent"
 import {
     WORKFLOW_STATES,
     formatWorkflowLabel,
+    formatWorkflowValue,
     isActiveWorkflowState,
     workflowActionRequired,
     workflowRailStages,
@@ -276,23 +277,27 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 className="break-all text-lg font-semibold text-white">{workflow.workflow_id}</h3>
-                    <p className="mt-1 text-sm text-slate-400">Current stage: {workflowStageLabel(workflow.workflow_state)}</p>
+                    <p className="mt-1 text-sm text-slate-400">Stage: {workflowStageLabel(workflow.workflow_state)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    Open Workflow
+                    Open workflow
                 </Link>
             </div>
-            <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
-                <Detail label="Workflow Source" value={formatWorkflowLabel(workflow.workflow_source)} />
-                <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not exposed"} />
-                <Detail label="Planning Session ID" value={workflow.planning_session_id ?? "Not exposed"} />
-                <Detail label="Current State" value={formatWorkflowLabel(workflow.workflow_state)} />
-                <Detail label="Repository or Target" value={workflow.repository ?? workflow.target_id ?? "Not exposed"} />
-                <Detail label="Last Known Result" value={workflow.last_result_summary} />
-                <Detail label="Operator Action" value={actionRequired ? "Action required" : "No operator action required"} />
+            <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+                <Detail label="Latest result" value={formatWorkflowValue(workflow.last_result_summary, "No result reported yet")} />
+                <Detail label="Approval" value={actionRequired ? "Your approval is needed" : "No approval is waiting"} />
             </dl>
+            <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
+                <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
+                <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+                    <Detail label="Started from" value={formatWorkflowLabel(workflow.workflow_source)} />
+                    <Detail label="Candidate ID" value={formatWorkflowValue(workflow.candidate_id, "Not available")} />
+                    <Detail label="Planning session" value={formatWorkflowValue(workflow.planning_session_id, "Not available")} />
+                    <Detail label="Repository or target" value={workflow.repository || workflow.target_id || "Not available"} />
+                </dl>
+            </details>
             <div className="mt-4">
-                <h4 id={railId} className="mb-2 text-sm font-semibold text-slate-200">Mini workflow rail</h4>
+                <h4 id={railId} className="mb-2 text-sm font-semibold text-slate-200">Progress</h4>
                 <WorkflowMiniRail labelledBy={railId} stages={workflowRailStages(workflow)} />
             </div>
         </article>

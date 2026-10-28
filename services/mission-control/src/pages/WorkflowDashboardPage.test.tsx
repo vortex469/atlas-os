@@ -89,7 +89,21 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByText("Waiting for commit approval")).toBeInTheDocument();
         expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Mini workflow rail")[0]).toBeInTheDocument();
+        expect(screen.getAllByText("Progress")[0]).toBeInTheDocument();
+
+        const card = screen.getByRole("heading", { name: "workflow-123" }).closest("article");
+        expect(card).not.toBeNull();
+        const details = within(card as HTMLElement);
+        expect(details.getByText("Stage: Implementation")).toBeVisible();
+        expect(details.getByText("Latest result")).toBeVisible();
+        expect(details.getByText("Your approval is needed")).toBeVisible();
+        expect(details.queryByText("Current State")).not.toBeInTheDocument();
+        const disclosure = details.getByText("Workflow details", { exact: true });
+        expect(disclosure.closest("details")).not.toHaveAttribute("open");
+        expect(details.getByText("Candidate ID", { exact: true })).not.toBeVisible();
+        fireEvent.click(disclosure);
+        expect(details.getByText("Candidate ID", { exact: true })).toBeVisible();
+        expect(details.getByText("candidate-123", { exact: true })).toBeVisible();
     });
 
     it("filters by state, source, candidate ID, workflow ID, and action required", async () => {
@@ -123,6 +137,25 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.click(screen.getByRole("button", { name: /Next/i }));
 
         expect(screen.getByText("workflow-10")).toBeInTheDocument();
+    });
+
+    it("uses a plain fallback for missing references inside workflow details", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([workflow({
+            candidate_id: null,
+            planning_session_id: null,
+            repository: null,
+            target_id: null,
+        })]));
+
+        renderDashboard();
+
+        await screen.findByText("workflow-123");
+        const card = screen.getByRole("heading", { name: "workflow-123" }).closest("article");
+        expect(card).not.toBeNull();
+        const details = within(card as HTMLElement);
+        fireEvent.click(details.getByText("Workflow details", { exact: true }));
+        expect(details.getAllByText("Not available", { exact: true })).toHaveLength(3);
+        expect(details.queryByText("Not exposed", { exact: true })).not.toBeInTheDocument();
     });
 
     it("refreshes manually and blocks overlapping refresh requests", async () => {

@@ -14,6 +14,7 @@ runtime, tag, or publish a release.
 | Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` reuses 42 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
+| Workflow directory | Each card shows its current stage, latest result and approval need first; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
 | Providers | Registry and detail links work; unavailable data differs from absence; forms and late responses stay with their provider | Provider page/component tests; provider registry and route-switch browser cases in `e2e/screen-recovery.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
 | Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
@@ -105,6 +106,14 @@ so operators do not encounter menu choices that cannot be opened. The focused
 layout and structural tests pass (37 tests), the application-shell browser
 checks pass (8 tests), and Mission Control lint and build pass. No routes,
 backend contracts, or operator permissions changed.
+
+## Workflow directory simplification follow-up — 2026-10-28
+
+Workflow cards now lead with the stage, latest result and approval status.
+Candidate/session IDs and repository/target references are tucked under
+optional details, and the duplicate status field is removed. The focused
+component tests pass (8 tests), responsive browser checks pass at 390px and
+1280px (2 tests), and lint/build pass. The directory remains read-only.
 
 ## Acceptance status and remaining gaps
 
