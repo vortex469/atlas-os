@@ -1339,3 +1339,13 @@ also says “Atlas Core” instead of “Atlas Core API.” This changes wording
 the same read still determines the connection state. The layout suite passes
 (33 tests), the focused unavailable-state browser test passes, and lint and
 production build pass.
+
+## Operator Attention source status — 2026-10-28
+
+When one or more reports are missing or incomplete, the dashboard shows one
+plain-language warning that the attention list may be incomplete. Per-source
+status remains available under a collapsed “Source status” detail, reducing
+repeated error notes while preserving the specific reason. The overview suite
+passes (58 tests), the focused dashboard outage browser test passes, and lint
+and production build pass. Known attention items remain visible, and no source
+or approval behavior changes.

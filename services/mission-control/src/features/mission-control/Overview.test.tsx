@@ -76,7 +76,8 @@ describe("MC overview evidence", () => {
         });
 
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        const visibleItems = attention.getAllByRole('listitem');
+        const attentionList = attention.getByRole('list', { name: 'Reported attention conditions' });
+        const visibleItems = within(attentionList).getAllByRole('listitem');
         expect(visibleItems).toHaveLength(5);
         expect(within(visibleItems[0]).getByRole('link')).toHaveTextContent('blocked');
         expect(within(visibleItems[1]).getByRole('link', { name: 'Critical condition' })).toBeVisible();
@@ -86,12 +87,12 @@ describe("MC overview evidence", () => {
         const expand = attention.getByRole('button', { name: 'Show all 9 attention items' });
         expect(expand).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expand);
-        expect(attention.getAllByRole('listitem')).toHaveLength(9);
+        expect(within(attentionList).getAllByRole('listitem')).toHaveLength(9);
         expect(attention.getByRole('link', { name: 'service-5' })).toBeVisible();
         const collapse = attention.getByRole('button', { name: 'Show fewer conditions' });
         expect(collapse).toHaveAttribute('aria-expanded', 'true');
         fireEvent.click(collapse);
-        expect(attention.getAllByRole('listitem')).toHaveLength(5);
+        expect(within(attentionList).getAllByRole('listitem')).toHaveLength(5);
     });
 
     it('lets operators expand and collapse all reported service checks', () => {
@@ -200,7 +201,10 @@ describe("MC overview evidence", () => {
             ai: { data: { health: { status: 'healthy' } } },
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Some information is missing. Atlas cannot confirm whether attention is needed.')).toBeVisible();
+        expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+        expect(attention.getByText('System health: health details are incomplete.')).not.toBeVisible();
+        fireEvent.click(attention.getByText('Source status'));
+        expect(attention.getByText('System health: health details are incomplete.')).toBeVisible();
         expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
         expect(checks.getByText('Service check details are unavailable.')).toBeVisible();
@@ -220,9 +224,20 @@ describe("MC overview evidence", () => {
             ai: { data: { health: { status: 'healthy' } } },
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Workflows: Current information could not be loaded.')).toBeVisible();
+        expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+        expect(attention.getByText('Workflows: current information could not be loaded.')).not.toBeVisible();
+        fireEvent.click(attention.getByText('Source status'));
+        expect(attention.getByText('Workflows: current information could not be loaded.')).toBeVisible();
         expect(attention.queryByText('Workflow results are incomplete.')).not.toBeInTheDocument();
-        expect(attention.getByText('Some information is missing. Atlas cannot confirm whether attention is needed.')).toBeVisible();
+    });
+    it("warns that other attention may be hidden when a source is missing", () => {
+        show({
+            workflows: { data: { items: [{ workflow_id: "known", workflow_state: "blocked", last_result_summary: "Needs review", timeline: [] }], total: 1, limit: 200, offset: 0 } },
+            health: { unavailable: true },
+        });
+        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        expect(attention.getByRole('link', { name: 'Workflow · Blocked' })).toBeVisible();
+        expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
     });
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
@@ -357,8 +372,12 @@ it('keeps stale AI conditions explicitly unknown', () => {
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
     show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Workflow results are incomplete.')).toBeInTheDocument();
-    expect(attention.getByText('System findings are incomplete.')).toBeInTheDocument();
+    expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+    expect(attention.getByText('Workflows: workflow results are incomplete.')).not.toBeVisible();
+    expect(attention.getByText('System findings: finding details are incomplete.')).not.toBeVisible();
+    fireEvent.click(attention.getByText('Source status'));
+    expect(attention.getByText('Workflows: workflow results are incomplete.')).toBeVisible();
+    expect(attention.getByText('System findings: finding details are incomplete.')).toBeVisible();
     expect(screen.getByText('Some recent activity records could not be read.')).toBeInTheDocument();
     expect(screen.queryByText('Succeeded · Restart')).not.toBeInTheDocument();
 });

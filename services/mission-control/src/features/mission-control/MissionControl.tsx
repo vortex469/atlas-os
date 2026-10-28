@@ -40,6 +40,12 @@ function SourceNote({ evidence, label, loading = false }: { evidence?: Evidence;
 function sourceIsCurrent(evidence?: Evidence): boolean {
     return evidence?.data !== undefined && evidence.unavailable !== true && evidence.stale !== true;
 }
+function sourceIssue(evidence: Evidence | undefined, label: string, loading: boolean, incomplete?: string): string | null {
+    if (evidence?.stale) return `${label}: refresh failed; showing the last available information.`;
+    if (evidence?.unavailable) return `${label}: current information could not be loaded.`;
+    if (evidence?.data === undefined) return loading ? null : `${label}: no current information is available.`;
+    return incomplete ? `${label}: ${incomplete}` : null;
+}
 function Card({ title, children, evidence, showSourceNote = true, loading = false }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean; loading?: boolean }) {
     return <section aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
         <h2 className="mb-3 text-lg font-semibold text-mc-text-primary">{title}</h2>
@@ -135,6 +141,13 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const attentionEvidenceComplete = attentionSources.every(sourceIsCurrent)
         && findingsKnown && workflowKnown && healthStatusesKnown && providersKnown
         && status(aiHealth.status) !== "unknown";
+    const attentionSourceIssues = [
+        sourceIssue(evidence.summary, "System findings", loading, findingsKnown ? undefined : "finding details are incomplete."),
+        sourceIssue(evidence.workflows, "Workflows", loading, workflowKnown ? undefined : "workflow results are incomplete."),
+        sourceIssue(evidence.health, "System health", loading, healthStatusesKnown ? undefined : "health details are incomplete."),
+        sourceIssue(evidence.providers, "Providers", loading, providersKnown ? undefined : "provider status details are incomplete."),
+        sourceIssue(evidence.ai, "AI provider", loading, status(aiHealth.status) === "unknown" ? "provider status is unknown." : undefined),
+    ].filter((issue): issue is string => issue !== null);
     const initialAttentionLoad = loading && !attentionSources.some(source =>
         source?.data !== undefined || source?.unavailable === true);
     // One row per authoritative source condition. Do not synthesize alerts from counts.
@@ -168,19 +181,18 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const displayedServices = showAllServices ? services : services.slice(0, 4);
     return <>
         <Card title="Operator Attention" showSourceNote={false}>
-            {!initialAttentionLoad && <>
-                <SourceNote evidence={evidence.summary} label="System findings" loading={loading} />
-                <SourceNote evidence={evidence.workflows} label="Workflows" loading={loading} />
-                <SourceNote evidence={evidence.health} label="System health" loading={loading} />
-                <SourceNote evidence={evidence.providers} label="Providers" loading={loading} />
-                <SourceNote evidence={evidence.ai} label="AI provider" loading={loading} />
-                {evidence.workflows?.data !== undefined && !workflowKnown && <p>Workflow results are incomplete.</p>}
-                {evidence.summary?.data !== undefined && !findingsKnown && <p>System findings are incomplete.</p>}
+            {!initialAttentionLoad && !attentionEvidenceComplete && <>
+                <p role="status">Some information is missing. Atlas cannot confirm this list includes everything that needs attention.</p>
+                {attentionSourceIssues.length > 0 && <details>
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Source status</summary>
+                    <ul className="mt-2 space-y-1">
+                        {attentionSourceIssues.map(issue => <li key={issue}>{issue}</li>)}
+                    </ul>
+                </details>}
             </>}
             {uniqueAttention.length === 0 && loading && <p>Checking current information…</p>}
-            {uniqueAttention.length === 0 && !loading && !attentionEvidenceComplete && <p>Some information is missing. Atlas cannot confirm whether attention is needed.</p>}
             {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>The current reports show no items needing attention.</p>}
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{displayedAttention.map(item => <AttentionListItem key={item.key} item={item} />)}</ul>
+            <ul aria-label="Reported attention conditions" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{displayedAttention.map(item => <AttentionListItem key={item.key} item={item} />)}</ul>
             {uniqueAttention.length > 5 && <button
                 type="button"
                 className="mc-control mc-focusable rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"
