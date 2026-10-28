@@ -133,6 +133,33 @@ describe("ExecutionCandidatesPage", () => {
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
     });
 
+    it("retries the same proposal search after a read failure", async () => {
+        const user = userEvent.setup();
+        mockedListExecutionCandidates
+            .mockResolvedValueOnce(page([candidate()]))
+            .mockRejectedValueOnce(new Error("Core unavailable"))
+            .mockResolvedValueOnce(page([]));
+
+        renderPage();
+        await screen.findByText("candidate-1");
+        await user.type(screen.getByLabelText("Target ID"), "stack-home-assistant");
+        await user.click(screen.getByRole("button", { name: "Search proposals" }));
+        await screen.findByRole("alert");
+
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
+
+        expect(await screen.findByText("No change proposals match these filters.")).toBeInTheDocument();
+        expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith({
+            status: undefined,
+            category: undefined,
+            intent: undefined,
+            sourceSubsystem: undefined,
+            targetId: "stack-home-assistant",
+            limit: 25,
+            offset: 0,
+        });
+    });
+
     it("does not let the initial read overwrite a submitted search", async () => {
         let resolveInitial!: (value: ExecutionCandidatePage) => void;
         mockedListExecutionCandidates.mockImplementationOnce(() => new Promise((resolve) => { resolveInitial = resolve; }))

@@ -25,19 +25,27 @@ for (const width of [390, 1280]) {
 }
 
 for (const width of [390, 1280]) {
-    test(`proposal search failure shows one clear error at ${width}px`, async ({ page }) => {
+    test(`proposal search failure offers a clear retry at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
-        await page.route("**/api/v1/execution-candidates**", route => route.fulfill({
-            status: 503,
-            json: { detail: "Proposal service is temporarily unavailable." },
-        }));
+        let requestCount = 0;
+        await page.route("**/api/v1/execution-candidates**", route => {
+            requestCount += 1;
+            return route.fulfill(requestCount === 1
+                ? { status: 503, json: { detail: "Proposal service is temporarily unavailable." } }
+                : { json: { candidates: [], total: 0, limit: 25, offset: 0, has_more: false } });
+        });
         await page.goto("/execution-candidates");
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Change proposals unavailable");
         await expect(alert).toContainText("Mission Control could not load change proposals.");
+        await expect(alert.getByRole("button", { name: "Retry search" })).toBeVisible();
         await expect(page.getByText("Results unavailable", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
+
+        await alert.getByRole("button", { name: "Retry search" }).click();
+        await expect(page.getByText("No current change proposals.")).toBeVisible();
+        expect(requestCount).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }

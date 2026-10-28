@@ -937,3 +937,12 @@ failed read without prior data gets one unavailable message; stale reports
 still identify their last-known status. The dashboard uses the same sources and
 does not calculate new health results. Focused component tests, responsive
 overview browser checks, lint, production build, and `git diff --check` pass.
+
+## Change proposal search recovery — 2026-10-28
+
+When loading or searching change proposals fails, the error now offers a
+single explicit retry action. It repeats the same submitted filters and page,
+including after a pagination request fails. The focused component test verifies
+that a filtered search is preserved; responsive browser checks verify recovery
+after a failed read at 390px and 1280px. No proposal mutation or approval
+behavior changed.

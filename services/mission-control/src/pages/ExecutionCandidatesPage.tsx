@@ -52,6 +52,11 @@ type CandidateResult = {
     hasMore: boolean;
 };
 
+type CandidateRequest = {
+    filters: FilterState;
+    offset: number;
+};
+
 export function ExecutionCandidatesPage() {
     const [filters, setFilters] = useState<FilterState>(emptyFilters);
     const [submittedFilters, setSubmittedFilters] = useState<FilterState>(emptyFilters);
@@ -65,9 +70,11 @@ export function ExecutionCandidatesPage() {
     const [error, setError] = useState<string | null>(null);
 
     const requestGeneration = useRef(0);
+    const lastRequestedQuery = useRef<CandidateRequest>({ filters: emptyFilters, offset: 0 });
 
     const loadCandidates = useCallback(async (nextFilters: FilterState, offset: number) => {
         const generation = ++requestGeneration.current;
+        lastRequestedQuery.current = { filters: normalizeFilters(nextFilters), offset };
         setIsLoading(true);
         setError(null);
 
@@ -121,6 +128,10 @@ export function ExecutionCandidatesPage() {
         void loadCandidates(submittedFilters, result.offset + PAGE_SIZE);
     }
 
+    function retryLastSearch() {
+        void loadCandidates(lastRequestedQuery.current.filters, lastRequestedQuery.current.offset);
+    }
+
     const hasActiveFilters = Object.values(submittedFilters).some((value) => value.length > 0);
     const hasAdvancedFilters = submittedFilters.category.length > 0 || submittedFilters.sourceSubsystem.length > 0;
 
@@ -143,6 +154,9 @@ export function ExecutionCandidatesPage() {
                 <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <p className="font-semibold text-red-300">Change proposals unavailable</p>
                     <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    <button type="button" onClick={retryLastSearch} disabled={isLoading} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
+                        Retry search
+                    </button>
                 </div>
             )}
 
