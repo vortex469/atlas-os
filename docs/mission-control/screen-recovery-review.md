@@ -2071,3 +2071,12 @@ including detail-page loading and recovery states, while keeping desktop spacing
 All 12 proposal browser checks pass at 320px, 390px, and 1280px; the two focused
 page suites pass (32 tests), as do lint and the production build. Planning,
 approval, and proposal data behavior are unchanged.
+
+## Action history phone layout and empty state — 2026-10-28
+
+Action history and its empty/loading panels now use compact phone padding while
+retaining desktop spacing. The empty state says “Provider actions Atlas has run
+will appear here,” removing an unnecessary Core implementation detail. All 12
+browser checks pass at 320px, 390px, and 1280px; the page suite passes (14
+tests), as do lint and the production build. History filters and actions are
+unchanged.

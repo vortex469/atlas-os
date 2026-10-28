@@ -1,6 +1,6 @@
 import { expect, test } from "./mission-control-fixtures";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`action history explains its date and display time zones at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/operations");
@@ -8,6 +8,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
         await expect(page.getByText("Atlas is keeping 0 of 5000 entries for up to 90 days.", { exact: true })).toBeVisible();
         await expect(page.getByText("Provider actions and their results. Times are shown in your browser’s local time.", { exact: true })).toBeVisible();
+        await expect(page.getByText("Provider actions Atlas has run will appear here.", { exact: true })).toBeVisible();
         await expect(page.getByLabel("From date")).toBeHidden();
         await expect(page.getByLabel("Provider")).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();

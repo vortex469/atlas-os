@@ -1,6 +1,6 @@
 import { expect, test } from "./mission-control-fixtures";
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`action history status filter announces selection at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/operations");
@@ -20,7 +20,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`action history explains confirmation and action risk at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/ops/actions/page**", (route) => route.fulfill({ json: {
@@ -54,7 +54,7 @@ for (const width of [390, 1280]) {
     });
 }
 
-for (const width of [390, 1280]) {
+for (const width of [320, 390, 1280]) {
     test(`action history applies typed search before paging at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/ops/actions/page**", async (route) => {

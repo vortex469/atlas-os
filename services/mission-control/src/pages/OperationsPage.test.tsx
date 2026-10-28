@@ -236,7 +236,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         expect(await screen.findByText("No actions recorded")).toBeVisible();
-        expect(screen.getByText("Provider actions executed through Atlas Core will appear here.")).toBeVisible();
+        expect(screen.getByText("Provider actions Atlas has run will appear here.")).toBeVisible();
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {

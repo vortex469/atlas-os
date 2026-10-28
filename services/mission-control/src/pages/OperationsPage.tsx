@@ -285,7 +285,7 @@ export function OperationsPage() {
     }, [loadHistory]);
 
     return (
-        <main className="mx-auto max-w-7xl space-y-6 p-8">
+        <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
             <header className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-6 sm:flex-row sm:items-end">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
@@ -554,20 +554,20 @@ export function OperationsPage() {
             )}
 
             {!historyError && isLoading && entries.length === 0 && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">
+                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
                     Loading action history...
                 </div>
             )}
 
             {!historyError && !isLoading && entries.length === 0 && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
+                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-8">
                     <p className="font-semibold text-slate-200">
                         {hasAppliedFilters ? "No matching actions" : "No actions recorded"}
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
                         {hasAppliedFilters
                             ? "No actions match the filters you applied. Change or clear filters to see other history."
-                            : "Provider actions executed through Atlas Core will appear here."}
+                            : "Provider actions Atlas has run will appear here."}
                     </p>
                 </div>
             )}
