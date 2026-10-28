@@ -196,6 +196,13 @@ for (const width of [390, 1280]) {
         } }));
         await page.goto("/discovery/items/fixture-app");
 
+        const itemHeader = page.getByRole("heading", { name: "Fixture Application" }).locator("xpath=..");
+        await expect(page.getByRole("heading", { name: "What it supports" })).toBeVisible();
+        await expect(page.getByText("Read only", { exact: true })).toBeVisible();
+        await expect(itemHeader.getByText("Catalog item ID: fixture-app", { exact: true })).toBeHidden();
+        await itemHeader.getByText("Technical details", { exact: true }).click();
+        await expect(itemHeader.getByText("Catalog item ID: fixture-app", { exact: true })).toBeVisible();
+
         const summary = page.getByRole("heading", { name: "Compatibility summary" }).locator("xpath=..");
         const findings = page.getByRole("heading", { name: "What the check found" }).locator("xpath=..");
         await expect(summary.getByText("Compatible with warnings", { exact: true })).toBeVisible();

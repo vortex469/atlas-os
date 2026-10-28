@@ -394,10 +394,16 @@ describe("DiscoveryItemPage", () => {
     it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        const itemHeading = await screen.findByRole("heading", { name: "Frigate" });
+        const itemHeadingDetails = within(itemHeading.closest("div") as HTMLElement).getByText("Technical details").closest("details");
+        expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).not.toBeVisible();
+        await userEvent.setup().click(within(itemHeadingDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).toBeVisible();
         expect(screen.getByText("Application")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
-        expect(screen.getByText("video-ingest")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "What it supports" })).toBeInTheDocument();
+        expect(screen.getByText("Video ingest")).toBeInTheDocument();
+        expect(screen.getByText("Object detection")).toBeInTheDocument();
         expect(screen.getByText("nvr")).toBeInTheDocument();
         expect(screen.getByText("Runtime: docker")).toBeInTheDocument();
         expect(screen.getByText(/TCP 8971 inbound optional/i)).toBeInTheDocument();

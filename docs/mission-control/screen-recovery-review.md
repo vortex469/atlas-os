@@ -1944,3 +1944,12 @@ under optional technical details. The full Mission Control suite passes (2,792
 tests across 181 files), focused compatibility browser checks pass at 390px
 and 1280px, and lint and production build pass. All browser API reads use
 synthetic fixtures; no assessment or authorization behavior changed.
+
+## Catalog item summary — 2026-10-28
+
+The catalog item header now keeps the display name, type, and status up front;
+the item ID is under Technical details. Capability codes display as readable
+labels under “What it supports.” The full Mission Control suite passes (2,792
+tests across 181 files), the compatibility and catalog summary browser checks
+pass at 390px and 1280px, and lint and production build pass. Browser reads use
+synthetic fixtures; catalog data and approval boundaries are unchanged.

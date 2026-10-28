@@ -439,7 +439,10 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                             <h1 className="text-3xl font-bold text-white">
                                 {item.name}
                             </h1>
-                            <p className="mt-1 text-sm text-slate-500">{item.id}</p>
+                            <details className="mt-2">
+                                <summary className="mc-focusable cursor-pointer text-xs text-slate-500">Technical details</summary>
+                                <p className="mt-1 break-all text-xs text-slate-500">Catalog item ID: {item.id}</p>
+                            </details>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Badge>{formatLabel(item.type)}</Badge>
@@ -457,8 +460,8 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             </header>
 
             <section className="grid gap-4 lg:grid-cols-2">
-                <InfoPanel title="Capabilities">
-                    <ChipList values={item.capabilities} empty="No capabilities listed." />
+                <InfoPanel title="What it supports">
+                    <ChipList values={item.capabilities} empty="No support details are listed." formatValue={formatCapability} />
                 </InfoPanel>
                 <InfoPanel title="Tags">
                     <ChipList values={item.tags} empty="No tags listed." />
@@ -880,7 +883,7 @@ function InfoPanel({ title, children }: { title: string; children: React.ReactNo
     );
 }
 
-function ChipList({ values, empty }: { values: string[]; empty: string }) {
+function ChipList({ values, empty, formatValue = (value) => value }: { values: string[]; empty: string; formatValue?: (value: string) => string }) {
     if (values.length === 0) {
         return <p className="text-sm text-slate-500">{empty}</p>;
     }
@@ -892,7 +895,7 @@ function ChipList({ values, empty }: { values: string[]; empty: string }) {
                     key={value}
                     className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300"
                 >
-                    {value}
+                    {formatValue(value)}
                 </span>
             ))}
         </div>
@@ -921,6 +924,11 @@ function formatLabel(value: string): string {
         .split("_")
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+function formatCapability(value: string): string {
+    const words = value.replace(/[_-]+/g, " ").trim();
+    return words ? words.charAt(0).toUpperCase() + words.slice(1) : value;
 }
 
 function severityHeading(severity: string): string {
