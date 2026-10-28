@@ -102,6 +102,11 @@ starting work. Changing readiness candidates also clears any open evidence
 confirmation. Provider-action history links remain shareable while records
 are retained; they do not promise permanent storage.
 
+Installation readiness reviews lead with their state and blockers. Evidence
+IDs, hashes, blocker codes, linkage, and audit fields are under optional
+details, with evidence expiry shown in UTC. Recording permission evidence
+remains a separate exact-confirmation step.
+
 Provider action, connection and monitoring panels reset when the provider
 changes. Previous action parameters, connection form values and secrets, and
 monitoring selections cannot appear under the next provider. Late action

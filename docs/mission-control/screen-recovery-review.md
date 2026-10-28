@@ -27,7 +27,7 @@ runtime, tag, or publish a release.
 | Atlas Doctor | Rerunning clears the previous report; pending and failed reads cannot retain an old healthy score | `src/components/AtlasDoctorPanel.test.tsx` includes healthy-to-pending-to-unavailable coverage |
 | Provider connection tests | Editing inputs or reloading settings clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` uses synthetic secret canaries, checks stale-result invalidation, and mocks every test/save request |
 | Forge | Edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts` |
-| Installation readiness | Owner evidence loads after read-only recovery, remains bound to the current record, and grants no installation authority | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
+| Installation readiness | Review state and plain-language blockers lead; evidence IDs, linkage fingerprints and audit fields are available under optional details; owner evidence stays bound to the current record | Readiness component/parser/structural tests; `e2e/readiness-review.spec.ts` and invalid-review browser recovery case |
 
 Paths in the table are relative to `services/mission-control`.
 
@@ -158,6 +158,16 @@ The list's common filters now use operator terms for eligibility and change.
 Category and source are available under a collapsed "More filters" section,
 which marks advanced filters when they are applied. The same focused suites
 cover expansion, active-filter visibility, and unchanged query fields.
+
+## Installation readiness review simplification — 2026-10-28
+
+The review now leads with its blocked or readiness-gated state, a plain-language
+explanation and ordered blockers. Evidence kinds are human-readable, and UTC
+expiry times remain visible. Record IDs, hashes, blocker codes, full linkage,
+audit fields and fixed authority fields remain under optional details. The
+focused page suite passes (9 tests), responsive browser checks pass at 390px
+and 1280px (2 tests), and lint/build pass. Permission-evidence confirmation
+and request contracts are unchanged.
 
 ## Acceptance status and remaining gaps
 
