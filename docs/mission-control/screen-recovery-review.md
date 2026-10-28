@@ -1393,3 +1393,12 @@ current view, avoiding an accidental second reservation with a new request
 key. The five focused suites pass 22 tests across read failure, confirmation,
 and submission failure states. No execution, delivery, or installation
 authority changed.
+
+## Action history search clarity — 2026-10-28
+
+Action history now says when typed search text has not yet been applied and
+disables page navigation until Search updates the results. Search text is
+trimmed before comparison, so whitespace alone does not create a false pending
+state. The focused page suite verifies the pending notice, disabled paging,
+search application, and navigation with the applied query (13 tests). Browser
+coverage also checks the pending state and mobile width at 390px and 1280px.

@@ -106,7 +106,8 @@ export function OperationsPage() {
         ],
     );
     const hasActiveMoreFilters = providerId !== "all" || Boolean(completedFrom || completedTo);
-    const hasActiveFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search || searchInput);
+    const hasUnappliedSearch = searchInput.trim() !== search;
+    const hasActiveFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search || searchInput.trim());
 
     const loadHistory = useCallback(async () => {
         const requestId = requestSequence.current + 1;
@@ -360,6 +361,7 @@ export function OperationsPage() {
                             Search
                         </button>
                     </div>
+                    {hasUnappliedSearch && <p role="status" className="mt-2 text-sm text-blue-200">Search text has changed. Select Search to update the results.</p>}
                 </form>
 
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
@@ -651,7 +653,7 @@ export function OperationsPage() {
                                         ),
                                     )
                                 }
-                                disabled={offset === 0}
+                                disabled={offset === 0 || hasUnappliedSearch}
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Previous
@@ -664,7 +666,7 @@ export function OperationsPage() {
                                             current + PAGE_SIZE,
                                     )
                                 }
-                                disabled={!hasMore}
+                                disabled={!hasMore || hasUnappliedSearch}
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Next

@@ -399,6 +399,8 @@ describe("OperationsPage", () => {
             screen.getByLabelText("Action or request ID"),
             "request-123",
         );
+        expect(screen.getByText("Search text has changed. Select Search to update the results.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
         await user.click(
             screen.getByRole("button", { name: "Search" }),
         );
@@ -416,6 +418,8 @@ describe("OperationsPage", () => {
                 completedTo: undefined,
             }),
         );
+        expect(screen.queryByText("Search text has changed. Select Search to update the results.")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
 
         await user.click(
             screen.getByRole("button", { name: "Next" }),
@@ -434,5 +438,23 @@ describe("OperationsPage", () => {
                 completedTo: undefined,
             }),
         );
+
+        await user.type(screen.getByLabelText("Action or request ID"), "-new");
+        expect(screen.getByText("Search text has changed. Select Search to update the results.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+        await user.click(screen.getByRole("button", { name: "Search" }));
+        await waitFor(() =>
+            expect(mockedGetProviderActionHistory).toHaveBeenLastCalledWith({
+                limit: 25,
+                offset: 0,
+                search: "request-123-new",
+                status: undefined,
+                providerId: undefined,
+                completedFrom: undefined,
+                completedTo: undefined,
+            }),
+        );
+        expect(screen.queryByText("Search text has changed. Select Search to update the results.")).not.toBeInTheDocument();
     });
 });
