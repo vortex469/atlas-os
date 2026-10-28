@@ -25,7 +25,7 @@ interface DashboardFilters {
     source: string;
     candidateId: string;
     workflowId: string;
-    actionRequired: string;
+    approvalStatus: string;
 }
 
 const EMPTY_FILTERS: DashboardFilters = {
@@ -33,7 +33,7 @@ const EMPTY_FILTERS: DashboardFilters = {
     source: "",
     candidateId: "",
     workflowId: "",
-    actionRequired: "",
+    approvalStatus: "",
 };
 
 const SUMMARY_GROUPS = [
@@ -107,14 +107,16 @@ export function WorkflowDashboardPage() {
         return counts;
     }, [workflows]);
 
+    const hasAppliedMoreFilters = Boolean(filters.source || filters.candidateId || filters.workflowId);
+
     const filteredWorkflows = useMemo(() => {
         return workflows.filter((workflow) => {
             if (filters.state && workflow.workflow_state !== filters.state) return false;
             if (filters.source && workflow.workflow_source !== filters.source) return false;
             if (filters.candidateId && !workflow.candidate_id?.toLowerCase().includes(filters.candidateId.toLowerCase())) return false;
             if (filters.workflowId && !workflow.workflow_id.toLowerCase().includes(filters.workflowId.toLowerCase())) return false;
-            if (filters.actionRequired === "yes" && !workflowActionRequired(workflow.workflow_state)) return false;
-            if (filters.actionRequired === "no" && workflowActionRequired(workflow.workflow_state)) return false;
+            if (filters.approvalStatus === "waiting" && !workflowActionRequired(workflow.workflow_state)) return false;
+            if (filters.approvalStatus === "not_waiting" && workflowActionRequired(workflow.workflow_state)) return false;
             return true;
         });
     }, [filters, workflows]);
@@ -122,6 +124,8 @@ export function WorkflowDashboardPage() {
     const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / PAGE_SIZE));
     const currentPage = Math.min(pageIndex, totalPages - 1);
     const visibleWorkflows = filteredWorkflows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+    const firstVisibleWorkflow = filteredWorkflows.length === 0 ? 0 : currentPage * PAGE_SIZE + 1;
+    const lastVisibleWorkflow = currentPage * PAGE_SIZE + visibleWorkflows.length;
 
     function updateDraftFilter(name: keyof DashboardFilters, value: string) {
         setDraftFilters((current) => ({ ...current, [name]: value }));
@@ -171,8 +175,7 @@ export function WorkflowDashboardPage() {
         <main className="mx-auto max-w-7xl space-y-8 p-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Dashboard</p>
-                    <h1 className="mt-3 text-3xl font-bold text-white">Workflows</h1>
+                    <h1 className="text-3xl font-bold text-white">Workflows</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         See what is running, what needs your review, and what has finished. Open a workflow to see its details.
                     </p>
@@ -202,39 +205,49 @@ export function WorkflowDashboardPage() {
 
             <section aria-labelledby="workflow-filters-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="workflow-filters-heading" className="text-lg font-semibold text-white">Filters</h2>
-                <form onSubmit={applyFilters} className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                    <label className="text-sm text-slate-300">
-                        State
-                        <select value={draftFilters.state} onChange={(event) => updateDraftFilter("state", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                            <option value="">Any state</option>
-                            {WORKFLOW_STATES.map((state) => <option key={state} value={state}>{formatWorkflowLabel(state)}</option>)}
-                        </select>
-                    </label>
-                    <label className="text-sm text-slate-300">
-                        Source
-                        <select value={draftFilters.source} onChange={(event) => updateDraftFilter("source", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                            <option value="">Any source</option>
-                            <option value="candidate">Candidate</option>
-                            <option value="manual">Manual</option>
-                        </select>
-                    </label>
-                    <label className="text-sm text-slate-300">
-                        Candidate ID
-                        <input value={draftFilters.candidateId} onChange={(event) => updateDraftFilter("candidateId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
-                    </label>
-                    <label className="text-sm text-slate-300">
-                        Workflow ID search
-                        <input value={draftFilters.workflowId} onChange={(event) => updateDraftFilter("workflowId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
-                    </label>
-                    <label className="text-sm text-slate-300">
-                        Action required
-                        <select value={draftFilters.actionRequired} onChange={(event) => updateDraftFilter("actionRequired", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                            <option value="">Any</option>
-                            <option value="yes">Action required</option>
-                            <option value="no">No operator action</option>
-                        </select>
-                    </label>
-                    <div className="flex items-end gap-3 xl:col-span-5">
+                <form onSubmit={applyFilters} className="mt-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <label className="text-sm text-slate-300">
+                            Workflow status
+                            <select value={draftFilters.state} onChange={(event) => updateDraftFilter("state", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+                                <option value="">Any status</option>
+                                {WORKFLOW_STATES.map((state) => <option key={state} value={state}>{formatWorkflowLabel(state)}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-sm text-slate-300">
+                            Approval status
+                            <select value={draftFilters.approvalStatus} onChange={(event) => updateDraftFilter("approvalStatus", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+                                <option value="">Any approval status</option>
+                                <option value="waiting">Waiting for approval</option>
+                                <option value="not_waiting">No approval waiting</option>
+                            </select>
+                        </label>
+                    </div>
+                    <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">
+                            More filters
+                            {hasAppliedMoreFilters && <span className="ml-2 text-xs font-normal text-amber-200">Additional filters are applied</span>}
+                        </summary>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                            <label className="text-sm text-slate-300">
+                                Started from
+                                <select value={draftFilters.source} onChange={(event) => updateDraftFilter("source", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+                                    <option value="">Any starting point</option>
+                                    <option value="candidate">Candidate</option>
+                                    <option value="manual">Manual</option>
+                                </select>
+                            </label>
+                            <label className="text-sm text-slate-300">
+                                Candidate ID
+                                <input value={draftFilters.candidateId} onChange={(event) => updateDraftFilter("candidateId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+                            </label>
+                            <label className="text-sm text-slate-300">
+                                Workflow ID contains
+                                <input value={draftFilters.workflowId} onChange={(event) => updateDraftFilter("workflowId", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100" />
+                            </label>
+                        </div>
+                    </details>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="submit" className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300">Apply filters</button>
                         <button type="button" onClick={clearFilters} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">Clear filters</button>
                     </div>
@@ -244,7 +257,11 @@ export function WorkflowDashboardPage() {
             <section aria-labelledby="workflow-list-heading" className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 id="workflow-list-heading" className="text-xl font-semibold text-white">Workflow list</h2>
-                    <p className="text-sm text-slate-400">Showing {visibleWorkflows.length} of {filteredWorkflows.length} returned workflows</p>
+                    <p className="text-sm text-slate-400">
+                        {filteredWorkflows.length === 0
+                            ? "0 workflows"
+                            : `Showing ${firstVisibleWorkflow}–${lastVisibleWorkflow} of ${filteredWorkflows.length} loaded workflows`}
+                    </p>
                 </div>
 
                 {workflows.length === 0 ? (

@@ -352,6 +352,16 @@ keeps connection, action-permission, and model-assignment limits under
 are unchanged; focused Agent/provider tests and responsive overview browser
 checks cover the wording and keyboard-operable disclosure.
 
+## Workflow dashboard filters and page count — 2026-10-28
+
+The dashboard keeps workflow status and approval status visible and places
+source and ID searches under a collapsed “More filters” disclosure. Applied
+additional filters are marked in its summary. The page count now reports the
+visible range within the loaded workflows on later pages. A duplicate page
+eyebrow is removed. Filtering and workflow authority are unchanged. Focused
+page tests, lint, build, and built browser checks at 390px and 1280px cover the
+change.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its

@@ -5,6 +5,12 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/workflows");
 
+        await expect(page.getByLabel("Workflow status")).toBeVisible();
+        await expect(page.getByLabel("Approval status")).toBeVisible();
+        await expect(page.getByLabel("Workflow ID contains")).toBeHidden();
+        await page.getByText("More filters", { exact: true }).click();
+        await expect(page.getByLabel("Workflow ID contains")).toBeVisible();
+
         const heading = page.getByRole("heading", { name: "workflow-browser-baseline" });
         await expect(heading).toBeVisible();
         const card = heading.locator("xpath=ancestor::article[1]");

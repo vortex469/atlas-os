@@ -106,7 +106,7 @@ describe("WorkflowDashboardPage", () => {
         expect(details.getByText("candidate-123", { exact: true })).toBeVisible();
     });
 
-    it("filters by state, source, candidate ID, workflow ID, and action required", async () => {
+    it("keeps the common filters visible and tucks source and ID searches under More filters", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([
             workflow(),
             workflow({ workflow_id: "workflow-999", workflow_state: "completed", candidate_id: "candidate-999" }),
@@ -115,15 +115,23 @@ describe("WorkflowDashboardPage", () => {
         renderDashboard();
 
         await screen.findByText("workflow-123");
-        fireEvent.change(screen.getByLabelText("State"), { target: { value: "awaiting_implementation_approval" } });
-        fireEvent.change(screen.getByLabelText("Source"), { target: { value: "candidate" } });
+        expect(screen.getByLabelText("Workflow status")).toBeVisible();
+        expect(screen.getByLabelText("Approval status")).toBeVisible();
+        const moreFilters = screen.getByText("More filters", { exact: true });
+        expect(moreFilters.closest("details")).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("Started from")).not.toBeVisible();
+        fireEvent.click(moreFilters);
+
+        fireEvent.change(screen.getByLabelText("Workflow status"), { target: { value: "awaiting_implementation_approval" } });
+        fireEvent.change(screen.getByLabelText("Started from"), { target: { value: "candidate" } });
         fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: "candidate-123" } });
-        fireEvent.change(screen.getByLabelText("Workflow ID search"), { target: { value: "workflow-123" } });
-        fireEvent.change(screen.getByLabelText("Action required"), { target: { value: "yes" } });
+        fireEvent.change(screen.getByLabelText("Workflow ID contains"), { target: { value: "workflow-123" } });
+        fireEvent.change(screen.getByLabelText("Approval status"), { target: { value: "waiting" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
 
         expect(screen.getByText("workflow-123")).toBeInTheDocument();
         expect(screen.queryByText("workflow-999")).not.toBeInTheDocument();
+        expect(screen.getByText("Additional filters are applied")).toBeVisible();
     });
 
     it("supports pagination when more returned workflows exist", async () => {
@@ -137,6 +145,7 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.click(screen.getByRole("button", { name: /Next/i }));
 
         expect(screen.getByText("workflow-10")).toBeInTheDocument();
+        expect(screen.getByText("Showing 11–11 of 11 loaded workflows")).toBeVisible();
     });
 
     it("uses a plain fallback for missing references inside workflow details", async () => {
@@ -186,7 +195,8 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]));
         renderDashboard();
         await screen.findByText("workflow-123");
-        fireEvent.change(screen.getAllByLabelText("Workflow ID search")[1], { target: { value: "missing" } });
+        fireEvent.click(screen.getAllByText("More filters", { exact: true })[1]);
+        fireEvent.change(screen.getAllByLabelText("Workflow ID contains")[1], { target: { value: "missing" } });
         fireEvent.click(screen.getAllByRole("button", { name: /Apply filters/i })[1]);
         expect(screen.getByText("No workflows match the current filters.")).toBeInTheDocument();
 
