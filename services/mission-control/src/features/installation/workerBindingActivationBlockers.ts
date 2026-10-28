@@ -1,7 +1,8 @@
 import type { WorkerBindingActivationEvidenceBlockerV1 } from "../../types/workerBindingActivationEvidence";
 import type { WorkerBindingActivationPreflightBlockerV1 } from "../../types/workerBindingActivationPreflight";
+import type { ControlledWorkerQueueClaimAdmissionBlockerV1 } from "../../types/controlledWorkerQueueClaimAdmission";
 
-type WorkerBindingBlocker = WorkerBindingActivationEvidenceBlockerV1 | WorkerBindingActivationPreflightBlockerV1;
+type WorkerBindingBlocker = WorkerBindingActivationEvidenceBlockerV1 | WorkerBindingActivationPreflightBlockerV1 | ControlledWorkerQueueClaimAdmissionBlockerV1;
 
 const BLOCKER_LABELS: Record<WorkerBindingBlocker, string> = {
     installation_capability_unsupported: "Atlas cannot install this application",
@@ -12,6 +13,8 @@ const BLOCKER_LABELS: Record<WorkerBindingBlocker, string> = {
     v046_binding_not_recorded: "The worker binding has not been recorded",
     v047_preflight_not_active: "The preflight is no longer active",
     v047_preflight_not_recorded: "The preflight has not been recorded",
+    v048_activation_evidence_not_active: "The activation evidence is no longer active",
+    v048_activation_evidence_not_recorded: "The activation evidence has not been recorded",
     linkage_mismatch: "The related records do not match",
     fingerprint_mismatch: "A record check does not match",
     inherited_limits_mismatch: "The worker safety limits do not match",

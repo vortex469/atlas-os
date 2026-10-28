@@ -26,9 +26,11 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
     });
 
     it("keeps readiness and v0.50 prerequisite state simple with technical evidence under Advanced details", () => {
-        expect(component).toMatch(/Readiness\/start-admission state: queue-claim admission evidence recorded; queue claim: not defined; worker-start admission: not defined; blocked: yes/);
-        expect(component).toMatch(/v0\.50 progress: prerequisite frozen, documentation-only/);
-        expect(component).toMatch(/v0\.50 prerequisite state: documentation-only prerequisite frozen/);
+        expect(component).toMatch(/Queue claim is blocked/);
+        expect(component).toMatch(/requirements remain/);
+        expect(component).toMatch(/Show what needs to be in place/);
+        expect(component).toMatch(/The strongest v0\.50 state is documentation-only prerequisite closure/);
+        expect(component).toMatch(/Queue claiming is not available yet. This record only captures readiness/);
         expect(component).toMatch(/Advanced details/);
         expect(component).toMatch(/v0\.50 prerequisite details/);
         expect(component).toMatch(/one active same-owner v0\.49 controlled worker queue claim admission/);
@@ -37,7 +39,7 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
         expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
         expect(component).toMatch(/Blockers/);
         expect(component).toMatch(/Controlled worker queue claim admission fixed-false authority fields/);
-        expect(component).toMatch(/No queue claim, queue lease, queue acknowledgement, worker-start admission/);
+        expect(component).toMatch(/This is a read-only readiness record. It cannot take queue work or start a worker/);
         expect(component).not.toMatch(/createControlledWorkerQueueClaim|claim queue|lease queue|acknowledge queue|worker start control|execute control/i);
         expect(component).not.toMatch(/worker selector|queue selector|payload editor|command editor|endpoint input|credential input|raw receipt document|raw queue identity value|claim token|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /controlledWorkerQueueClaimAdmission|ControlledWorkerQueueClaimAdmission|controlled-worker-queue-claim-admissions/.test(source)).map(([path]) => path).sort();
@@ -46,6 +48,7 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
             "../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
             "../features/installation/ControlledWorkerQueueClaimAdmissions.tsx",
             "../features/installation/WorkerBindingActivationEvidences.tsx",
+            "../features/installation/workerBindingActivationBlockers.ts",
             "../types/controlledWorkerQueueClaimAdmission.ts",
             "../types/controlledWorkerQueueClaimLeaseAcknowledgementAdmission.ts",
         ]);

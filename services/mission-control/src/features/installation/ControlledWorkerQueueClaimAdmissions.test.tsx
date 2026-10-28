@@ -19,26 +19,29 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         let resolve!: (value: ControlledWorkerQueueClaimAdmissionCollectionV1) => void;
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading controlled worker queue claim admission evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading queue claim readiness/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no controlled worker queue claim admission evidence/i));
-        expect(screen.getByRole("status")).toHaveTextContent(/v0\.50 remains documentation-only prerequisite closure/i);
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no queue claim readiness record is available/i));
         unmount();
 
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/technical error details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
     });
 
-    it("renders simple readiness and start-admission state with technical evidence under Advanced details", async () => {
+    it("explains blocked queue readiness and keeps technical evidence under Advanced details", async () => {
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockResolvedValue(controlledWorkerQueueClaimAdmissionCollectionFixture);
         render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
-        expect(await screen.findByText(/recorded controlled worker queue claim admission evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/worker-start admission: not defined; blocked: yes/i);
-        expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false/i);
-        expect(screen.getByText(/v0\.50 progress: prerequisite frozen, documentation-only/i)).toHaveTextContent(/queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable/i);
-        expect(screen.getByText(/v0\.51 state is shown below when Core has recorded it/i)).toHaveTextContent(/read-only evidence/i);
+        expect(await screen.findByText("Queue claim admission recorded")).toBeInTheDocument();
+        expect(screen.getByText("Queue claim is blocked")).toBeInTheDocument();
+        expect(screen.getByText("10 requirements remain unavailable.")).toBeInTheDocument();
+        expect(screen.getByText(/Queue claiming is not available yet. This record only captures readiness/i)).toBeInTheDocument();
+        expect(screen.getByText(/A separate lease and acknowledgement readiness record may appear below. It is also read-only/i)).toBeInTheDocument();
+        const blockers = screen.getByText("Show what needs to be in place").closest("details");
+        expect(blockers).toBeInTheDocument();
+        expect(blockers).not.toHaveAttribute("open");
+        expect(screen.getByLabelText("Queue claim blockers")).toHaveTextContent(/Taking work from the queue is not available.*Holding work from the queue is not available.*Acknowledging queue work is not available/i);
         expect(screen.getByLabelText(/controlled worker queue claim lease acknowledgement admission evidence/i)).toHaveTextContent(/nested v0\.51/i);
         const advanced = screen.getByText("Advanced details").closest("details");
         expect(advanced).toBeInTheDocument();
@@ -50,5 +53,16 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         expect(screen.getByText(/inherited sandbox, resource, network, and filesystem limits/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/controlled worker queue claim admission fixed-false authority fields/i)).toHaveTextContent(/queue claim allowedfalse.*queue claimedfalse.*worker start admission allowedfalse.*worker start admittedfalse.*execution startedfalse/i);
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it("does not call an empty blocker list blocked", async () => {
+        const noBlockers: ControlledWorkerQueueClaimAdmissionCollectionV1 = {
+            ...controlledWorkerQueueClaimAdmissionCollectionFixture,
+            items: [{ ...controlledWorkerQueueClaimAdmissionCollectionFixture.items[0], blockers: [] }],
+        };
+        vi.mocked(listControlledWorkerQueueClaimAdmissions).mockResolvedValue(noBlockers);
+        render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
+        expect(await screen.findByText("No blockers are listed. This record still cannot take queue work.")).toBeInTheDocument();
+        expect(screen.queryByText("Queue claim is blocked")).not.toBeInTheDocument();
     });
 });
