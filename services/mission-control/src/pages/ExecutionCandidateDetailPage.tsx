@@ -68,6 +68,8 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         setCandidate(null);
         setError(null);
         setNotFound(false);
+        setPlanningResponse(null);
+        setPlanningError(null);
         setIsLoading(true);
         setCandidateLoadAttempt((attempt) => attempt + 1);
     }
@@ -170,7 +172,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     </button>
                     {(!actionState.enabled || isPlanningPending) && <p className="text-sm text-slate-400">{isPlanningPending ? "Planning request is already pending." : actionState.reason}</p>}
                 </div>
-                {planningResponse && <PlanningResult response={planningResponse} />}
+                {planningResponse && <PlanningResult response={planningResponse} onRefreshCandidate={retryCandidateRead} />}
                 {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">Planning unavailable</p><p className="mt-1 text-sm text-red-200/80">{planningError}</p></div>}
             </section>
 
@@ -225,9 +227,10 @@ function PageFrame({ children }: { children: React.ReactNode }) {
     );
 }
 
-function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
+function PlanningResult({ response, onRefreshCandidate }: { response: CandidatePlanningResponse; onRefreshCandidate: () => void }) {
     const message = planningMessage(response);
     const isError = !response.planning_allowed || response.planning_failure !== null || response.session_id === null;
+    const isStale = response.status.includes("stale") || response.planning_failure?.code === "candidate_stale";
     const canContinuePlanning = response.planning_allowed === true && response.status === "ready_for_planning";
 
     return (
@@ -238,6 +241,7 @@ function PlanningResult({ response }: { response: CandidatePlanningResponse }) {
                     {canContinuePlanning ? "Continue planning" : "Open planning session"}
                 </Link>
             )}
+            {isStale && <button type="button" onClick={onRefreshCandidate} className="mt-3 rounded-lg border border-amber-300/50 px-3 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/10 focus:outline-none focus:ring-2 focus:ring-amber-200">Refresh proposal</button>}
             <details className="mt-3 border-t border-slate-700 pt-3">
                 <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
@@ -262,7 +266,7 @@ function planningMessage(response: CandidatePlanningResponse): string {
         return "Planning is ready. Continue to review the proposal plan. No approval or change has been made.";
     }
     if (response.status === "unsupported_intent") return "Atlas cannot plan this type of change yet.";
-    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Refresh it and open the current proposal before continuing.";
+    if (response.status.includes("stale") || response.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Refresh it before continuing.";
     if (response.status === "intake_rejected") return "Atlas did not accept this proposal for planning. Review the recorded reason in technical details.";
     if (response.status === "plan_ready" && response.session_id) return "A plan is ready to review. Open the planning session to continue.";
     if (response.session_id && !response.planning_allowed) return "This planning session is not ready to continue. Open it to review its status.";

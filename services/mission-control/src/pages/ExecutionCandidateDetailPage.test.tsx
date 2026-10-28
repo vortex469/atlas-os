@@ -159,6 +159,30 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
     });
 
+    it("refreshes the proposal after a stale planning result without resubmitting planning", async () => {
+        const user = userEvent.setup();
+        let resolveRefresh!: (value: ExecutionCandidate) => void;
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate()).mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({
+            session_id: null,
+            status: "stale_before_planning",
+            planning_allowed: false,
+            intake_status: "stale",
+        }));
+        renderPage();
+
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("This proposal is out of date. Refresh it before continuing.")).toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+        await user.click(screen.getByRole("button", { name: "Refresh proposal" }));
+        expect(screen.getByText("Loading execution candidate…")).toBeInTheDocument();
+        await act(async () => resolveRefresh(candidate({ rationale: "Latest proposal from Atlas Core." })));
+        expect(await screen.findByText("Latest proposal from Atlas Core.")).toBeInTheDocument();
+        expect(screen.queryByText("This proposal is out of date. Refresh it before continuing.")).not.toBeInTheDocument();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+    });
+
     it("prevents duplicate planning submissions", async () => {
         const user = userEvent.setup();
         let resolveRequest!: (value: CandidatePlanningResponse) => void;
@@ -214,7 +238,8 @@ describe("ExecutionCandidateDetailPage", () => {
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "stale_before_planning", planning_allowed: false, intake_status: "stale" }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
-        expect(await screen.findByText("This proposal is out of date. Refresh it and open the current proposal before continuing.")).toBeInTheDocument();
+        expect(await screen.findByText("This proposal is out of date. Refresh it before continuing.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh proposal" })).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));

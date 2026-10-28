@@ -1043,3 +1043,11 @@ that repeats only that read. The retry clears the unavailable state while it
 loads and does not create permission evidence. A failed record request remains
 separate and does not offer a duplicate submission control. Focused readiness
 review tests, lint, production build, and `git diff --check` pass.
+
+## Stale proposal recovery — 2026-10-28
+
+When planning reports that a proposal is out of date, the result now offers a
+Refresh proposal action. It reloads the proposal details, clears the stale
+planning result, and makes no second planning request. The focused proposal
+detail suite verifies the refreshed content and request counts; no approval or
+change action is added.
