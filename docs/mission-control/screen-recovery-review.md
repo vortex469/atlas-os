@@ -457,6 +457,15 @@ machine-readable use. The focused component suite passes 42 tests; lint and
 build pass. All 8 built overview browser checks pass, including 320px, 768px
 and 1440px layouts. Health status and freshness decisions are unchanged.
 
+## Dashboard health summaries — 2026-10-28
+
+Overview summaries no longer repeat equivalent labels such as “offline” beside
+“Unavailable” or show missing-time placeholders for sources that report no
+check time. Reasons, distinct severity labels, valid check times, and last-known
+warnings remain visible. Full health detail views are unchanged. The focused
+component suites pass 99 tests; lint/build and all 11 built responsive overview
+and dashboard checks pass.
+
 ## Installation permission evidence wording — 2026-10-28
 
 An active lifecycle is now labeled “Current evidence record” so it cannot be

@@ -4,11 +4,12 @@ import { HealthEvidenceContext } from "./healthEvidenceContext";
 import { HealthStatusBadge } from "./health/HealthStatusPrimitive";
 import type { HealthState } from "./health/HealthStatusPrimitive";
 
-export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
+export function HealthEvidence({ status, reason, checkedAt, stale = false, compact = false }: {
     status: unknown;
     reason?: unknown;
     checkedAt?: unknown;
     stale?: boolean;
+    compact?: boolean;
 }) {
     const snapshot = useContext(HealthEvidenceContext);
     const state = healthState(status);
@@ -24,6 +25,10 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
     // Age is a UI freshness hint (two refresh intervals), not a Core health decision.
     const isStale = stale || snapshot.stale || (validTime && now - parsed > 60_000);
     const raw = evidenceText(status);
+    const rawState = raw?.trim().toLowerCase();
+    const rawAddsMeaning = ["warning", "critical", "error", "failed"].includes(rawState ?? "");
+    const showReportedStatus = Boolean(raw && rawState !== state.toLowerCase() && (!compact || rawAddsMeaning));
+    const showUnavailableTime = !compact || checkedAt !== undefined;
 
     return (
         <div className="min-w-0 space-y-1 break-words text-sm" data-health-state={isStale ? "Unknown" : state}>
@@ -31,15 +36,15 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
                 <HealthStatusBadge state={state.toLowerCase() as HealthState} isStale={isStale} />
                 {isStale && <span className="text-mc-text-muted">Last known status: {state} · Current status unknown</span>}
             </div>
-            {raw && raw.trim().toLowerCase() !== state.toLowerCase() && (
+            {showReportedStatus && (
                 <p className="text-xs text-mc-text-muted">Reported status: {raw}</p>
             )}
             {message && <p className="text-mc-text-secondary">{message}</p>}
             {state === "Unknown" && !message && <p className="text-mc-text-muted">No status information is available.</p>}
-            <p className="text-xs text-mc-text-muted">
+            {(validTime || showUnavailableTime) && <p className="text-xs text-mc-text-muted">
                 {validTime ? <>{isStale ? "Last checked (UTC)" : "Checked (UTC)"} <time dateTime={timestamp!}>{formatUtcTimestamp(parsed)}</time></>
                     : "Check time unavailable."}
-            </p>
+            </p>}
         </div>
     );
 }

@@ -40,6 +40,8 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await page.goto('/');
     const attention = page.getByRole('region', { name: 'Operator Attention' });
     await expect(attention.getByText('Endpoint offline')).toBeVisible();
+    await expect(attention.getByText('Reported status: offline', { exact: true })).toHaveCount(0);
+    await expect(attention.getByText('Check time unavailable.', { exact: true })).toHaveCount(0);
     await expect(attention.getByText('Capacity limited')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Atlas overall state' }).getByText('Unknown', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

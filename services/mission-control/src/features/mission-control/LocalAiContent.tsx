@@ -31,7 +31,7 @@ export function LocalAiContent({ evidence }: { evidence?: Evidence }) {
         ? `${health.latency_ms} ms` : "Not reported";
     return <>
         <p>Configured provider: {publicLabel(provider.name) ?? publicLabel(provider.id) ?? "Unknown"}</p>
-        <HealthEvidence status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
+        <HealthEvidence compact status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
         <p>Atlas does not report where this provider runs or which model is selected or ready to use.</p>
         {lastKnown && <p>Details below are from the last available report. Current version, response time, and model list are unknown.</p>}
         {evidence?.unavailable && !lastKnown && <p>Provider status could not be checked. Local runtime availability is unknown.</p>}

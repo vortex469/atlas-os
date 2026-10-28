@@ -27,6 +27,8 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText("Healthy")).toBeInTheDocument();
         expect(registry().getByText("Reported status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
+        expect(registry().queryByText("Reported status: offline")).not.toBeInTheDocument();
+        expect(registry().queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(registry().getByText("Unknown")).toBeInTheDocument();
         expect(registry().getByRole("link", { name: "View alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
         expect(registry().getByText(/permission to run actions/)).not.toBeVisible();

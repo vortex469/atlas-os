@@ -34,6 +34,18 @@ describe("authoritative health presentation", () => {
         expect(document.querySelector("script")).toBeNull();
     });
 
+    it("keeps overview health summaries compact while retaining the reason and distinct severity", () => {
+        render(<>
+            <HealthEvidence compact status="offline" reason="Connection refused" />
+            <HealthEvidence compact status="critical" reason="Policy failure" />
+        </>);
+        expect(screen.getByText("Unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Connection refused")).toBeInTheDocument();
+        expect(screen.queryByText("Reported status: offline")).not.toBeInTheDocument();
+        expect(screen.getByText("Reported status: critical")).toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+
     it("ages current timestamped evidence without changing the authoritative status", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-09-13T12:00:00Z"));

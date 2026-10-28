@@ -28,7 +28,7 @@ function Card({ title, children, evidence, showSourceNote = true }: { title: str
     </section>;
 }
 function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
-    return <HealthEvidence status={safeText(value)} stale={stale} reason={safeText(reason)} />;
+    return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} />;
 }
 
 function attentionPriority(value: unknown) {

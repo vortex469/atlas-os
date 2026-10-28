@@ -30,7 +30,7 @@ export function ProviderOverviewContent({ evidence }: { evidence?: Evidence }) {
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && evidence.data !== undefined));
     const renderProvider = (provider: NonNullable<typeof providers>[number], index: number) => <article key={index} aria-label={provider.name}>
         <p>{provider.name}</p>
-        <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} stale={stale} />
+        <HealthEvidence compact status={safeText(provider.status)} reason={safeText(provider.reason)} stale={stale} />
         {provider.path && <Link to={provider.path}>View {provider.name} →</Link>}
     </article>;
     return <>
