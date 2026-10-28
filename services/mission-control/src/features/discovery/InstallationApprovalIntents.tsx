@@ -19,7 +19,10 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
     const [reviewed, setReviewed] = useState<InstallationApprovalIntentV1 | null>(null);
     const [confirming, setConfirming] = useState<InstallationCandidateRecordEnvelopeV1 | null>(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [recordError, setRecordError] = useState<{ candidateRecordId: string; technicalDetail: string } | null>(null);
+    const [recordCheckError, setRecordCheckError] = useState<string | null>(null);
+    const [checkingRecord, setCheckingRecord] = useState(false);
+    const [recordRecoveryMessage, setRecordRecoveryMessage] = useState<string | null>(null);
     const [listError, setListError] = useState<string | null>(null);
     const [listAttempt, setListAttempt] = useState(0);
     const [reviewError, setReviewError] = useState<{ approvalIntentId: string; technicalDetail: string } | null>(null);
@@ -62,20 +65,50 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
     };
 
     const record = async () => {
-        if (!confirming || !csrfToken || recording) return;
+        if (!confirming || !csrfToken || recording || recordError !== null) return;
         const candidateId = confirming.candidate_record_id;
         setAttemptedCandidates((current) => new Set(current).add(candidateId));
-        setRecording(true); setError(null);
+        setRecording(true);
+        setRecordCheckError(null);
+        setRecordRecoveryMessage(null);
         try {
             const value = await recordInstallationApprovalIntent(
                 confirming.candidate_record_id, csrfToken, approvalIntentIdempotencyKey(),
             );
             setIntents((current) => [value, ...current.filter((intent) => intent.approval_intent_id !== value.approval_intent_id)]);
-            setReviewed(value); setConfirming(null);
+            setReviewed(value);
+            setConfirming(null);
+            setRecordError(null);
         } catch (requestError: unknown) {
-            setError(getAtlasErrorMessage(requestError, "Approval evidence could not be recorded."));
+            setRecordError({
+                candidateRecordId: candidateId,
+                technicalDetail: getAtlasErrorMessage(requestError, "Approval evidence could not be recorded."),
+            });
             setConfirming(null);
         } finally { setRecording(false); }
+    };
+
+    const checkUncertainRecord = async () => {
+        if (!recordError || checkingRecord) return;
+        setCheckingRecord(true);
+        setRecordCheckError(null);
+        setRecordRecoveryMessage(null);
+        try {
+            const current = await listInstallationApprovalIntents();
+            setIntents(current);
+            const matching = current.find((intent) => intent.approved_subject.candidate_record_id === recordError.candidateRecordId);
+            if (matching) {
+                setReviewed(matching);
+                setRecordError(null);
+                setRecordRecoveryMessage("Atlas found the saved approval evidence. Review its details below.");
+            } else {
+                setRecordRecoveryMessage("No matching approval evidence was found. The original result is still uncertain, and this screen will not send the request again.");
+            }
+        } catch (requestError: unknown) {
+            setRecordCheckError(getAtlasErrorMessage(requestError, "Approval evidence is currently unavailable."));
+        } finally {
+            setCheckingRecord(false);
+        }
     };
 
     const evidenced = new Set(intents.map((intent) => intent.approved_subject.candidate_record_id));
@@ -93,9 +126,22 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
             </details>
             <button type="button" onClick={retryList} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry approval evidence</button>
         </div>}
-        {!loading && error && <p role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-        {!loading && !listError && !error && intents.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No installation approval evidence has been recorded.</p>}
-        {!loading && !listError && !error && active.length > 0 && <ul aria-label="Active records eligible for approval evidence" className="mt-4 space-y-2">
+        {!loading && recordError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <p>Atlas could not confirm whether it recorded this approval evidence. This screen will not send the request again.</p>
+            <details className="mt-3 text-red-100/80">
+                <summary className="mc-focusable cursor-pointer">Technical details</summary>
+                <p className="mt-2 break-words">{recordError.technicalDetail}</p>
+            </details>
+            {recordCheckError && <details className="mt-3 text-red-100/80">
+                <summary className="mc-focusable cursor-pointer">Evidence check details</summary>
+                <p className="mt-2 break-words">{recordCheckError}</p>
+            </details>}
+            <button type="button" disabled={checkingRecord} onClick={() => void checkUncertainRecord()} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 disabled:opacity-50">{recordCheckError ? "Retry evidence check" : "Check saved evidence"}</button>
+            {checkingRecord && <p role="status" className="mt-3 text-sm text-red-100/80">Checking saved approval evidence…</p>}
+        </div>}
+        {recordRecoveryMessage && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">{recordRecoveryMessage}</p>}
+        {!loading && !listError && !recordError && intents.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No installation approval evidence has been recorded.</p>}
+        {!loading && !listError && !recordError && active.length > 0 && <ul aria-label="Active records eligible for approval evidence" className="mt-4 space-y-2">
             {active.map((recordValue) => <li key={recordValue.candidate_record_id} className="rounded-md border border-slate-700 p-3">
                 <p className="break-all text-xs text-slate-300">Active candidate record: {recordValue.candidate_record_id}</p>
                 {csrfToken
@@ -119,7 +165,7 @@ export function InstallationApprovalIntents({ records, csrfToken }: {
                 </div>}
             </li>)}
         </ul>}
-        {confirming && !error && <section aria-labelledby="approval-confirmation-heading" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
+        {confirming && !recordError && <section aria-labelledby="approval-confirmation-heading" className="mt-4 rounded-md border border-amber-400/40 bg-amber-400/5 p-4">
             <h6 id="approval-confirmation-heading" className="font-semibold text-amber-100">Confirm exact non-executable candidate identity</h6>
             <p className="mt-2 text-sm text-slate-200">You are recording approval evidence only for this complete identity:</p>
             <SubjectValues record={confirming} />

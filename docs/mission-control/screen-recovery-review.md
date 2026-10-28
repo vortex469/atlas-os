@@ -1715,3 +1715,13 @@ stay with the selected record, keep the list available, and retry only that
 record GET. The approval-evidence suite passes (7 tests), the full Mission
 Control suite passes (2,784 tests across 181 files), lint and production build
 pass. Approval recording and its uncertain-outcome boundary are unchanged.
+
+## Uncertain approval evidence recording recovery — 2026-10-28
+
+When the approval-evidence write has an unknown result, Mission Control now
+says it could not confirm the outcome, keeps the candidate locked against
+another write, and offers a GET-only check. A matching saved record is shown
+for review; no match leaves the outcome explicitly uncertain and does not
+resubmit the write. The approval-evidence suite passes (8 tests), the full
+Mission Control suite passes (2,785 tests across 181 files), lint and
+production build pass. No backend or authority contract changed.

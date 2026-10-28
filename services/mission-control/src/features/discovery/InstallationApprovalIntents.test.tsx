@@ -113,9 +113,13 @@ describe("installation approval evidence", () => {
         render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
         await user.click(await screen.findByRole("button", { name: "Record approval intent" }));
         await user.click(screen.getByRole("button", { name: /confirm and record approval evidence only/i }));
-        await screen.findByText("Approval evidence could not be recorded.");
+        expect(await screen.findByText("Atlas could not confirm whether it recorded this approval evidence. This screen will not send the request again.")).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: /confirm exact non-executable candidate identity/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Record approval intent" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Check saved evidence" }));
+        expect(await screen.findByText(/No matching approval evidence was found.*will not send the request again/i)).toBeInTheDocument();
+        expect(recordInstallationApprovalIntent).toHaveBeenCalledTimes(1);
+        expect(listInstallationApprovalIntents).toHaveBeenCalledTimes(3);
     });
 
     it("keeps Home Assistant non-approvable and exposes no prohibited controls or navigation", async () => {
@@ -161,5 +165,24 @@ describe("installation approval evidence", () => {
         expect(await screen.findByRole("heading", { name: "Historical approval evidence" })).toBeInTheDocument();
         expect(getInstallationApprovalIntent).toHaveBeenCalledTimes(2);
         expect(listInstallationApprovalIntents).toHaveBeenCalledTimes(1);
+    });
+
+    it("recovers an uncertain approval write when a read finds the saved evidence", async () => {
+        vi.mocked(listInstallationApprovalIntents)
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([intent]);
+        vi.mocked(recordInstallationApprovalIntent).mockRejectedValueOnce(new Error("response was lost"));
+        const user = userEvent.setup();
+        render(<InstallationApprovalIntents records={[envelope]} csrfToken="csrf" />);
+
+        await user.click(await screen.findByRole("button", { name: "Record approval intent" }));
+        await user.click(screen.getByRole("button", { name: /confirm and record approval evidence only/i }));
+        await screen.findByText("Atlas could not confirm whether it recorded this approval evidence. This screen will not send the request again.");
+
+        await user.click(screen.getByRole("button", { name: "Check saved evidence" }));
+        expect(await screen.findByText("Atlas found the saved approval evidence. Review its details below.")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Historical approval evidence" })).toBeInTheDocument();
+        expect(recordInstallationApprovalIntent).toHaveBeenCalledTimes(1);
+        expect(listInstallationApprovalIntents).toHaveBeenCalledTimes(2);
     });
 });
