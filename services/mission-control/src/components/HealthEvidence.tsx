@@ -4,6 +4,18 @@ import { HealthEvidenceContext } from "./healthEvidenceContext";
 import { HealthStatusBadge } from "./health/HealthStatusPrimitive";
 import type { HealthState } from "./health/HealthStatusPrimitive";
 
+function formatLocalTimestamp(timestamp: number) {
+    return new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        timeZoneName: "short",
+    }).format(timestamp);
+}
+
 export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
     status: unknown;
     reason?: unknown;
@@ -37,7 +49,7 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false }: {
             {message && <p className="text-mc-text-secondary">{message}</p>}
             {state === "Unknown" && !message && <p className="text-mc-text-muted">No recognized health evidence.</p>}
             <p className="text-xs text-mc-text-muted">
-                {validTime ? <>{isStale ? "Last checked" : "Current evidence · Checked"} <time dateTime={timestamp!}>{new Date(parsed).toISOString()}</time></>
+                {validTime ? <>{isStale ? "Last checked" : "Current evidence · Checked"} <time dateTime={timestamp!}>{formatLocalTimestamp(parsed)}</time></>
                     : "Update time unknown"}
             </p>
         </div>

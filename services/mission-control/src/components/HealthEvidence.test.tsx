@@ -37,7 +37,12 @@ describe("authoritative health presentation", () => {
         expect(screen.getByText(/Stale evidence/)).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText(/Last-known status: Healthy/)).toBeInTheDocument();
-        expect(document.querySelector("time")).toHaveAttribute("dateTime", "2026-09-13T12:00:00Z");
+        const time = document.querySelector("time");
+        expect(time).toHaveAttribute("dateTime", "2026-09-13T12:00:00Z");
+        expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, {
+            year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", timeZoneName: "short",
+        }).format(new Date("2026-09-13T12:00:00Z")));
+        expect(time).not.toHaveTextContent("2026-09-13T12:00:00Z");
     });
 
     it.each([null, "yesterday", "2026-09-13", {}, "2099-01-01T00:00:00Z", "2026-02-30T00:00:00Z", "2026-09-13T24:00:00Z", "2026-09-13T12:00Z"])("does not claim freshness for timestamp %j", (checkedAt) => {
