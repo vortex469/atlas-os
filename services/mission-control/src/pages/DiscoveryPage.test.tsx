@@ -169,7 +169,9 @@ describe("DiscoveryPage", () => {
         await user.click(screen.getByText("More filters"));
         await user.type(screen.getByLabelText("Tag"), "ai");
         await user.type(screen.getByLabelText("Capability"), "llm-inference");
+        expect(screen.getByRole("status")).toHaveTextContent("These filter changes haven't been searched yet. Select Search to update the results.");
         await user.click(screen.getByRole("button", { name: "Search" }));
+        expect(screen.queryByText("These filter changes haven't been searched yet. Select Search to update the results.")).not.toBeInTheDocument();
         expect(screen.getByText("More filters · active")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
         expect(screen.getByText("1 matching item found")).toBeInTheDocument();
@@ -187,6 +189,29 @@ describe("DiscoveryPage", () => {
             }),
         );
         expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+    });
+
+    it("pauses paging while draft filters differ from the displayed results", async () => {
+        const firstPage = { ...page([entry()]), total: 26, has_more: true };
+        const matchingPage = { ...searchPage([entry()]), total: 26, has_more: true };
+        mockedListDiscoveryItems.mockResolvedValueOnce(firstPage);
+        mockedSearchDiscoveryItems.mockResolvedValueOnce(matchingPage);
+        const user = userEvent.setup();
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        const next = screen.getByRole("button", { name: "Next page" });
+        expect(next).toBeEnabled();
+        await user.type(screen.getByLabelText("Keyword search"), "ollama");
+        expect(screen.getByText("These filter changes haven't been searched yet. Select Search to update the results.")).toBeVisible();
+        expect(next).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Search" }));
+        await waitFor(() => expect(mockedSearchDiscoveryItems).toHaveBeenCalledWith({
+            q: "ollama", limit: 25, offset: 0, type: undefined, status: undefined, tag: undefined, capability: undefined,
+        }));
+        expect(screen.queryByText("These filter changes haven't been searched yet. Select Search to update the results.")).not.toBeInTheDocument();
+        await waitFor(() => expect(next).toBeEnabled());
     });
 
     it("uses item listing when submitted query is empty", async () => {

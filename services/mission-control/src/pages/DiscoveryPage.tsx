@@ -160,6 +160,7 @@ export function DiscoveryPage() {
     const hasSubmittedFilters = Object.values(submittedFilters).some((value) => value.trim().length > 0);
     const hasFiltersToClear = hasSubmittedFilters || Object.values(filters).some((value) => value.trim().length > 0);
     const hasAdvancedFilters = Boolean(submittedFilters.tag || submittedFilters.capability);
+    const hasUnappliedFilters = !filtersEqual(normalizeFilters(filters), submittedFilters);
     const catalogIsEmpty = metadata?.catalog_loaded === true && metadata.entry_count === 0;
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -329,6 +330,11 @@ export function DiscoveryPage() {
             </section>
 
             <section className="space-y-4" aria-live="polite">
+                {hasUnappliedFilters && (
+                    <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                        These filter changes haven&apos;t been searched yet. Select Search to update the results.
+                    </p>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-semibold text-white">
@@ -343,7 +349,7 @@ export function DiscoveryPage() {
                         <button
                             type="button"
                             onClick={goToPreviousPage}
-                            disabled={isLoading || result.offset === 0}
+                            disabled={isLoading || hasUnappliedFilters || result.offset === 0}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Previous page"
                         >
@@ -352,7 +358,7 @@ export function DiscoveryPage() {
                         <button
                             type="button"
                             onClick={goToNextPage}
-                            disabled={isLoading || !result.hasMore}
+                            disabled={isLoading || hasUnappliedFilters || !result.hasMore}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Next page"
                         >
@@ -467,6 +473,14 @@ function normalizeFilters(filters: FilterState): FilterState {
         tag: filters.tag.trim(),
         capability: filters.capability.trim(),
     };
+}
+
+function filtersEqual(left: FilterState, right: FilterState): boolean {
+    return left.query === right.query
+        && left.type === right.type
+        && left.status === right.status
+        && left.tag === right.tag
+        && left.capability === right.capability;
 }
 
 function DiscoveryStatus({

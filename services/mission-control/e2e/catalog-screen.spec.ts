@@ -1,8 +1,9 @@
-import { expect, test } from "./mission-control-fixtures";
+import { discoveryItemsPage, expect, test } from "./mission-control-fixtures";
 
 for (const width of [390, 1280]) {
     test(`catalog keeps common filters visible and details optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery/items?**", (route) => route.fulfill({ json: { ...discoveryItemsPage, total: 26, has_more: true } }));
         await page.goto("/discovery");
 
         await expect(page.getByRole("heading", { name: "Browse the catalog" })).toBeVisible();
@@ -17,7 +18,11 @@ for (const width of [390, 1280]) {
         await expect(page.getByLabel("Tag")).toBeVisible();
         await expect(page.getByLabel("Capability")).toBeVisible();
         await page.getByLabel("Tag").fill("ai");
+        await expect(page.getByText("These filter changes haven't been searched yet. Select Search to update the results.")).toBeVisible();
+        await expect(page.getByRole("button", { name: "Next page" })).toBeDisabled();
         await page.getByRole("button", { name: "Search", exact: true }).click();
+        await expect(page.getByText("These filter changes haven't been searched yet. Select Search to update the results.")).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Next page" })).toBeEnabled();
         await expect(page.getByText("More filters · active")).toBeVisible();
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
         await expect(page.getByText("More filters · active")).toHaveCount(0);

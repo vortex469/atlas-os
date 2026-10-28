@@ -1402,3 +1402,11 @@ trimmed before comparison, so whitespace alone does not create a false pending
 state. The focused page suite verifies the pending notice, disabled paging,
 search application, and navigation with the applied query (13 tests). Browser
 coverage also checks the pending state and mobile width at 390px and 1280px.
+
+## Catalog filter clarity — 2026-10-28
+
+Discovery now tells operators when edited filters have not been searched and
+disables result paging until Search applies them. Whitespace-only edits do not
+create a false pending state. The Discovery page suite passes 14 tests, and
+the responsive catalog browser checks pass at 390px and 1280px. Catalog reads
+and all authority boundaries are unchanged.
