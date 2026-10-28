@@ -1005,3 +1005,13 @@ Technical details for workflow creation, exact-request preparation, and
 successor planning. The repository-stale recovery action and separate approval
 flow are unchanged. The focused workflow page suite passes (30 tests), along
 with lint, production build, and `git diff --check`.
+
+## Plan generation outcome recovery — 2026-10-28
+
+After a plan request error, Mission Control now pauses another generation
+request and asks the operator to reload the planning session to check whether
+the plan was saved. This avoids issuing another request against an unknown
+server state; generation remains available after the session is reloaded and
+reports that it is ready. The focused planning-page suite passes (32 tests), as
+do lint, production build, and `git diff --check`. No approval or execution
+behavior changed.

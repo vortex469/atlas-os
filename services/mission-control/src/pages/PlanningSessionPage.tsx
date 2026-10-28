@@ -238,7 +238,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
                 <p className="mt-2 text-sm text-slate-400">{planSectionDescription(session, hasPlan)}</p>
-                {session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && (
+                {session.status === "ready_for_planning" && session.planning_allowed === true && !hasPlan && !generateError && (
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button type="button" onClick={generatePlan} disabled={isGenerating} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             {isGenerating ? "Generating plan..." : "Generate Plan"}
@@ -249,6 +249,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                         <p className="font-semibold text-red-300">Plan generation failed</p>
                         <p className="mt-1 text-sm text-red-200/80">{generateError}</p>
+                        <p className="mt-2 text-sm text-red-200/80">Reload to check whether Atlas saved the plan before trying again.</p>
                         <button type="button" onClick={() => window.location.reload()} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload page</button>
                     </div>
                 )}

@@ -378,14 +378,19 @@ describe("PlanningSessionPage", () => {
         expect(await screen.findByRole("alert")).toHaveTextContent("Agent unavailable");
     });
 
-    it("shows generation errors without creating workflow controls", async () => {
+    it("requires a reload before retrying a failed plan generation", async () => {
         const user = userEvent.setup();
         mockedGenerateCandidatePlan.mockRejectedValueOnce(new Error("Generation failed"));
         renderPage();
 
         await user.click(await screen.findByRole("button", { name: "Generate Plan" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Generation failed");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Generation failed");
+        expect(alert).toHaveTextContent("Reload to check whether Atlas saved the plan before trying again.");
+        expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Reload page" })).toBeInTheDocument();
+        expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
         expect(screen.queryByRole("button", { name: /create workflow|approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
     it("clears an older session while a different session is loading", async () => {
