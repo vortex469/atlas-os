@@ -696,6 +696,17 @@ describe("WorkflowPage", () => {
         );
     });
 
+    it.each([
+        ["candidate", "Back to execution candidates", "/execution-candidates"],
+        ["manual", "← All workflows", "/workflows"],
+        ["unrecognized", "← All workflows", "/workflows"],
+    ])("returns a %s workflow to its matching list", async (source, label, destination) => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_source: source }));
+        renderPage();
+
+        expect(await screen.findByRole("link", { name: label })).toHaveAttribute("href", destination);
+    });
+
     it("submits approve with only workflow id and decision", async () => {
         mockedGetWorkflowDetail.mockResolvedValueOnce(workflow())
             .mockResolvedValue(workflow({ implementation_approval_status: "approved" }));

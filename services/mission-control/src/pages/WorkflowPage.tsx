@@ -504,8 +504,11 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 </section>
             )}
 
-            <Link to="/execution-candidates" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
-                Back to execution candidates
+            <Link
+                to={workflow.workflow_source === "candidate" ? "/execution-candidates" : "/workflows"}
+                className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+                {workflow.workflow_source === "candidate" ? "Back to execution candidates" : "← All workflows"}
             </Link>
             <Link
                 to={`/workflows/${workflow.workflow_id}/audit`}

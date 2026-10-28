@@ -362,6 +362,13 @@ eyebrow is removed. Filtering and workflow authority are unchanged. Focused
 page tests, lint, build, and built browser checks at 390px and 1280px cover the
 change.
 
+## Workflow detail return link — 2026-10-28
+
+The detail page now returns candidate-started workflows to the candidate list
+and manual or unrecognized workflows to the workflow list. Focused workflow
+page tests cover both sources and the unknown-source fallback; approval and
+resume behavior is unchanged.
+
 ## Monitoring suggestion wording — 2026-10-28
 
 The suggestion card describes why Atlas proposed a value without exposing its
