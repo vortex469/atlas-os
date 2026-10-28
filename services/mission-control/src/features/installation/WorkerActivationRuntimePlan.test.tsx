@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { atlas } from "../../api/atlas";
 import { planCollection, planResult, admission } from "../../test/workerActivationRuntimePlan";
@@ -12,15 +12,24 @@ function responses(result: unknown = planResult) {
 }
 describe("v0.55 runtime plan presentation", () => {
     beforeEach(() => vi.resetAllMocks());
-    it("shows incomplete prerequisites first with inspectable collapsed details and no controls", async () => {
+    it("shows the plan status and unresolved requirements before collapsed technical evidence", async () => {
         responses();
         const { container } = render(<WorkerActivationRuntimePlan admission={admission} />);
         expect(screen.getByRole("status")).toHaveTextContent("Loading");
         expect(await screen.findByText(/Core recorded a reference-only runtime plan/)).toBeVisible();
-        expect(screen.getByText(/runtime prerequisites remain incomplete/)).toBeVisible();
-        const details = screen.getByText("Advanced v0.55 evidence").closest("details");
+        expect(screen.getByText(/does not mean a runtime exists or is ready/)).toBeVisible();
+        expect(screen.getByText("7 runtime requirements are still unresolved.")).toBeVisible();
+        expect(screen.getByText("Worker start remains blocked")).toBeVisible();
+        const recorded = container.querySelector(`time[datetime="${planResult.record.recorded_at}"]`);
+        expect(recorded).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(planResult.record.recorded_at)));
+        const blockerDetails = screen.getByText("Show the unresolved requirements").closest("details");
+        expect(blockerDetails).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Show the unresolved requirements"));
+        expect(screen.getByLabelText("Runtime requirements still unresolved")).toHaveTextContent(/The worker activation runtime is not available.*Contact with the worker store is not available.*Contact with the worker runtime is not available/i);
+        const details = screen.getByText("Technical evidence").closest("details");
         expect(details).not.toHaveAttribute("open");
-        expect(screen.getByText(admissionResult.record.prerequisite_id)).not.toBeVisible();
+        expect(screen.queryByText(admissionResult.record.prerequisite_id)).not.toBeVisible();
+        expect(screen.getByText("worker_activation_runtime_not_defined")).not.toBeVisible();
         expect(details).toHaveTextContent("worker_start_allowedfalse");
         expect(container.querySelectorAll("button,input,form,select,textarea")).toHaveLength(0);
     });
@@ -28,7 +37,7 @@ describe("v0.55 runtime plan presentation", () => {
         responses({ ...planResult, status: { ...planResult.status, lifecycle: "expired", evaluated_at: planResult.status.valid_until } });
         render(<WorkerActivationRuntimePlan admission={admission} />);
         expect(await screen.findByText(/plan evidence has expired/)).toBeVisible();
-        expect(screen.getByText(/Worker start and execution remain blocked/)).toBeVisible();
+        expect(screen.getByText(/worker start and execution remain blocked/i)).toBeVisible();
     });
     it("does not reread evidence on equivalent parent renders", async () => {
         responses();
