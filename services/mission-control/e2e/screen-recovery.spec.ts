@@ -1,6 +1,7 @@
 import { discoveryItemsPage, executionCandidates, expect, providers, test } from "./mission-control-fixtures";
 import { operationalDiagnostic, operationalLifecycle } from "../src/test/operationalLifecycle";
 import { workflowAudit } from "../src/test/workflowAudit";
+import { workflowDetail } from "../src/test/workflowDetail";
 
 test("provider action catalog reload recovers after an unavailable read", async ({ page, rejectedMutationRequests }) => {
     let reads = 0;
@@ -282,7 +283,7 @@ test("workflow recovery retries only the read and keeps a way back", async ({ pa
         reads += 1;
         return reads === 1
             ? route.fulfill({ status: 503, json: { detail: "Unavailable" } })
-            : route.fulfill({ json: { workflow_id: "different-workflow" } });
+            : route.fulfill({ json: workflowDetail({ workflow_id: "different-workflow" }) });
     });
     await page.goto("/workflows/recovery-workflow");
     await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
@@ -735,6 +736,34 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();
         await expect(page.getByText("candidate-123", { exact: true })).toHaveCount(1);
+        expect(reads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`unreadable workflow details hide stage controls until a valid read at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows/detail-recovery/implementation-request", (route) => {
+            reads += 1;
+            return reads === 1
+                ? route.fulfill({ json: { workflow_id: "detail-recovery", effect_kind: "repository_change" } })
+                : route.fulfill({ json: workflowDetail({ workflow_id: "detail-recovery" }) });
+        });
+        await page.goto("/workflows/detail-recovery");
+
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Workflow unavailable");
+        await expect(alert).toContainText("Mission Control could not read this workflow response. Refresh to try again.");
+        await expect(alert).not.toContainText("Malformed workflow detail payload.");
+        await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Resume Approved Implementation" })).toHaveCount(0);
+
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Approve Implementation" })).toBeVisible();
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);

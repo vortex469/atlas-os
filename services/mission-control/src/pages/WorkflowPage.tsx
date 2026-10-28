@@ -109,7 +109,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setLifecycleError(nextLifecycleError);
             setDiagnosticError(nextDiagnosticError);
         } catch (error) {
-            if (sequence === readSequence.current) setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
+            if (sequence === readSequence.current) {
+                const message = error instanceof Error && error.message === "Malformed workflow detail payload."
+                    ? "Mission Control could not read this workflow response. Refresh to try again."
+                    : getAtlasAgentErrorMessage(error, "Atlas Agent unavailable.");
+                setLoadError(message);
+            }
         } finally {
             if (sequence === readSequence.current) {
                 readPending.current = false;

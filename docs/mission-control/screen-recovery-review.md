@@ -1215,3 +1215,15 @@ page's identity check and is refused. The full component suite (2,716 tests),
 lint, build, 120 development-browser checks, and 68 built-app journeys pass.
 Simulated responses do not establish real Agent integration or operator
 acceptance.
+
+## Workflow detail response validation — 2026-10-28
+
+The workflow detail response is validated, including approval presentations,
+execution summaries, verification evidence, review data, and commit summaries,
+before it can supply stage controls. A malformed response now uses a clear
+unavailable state and read-only retry; approval and Resume controls remain
+hidden until a valid read succeeds. A complete response for another workflow
+still reaches the page identity check. The full component suite (2,720 tests),
+lint, build, 122 development-browser checks, and 68 built-app journeys pass.
+Browser responses are simulated and reject mutation requests; they do not
+establish real Agent integration or operator acceptance.

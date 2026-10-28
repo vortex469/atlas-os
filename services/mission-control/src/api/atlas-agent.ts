@@ -42,6 +42,10 @@ function isNullableString(value: unknown): value is string | null {
     return value === null || typeof value === "string";
 }
 
+function isNonEmptyString(value: unknown): value is string {
+    return typeof value === "string" && value.trim().length > 0;
+}
+
 function isNullableDateTime(value: unknown): value is string | null {
     return value === null || (typeof value === "string" && Number.isFinite(Date.parse(value)));
 }
@@ -363,6 +367,178 @@ function parseWorkflowAuditResponse(value: unknown): WorkflowAuditResponse {
     return value as unknown as WorkflowAuditResponse;
 }
 
+function isWorkflowImplementationRequest(value: unknown): boolean {
+    return isPlainRecord(value)
+        && typeof value.immutable_request_id === "string"
+        && typeof value.tool === "string"
+        && typeof value.working_directory === "string"
+        && hasStringArrayFields(value, ["affected_files"])
+        && typeof value.repository === "string"
+        && isNullableString(value.translator_version);
+}
+
+function isWorkflowOperationalActionRequest(value: unknown): boolean {
+    if (value === null) return true;
+    return isPlainRecord(value)
+        && typeof value.request_id === "string"
+        && typeof value.request_digest === "string"
+        && typeof value.provider_id === "string"
+        && typeof value.resource_id === "string"
+        && typeof value.resource_type === "string"
+        && typeof value.target_fingerprint === "string"
+        && isNullableString(value.target_version)
+        && typeof value.expected_pre_state === "string"
+        && typeof value.intended_action === "string"
+        && typeof value.disruption_scope === "string"
+        && isPlainRecord(value.verification)
+        && typeof value.verification.pre_state === "string"
+        && typeof value.verification.expected_post_state === "string"
+        && typeof value.verification.health_requirement === "string"
+        && typeof value.verification.unknown_outcome_policy === "string"
+        && typeof value.generated_at === "string" && Number.isFinite(Date.parse(value.generated_at))
+        && typeof value.expires_at === "string" && Number.isFinite(Date.parse(value.expires_at))
+        && value.execution_enabled === false;
+}
+
+function isWorkflowApprovalPresentation(value: unknown): boolean {
+    return isPlainRecord(value)
+        && isSafeRouteId(value.approval_id)
+        && isOneOf(value.purpose, ["implementation", "candidate_workflow_shell", "verification", "commit", "operational_action"])
+        && isOneOf(value.decision_status, ["pending", "approved", "rejected"])
+        && isOneOf(value.presentation_state, ["actionable", "historical", "expired", "superseded", "resolved"])
+        && typeof value.actionable === "boolean"
+        && typeof value.reason === "string";
+}
+
+function isWorkerReconciliation(value: unknown): boolean {
+    if (value === null) return true;
+    return isPlainRecord(value)
+        && isSafeRouteId(value.request_id)
+        && (value.request_digest === undefined || isNonEmptyString(value.request_digest))
+        && isOneOf(value.outcome, ["unknown", "known"])
+        && typeof value.can_check_result === "boolean"
+        && typeof value.message === "string";
+}
+
+function isWorkflowExecutionSummary(value: unknown): boolean {
+    if (!isPlainRecord(value)
+        || !isNullableString(value.execution_status)
+        || !isNullableDateTime(value.started_at)
+        || !isNullableDateTime(value.completed_at)
+        || !isNullableString(value.result)
+        || !isNonNegativeSafeInteger(value.changed_files_count)
+        || !isNullableString(value.tool)
+        || !isNullableString(value.working_directory)
+        || !isNullableString(value.repository)
+        || !hasStringArrayFields(value, ["changed_files"])
+        || !isNullableString(value.execution_request_id)) {
+        return false;
+    }
+
+    if (value.output_capture === undefined) return true;
+    return Array.isArray(value.output_capture) && value.output_capture.every((capture) =>
+        isPlainRecord(capture)
+        && typeof capture.stream === "string"
+        && isNonNegativeSafeInteger(capture.retained_bytes)
+        && (capture.observed_bytes === null || isNonNegativeSafeInteger(capture.observed_bytes))
+        && typeof capture.truncated === "boolean");
+}
+
+function isWorkflowVerificationPlan(value: unknown): boolean {
+    return isPlainRecord(value)
+        && isNullableString(value.verification_plan_id)
+        && isNullableString(value.verifier_version)
+        && isNullableString(value.changed_files_digest)
+        && hasStringArrayFields(value, ["verification_check_ids", "command_backed_checks"])
+        && isNullableString(value.working_directory)
+        && isNullableString(value.repository)
+        && typeof value.verification_status === "string";
+}
+
+function isWorkflowVerificationEvidence(value: unknown): boolean {
+    return isPlainRecord(value)
+        && isNullableString(value.verification_status)
+        && isNullableDateTime(value.completed_time)
+        && hasStringArrayFields(value, ["executed_checks"])
+        && Array.isArray(value.check_results)
+        && value.check_results.every((result) => isPlainRecord(result)
+            && Object.values(result).every((item) => item === null || typeof item === "string"
+                || typeof item === "boolean" || (typeof item === "number" && Number.isFinite(item))))
+        && isNullableString(value.repository_head)
+        && isNullableString(value.changed_files_digest);
+}
+
+function isWorkflowReviewSummary(value: unknown): boolean {
+    return isPlainRecord(value)
+        && isNullableString(value.review_result)
+        && isNullableString(value.review_status)
+        && isNullableBoolean(value.approved)
+        && isNullableString(value.evidence_summary)
+        && hasStringArrayFields(value, ["changed_files"])
+        && isNullableString(value.review_fingerprint)
+        && typeof value.model_assisted_review === "string";
+}
+
+function isWorkflowCommitRequest(value: unknown): boolean {
+    if (value === null) return true;
+    return isPlainRecord(value)
+        && isSafeRouteId(value.commit_request_id)
+        && isNullableString(value.repository)
+        && isNullableString(value.branch)
+        && isNullableString(value.expected_head)
+        && typeof value.commit_message === "string"
+        && hasStringArrayFields(value, ["reviewed_files"])
+        && typeof value.reviewed_content_fingerprint === "string"
+        && typeof value.commit_approval_status === "string";
+}
+
+function isWorkflowCommitResult(value: unknown): boolean {
+    return isPlainRecord(value)
+        && isNullableString(value.commit_sha)
+        && isNullableString(value.commit_message)
+        && hasStringArrayFields(value, ["committed_files"])
+        && isNullableDateTime(value.completion_time);
+}
+
+function parseWorkflowDetailResponse(value: unknown): WorkflowDetailResponse {
+    if (!isPlainRecord(value)
+        || !isSafeRouteId(value.workflow_id)
+        || typeof value.workflow_source !== "string"
+        || typeof value.workflow_state !== "string"
+        || !isNullableString(value.planning_session_id)
+        || !isNullableString(value.candidate_id)
+        || !isNullableString(value.candidate_fingerprint)
+        || !isNullableString(value.plan_fingerprint)
+        || typeof value.implementation_approval_status !== "string"
+        || !isNullableString(value.repository)
+        || !isNullableString(value.working_directory)
+        || !isNullableString(value.translator_version)
+        || !hasStringArrayFields(value, ["affected_files"])
+        || !(value.implementation_request === null || isWorkflowImplementationRequest(value.implementation_request))
+        || !isOneOf(value.effect_kind, ["repository_change", "operational_action"])
+        || !isWorkflowOperationalActionRequest(value.operational_action_request)
+        || !(value.operational_execution === null || isPlainRecord(value.operational_execution))
+        || !Array.isArray(value.approval_presentations)
+        || !value.approval_presentations.every(isWorkflowApprovalPresentation)
+        || new Set(value.approval_presentations.map((item) => (item as Record<string, unknown>).approval_id)).size !== value.approval_presentations.length
+        || !Array.isArray(value.timeline)
+        || !value.timeline.every((stage) => isPlainRecord(stage)
+            && typeof stage.name === "string" && typeof stage.status === "string")
+        || !isWorkflowExecutionSummary(value.execution)
+        || !isWorkerReconciliation(value.worker_reconciliation === undefined ? null : value.worker_reconciliation)
+        || !isWorkflowVerificationPlan(value.verification_plan)
+        || !isWorkflowVerificationEvidence(value.verification_evidence)
+        || !isWorkflowReviewSummary(value.review)
+        || typeof value.verification_approval_status !== "string"
+        || !isWorkflowCommitRequest(value.commit_request)
+        || !isWorkflowCommitResult(value.commit_result)
+        || typeof value.commit_approval_status !== "string") {
+        throw new Error("Malformed workflow detail payload.");
+    }
+
+    return value as unknown as WorkflowDetailResponse;
+}
+
 function parseAgentInfo(value: unknown): AgentInfo {
     if (!isRecord(value) || !isRecord(value.install_container)) {
         throw new Error("Malformed Atlas Agent information payload.");
@@ -659,7 +835,7 @@ export async function getWorkflowDetail(
             `/api/v1/agent/workflows/${encodeURIComponent(workflowId)}/implementation-request`,
         );
 
-        return response.data;
+        return parseWorkflowDetailResponse(response.data);
     } catch (error) {
         if (isAxiosError(error) && error.response?.status === 404) {
             return null;

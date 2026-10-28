@@ -19,6 +19,7 @@ import {
     getSprintStatus,
     getVerificationReport,
     getWorkflowAudit,
+    getWorkflowDetail,
     getWorkflowOperationalLifecycle,
     getWorkflowRecoveryDiagnostic,
     getWorkflowSupportBundle,
@@ -26,6 +27,7 @@ import {
 } from "./atlas-agent";
 import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
 import { workflowAudit } from "../test/workflowAudit";
+import { workflowDetail } from "../test/workflowDetail";
 
 function axiosError(status: number): unknown {
     const error = new Error(`Request failed with status code ${status}`) as unknown as {
@@ -189,6 +191,36 @@ describe("Atlas Agent optional summary endpoints", () => {
         await expect(getWorkflowOperationalLifecycle("workflow/one")).resolves.toBe(lifecycle);
         expect(mockGet).toHaveBeenCalledWith(
             "/api/v1/agent/workflows/workflow%2Fone/operational-lifecycle",
+        );
+    });
+
+    it("reads a complete workflow detail before presentation", async () => {
+        const detail = workflowDetail();
+        mockGet.mockResolvedValueOnce({ data: detail });
+
+        await expect(getWorkflowDetail("workflow/one")).resolves.toBe(detail);
+        expect(mockGet).toHaveBeenCalledWith(
+            "/api/v1/agent/workflows/workflow%2Fone/implementation-request",
+        );
+    });
+
+    it("rejects malformed workflow detail before it can supply stage controls", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...workflowDetail(), timeline: [null] } });
+
+        await expect(getWorkflowDetail("workflow/one")).rejects.toThrow(
+            "Malformed workflow detail payload.",
+        );
+    });
+
+    it("rejects an operational request that claims execution is enabled", async () => {
+        const detail = workflowDetail({ effect_kind: "operational_action" });
+        mockGet.mockResolvedValueOnce({ data: {
+            ...detail,
+            operational_action_request: { ...detail.operational_action_request!, execution_enabled: true },
+        } });
+
+        await expect(getWorkflowDetail("workflow/one")).rejects.toThrow(
+            "Malformed workflow detail payload.",
         );
     });
 
