@@ -26,12 +26,13 @@ describe("v0.41 live enqueue admission Mission Control boundary", () => {
         expect(component).not.toMatch(/>\s*(enqueue|dequeue|claim|lease|poll|start|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
-    it("presents evidence without sensitive values or operational authority", () => {
-        expect(component).toMatch(/inside the worker-intake hierarchy/i);
-        expect(component).toMatch(/does not enqueue, dequeue, poll, contact or start a worker, dispatch, install, or execute anything/i);
-        expect(component).toMatch(/Advanced live enqueue evidence/);
+    it("presents the review plainly without sensitive values or operational authority", () => {
+        expect(component).toMatch(/This saved check reviews the evidence needed before work could be added to a queue/i);
+        expect(component).toMatch(/does not create or send work, contact a worker, or start anything/i);
+        expect(component).toMatch(/Queue and worker details/);
+        expect(component).toMatch(/Exact safety limits and saved evidence/);
         expect(component).toMatch(/Live enqueue admission fixed-false authority fields/);
-        expect(component).toMatch(/Permanent live-enqueue subject reservation: true/);
+        expect(component).toMatch(/This review cannot be retried or replayed/);
         expect(component).not.toMatch(/process\.env|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /live-enqueue-admissions|LiveEnqueueAdmission/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
