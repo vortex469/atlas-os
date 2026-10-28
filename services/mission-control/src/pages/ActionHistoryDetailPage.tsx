@@ -141,7 +141,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
             )}
 
             {isLoading && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">
+                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
                     Loading action details…
                 </div>
             )}

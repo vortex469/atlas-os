@@ -2164,3 +2164,11 @@ The missing-page screen now uses compact page spacing on phones while keeping
 its desktop layout. Browser checks verify the recovery link and return path at
 320px, 390px, and 1280px; all 12 navigation checks pass, as do lint and the
 production build. Route behavior and navigation destinations are unchanged.
+
+## Action detail loading phone spacing — 2026-10-28
+
+The action detail loading card now uses compact padding on phones while keeping
+desktop spacing. Delayed synthetic reads verify loading and recovery into the
+record at 320px and 1280px (2 browser checks). The focused action-detail suite
+passes (6 tests), as do lint and the production build. Action records and
+provider behavior are unchanged.

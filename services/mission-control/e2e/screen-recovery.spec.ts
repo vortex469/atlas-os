@@ -292,6 +292,55 @@ test("action history recovers a read without showing another record", async ({ p
     await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
 });
 
+for (const width of [320, 1280]) {
+    test(`action history detail loading uses responsive spacing at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let releaseEntryRead!: () => void;
+        const entryRead = new Promise<void>((resolve) => { releaseEntryRead = resolve; });
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/api/v1/ops/actions/loading-entry", async (route) => {
+            await entryRead;
+            return route.fulfill({ json: {
+                id: "loading-entry",
+                provider_id: "proxmox",
+                provider_name: "Proxmox",
+                action_id: "restart-service",
+                action_label: "Restart service",
+                status: "succeeded",
+                success: true,
+                message: "The service restarted.",
+                confirmed: true,
+                destructive: true,
+                parameter_names: [],
+                request_id: null,
+                started_at: "2026-10-25T15:00:00Z",
+                completed_at: "2026-10-25T15:00:01Z",
+                duration_ms: 1000,
+            } });
+        });
+
+        try {
+            await page.goto("/operations/actions/loading-entry");
+            const loadingMessage = page.getByText("Loading action details…", { exact: true });
+            await expect(loadingMessage).toBeVisible();
+            await expectResponsiveMainPadding(page.getByRole("heading", { name: "Action details", exact: true }), width);
+            const loadingCardPadding = await loadingMessage.evaluate((element) => {
+                const card = element.parentElement;
+                return card ? getComputedStyle(card).paddingLeft : null;
+            });
+            if (width < 640) {
+                expect(loadingCardPadding).toBe("16px");
+            } else {
+                expect(Number.parseFloat(loadingCardPadding ?? "0px")).toBeGreaterThan(16);
+            }
+            releaseEntryRead();
+            await expect(page.getByRole("heading", { name: "Restart service", exact: true })).toBeVisible();
+            expect(rejectedMutationRequests).toEqual([]);
+        } finally {
+            releaseEntryRead();
+        }
+    });
+}
+
 test("readiness reload stays redacted for invalid review data", async ({ page }) => {
     const requestedId = "00000000-0000-4000-8000-000000000002";
     let reads = 0;
