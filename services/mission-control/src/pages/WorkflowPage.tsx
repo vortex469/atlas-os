@@ -320,7 +320,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const resumeButtonLabel = canReconcileWorker
         ? "Check worker result"
         : canResumeImplementation
-        ? isOperational ? "Run approved action" : "Resume Approved Implementation"
+        ? isOperational ? "Run approved maintenance" : "Resume Approved Implementation"
         : canResumeVerification
             ? "Resume Approved Verification"
             : canResumeCommit
@@ -472,33 +472,35 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
             <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">
-                    {workflow.effect_kind === "operational_action" ? "Operational action approval" : "Implementation approval"}
+                    {isOperational ? "Maintenance request approval" : "Implementation approval"}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Approve or reject the exact request shown above. Approval does not run the change; use Resume afterward to advance an approved stage.
+                    {isOperational
+                        ? "Approve or reject this exact maintenance request. Approval does not run it; choose Run approved maintenance separately when you are ready."
+                        : "Approve or reject the exact implementation request shown above. Approval does not run the change; choose Resume afterward to run it."}
                 </p>
                 {canDecide ? (
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button type="button" onClick={() => void submitDecision("approve")} disabled={controlsBusy} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">
-                            {workflow.effect_kind === "operational_action" ? "Approve Exact Action" : "Approve Implementation"}
+                            {isOperational ? "Approve maintenance request" : "Approve Implementation"}
                         </button>
                         <button type="button" onClick={() => void submitDecision("reject")} disabled={controlsBusy} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">
-                            Reject
+                            {isOperational ? "Reject maintenance request" : "Reject implementation"}
                         </button>
                     </div>
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">{isOperational && workflow.implementation_approval_status === "approved"
-                        ? "Exact action approval is recorded."
+                        ? "Maintenance request approval is recorded."
                         : isOperational && workflow.workflow_state === "awaiting_implementation_approval" && !operationalApprovalReady
-                        ? "Exact action approval is unavailable. Refresh to check the request and its approval status."
+                        ? "Maintenance request approval is unavailable. Refresh to check the request and its approval status."
                         : "Implementation approval is not available at this step."}</p>
                 )}
-                {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">Submitting approval...</p>}
+                {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting maintenance approval..." : "Submitting implementation approval..."}</p>}
                 {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && !controlsBusy && (
-                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Action approved. Run it when you are ready." : "Implementation approved. Resume to run this change."}</p>
+                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Maintenance request approved. Run it when you are ready." : "Implementation approved. Resume to run this change."}</p>
                 )}
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
-                    <p role="status" className="mt-3 text-sm text-red-100">Approval rejected.</p>
+                    <p role="status" className="mt-3 text-sm text-red-100">{isOperational ? "Maintenance request rejected." : "Implementation request rejected."}</p>
                 )}
                 {approvalError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(approvalError)}</p>}
             </section>
@@ -517,7 +519,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                             {isResuming ? isOperational ? "Submitting..." : "Resuming..." : resumeButtonLabel}
                         </button>
                     </div>
-                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting the approved action..." : "Resuming workflow..."}</p>}
+                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting the approved maintenance request..." : "Resuming workflow..."}</p>}
                     {resumeError && <p role="alert" className="mt-3 text-sm text-red-100">{approvalMessage(resumeError)}</p>}
                 </section>
             )}
@@ -540,12 +542,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
 function OperationalActionRequestSection({ request }: { request: WorkflowOperationalActionRequestSummary | null }) {
     if (!request) return <section role="alert" className="rounded-xl border border-amber-400/30 p-5">
-        <h2 className="font-semibold text-amber-200">Exact action request unavailable</h2>
-        <p className="mt-2 text-sm text-slate-300">Refresh this workflow before reviewing or approving the action.</p>
+        <h2 className="font-semibold text-amber-200">Maintenance request unavailable</h2>
+        <p className="mt-2 text-sm text-slate-300">Refresh this workflow before reviewing or approving the maintenance request.</p>
     </section>;
-    return <section aria-labelledby="exact-action-heading" className="space-y-4 rounded-xl border border-cyan-400/30 bg-slate-900/70 p-5">
-        <h2 id="exact-action-heading" className="text-lg font-semibold text-white">Exact action request</h2>
-        <p className="text-sm text-slate-300">Review this exact target and its verification rules. Approval and running the action are separate steps.</p>
+    return <section aria-labelledby="maintenance-request-heading" className="space-y-4 rounded-xl border border-cyan-400/30 bg-slate-900/70 p-5">
+        <h2 id="maintenance-request-heading" className="text-lg font-semibold text-white">Maintenance request</h2>
+        <p className="text-sm text-slate-300">Review the selected service and target, expected interruption, and how Atlas will verify the result. Approval and running the maintenance are separate steps.</p>
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <Detail label="Action" value={formatLabel(request.intended_action)} />
             <Detail label="Target" value={`${request.provider_id}/${request.resource_type}/${request.resource_id}`} />

@@ -1501,3 +1501,13 @@ The unavailable lifecycle panel now labels its read-only retry “Check status
 again” and says plainly that it does not repeat the maintenance action. The
 workflow test confirms the retry reloads status without resubmitting approval
 or resuming work.
+
+## Maintenance approval wording — 2026-10-28
+
+The workflow now calls the operational request a “Maintenance request,” labels
+its approval and rejection buttons with that request, and names the later run
+button “Run approved maintenance.” The text makes clear that approval does not
+run the request and that starting maintenance remains a separate step. The
+maintenance page test confirms that rejection does not run it, and the browser
+journey verifies the separate approval and run requests; no API contract or
+permission boundary changed.
