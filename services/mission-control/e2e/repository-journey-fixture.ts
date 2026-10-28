@@ -148,7 +148,11 @@ function completedAudit(): WorkflowAuditResponse {
     };
 }
 
-export async function installRepositoryJourney(page: Page, reject = false, options: { maintenance?: boolean; baseURL?: string } = {}) {
+export async function installRepositoryJourney(
+    page: Page,
+    reject = false,
+    options: { maintenance?: boolean; baseURL?: string; uncertainApproval?: boolean } = {},
+) {
     const origin = new URL(options.baseURL ?? "http://127.0.0.1:5173").origin;
     const maintenance = options.maintenance === true;
     const maintenancePlan = operationalPlan({ identifier: journey.plan, session_id: journey.session,
@@ -213,6 +217,13 @@ export async function installRepositoryJourney(page: Page, reject = false, optio
             if (reject) {
                 phase = "rejected";
                 return route.fulfill({ json: { workflow_id: journey.workflow, workflow_state: "blocked", implementation_approval_status: "rejected", message: "Rejected in browser fixture." } });
+            }
+            if (options.uncertainApproval && path === `${workflowPath}/implementation-approval`) {
+                approved = true;
+                return route.fulfill({ status: 503, json: { detail: {
+                    code: "approval_result_unknown",
+                    message: "Approval may have been recorded. Check the current workflow status before trying again.",
+                } } });
             }
             if (path === "/candidate-planning") return route.fulfill({ json: sessionResponse(false) });
             if (path === `${planningPath}/plan`) { planReady = true; return route.fulfill({ json: sessionResponse(true) }); }

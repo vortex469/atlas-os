@@ -1268,6 +1268,9 @@ Successful implementation, verification, and commit approval responses are
 also checked against the requested workflow ID, a non-empty workflow state,
 the expected approved/rejected decision, and a nullable text message. A
 malformed or mismatched response enters the same read-before-retry recovery
-path. API and workflow page tests pass (109 tests), with lint and production
-build passing. These are source-level checks; they do not establish live Agent
+path. API and workflow page tests pass (109 tests). The full repository-journey
+browser file passes (8 tests), including two cases for a recorded implementation
+approval whose response fails, at 390px and 1280px. Both confirm that the page
+refreshes status and removes both decision controls. Lint and production build
+pass. The fixtures reject unexpected mutations and do not establish live Agent
 integration or operator acceptance.

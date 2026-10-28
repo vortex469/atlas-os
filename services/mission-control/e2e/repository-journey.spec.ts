@@ -7,6 +7,29 @@ async function fitsViewport(page: Page) {
 }
 
 for (const width of [390, 1280]) {
+    test(`an uncertain implementation approval refreshes before allowing another decision at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installRepositoryJourney(page, false, { baseURL, uncertainApproval: true });
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(`/execution-candidates/${journey.candidate}`);
+        await page.getByRole("button", { name: "Start planning", exact: true }).click();
+        await page.getByRole("link", { name: "Continue planning", exact: true }).click();
+        await page.getByRole("button", { name: "Generate Plan", exact: true }).click();
+        await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
+        await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
+        await page.getByRole("button", { name: "Prepare exact request", exact: true }).click();
+        await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();
+
+        await expect(page.getByRole("alert")).toContainText(
+            "Approval may have been recorded. Check the current workflow status before trying again.",
+        );
+        await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Reject", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Resume Approved Implementation", exact: true })).toBeVisible();
+        expect(fixture.writes).toEqual(fixture.expectedWrites.slice(0, 6));
+        expect(fixture.unexpected).toEqual([]);
+        await fitsViewport(page);
+    });
+
     test(`repository journey keeps every approval and resume separate at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, false, { baseURL });
         await page.setViewportSize({ width, height: 844 });
