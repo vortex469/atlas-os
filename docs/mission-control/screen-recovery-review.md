@@ -1734,3 +1734,11 @@ the message directs the operator to retry the existing download; it does not
 refetch or upload anything automatically. The Workflow page suite passes (80
 tests), the full Mission Control suite passes (2,786 tests across 181 files),
 lint and production build pass. Workflow actions and approvals are unchanged.
+
+## Maintenance history outcome recovery — 2026-10-28
+
+When the history read fails, the alert now states that the maintenance outcome
+is unknown and directs the operator to the existing Refresh history control.
+The Operational history suite passes (13 tests), the full Mission Control
+suite passes (2,786 tests across 181 files), lint and production build pass.
+No maintenance action or backend contract changed.

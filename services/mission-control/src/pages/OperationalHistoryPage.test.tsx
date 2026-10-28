@@ -219,7 +219,7 @@ describe("maintenance history recovery", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Could not load maintenance history.");
         expect(alert).not.toHaveTextContent("Refresh to try again.");
-        expect(alert).toHaveTextContent("A loading problem does not tell us whether maintenance failed.");
+        expect(alert).toHaveTextContent("The maintenance outcome is unknown. Use Refresh history to check again.");
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         expect(document.body.textContent).not.toContain("private diagnostic");
     });
