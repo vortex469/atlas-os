@@ -593,12 +593,12 @@ export function OperationsPage() {
                                         </span>
                                         {entry.confirmed && (
                                             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
-                                                Confirmed
+                                                Operator confirmed
                                             </span>
                                         )}
                                         {entry.destructive && (
                                             <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs text-red-300">
-                                                Destructive
+                                                Destructive action
                                             </span>
                                         )}
                                     </div>

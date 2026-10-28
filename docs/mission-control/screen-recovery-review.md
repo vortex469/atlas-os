@@ -1823,3 +1823,12 @@ Focused Operations/overview/Doctor tests pass (77 tests), browser checks pass
 (16 tests in development and 16 against the built app), the full suite passes
 (2,788 tests across 181 files), and lint and production build pass. No API or
 authority behavior changed.
+
+## Action history confirmation labels — 2026-10-28
+
+Action history now labels the recorded confirmation as “Operator confirmed”
+and the action classification as “Destructive action,” clarifying the meaning
+of both badges in the list and detail view. Component and responsive browser
+coverage verifies both labels. The focused list/detail suites pass (20 tests),
+the responsive browser suite passes (4 checks in development), and lint and
+production build pass. The audit data and action behavior are unchanged.

@@ -157,7 +157,7 @@ describe("OperationsPage", () => {
         expect(screen.getByText("model")).toBeVisible();
         expect(screen.getByText("request-123")).toBeVisible();
         expect(
-            screen.getByText("Confirmed"),
+            screen.getByText("Operator confirmed"),
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", {

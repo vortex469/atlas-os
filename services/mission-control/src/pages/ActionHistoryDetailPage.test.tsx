@@ -113,6 +113,7 @@ describe("ActionHistoryDetailPage", () => {
 
     it("shows the action outcome first and keeps technical fields collapsed", async () => {
         const user = userEvent.setup();
+        mockedGetProviderActionHistoryEntry.mockResolvedValue({ ...auditEntry(), destructive: true });
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Action details" })).toBeVisible();
@@ -125,6 +126,8 @@ describe("ActionHistoryDetailPage", () => {
             mockedGetProviderActionHistoryEntry,
         ).toHaveBeenCalledWith("audit-1");
         expect(screen.getByText("Succeeded")).toBeInTheDocument();
+        expect(screen.getByText("Operator confirmed")).toBeInTheDocument();
+        expect(screen.getByText("Destructive action")).toBeInTheDocument();
         expect(screen.getByText("Model unloaded.")).toBeInTheDocument();
         expect(screen.getByText("Times below use your browser’s local time.")).toBeInTheDocument();
         expect(screen.getByText("Ollama")).toBeInTheDocument();

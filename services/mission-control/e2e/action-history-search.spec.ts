@@ -1,6 +1,40 @@
 import { expect, test } from "./mission-control-fixtures";
 
 for (const width of [390, 1280]) {
+    test(`action history explains confirmation and action risk at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/page**", (route) => route.fulfill({ json: {
+            items: [{
+                id: "audit-browser-labels",
+                provider_id: "ollama",
+                provider_name: "Ollama",
+                action_id: "unload-model",
+                action_label: "Unload Model",
+                status: "succeeded",
+                success: true,
+                message: "Model unloaded.",
+                confirmed: true,
+                destructive: true,
+                parameter_names: [],
+                request_id: "request-labels",
+                started_at: "2026-10-25T15:00:00Z",
+                completed_at: "2026-10-25T15:00:01Z",
+                duration_ms: 1000,
+            }],
+            total: 1,
+            offset: 0,
+            limit: 25,
+            has_more: false,
+        } }));
+
+        await page.goto("/operations");
+        const action = page.getByRole("article").filter({ hasText: "Unload Model" });
+        await expect(action.getByText("Operator confirmed")).toBeVisible();
+        await expect(action.getByText("Destructive action")).toBeVisible();
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`action history applies typed search before paging at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/ops/actions/page**", async (route) => {
