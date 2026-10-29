@@ -2414,6 +2414,13 @@ or browser does not establish reachability from Atlas Core. It names the Core
 machine/container as the right network location while retaining the Compose
 directory and published-port checks.
 
+The collapsed check-location guidance now presents those instructions as a
+three-step list: confirm the app's port, test from Atlas Core, and inspect the
+published host port for a bridged container. It keeps the Compose directory
+check and reported address below the steps. Health probes and status mapping
+are unchanged; the steps use 14px text for phone readability. Overview
+component and responsive browser checks cover the list.
+
 Provider check history keeps its compact chart and now offers a closed
 “Check details” disclosure with each timestamp, duration, and outcome. The
 individual results can be opened without relying on hover, and timestamps are

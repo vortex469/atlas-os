@@ -130,19 +130,21 @@ describe("MC overview evidence", () => {
         show({ health: { data: { atlas: 'healthy', services } } });
 
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
-        expect(checks.getAllByRole('listitem')).toHaveLength(4);
+        const serviceChecks = checks.getByRole("list", { name: "Configured service checks" });
+        const serviceItems = () => Array.from(serviceChecks.querySelectorAll(":scope > li"));
+        expect(serviceItems()).toHaveLength(4);
         expect(checks.queryByText('service-5')).not.toBeInTheDocument();
 
         const expand = checks.getByRole('button', { name: 'Show all 6 service checks' });
         expect(expand).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expand);
-        expect(checks.getAllByRole('listitem')).toHaveLength(6);
+        expect(serviceItems()).toHaveLength(6);
         expect(checks.getByText('service-5')).toBeVisible();
 
         const collapse = checks.getByRole('button', { name: 'Show fewer service checks' });
         expect(collapse).toHaveAttribute('aria-expanded', 'true');
         fireEvent.click(collapse);
-        expect(checks.getAllByRole('listitem')).toHaveLength(4);
+        expect(serviceItems()).toHaveLength(4);
     });
 
     it("shows the most urgent service checks before the four-item preview cutoff", () => {
@@ -154,7 +156,8 @@ describe("MC overview evidence", () => {
             Unknown: { status: "future_state" },
         } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const visibleNames = checks.getAllByRole("listitem")
+        const serviceChecks = checks.getByRole("list", { name: "Configured service checks" });
+        const visibleNames = Array.from(serviceChecks.querySelectorAll(":scope > li"))
             .map(item => item.querySelector("p")?.textContent);
 
         expect(visibleNames).toEqual(["Blocked", "Offline", "Degraded", "Unknown"]);
@@ -188,12 +191,17 @@ describe("MC overview evidence", () => {
         fireEvent.click(location);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(disclosure).toHaveTextContent("Run this check from Atlas Core's network location: the Core machine or, if Core runs in Docker, inside the atlas-core container.");
-        expect(disclosure).toHaveTextContent("A check from the service host or a browser does not show whether Core can connect.");
-        expect(disclosure).toHaveTextContent("If you use Compose, run it from the folder containing Atlas’s Compose file.");
-        expect(disclosure).toHaveTextContent("A container marked “Up” can still be unreachable.");
-        expect(disclosure).toHaveTextContent("Check that the app listens on its configured port and that Atlas Core can reach it through the Docker network or a published port.");
-        expect(disclosure).toHaveTextContent("For a bridged container on a separate machine, docker ps should show the host port under PORTS; if it is empty, Docker has not published that port on the host.");
+        const steps = within(disclosure as HTMLDetailsElement).getByRole("list", {
+            name: "How to check from Atlas Core",
+        });
+        expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
+        expect(steps).toHaveClass("text-sm");
+        expect(steps).toHaveTextContent("Confirm the app listens on its configured port.");
+        expect(steps).toHaveTextContent("Test from Atlas Core's machine or inside the atlas-core container;");
+        expect(steps).toHaveTextContent("a browser or service host may use a different network path.");
+        expect(steps).toHaveTextContent("docker ps should show the host port under PORTS.");
+        expect(steps).toHaveTextContent("If PORTS is blank, Docker has not published a port on that host.");
+        expect(steps).toHaveTextContent("run commands from the folder containing Atlas’s Compose file.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);

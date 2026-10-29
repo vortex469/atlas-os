@@ -78,8 +78,11 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
     return <details className="mt-2 text-xs text-mc-text-muted">
         <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Where Atlas checked</summary>
         <div className="mt-2 space-y-1">
-            <p>Run this check from Atlas Core's network location: the Core machine or, if Core runs in Docker, inside the <code>atlas-core</code> container. A check from the service host or a browser does not show whether Core can connect. If you use Compose, run it from the folder containing Atlas’s Compose file.</p>
-            <p>A container marked “Up” can still be unreachable. Check that the app listens on its configured port and that Atlas Core can reach it through the Docker network or a published port. For a bridged container on a separate machine, <code>docker ps</code> should show the host port under <code>PORTS</code>; if it is empty, Docker has not published that port on the host.</p>
+            <ol aria-label="How to check from Atlas Core" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
+                <li>Confirm the app listens on its configured port. Test from Atlas Core's machine or inside the <code>atlas-core</code> container; a browser or service host may use a different network path.</li>
+                <li>For a bridged container on another machine, <code>docker ps</code> should show the host port under <code>PORTS</code>. If <code>PORTS</code> is blank, Docker has not published a port on that host.</li>
+                <li>If using Compose, run commands from the folder containing Atlas’s Compose file.</li>
+            </ol>
             <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
             <p>HTTP response: {response}</p>
             {responseTime !== null && <p>Response time: {responseTime}</p>}
@@ -279,7 +282,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Service checks" evidence={evidence.health} loading={loading}>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
-                {displayedServices.length > 0 && <ul className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>
+                {displayedServices.length > 0 && <ul aria-label="Configured service checks" className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>
                     <p>{safeText(name)}</p>
                     <ObservedStatus
                         value={record(raw).status}

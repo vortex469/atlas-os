@@ -220,14 +220,16 @@ test('service check summary reveals every reported check on mobile', async ({ pa
     await page.goto('/');
 
     const checks = page.getByRole('region', { name: 'Service checks', exact: true });
-    await expect(checks.getByRole('listitem')).toHaveCount(4);
+    const serviceChecks = checks.getByRole('list', { name: 'Configured service checks' });
+    const serviceItems = serviceChecks.locator(':scope > li');
+    await expect(serviceItems).toHaveCount(4);
     await checks.getByRole('button', { name: 'Show all 6 service checks' }).click();
-    await expect(checks.getByRole('listitem')).toHaveCount(6);
+    await expect(serviceItems).toHaveCount(6);
     await expect(checks.getByText('service-5')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
     await checks.getByRole('button', { name: 'Show fewer service checks' }).click();
-    await expect(checks.getByRole('listitem')).toHaveCount(4);
+    await expect(serviceItems).toHaveCount(4);
     expect(rejectedMutationRequests).toEqual([]);
 });
 
@@ -246,7 +248,8 @@ test('service check preview puts blocked and offline services first', async ({ p
     await page.goto('/');
 
     const checks = page.getByRole('region', { name: 'Service checks', exact: true });
-    const visibleNames = await checks.getByRole('listitem').evaluateAll(items =>
+    const serviceChecks = checks.getByRole('list', { name: 'Configured service checks' });
+    const visibleNames = await serviceChecks.locator(':scope > li').evaluateAll(items =>
         items.map(item => item.querySelector('p')?.textContent));
     expect(visibleNames).toEqual(['Blocked', 'Offline', 'Degraded', 'Unknown']);
     await checks.getByRole('button', { name: 'Show all 5 service checks' }).click();
@@ -299,10 +302,12 @@ for (const width of [320, 1280]) {
         await expect(location).toBeVisible();
         await location.click();
         await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
-        await expect(checks.getByText(/Run this check from Atlas Core's network location: the Core machine or, if Core runs in Docker, inside the atlas-core container/)).toBeVisible();
-        await expect(checks.getByText(/A check from the service host or a browser does not show whether Core can connect/)).toBeVisible();
-        await expect(checks.getByText(/If you use Compose, run it from the folder containing Atlas’s Compose file/)).toBeVisible();
-        await expect(checks.getByText(/For a bridged container on a separate machine, docker ps should show the host port under PORTS/)).toBeVisible();
+        const steps = checks.getByRole('list', { name: 'How to check from Atlas Core' });
+        await expect(steps.getByRole('listitem')).toHaveCount(3);
+        await expect(steps).toHaveCSS('font-size', '14px');
+        await expect(steps).toContainText('Test from Atlas Core\'s machine or inside the atlas-core container');
+        await expect(steps).toContainText('For a bridged container on another machine, docker ps should show the host port under PORTS');
+        await expect(steps).toContainText('run commands from the folder containing Atlas’s Compose file');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
