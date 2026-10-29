@@ -5,6 +5,7 @@ import {
     useRef,
     useState,
 } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -23,6 +24,7 @@ import type {
     ProviderActionHistorySummary,
     ProviderActionHistoryProvider,
 } from "../types/actionHistory";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
 type OperationError = {
@@ -32,14 +34,11 @@ type OperationError = {
 };
 const PAGE_SIZE = 25;
 
-function formatTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
-
-    if (Number.isNaN(date.getTime())) {
-        return "Unknown time";
-    }
-
-    return date.toLocaleString();
+function formatTimestamp(value: string): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Unknown time"
+        : <time dateTime={value} className="text-xs text-slate-500">{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function statusClasses(status: ActionHistoryStatus): string {
@@ -621,12 +620,7 @@ export function OperationsPage() {
                                     </Link>
                                 </div>
 
-                                <time
-                                    dateTime={entry.completed_at}
-                                    className="text-xs text-slate-500"
-                                >
-                                    {formatTimestamp(entry.completed_at)}
-                                </time>
+                                {formatTimestamp(entry.completed_at)}
                             </div>
 
                             <details className="mt-4 border-t border-slate-800 pt-4">

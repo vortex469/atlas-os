@@ -2737,3 +2737,10 @@ with their source instants in semantic `<time>` elements. A malformed expiry
 shows “Unverified expiry.” Existing exact-request approval presentations still
 control approval actions; the display change does not alter action eligibility.
 The optional support file’s generated time uses the same local-time display.
+
+## Action history time validation — 2026-10-29
+
+Action history keeps its local-time note and now rejects malformed timestamps
+instead of normalizing impossible dates. Valid completion times retain their
+source instants in semantic `<time>` elements. The focused history suite covers
+valid and malformed values.

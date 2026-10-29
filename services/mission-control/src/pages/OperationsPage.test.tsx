@@ -148,6 +148,8 @@ describe("OperationsPage", () => {
         expect(
             await screen.findByText("Unload Model"),
         ).toBeInTheDocument();
+        const completionTime = screen.getByText(new Date("2026-07-25T17:00:01Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(completionTime.closest("time")).toHaveAttribute("datetime", "2026-07-25T17:00:01Z");
         expect(screen.getAllByText("Ollama")).toHaveLength(1);
         expect(screen.getByText("Provider: Ollama")).toBeVisible();
         const technicalDetails = screen.getByText("Technical details").closest("details");
@@ -168,6 +170,37 @@ describe("OperationsPage", () => {
             "href",
             "/operations/actions/audit-1",
         );
+    });
+
+    it("does not expose malformed history timestamps as verified times", async () => {
+        mockedGetProviderActionHistory.mockResolvedValue({
+            items: [{
+                id: "audit-1",
+                provider_id: "ollama",
+                provider_name: "Ollama",
+                action_id: "unload-model",
+                action_label: "Unload Model",
+                status: "succeeded",
+                success: true,
+                message: "Model unloaded.",
+                confirmed: true,
+                destructive: false,
+                parameter_names: [],
+                request_id: "request-123",
+                started_at: "2026-07-25T17:00:00Z",
+                completed_at: "2026-02-30T17:00:01Z",
+                duration_ms: 12.5,
+            }],
+            total: 1,
+            offset: 0,
+            limit: 25,
+            has_more: false,
+        });
+        renderPage();
+
+        expect(await screen.findByText("Unload Model")).toBeInTheDocument();
+        const unknownTime = screen.getByText("Unknown time");
+        expect(unknownTime.closest("time")).toBeNull();
     });
 
     it("requests failed actions when filtered", async () => {
