@@ -403,7 +403,7 @@ describe("DiscoveryPage", () => {
         expect(alert).toHaveTextContent("Catalog could not be loaded");
         expect(alert).toHaveTextContent("Mission Control could not load these catalog results. Your search filters are still selected.");
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Items unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).not.toBeVisible();
@@ -426,6 +426,7 @@ describe("DiscoveryPage", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Catalog could not be loaded");
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
         expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
@@ -477,7 +478,7 @@ describe("DiscoveryPage", () => {
         expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
         expect(screen.queryByText("Ollama")).not.toBeInTheDocument();
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Items unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
         expect(await screen.findByText("Ollama")).toBeInTheDocument();

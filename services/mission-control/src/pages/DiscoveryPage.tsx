@@ -190,9 +190,7 @@ export function DiscoveryPage() {
 
     const resultSummary = isLoading
         ? "Loading items…"
-        : catalogError
-          ? "Items unavailable"
-          : `${result.total} ${hasSubmittedFilters ? "matching " : ""}item${result.total === 1 ? "" : "s"} ${hasSubmittedFilters ? "found" : "listed"}`;
+        : `${result.total} ${hasSubmittedFilters ? "matching " : ""}item${result.total === 1 ? "" : "s"} ${hasSubmittedFilters ? "found" : "listed"}`;
 
     return (
         <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
@@ -340,9 +338,7 @@ export function DiscoveryPage() {
                         <h2 className="text-xl font-semibold text-white">
                             {hasSubmittedFilters ? "Search results" : "Catalog items"}
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                            {resultSummary}
-                        </p>
+                        {!catalogError && <p className="mt-1 text-sm text-slate-500">{resultSummary}</p>}
                     </div>
 
                     <div className="flex items-center gap-2">

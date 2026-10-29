@@ -2318,3 +2318,10 @@ browser suite.
 When Core reports no configured service checks, the empty-state explanation now
 appears only in the Service checks card instead of repeating in System health.
 The focused Overview test confirms the message remains with its list.
+
+## Catalog read-failure summary — 2026-10-29
+
+When catalog results cannot be loaded, the Discovery page no longer repeats an
+“Items unavailable” count above the “Results unavailable” panel. The retry
+button, selected filters, and collapsed technical error remain available.
+Page and responsive browser tests cover the unavailable and retry states.

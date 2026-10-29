@@ -890,6 +890,8 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("heading", { name: "Browse the catalog" })).toBeVisible();
         await expect(alert).toContainText("Catalog could not be loaded");
         await expect(alert).toContainText("Your search filters are still selected.");
+        await expect(page.getByText("Results unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("Items unavailable", { exact: true })).toHaveCount(0);
         if (width < 1024) await page.getByRole("button", { name: "Open navigation" }).click();
         await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
         if (width < 1024) await page.getByRole("button", { name: "Close navigation" }).click();
