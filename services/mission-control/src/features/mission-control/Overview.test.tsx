@@ -319,7 +319,7 @@ describe("MC overview evidence", () => {
         expect(health.getByText(/Reports more than a minute old are marked out of date/)).toBeVisible();
 
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
-        const explanation = checks.getByText("These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.");
+        const explanation = checks.getByText("These checks cover the listed services. For Atlas Core's own health, use the System health card.");
         expect(explanation).not.toBeVisible();
         fireEvent.click(checks.getByText('About service checks'));
         expect(explanation).toBeVisible();
