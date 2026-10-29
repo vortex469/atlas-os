@@ -228,7 +228,7 @@ export function WorkflowDashboardPage() {
                     disabled={isRefreshing || isLoadingMore}
                     className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Refresh
+                    {isRefreshing ? "Refreshing…" : "Refresh"}
                 </button>
             </header>
 
