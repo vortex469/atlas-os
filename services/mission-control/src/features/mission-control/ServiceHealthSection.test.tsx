@@ -201,7 +201,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                "On the service computer, confirm the app is listening on this port. If it runs in Docker, check PORTS with docker ps; if blank, publish the port unless the container uses host networking. Then test from Atlas Core.",
+                "On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.",
             ),
         ).toBeInTheDocument();
     });
