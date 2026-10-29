@@ -7,7 +7,7 @@ import {
     listWorkflows,
 } from "../api/atlas-agent";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
-import { recoveryPresentation } from "../utils/recoveryDiagnostic";
+import { isUnavailableDiagnosticStatus, recoveryPresentation } from "../utils/recoveryDiagnostic";
 import { formatResourceTypeLabel } from "../utils/resourceLabels";
 import { formatWorkflowLabel } from "../utils/workflowState";
 import { evidenceTimestamp } from "../utils/healthPresentation";
@@ -119,7 +119,8 @@ export function OperationalHistoryPage() {
 
     const visibleItems = items.filter(({ workflow, lifecycle, diagnostic, diagnosticUnavailable }) =>
         (diagnosticFilter === "all" || diagnostic?.diagnostic_status === diagnosticFilter
-            || (diagnosticFilter === "unavailable" && diagnosticUnavailable))
+            || (diagnosticFilter === "unavailable" && (diagnosticUnavailable || diagnostic === null
+                || isUnavailableDiagnosticStatus(diagnostic.diagnostic_status))))
         && (terminalFilter === "all" || (terminalFilter === "terminal") === lifecycle?.terminal)
         && (intentFilter === "all" || workflow.execution_intent === intentFilter)
         && (providerFilter === "all" || lifecycle?.provider_id === providerFilter)

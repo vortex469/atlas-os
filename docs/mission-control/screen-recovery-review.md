@@ -3372,3 +3372,12 @@ result check. Unknown stages and verification results are shown as unavailable
 instead of converting backend values into labels that look authoritative. The
 focused page suite covers each known stage, unknown values, and verification
 results; the full Mission Control test suite, lint, and build pass.
+
+## Maintenance history unknown status recovery — 2026-10-29
+
+An unrecognized maintenance diagnostic status now appears as “Status
+unavailable” and is included by the existing “Unavailable” filter. This keeps
+future backend statuses visible without presenting an unknown value as a
+confirmed health state or suggesting that no action is needed. The page tells
+operators to wait for the status to become clear before repeating the request.
+The focused and full Mission Control suites pass; lint and build also pass.

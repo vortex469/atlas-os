@@ -155,6 +155,20 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
     });
 
+    it("shows an unknown diagnostic status as unavailable and includes it in that filter", async () => {
+        mockedDiagnostic.mockResolvedValue(operationalDiagnostic({
+            diagnostic_status: "future_status" as never,
+            correlation: { workflow_id: "workflow-operational-1", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true },
+        }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        expect(await screen.findByRole("heading", { name: "Status unavailable" })).toBeVisible();
+        expect(screen.getByText("Mission Control cannot identify this maintenance status.")).toBeVisible();
+        expect(screen.getByText("Do not repeat this request until its status is clear. Ask an operator to review it.")).toBeVisible();
+        fireEvent.change(screen.getByRole("combobox", { name: "Current status" }), { target: { value: "unavailable" } });
+        expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+    });
+
     it("filters only the bounded current page by controlled diagnostic status", async () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByRole("heading", { name: "Virtual machine 110" });

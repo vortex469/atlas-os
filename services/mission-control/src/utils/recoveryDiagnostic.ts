@@ -18,6 +18,8 @@ const STATUS_PRESENTATION: Record<WorkflowRecoveryDiagnostic["diagnostic_status"
     unavailable: { title: "Diagnostic unavailable", severity: "unavailable" },
 };
 
+const UNKNOWN_STATUS_PRESENTATION = { title: "Status unavailable", severity: "unavailable" } as const;
+
 const REASON_TEXT: Record<NonNullable<WorkflowRecoveryDiagnostic["controlled_reason"]>, string> = {
     not_applicable: "Maintenance status checks do not apply to this workflow.",
     core_unavailable: "Atlas Core could not provide the latest maintenance status.",
@@ -43,12 +45,21 @@ const SAFE_ACTION_TEXT: Record<WorkflowRecoveryDiagnostic["safe_next_action"], s
 };
 
 export function recoveryPresentation(diagnostic: WorkflowRecoveryDiagnostic): RecoveryPresentation {
-    const status = STATUS_PRESENTATION[diagnostic.diagnostic_status];
+    const isUnknownStatus = !Object.hasOwn(STATUS_PRESENTATION, diagnostic.diagnostic_status);
+    const status = STATUS_PRESENTATION[diagnostic.diagnostic_status] ?? UNKNOWN_STATUS_PRESENTATION;
     return {
         ...status,
-        reason: diagnostic.controlled_reason ? REASON_TEXT[diagnostic.controlled_reason] : "No current issue has been reported.",
-        safeNextAction: SAFE_ACTION_TEXT[diagnostic.safe_next_action],
+        reason: isUnknownStatus
+            ? "Mission Control cannot identify this maintenance status."
+            : diagnostic.controlled_reason ? REASON_TEXT[diagnostic.controlled_reason] : "No current issue has been reported.",
+        safeNextAction: isUnknownStatus
+            ? "Do not repeat this request until its status is clear. Ask an operator to review it."
+            : SAFE_ACTION_TEXT[diagnostic.safe_next_action],
     };
+}
+
+export function isUnavailableDiagnosticStatus(value: string): boolean {
+    return value === "unavailable" || !Object.hasOwn(STATUS_PRESENTATION, value);
 }
 
 export function recoveryLabel(value: string | null): string {
