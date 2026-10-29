@@ -272,6 +272,6 @@ function PolicyReloadStatus({
 const policiesUnavailableMessage = (
     <p className="mt-3 text-sm text-red-200/80">
         The last policy snapshot remains in place when available.
-        Correct the policy file and refresh to resume live visibility.
+        After correcting the policy file, refresh Mission Control to check it again.
     </p>
 );

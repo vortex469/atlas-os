@@ -263,7 +263,7 @@ describe("WorkflowDashboardPage", () => {
 
         expect(await screen.findByText("Loaded 200 of 201 workflows. Summary counts and filters cover the loaded workflows only.")).toBeVisible();
         fireEvent.click(screen.getByRole("button", { name: "Load more workflows" }));
-        expect(await screen.findByText("Automatic refresh pauses while additional workflows are loaded. Select Refresh to reload the first 200 and resume updates.")).toBeVisible();
+        expect(await screen.findByText("You loaded more than 200 workflows. Automatic refresh is paused; select Refresh to return to the first 200 and turn it back on.")).toBeVisible();
         expect(screen.getByText("Showing 1–10 of 201 loaded workflows")).toBeVisible();
         expect(screen.queryByRole("button", { name: "Load more workflows" })).not.toBeInTheDocument();
 

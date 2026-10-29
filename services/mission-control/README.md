@@ -146,13 +146,14 @@ verification tool, Git operation or provider action and do not establish
 production acceptance.
 
 Workflow status checks pause during an in-flight check or operator action.
-Approval and Resume controls stay disabled until the current check finishes,
+Approval and action buttons stay disabled until the current check finishes,
 with a visible checking message. A read attempt publishes the workflow and its
 maintenance projections together; superseded responses are ignored, and
 projections bearing another workflow ID are refused. An absent optional
-diagnostic stops loading when the read finishes. Resume keeps its pending
-status visible without allowing duplicate submissions. These are presentation
-and read-coordination rules; backend approvals still govern every effect.
+diagnostic stops loading when the read finishes. The current action keeps its
+pending status visible without allowing duplicate submissions. These are
+presentation and read-coordination rules; backend approvals still govern every
+effect.
 
 Mission Control completion requires the supported operator journey to have
 working navigation, useful empty and unavailable states, recovery controls,

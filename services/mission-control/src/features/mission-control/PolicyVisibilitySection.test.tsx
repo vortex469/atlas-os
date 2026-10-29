@@ -163,6 +163,9 @@ describe("PolicyVisibilitySection", () => {
         expect(
             screen.getByText("n8n.scan_truncated_severity"),
         ).toBeInTheDocument();
+        expect(
+            screen.getByText("The last policy snapshot remains in place when available. After correcting the policy file, refresh Mission Control to check it again."),
+        ).toBeInTheDocument();
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
     });
 });
