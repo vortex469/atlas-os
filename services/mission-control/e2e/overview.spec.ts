@@ -77,6 +77,7 @@ test('provider preview prioritizes problems and uses a singular extra-provider l
     await page.goto('/');
 
     const providers = page.getByRole('region', { name: 'Providers', exact: true });
+    await expect(providers.getByRole('article', { name: 'Blocked' })).toBeVisible();
     const visibleNames = await providers.getByRole('article').evaluateAll(items =>
         items.map(item => item.getAttribute('aria-label')));
     expect(visibleNames).toEqual(['Blocked', 'Offline', 'Degraded', 'Unknown']);
@@ -298,23 +299,23 @@ for (const width of [320, 1280]) {
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
         await expect(checks.getByText('iFileshare', { exact: true })).toBeVisible();
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
-        const location = checks.getByText('Where Atlas checked');
-        await expect(location).toBeVisible();
-        await location.click();
-        await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
+        const nextStep = checks.getByRole('group', { name: 'Next connection check' });
+        await expect(nextStep).toBeVisible();
+        await expect(nextStep).toContainText('Try this address from the Atlas Core machine or container:');
+        await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
+        await expect(nextStep).toContainText('A blank PORTS field means no host port is published for Atlas Core to reach.');
+        const moreChecks = checks.getByText('More connection checks');
+        await moreChecks.click();
         const steps = checks.getByRole('list', { name: 'How to check from Atlas Core' });
         await expect(steps.getByRole('listitem')).toHaveCount(3);
         await expect(steps).toHaveCSS('font-size', '14px');
-        await expect(steps).toContainText('Test from Atlas Core\'s machine or inside the atlas-core container');
-        await expect(steps).toContainText('run docker ps on the machine running that app and find its container');
-        await expect(steps).toContainText('An Up status means Docker started it, but does not confirm a host port is published');
-        await expect(steps).toContainText('Look for its host port under PORTS');
-        await expect(steps).toContainText("If PORTS is blank, add a ports: mapping to the service's Compose file");
-        await expect(steps).toContainText("Map HOST_PORT:CONTAINER_PORT: set the host port to the port in Atlas's reported address");
-        await expect(steps).toContainText("Check the app's Compose file or documentation for its internal listening port and use that as the container port; the two ports may differ");
-        await expect(steps).toContainText('or use docker run -p. Map HOST_PORT:CONTAINER_PORT');
-        await expect(steps).toContainText('Then recreate the container so Atlas Core can reach it');
-        await expect(steps).toContainText('run commands from the folder containing Atlas’s Compose file');
+        await expect(steps).toContainText('Test from the Atlas Core machine or atlas-core container');
+        await expect(steps).toContainText('A browser or the service computer may use a different network path');
+        await expect(steps).toContainText('On another computer running Docker, use docker ps and check PORTS');
+        await expect(steps).toContainText('a mapping starting with 127.0.0.1: is reachable only from that computer');
+        await expect(steps).toContainText("publish the app's listening port with Compose's ports: or docker run -p");
+        await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');
+        await expect(steps).toContainText('Run Compose commands from the folder containing the Compose file');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

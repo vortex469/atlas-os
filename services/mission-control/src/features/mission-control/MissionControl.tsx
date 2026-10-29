@@ -69,36 +69,37 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
     const evidence = record(service);
     const url = record(evidence.details).url;
     const address = formatHealthCheckAddress(url);
+    const unavailable = status(evidence.status) === "unavailable";
     const nextCheck = healthNextCheck(evidence.message);
     const httpStatus = formatHttpStatus(evidence.http_status);
     const response = httpStatus ?? (status(evidence.status) === "unavailable" ? "No response received" : "Not reported");
     const responseTime = typeof evidence.latency_ms === "number"
         && Number.isFinite(evidence.latency_ms) && evidence.latency_ms >= 0
         ? `${Math.round(evidence.latency_ms)} ms` : null;
-    return <details className="mt-2 text-xs text-mc-text-muted">
-        <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Where Atlas checked</summary>
-        <div className="mt-2 space-y-1">
-            <ol aria-label="How to check from Atlas Core" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
-                <li>Confirm the app listens on its configured port. Test from Atlas Core's machine or inside the <code>atlas-core</code> container; a browser or service host may use a different network path.</li>
-                <li>
-                    For an app in a bridged Docker container on another machine, run <code>docker ps</code> on the machine running that app
-                    and find its container. An <code>Up</code> status means Docker started it, but does not confirm a host port is published.
-                    Look for its host port under <code>PORTS</code>.
-                    If the mapping starts with <code>127.0.0.1:</code>, only that computer can connect; Atlas Core on another machine cannot.
-                    If <code>PORTS</code> is blank, add a <code>ports:</code> mapping to the service's Compose file
-                    or use <code>docker run -p</code>. Map <code>HOST_PORT:CONTAINER_PORT</code>: set the host port to
-                    the port in Atlas's reported address. Check the app's Compose file or documentation for its
-                    internal listening port and use that as the container port; the two ports may differ.
-                    Then recreate the container so Atlas Core can reach it.
-                </li>
-                <li>If using Compose, run commands from the folder containing Atlas’s Compose file.</li>
-            </ol>
-            <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
-            <p>HTTP response: {response}</p>
-            {responseTime !== null && <p>Response time: {responseTime}</p>}
-            {nextCheck !== null && <p>Next check: {nextCheck}</p>}
-        </div>
-    </details>;
+    return <div className="mt-2">
+        {unavailable && <div role="group" aria-label="Next connection check" className="rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
+            <p className="font-medium text-mc-text-primary">Try this address from the Atlas Core machine or container:</p>
+            <p className="mt-1 break-all font-mono text-mc-text-primary">{address ?? "Configured service address not reported"}</p>
+            <p className="mt-2">If the app runs in Docker on another computer, check <code>PORTS</code> in <code>docker ps</code> there. A blank <code>PORTS</code> field means no host port is published for Atlas Core to reach.</p>
+        </div>}
+        <details className="mt-2 text-xs text-mc-text-muted">
+            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>
+            <div className="mt-2 space-y-1">
+                <ol aria-label="How to check from Atlas Core" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
+                    <li>Test from the Atlas Core machine or <code>atlas-core</code> container. A browser or the service computer may use a different network path.</li>
+                    <li>
+                        On another computer running Docker, use <code>docker ps</code> and check <code>PORTS</code>. A blank field means no host port is published; a mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
+                        For a blank field, publish the app's listening port with Compose's <code>ports:</code> or <code>docker run -p</code>, then recreate the container. In <code>HOST_PORT:CONTAINER_PORT</code>, the host port must match Atlas's address and the container port must match the app's listening port.
+                    </li>
+                    <li>Run Compose commands from the folder containing the Compose file.</li>
+                </ol>
+                <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
+                <p>HTTP response: {response}</p>
+                {responseTime !== null && <p>Response time: {responseTime}</p>}
+                {nextCheck !== null && <p>Next check: {nextCheck}</p>}
+            </div>
+        </details>
+    </div>;
 }
 
 function formatHttpStatus(value: unknown): string | null {

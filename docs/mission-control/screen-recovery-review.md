@@ -2553,3 +2553,16 @@ An empty evidence response now says so directly. Evidence contents, expiry
 rules, permission recording, and all execution boundaries are unchanged. The
 readiness component and phone/desktop browser checks cover collapsed and
 expanded records.
+
+## Service connection first steps — 2026-10-29
+
+When Atlas Core cannot connect to a service, Overview now shows the reported
+address and the first two useful checks immediately: test from the Atlas Core
+machine or container, and inspect Docker's `PORTS` field on a different service
+computer. A blank field is explained as no published host port. Detailed
+loopback, port-mapping, and Compose guidance stays collapsed under “More
+connection checks.” The reported address remains sanitized, and health probes
+and authority behavior are unchanged. The component test and 26 built Overview
+browser checks pass across phone and desktop sizes. The provider preview browser
+check now waits for its fixture data before checking ordering, removing a load
+timing race.

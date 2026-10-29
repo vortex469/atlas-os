@@ -177,18 +177,23 @@ describe("MC overview evidence", () => {
         expect(condition.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
     });
 
-    it("shows the Core-side check location on demand without exposing URL secrets", () => {
+    it("shows a short next step and keeps extra connection checks collapsed", () => {
         show({ health: { data: { atlas: "degraded", services: { iFileshare: {
             status: "offline",
             message: "No route to host",
             details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const location = checks.getByText("Where Atlas checked");
-        const disclosure = location.closest("details");
+        const nextStep = checks.getByRole("group", { name: "Next connection check" });
+        const summary = checks.getByText("More connection checks");
+        const disclosure = summary.closest("details");
 
+        expect(nextStep).toHaveTextContent("Try this address from the Atlas Core machine or container:");
+        expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
+        expect(nextStep).toHaveTextContent("A blank PORTS field means no host port is published for Atlas Core to reach.");
+        expect(nextStep).not.toHaveTextContent(/password|private/);
         expect(disclosure).not.toHaveAttribute("open");
-        fireEvent.click(location);
+        fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
         const steps = within(disclosure as HTMLDetailsElement).getByRole("list", {
@@ -196,19 +201,13 @@ describe("MC overview evidence", () => {
         });
         expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
         expect(steps).toHaveClass("text-sm");
-        expect(steps).toHaveTextContent("Confirm the app listens on its configured port.");
-        expect(steps).toHaveTextContent("Test from Atlas Core's machine or inside the atlas-core container;");
-        expect(steps).toHaveTextContent("a browser or service host may use a different network path.");
-        expect(steps).toHaveTextContent("run docker ps on the machine running that app and find its container.");
-        expect(steps).toHaveTextContent("An Up status means Docker started it, but does not confirm a host port is published.");
-        expect(steps).toHaveTextContent("Look for its host port under PORTS.");
-        expect(steps).toHaveTextContent("If the mapping starts with 127.0.0.1:, only that computer can connect; Atlas Core on another machine cannot.");
-        expect(steps).toHaveTextContent("If PORTS is blank, add a ports: mapping to the service's Compose file");
-        expect(steps).toHaveTextContent("Map HOST_PORT:CONTAINER_PORT: set the host port to the port in Atlas's reported address.");
-        expect(steps).toHaveTextContent("Check the app's Compose file or documentation for its internal listening port and use that as the container port; the two ports may differ.");
-        expect(steps).toHaveTextContent("or use docker run -p. Map HOST_PORT:CONTAINER_PORT");
-        expect(steps).toHaveTextContent("Then recreate the container so Atlas Core can reach it.");
-        expect(steps).toHaveTextContent("run commands from the folder containing Atlas’s Compose file.");
+        expect(steps).toHaveTextContent("Test from the Atlas Core machine or atlas-core container.");
+        expect(steps).toHaveTextContent("A browser or the service computer may use a different network path.");
+        expect(steps).toHaveTextContent("On another computer running Docker, use docker ps and check PORTS.");
+        expect(steps).toHaveTextContent("a mapping starting with 127.0.0.1: is reachable only from that computer.");
+        expect(steps).toHaveTextContent("publish the app's listening port with Compose's ports: or docker run -p");
+        expect(steps).toHaveTextContent("HOST_PORT:CONTAINER_PORT");
+        expect(steps).toHaveTextContent("Run Compose commands from the folder containing the Compose file.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);
@@ -238,9 +237,9 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const location = checks.getByText("Where Atlas checked");
-        const disclosure = location.closest("details");
-        fireEvent.click(location);
+        const summary = checks.getByText("More connection checks");
+        const disclosure = summary.closest("details");
+        fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent(`Next check: ${nextCheck}`);
     });
@@ -253,9 +252,10 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const location = checks.getByText("Where Atlas checked");
-        const disclosure = location.closest("details");
-        fireEvent.click(location);
+        expect(checks.queryByRole("group", { name: "Next connection check" })).not.toBeInTheDocument();
+        const summary = checks.getByText("More connection checks");
+        const disclosure = summary.closest("details");
+        fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent("HTTP response: 503");
         expect(disclosure).toHaveTextContent("Response time: 42 ms");
