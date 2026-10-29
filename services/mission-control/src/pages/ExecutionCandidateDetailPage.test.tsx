@@ -91,7 +91,7 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
-        expect(screen.getByText("For stack-home-assistant (Compose Stack)")).toBeInTheDocument();
+        expect(screen.getByText("Target ID: stack-home-assistant · Type: Compose Stack")).toBeInTheDocument();
         expect(screen.getAllByText("Eligible for planning").length).toBeGreaterThan(0);
         expect(screen.getByText("Standard")).toBeInTheDocument();
         expect(screen.getByText("Expires (local time)")).toBeInTheDocument();

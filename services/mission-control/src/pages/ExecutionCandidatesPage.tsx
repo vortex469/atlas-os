@@ -244,7 +244,7 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
                         Review {formatLabel(candidate.execution_intent)} proposal
                     </Link>
                     <p className="mt-1 text-sm text-slate-400">
-                        Target: <span className="text-slate-200">{candidate.target_id}</span> ({formatLabel(candidate.target_type)})
+                        Target ID: <span className="text-slate-200">{candidate.target_id}</span> · Type: {formatLabel(candidate.target_type)}
                     </p>
                 </div>
                 <StatusBadge status={candidate.status} />

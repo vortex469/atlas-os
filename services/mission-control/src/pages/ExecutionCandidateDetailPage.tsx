@@ -145,7 +145,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-bold text-white">{formatLabel(candidate.execution_intent)}</h1>
-                            <p className="mt-2 text-sm text-slate-300">For {candidate.target_id} ({formatLabel(candidate.target_type)})</p>
+                            <p className="mt-2 text-sm text-slate-300">Target ID: {candidate.target_id} · Type: {formatLabel(candidate.target_type)}</p>
                         </div>
                         <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{statusText(candidate.status)}</span>
                     </div>
