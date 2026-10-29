@@ -2693,9 +2693,47 @@ Saved connection settings now identify their update time as local and include
 the date. The semantic `<time>` value retains its UTC instant; malformed values
 show “Time unavailable.” The focused provider connection suite, Mission Control
 lint, and production build pass.
-Proposal detail creation and expiry times now use the same validated local display as proposal lists. Their `<time>` elements preserve the source timestamp for assistive technology, and malformed values are shown as unavailable or unverified instead of raw dates. Focused tests cover exact source timestamps and invalid dates.
-Execution start and completion times in the change workflow summary now use readable local time while retaining the original instant in semantic `<time>` elements. Missing times keep the existing “Not exposed” message; malformed times display “Time unavailable.” Focused tests cover the displayed value and both source timestamps.
-Compatibility check time now follows the validated local display used by other evidence screens and exposes its exact source instant through `<time>`. Malformed values display “Time unavailable”; the technical reference labels the recorded source value as UTC. Focused tests cover the valid and malformed cases.
-Workflow audit evidence now formats planning and verification times as validated local times and retains each source instant in a semantic `<time>` element. Invalid timestamps are labeled unavailable. The audit remains collapsed by stage, and tests cover source timestamps and malformed evidence.
-Maintenance plan references now show validated creation time in the browser’s local time, preserving the original instant for assistive technology. Invalid values display “Time unavailable.” The plan review remains read-only and its separate workflow approval stays unchanged.
-Maintenance request expiry and generated times now display as validated local times with their original instants in semantic `<time>` elements. A malformed expiry reads “Unverified expiry.” Existing exact-request approval presentations continue to control the approval actions; this display change does not alter action eligibility.
+
+## Proposal detail time clarity — 2026-10-29
+
+Proposal detail creation and expiry times use the validated local display from
+the proposal list. Their `<time>` elements retain the source instants for
+assistive technology. Malformed values show as unavailable or unverified,
+instead of displaying raw dates. Focused tests cover exact timestamps and
+invalid dates.
+
+## Change execution timestamps — 2026-10-29
+
+Execution start and completion times in the workflow summary use readable
+local time and preserve their source instants in semantic `<time>` elements.
+Missing times keep the existing “Not exposed” message; malformed times show
+“Time unavailable.” Focused tests cover both source timestamps and the display.
+
+## Compatibility check timestamp — 2026-10-29
+
+Compatibility check time uses the validated local display from other evidence
+screens and exposes its source instant through `<time>`. Malformed values show
+“Time unavailable.” The technical reference identifies its recorded source
+value as UTC. Focused tests cover valid and malformed values.
+
+## Workflow audit timestamps — 2026-10-29
+
+Planning and verification times in workflow audit evidence use validated local
+time and retain their source instants in semantic `<time>` elements. Invalid
+timestamps show as unavailable. Audit stages remain collapsed; focused tests
+cover valid and malformed timestamps.
+
+## Maintenance plan creation time — 2026-10-29
+
+Maintenance plan references show the validated creation time in local time
+while preserving its source instant for assistive technology. Invalid values
+show “Time unavailable.” Plan review remains read-only, with the separate
+workflow approval unchanged.
+
+## Maintenance request timestamps — 2026-10-29
+
+Maintenance request expiry and generated times display as validated local time
+with their source instants in semantic `<time>` elements. A malformed expiry
+shows “Unverified expiry.” Existing exact-request approval presentations still
+control approval actions; the display change does not alter action eligibility.
+The optional support file’s generated time uses the same local-time display.

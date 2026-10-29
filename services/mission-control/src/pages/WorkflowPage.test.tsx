@@ -957,6 +957,8 @@ describe("WorkflowPage", () => {
         expect(screen.getByText("atlas-operational-support-bundle-v1")).not.toBeVisible();
         fireEvent.click(within(technicalDetails!).getByText("Technical details"));
         expect(screen.getByText("atlas-operational-support-bundle-v1")).toBeVisible();
+        const generatedTime = within(technicalDetails!).getByText("Generated (local time)").parentElement?.querySelector("time");
+        expect(generatedTime).toHaveAttribute("datetime", "2026-08-15T00:00:00Z");
         expect(screen.getByText("The digest helps identify the file; it is not a digital signature.")).toBeVisible();
         expect(screen.getByText("Information shortened").nextElementSibling).toHaveTextContent("Yes");
         expect(createObjectURL).not.toHaveBeenCalled();

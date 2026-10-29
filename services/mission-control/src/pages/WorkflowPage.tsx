@@ -489,7 +489,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                                     <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
                                     <dl className="mt-3 grid gap-3 text-sm md:grid-cols-3">
                                         <div><dt className="text-slate-400">File format</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div>
-                                        <div><dt className="text-slate-400">Created</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div>
+                                        <div><dt className="text-slate-400">Generated (local time)</dt><dd className="text-slate-100">{formatRequestTimestamp(supportBundle.metadata.generated_at, false)}</dd></div>
                                         <div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div>
                                         <div><dt className="text-slate-400">Information shortened</dt><dd className="text-slate-100">{supportBundleIsIncomplete ? "Yes" : "No"}</dd></div>
                                     </dl>
