@@ -2331,3 +2331,18 @@ Page and responsive browser tests cover the unavailable and retry states.
 The registry's Mission Control and provider-detail links now use the shared
 visible keyboard-focus style. A focused page test checks tab order and both link
 focus styles.
+
+## Repository workflow future-stage panels — 2026-10-29
+
+Early repository workflows keep the planned verification checks visible while
+hiding empty check results, review results and verification-approval panels.
+Those panels appear when their stage is current or corresponding evidence or a
+decision exists. The Commit section appears when a commit request or result
+exists or the workflow reaches the commit stage; missing details remain visible
+as an unavailable state when commit is current. These changes do not alter
+approval decisions, request bodies, resume behavior or execution authority.
+When an approval is already resolved, its panel says the decision was recorded
+or rejected instead of describing approval as unavailable.
+The WorkflowPage suite passes (86 tests), the repository-journey browser suite
+passes (11 checks at 320px, 390px and 1280px), and lint and production build
+pass. Browser writes remain confined to the exact synthetic journey fixture.

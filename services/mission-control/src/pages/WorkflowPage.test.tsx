@@ -506,6 +506,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Resume Approved Implementation" })).toBeInTheDocument();
+        expect(screen.getByText("Implementation approval is recorded.", { exact: true })).toBeVisible();
     });
 
     it("does not show resume action when implementation is pending", async () => {
@@ -628,6 +629,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
+        expect(screen.getByText("Verification approval is recorded.", { exact: true })).toBeVisible();
     });
 
     it("shows Resume Approved Commit for approved commit state", async () => {
@@ -640,6 +642,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Resume Approved Commit" })).toBeInTheDocument();
+        expect(screen.getByText("Commit approval is recorded.", { exact: true })).toBeVisible();
     });
 
     it("never shows resume action for blocked workflow", async () => {
@@ -795,7 +798,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect(await screen.findByText("Implementation approval is not available at this step.")).toBeVisible();
+        expect(await screen.findByText("Implementation approval is recorded.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject implementation" })).not.toBeInTheDocument();
     });

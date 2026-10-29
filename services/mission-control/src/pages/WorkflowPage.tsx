@@ -536,6 +536,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">{isOperational && workflow.implementation_approval_status === "approved"
                         ? "Maintenance request approval is recorded."
+                        : workflow.implementation_approval_status === "approved"
+                        ? "Implementation approval is recorded."
+                        : workflow.implementation_approval_status === "rejected"
+                        ? isOperational
+                            ? "Maintenance request approval was rejected. No further decision is available."
+                            : "Implementation approval was rejected. No further decision is available."
                         : isOperational && workflow.workflow_state === "awaiting_implementation_approval" && !operationalApprovalReady
                         ? "Maintenance request approval is unavailable. Refresh to check the request and its approval status."
                         : "Implementation approval is not available at this step."}</p>
@@ -758,7 +764,11 @@ function VerificationReviewSection({
                         <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Verification</button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Verification approval is not available at this step.</p>
+                    <p className="mt-4 text-sm text-slate-300">{workflow.verification_approval_status === "approved"
+                        ? "Verification approval is recorded."
+                        : workflow.verification_approval_status === "rejected"
+                            ? "Verification approval was rejected. No further decision is available."
+                            : "Verification approval is not available at this step."}</p>
                 )}
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
                 {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
@@ -834,7 +844,11 @@ function CommitSection({
                         <button type="button" onClick={() => void onCommitDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
                     </div>
                 ) : (
-                    <p className="mt-4 text-sm text-slate-300">Commit approval is not available at this step.</p>
+                    <p className="mt-4 text-sm text-slate-300">{workflow.commit_approval_status === "approved"
+                        ? "Commit approval is recorded."
+                        : workflow.commit_approval_status === "rejected"
+                            ? "Commit approval was rejected. No further decision is available."
+                            : "Commit approval is not available at this step."}</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
                 {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
