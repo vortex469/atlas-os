@@ -2686,3 +2686,10 @@ The action detail page now exposes both start and completion times as semantic
 `<time>` elements carrying their exact UTC instants. Its existing note explains
 that displayed times use the browser's local time. All six focused action detail
 tests pass, along with Mission Control lint and production build.
+
+## Provider connection update time — 2026-10-29
+
+Saved connection settings now identify their update time as local and include
+the date. The semantic `<time>` value retains its UTC instant; malformed values
+show “Time unavailable.” The focused provider connection suite, Mission Control
+lint, and production build pass.

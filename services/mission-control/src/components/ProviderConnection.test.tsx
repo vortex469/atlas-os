@@ -244,6 +244,16 @@ describe("ProviderConnection", () => {
         expect(screen.queryByText("existing-secret")).not.toBeInTheDocument();
     });
 
+    it("identifies the saved connection update as local time with its UTC instant", async () => {
+        await renderConnection();
+
+        const updatedTime = screen.getByText((_, element) =>
+            element?.tagName === "TIME" && element.getAttribute("datetime") === "2026-08-01T20:00:00Z",
+        );
+        expect(updatedTime).toHaveTextContent(new Date("2026-08-01T20:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(updatedTime.parentElement).toHaveTextContent("Connection settings updated (local time):");
+    });
+
     it("describes connection sources in plain language", async () => {
         const sourceLabels = [
             "From saved connection settings",

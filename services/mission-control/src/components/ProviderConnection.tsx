@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -247,7 +247,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                         )}
                         {schema?.updated_at && (
                             <p className="mt-2 text-xs text-slate-500">
-                                Last updated {formatTimestamp(schema.updated_at)}
+                                Connection settings updated (local time): {formatTimestamp(schema.updated_at)}
                             </p>
                         )}
                         {schema?.metadata.reload_required === true && (
@@ -619,12 +619,12 @@ function statusClass(status: string): string {
     return `${base} bg-amber-500/10 text-amber-300`;
 }
 
-function formatTimestamp(value: string): string {
+function formatTimestamp(value: string): ReactNode {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return value;
+        return "Time unavailable";
     }
-    return date.toLocaleString();
+    return <time dateTime={value}>{date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function formatDiagnosticValue(value: unknown, redactedValues: string[]): string {
