@@ -3014,9 +3014,9 @@ contracts and operator checks are unchanged.
 
 ## Machine and worker setup records — 2026-10-29
 
-The installation review now describes machine and worker setup records as
+The installation review now describes machine, worker, and queue records as
 review-only. Statuses, blockers, and timestamps use operator language; machine
 references, sandbox limits, fingerprints, and authority flags are collapsed
-under technical details. Failed list reads offer a safe retry. No machine or
-worker is discovered, contacted, or started, and the stored record contracts
+under technical details. Failed list reads offer a safe retry. No machine,
+worker, or queue is discovered, contacted, or started, and record contracts
 are unchanged.
