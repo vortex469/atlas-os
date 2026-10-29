@@ -14,6 +14,7 @@ import type {
     CandidatePlanningResponse,
     CandidateWorkflowResponse,
 } from "../types/atlasAgent";
+import { workflowStageLabel } from "../utils/workflowState";
 
 type WorkflowLocationState = {
     workflow?: CandidateWorkflowResponse;
@@ -287,7 +288,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         <p className="mt-1 text-sm text-slate-400">{workflow.workflow_session_id ? "Workflow created." : workflowMessage(workflow)}</p>
                     </div>
                     <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">
-                        {workflow.workflow_status ? formatLabel(workflow.workflow_status) : formatLabel(workflow.conversion_status)}
+                        {workflow.workflow_status ? workflowStageLabel(workflow.workflow_status) : formatLabel(workflow.conversion_status)}
                     </span>
                 </div>
                 <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">

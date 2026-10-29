@@ -117,8 +117,9 @@ describe("WorkflowShellPage", () => {
 
         expect(screen.getByRole("heading", { name: "Workflow setup" })).toBeInTheDocument();
         expect(screen.getAllByText("Workflow created.").length).toBeGreaterThan(0);
-        expect((await screen.findAllByText(/Awaiting Approval|Approval Pending/)).length).toBeGreaterThan(0);
         const summary = within(screen.getByRole("region", { name: "Workflow summary" }));
+        expect(summary.getByText("Prepare change", { exact: true })).toBeVisible();
+        expect(summary.queryByText("Awaiting Approval", { exact: true })).not.toBeInTheDocument();
         const disclosure = summary.getByText("Workflow details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
         expect(summary.getByText("Workflow ID", { exact: true })).not.toBeVisible();
