@@ -57,7 +57,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.
             </p>
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}
-            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing workflow information; displayed results may be stale.</p>}
+            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing. The information shown may be out of date.</p>}
             {items && knownStates && (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <Metric label="Running workflows" value={String(active.length)} />
@@ -82,7 +82,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 </div>
             </details>
             {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
-            {!items && !loading && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Could not confirm the full workflow list, so running and blocked counts are hidden."}</p>}
+            {!items && !loading && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Couldn't load all workflows, so the running and blocked counts aren't shown."}</p>}
         </section>
     );
 }

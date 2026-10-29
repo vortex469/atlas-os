@@ -2759,3 +2759,14 @@ loopback-only mappings and that Compose commands belong in the folder
 containing Atlas's Compose file, or can name that file with `--file`. These
 instructions do not change probe behavior or service configuration. Component
 and responsive browser tests cover the guidance.
+
+## Work activity status wording — 2026-10-29
+
+The Work activity card now says when its displayed information may be out of
+date and explains in plain language when Atlas cannot show counts because it
+could not load every workflow. Expanded outcome details explain that results
+cannot be shown newest first because finish times are unavailable, and that a
+workflow may be blocked before it starts. Workflow evidence, ordering,
+availability rules and actions are unchanged. The focused Overview and Work
+activity suites pass (102 tests), as do Mission Control lint and production
+build.

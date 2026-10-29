@@ -23,7 +23,7 @@ describe("Work activity summary", () => {
         view(undefined, false, true);
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getByText("Checking workflow status…")).toBeVisible();
-        expect(within(section).queryByText("Could not confirm the full workflow list, so running and blocked counts are hidden.")).not.toBeInTheDocument();
+        expect(within(section).queryByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).not.toBeInTheDocument();
         expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
     });
@@ -141,7 +141,7 @@ describe("Work activity summary", () => {
     });
     it("marks retained observations during refresh as potentially stale", () => {
         view(page([workflow("active")]), false, true);
-        expect(screen.getByRole("status")).toHaveTextContent(/displayed results may be stale/);
+        expect(screen.getByRole("status")).toHaveTextContent(/information shown may be out of date/);
     });
     it.each([null, {}, { items: null }, page([null as unknown as WorkflowSummary]),
         { ...page([]), total: -1 }, { ...page([]), total: 1 },
@@ -149,7 +149,7 @@ describe("Work activity summary", () => {
         page([workflow("duplicate"), workflow("duplicate")]),
     ])("fails closed on missing, malformed, or incomplete evidence: %j", (evidence) => {
         view(evidence);
-        expect(screen.getByText("Could not confirm the full workflow list, so running and blocked counts are hidden.")).toBeInTheDocument();
+        expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector(":scope > dl")).toBeNull();
     });
     it.each([{ timeline: [] }, { timeline: [{ name: "Execution", status: "surprise" }] }, { timeline: [{ name: "Execution", status: "completed" }, { name: "Execution", status: "failed" }] }])("does not fabricate outcomes from invalid execution stages", ({ timeline }) => {
@@ -186,7 +186,7 @@ it("retains failed-refresh observations explicitly as stale, without asserting h
 
 it.each(["..", "\ud800", " "])("rejects unsafe workflow navigation: %j", id => {
     view(page([workflow(id)]));
-    expect(screen.getByText("Could not confirm the full workflow list, so running and blocked counts are hidden.")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
 });
 
 it("redacts sensitive display text and discloses partially missing outcomes", () => {
