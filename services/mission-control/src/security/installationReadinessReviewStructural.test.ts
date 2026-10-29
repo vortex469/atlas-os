@@ -26,9 +26,9 @@ describe("v0.34 installation readiness review release boundary", () => {
         expect(page).not.toMatch(/setInterval|setTimeout|useMutation|atlas\.(?:post|put|patch|delete)/i);
         expect(page.match(/<button\b/g)).toHaveLength(5);
         expect(page).toContain("Reload review");
-        expect(page).toContain("Reload permission evidence");
-        expect(page).toContain("Review permission evidence statement");
-        expect(page).toContain("Record permission evidence");
+        expect(page).toContain("Retry</button>");
+        expect(page).toContain("Review confirmation statement");
+        expect(page).toContain("Save confirmation record");
         for (const label of [
             "install now", "execute now", "run now", "deploy now", "dispatch now",
             "retry now", "resend now", "send to agent", "start workflow", "roll back now",

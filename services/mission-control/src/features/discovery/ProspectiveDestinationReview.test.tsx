@@ -183,7 +183,8 @@ describe("ProspectiveDestinationReview", () => {
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Installation admission could not be assessed.")).toBeInTheDocument();
 
-        await user.click(screen.getByRole("button", { name: "Retry check" }));
+        const assessmentControls = screen.getByText("This checks the plan and selected VM only. It does not install or authorize anything.").parentElement as HTMLElement;
+        await user.click(within(assessmentControls).getByRole("button", { name: "Retry check" }));
         expect(await screen.findByRole("list", { name: "Issues to review" })).toBeInTheDocument();
         expect(assessInstallationAdmission).toHaveBeenNthCalledWith(
             1,

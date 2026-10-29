@@ -34,12 +34,12 @@ describe("v0.36 installation execution admission presentation boundary", () => {
     });
 
     it("locks evidence-only copy, fixed blockers, and Home Assistant closure", () => {
-        expect(component).toMatch(/This evidence records a review step only/i);
-        expect(component).toMatch(/does not select or invoke a runner, or authorize installation or execution/i);
+        expect(component).toMatch(/This records a review step only/i);
+        expect(component).toMatch(/does not pick a machine, install anything, or start work/i);
         expect(component).toMatch(/not runner binding, execution start, installation, dispatch, retry or resend, Agent invocation, workflow or worker start/i);
         expect(component).toContain("runner_binding_not_defined");
         expect(component).toContain("execution_start_boundary_not_defined");
-        expect(component).toMatch(/Home Assistant remains blocked, non-installable, and non-executable/i);
+        expect(component).toContain("Atlas cannot install or run Home Assistant yet.");
     });
 
     it("has no admission consumer outside the exact client and presentation", () => {
