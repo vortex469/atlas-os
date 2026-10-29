@@ -2554,6 +2554,15 @@ rules, permission recording, and all execution boundaries are unchanged. The
 readiness component and phone/desktop browser checks cover collapsed and
 expanded records.
 
+## Attention list completeness — 2026-10-29
+
+When a report is unavailable, the attention card now says that some checks
+aren't available and that the list may be incomplete. “Which checks are
+missing?” opens the affected report details. The warning still avoids claiming
+the list is complete, and no attention items or statuses are synthesized.
+The focused overview suites pass (95 tests), as do Mission Control lint/build
+and all 26 built Overview browser checks across phone and desktop sizes.
+
 ## Service connection first steps — 2026-10-29
 
 When Atlas Core cannot connect to a service, Overview now shows the reported

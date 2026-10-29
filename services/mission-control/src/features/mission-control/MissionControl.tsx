@@ -275,9 +275,9 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         <Card title="Operator Attention" showSourceNote={false}>
             {!initialAttentionLoad && loading && <p role="status">Checking current reports. The attention list may change when the remaining checks finish.</p>}
             {!loading && !initialAttentionLoad && !attentionEvidenceComplete && <>
-                <p role="status">Some information is missing. Atlas cannot confirm this list includes everything that needs attention.</p>
+                <p role="status">Some checks aren't available. This list may be incomplete.</p>
                 {attentionSourceIssues.length > 0 && <details>
-                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Source status</summary>
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Which checks are missing?</summary>
                     <ul className="mt-2 space-y-1">
                         {attentionSourceIssues.map(issue => <li key={issue}>{issue}</li>)}
                     </ul>

@@ -30,7 +30,7 @@ describe("integrated attention and activity", () => {
     it.each([" ", "", "..", "\ud800", {}])("rejects malformed workflow identity %j without requiring human action", id => {
         render(dashboard({ workflows: { data: { items: [{ workflow_id: id, workflow_state: "awaiting_approval" }] } } }));
         expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
-        const sourceStatus = attention().getByText("Source status").closest("details");
+        const sourceStatus = attention().getByText("Which checks are missing?").closest("details");
         expect(sourceStatus).not.toHaveAttribute("open");
         expect(sourceStatus).toHaveTextContent(/workflow results are incomplete/i);
     });
@@ -44,7 +44,7 @@ describe("integrated attention and activity", () => {
     it("never creates action requirements from absent or malformed evidence or historical failures", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
         expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
-        expect(attention().getByText("Some information is missing. Atlas cannot confirm this list includes everything that needs attention.")).toBeVisible();
+        expect(attention().getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
         expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
     it("orders and deduplicates source history with provider context and safe detail navigation", async () => {

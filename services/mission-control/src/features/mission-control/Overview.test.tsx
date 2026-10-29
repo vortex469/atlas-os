@@ -352,9 +352,9 @@ describe("MC overview evidence", () => {
 
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('status')).toHaveTextContent("Checking current reports. The attention list may change when the remaining checks finish.");
-        expect(attention.queryByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).not.toBeInTheDocument();
+        expect(attention.queryByText("Some checks aren't available. This list may be incomplete.")).not.toBeInTheDocument();
         expect(attention.queryByText('Checking current information…')).not.toBeInTheDocument();
-        expect(attention.queryByText('Source status')).not.toBeInTheDocument();
+        expect(attention.queryByText('Which checks are missing?')).not.toBeInTheDocument();
     });
     it("reports no attention only after all current sources are checked", () => {
         show({
@@ -377,9 +377,9 @@ describe("MC overview evidence", () => {
             ai: { data: { health: { status: 'healthy' } } },
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+        expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
         expect(attention.getByText('System health: health details are incomplete.')).not.toBeVisible();
-        fireEvent.click(attention.getByText('Source status'));
+        fireEvent.click(attention.getByText('Which checks are missing?'));
         expect(attention.getByText('System health: health details are incomplete.')).toBeVisible();
         expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
@@ -400,9 +400,9 @@ describe("MC overview evidence", () => {
             ai: { data: { health: { status: 'healthy' } } },
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+        expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
         expect(attention.getByText('Workflows: current information could not be loaded.')).not.toBeVisible();
-        fireEvent.click(attention.getByText('Source status'));
+        fireEvent.click(attention.getByText('Which checks are missing?'));
         expect(attention.getByText('Workflows: current information could not be loaded.')).toBeVisible();
         expect(attention.queryByText('Workflow results are incomplete.')).not.toBeInTheDocument();
     });
@@ -413,7 +413,7 @@ describe("MC overview evidence", () => {
         });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Workflow · Blocked' })).toBeVisible();
-        expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+        expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
     });
     it("handles malformed values without success or a crash", () => {
         show({ health: { data: { atlas: {}, services: { broken: null } } }, providers: { data: [null, { health: { status: 23 } }] }, workflows: { data: { items: [null] } }, ai: { data: { health: { status: [] } } }, activity: { data: { items: [null] } } });
@@ -551,10 +551,10 @@ it('keeps stale AI conditions explicitly unknown', () => {
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
     show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Some information is missing. Atlas cannot confirm this list includes everything that needs attention.')).toBeVisible();
+    expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
     expect(attention.getByText('Workflows: workflow results are incomplete.')).not.toBeVisible();
     expect(attention.getByText('System findings: finding details are incomplete.')).not.toBeVisible();
-    fireEvent.click(attention.getByText('Source status'));
+    fireEvent.click(attention.getByText('Which checks are missing?'));
     expect(attention.getByText('Workflows: workflow results are incomplete.')).toBeVisible();
     expect(attention.getByText('System findings: finding details are incomplete.')).toBeVisible();
     expect(screen.getByText('Some provider action records could not be read.')).toBeInTheDocument();
