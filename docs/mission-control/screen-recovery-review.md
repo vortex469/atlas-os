@@ -3412,7 +3412,9 @@ execution behavior are unchanged.
 The progress panel now distinguishes a rejected change from one waiting for
 approval and says when an approved change or maintenance request is ready for
 the operator to run. The panel still performs no action; approval and run
-controls remain separate.
+controls remain separate. If approval is recorded while the Agent workflow
+state stays at `awaiting_implementation_approval`, the progress message still
+shows the approved run as the next operator step.
 
 The approved-to-run state now shows the existing explicit run control when
 approval is recorded. Maintenance additionally requires its exact request to

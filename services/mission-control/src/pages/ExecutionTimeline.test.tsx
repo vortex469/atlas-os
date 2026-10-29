@@ -133,6 +133,16 @@ describe("ExecutionTimeline", () => {
         expect(screen.getByRole("status")).toHaveTextContent("Approval is recorded. Run the change when you are ready.");
     });
 
+    it("keeps the approved-to-run message when the workflow state has not advanced", () => {
+        renderTimeline(workflow({
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Approval is recorded. Run the change when you are ready.");
+        expect(screen.queryByRole("status")).not.toHaveTextContent("Atlas Agent has not reported whether the change ran.");
+    });
+
     it("does not present an unrecognized server stage status as not started", () => {
         renderTimeline(workflow({
             timeline: workflow().timeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "unexpected" } : stage),
@@ -195,6 +205,17 @@ describe("ExecutionTimeline", () => {
         }));
 
         expect(screen.getByRole("status")).toHaveTextContent("Maintenance is approved. Run it when you are ready.");
+    });
+
+    it("keeps approved maintenance distinct from a missing run result before the run starts", () => {
+        renderTimeline(workflow({
+            effect_kind: "operational_action",
+            workflow_state: "awaiting_implementation_approval",
+            implementation_approval_status: "approved",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Maintenance is approved. Run it when you are ready.");
+        expect(screen.queryByRole("status")).not.toHaveTextContent("Review Maintenance status for the latest result.");
     });
 
     it("renders running state", () => {
