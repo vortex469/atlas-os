@@ -2909,3 +2909,11 @@ timestamp. Action detail and maintenance lifecycle evidence use the shared
 strict validator, so impossible calendar dates cannot appear as real dates.
 Focused tests cover malformed timestamps across the affected screens; action
 history and maintenance execution behavior are unchanged.
+
+## Provider resource name fallback — 2026-10-29
+
+When neither inventory nor monitoring settings include a resource name, the
+resource card says “Name not reported” while keeping the known type and ID
+visible. This avoids implying that Atlas cannot identify the resource at all.
+The focused ProviderResources suite covers the missing-name state; provider
+identity checks and monitoring controls are unchanged.

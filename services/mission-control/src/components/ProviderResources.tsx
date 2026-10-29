@@ -243,7 +243,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
 function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalidated, onReview, metadataColumns, managementUnavailable, operatorState, saving, decisionRevision, error, status, onSave }: { resource: ComposedResource; suggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null; reviewInvalidated: boolean; onReview: (suggestion: ProviderMonitoringIntentSuggestionV1) => void; metadataColumns: MetadataColumn[]; managementUnavailable: boolean; operatorState: "anonymous" | "loading" | "available" | "unavailable"; saving: boolean; decisionRevision: number; error: string | null; status: string | null; onSave: (publicResource: ManagedProviderResourceV2, operatorResource: ManagedProviderResourceV3, reviewedSuggestion: ProviderMonitoringIntentSuggestionV1 | null, expectation: ProviderMonitoringExpectation, acknowledge: boolean) => Promise<void> }) {
     const observed = resource.inventory;
     const managed = resource.inconsistent ? null : resource.management;
-    const displayName = observed?.display_name ?? managed?.display_name ?? "Unknown resource";
+    const displayName = observed?.display_name ?? managed?.display_name ?? "Name not reported";
     const resourceType = observed?.resource_type ?? managed?.resource_type ?? "unknown";
     const resourceTypeLabel = formatResourceTypeLabel(resourceType);
     const resourceId = observed?.resource_id ?? managed?.resource_id ?? "unknown";

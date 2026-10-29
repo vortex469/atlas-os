@@ -202,6 +202,21 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(screen.getByText("Atlas can detect if this provider instance is replaced.")).toBeVisible();
     });
 
+    it("shows when a resource name is missing while retaining its type and ID", async () => {
+        const missingName = undefined as unknown as string;
+        vi.mocked(getProviderResources).mockResolvedValue({
+            ...inventory,
+            resources: [{ ...inventory.resources[0], display_name: missingName }],
+        });
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({ display_name: missingName }));
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ display_name: missingName }));
+
+        render(<ProviderResources provider={provider} />);
+
+        expect(await screen.findByRole("heading", { name: "Name not reported" })).toBeVisible();
+        expect(screen.getByText("Virtual machine 110")).toBeVisible();
+    });
+
     it("clears the previous provider's monitoring selection before the next inventory arrives", async () => {
         const user = userEvent.setup();
         const view = render(<ProviderResources provider={provider} />);
