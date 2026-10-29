@@ -40,7 +40,7 @@ describe("Work activity summary", () => {
         expect(within(section).getByText("Running workflows").nextElementSibling).toHaveTextContent("0");
         expect(within(section).getByText("Blocked workflows").nextElementSibling).toHaveTextContent("0");
         expect(within(section).getByText("No running workflows are listed.")).toBeInTheDocument();
-        expect(within(section).getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.")).toBeInTheDocument();
+        expect(within(section).getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
         expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
         expect(within(section).getByText("Queue size").closest("details")?.open).toBe(false);
         fireEvent.click(within(section).getByText("More workflow details"));
@@ -169,7 +169,7 @@ describe("Work activity summary", () => {
         expect(within(section).getByRole("button", { name: "Show all 8 running workflows" })).toBeVisible();
         expect(section.querySelectorAll("button")).toHaveLength(1);
         expect(section.querySelectorAll("form,input,select,textarea")).toHaveLength(0);
-        expect(section).toHaveTextContent("This read-only summary shows workflow progress and results.");
+        expect(section).toHaveTextContent("Shows workflow progress and results.");
     });
     it("rejects malformed JSON fields before the shared dashboard consumes them", () => {
         expect(isWorkflowEvidencePage({ ...page([]), total: Infinity })).toBe(false);

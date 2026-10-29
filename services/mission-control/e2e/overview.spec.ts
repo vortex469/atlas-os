@@ -368,7 +368,7 @@ test('work activity reveals all workflow records on mobile without horizontal ov
     await page.goto('/');
 
     const section = page.getByRole('region', { name: 'Work activity' });
-    await expect(section.getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.")).toBeVisible();
+    await expect(section.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeVisible();
     const running = section.getByRole('list', { name: 'Running workflows' });
     await expect(running.getByRole('listitem')).toHaveCount(3);
     await section.getByRole('button', { name: 'Show all 5 running workflows' }).click();
@@ -496,7 +496,7 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     const worker = page.getByRole('region', { name: 'Work activity' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();
-    await expect(worker.getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.", { exact: true })).toBeVisible();
+    await expect(worker.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.", { exact: true })).toBeVisible();
     await expect(worker.getByText('No running workflows are listed.', { exact: true })).toBeVisible();
     await expect(worker.getByText('No running workflows are listed. Worker availability is unknown.', { exact: true })).toHaveCount(0);
     const workerToggle = worker.locator('summary', { hasText: 'More workflow details' });

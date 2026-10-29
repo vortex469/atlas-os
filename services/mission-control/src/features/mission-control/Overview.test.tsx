@@ -511,7 +511,7 @@ it('distinguishes running workflows from verification and commit activity', () =
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
     const activity = within(screen.getByRole('region', { name: 'Work activity' }));
     expect(activity.getAllByText('Running workflows')[0].nextElementSibling).toHaveTextContent('1');
-    expect(activity.getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.")).toBeInTheDocument();
+    expect(activity.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
 });
 
 it('preserves the most urgent duplicate condition at equal freshness', () => {

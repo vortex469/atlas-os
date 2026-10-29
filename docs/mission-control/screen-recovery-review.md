@@ -2762,11 +2762,12 @@ and responsive browser tests cover the guidance.
 
 ## Work activity status wording — 2026-10-29
 
-The Work activity card now says when its displayed information may be out of
-date and explains in plain language when Atlas cannot show counts because it
-could not load every workflow. Expanded outcome details explain that results
-cannot be shown newest first because finish times are unavailable, and that a
-workflow may be blocked before it starts. Workflow evidence, ordering,
+The Work activity card says what information it shows, notes that worker
+readiness is not reported, and explains in plain language when Atlas cannot
+show counts because it could not load every workflow. Refreshing information
+is described as possibly out of date. Expanded outcome details explain that
+results cannot be shown newest first because finish times are unavailable, and
+that a workflow may be blocked before it starts. Workflow evidence, ordering,
 availability rules and actions are unchanged. The focused Overview and Work
-activity suites pass (102 tests), as do Mission Control lint and production
-build.
+activity suites pass (102 tests), all 28 built Overview browser tests pass,
+and Mission Control lint and production build pass.
