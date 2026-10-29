@@ -202,7 +202,10 @@ describe("MC overview evidence", () => {
         expect(steps).toHaveTextContent("run docker ps on the machine running that app and find its container.");
         expect(steps).toHaveTextContent("Its host port should appear under PORTS.");
         expect(steps).toHaveTextContent("If PORTS is blank, add a ports: mapping to the service's Compose file");
-        expect(steps).toHaveTextContent("use docker run -p, then recreate the container so Atlas Core can reach it.");
+        expect(steps).toHaveTextContent("Map HOST_PORT:CONTAINER_PORT: set the host port to the port in Atlas's reported address.");
+        expect(steps).toHaveTextContent("Check the app's Compose file or documentation for its internal listening port and use that as the container port; the two ports may differ.");
+        expect(steps).toHaveTextContent("or use docker run -p. Map HOST_PORT:CONTAINER_PORT");
+        expect(steps).toHaveTextContent("Then recreate the container so Atlas Core can reach it.");
         expect(steps).toHaveTextContent("run commands from the folder containing Atlas’s Compose file.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");

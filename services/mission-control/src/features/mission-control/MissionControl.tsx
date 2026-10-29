@@ -84,7 +84,10 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                     For an app in a bridged Docker container on another machine, run <code>docker ps</code> on the machine running that app
                     and find its container. Its host port should appear under <code>PORTS</code>.
                     If <code>PORTS</code> is blank, add a <code>ports:</code> mapping to the service's Compose file
-                    or use <code>docker run -p</code>, then recreate the container so Atlas Core can reach it.
+                    or use <code>docker run -p</code>. Map <code>HOST_PORT:CONTAINER_PORT</code>: set the host port to
+                    the port in Atlas's reported address. Check the app's Compose file or documentation for its
+                    internal listening port and use that as the container port; the two ports may differ.
+                    Then recreate the container so Atlas Core can reach it.
                 </li>
                 <li>If using Compose, run commands from the folder containing Atlas’s Compose file.</li>
             </ol>

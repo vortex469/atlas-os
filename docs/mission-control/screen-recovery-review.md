@@ -2405,6 +2405,12 @@ phone and desktop layouts. Mission Control lint and production build pass.
 Browser fixtures remain isolated and issue no service configuration or
 mutation requests.
 
+The same guidance explains the Compose/Docker port order: `HOST_PORT` is the
+port in Atlas's reported address, and `CONTAINER_PORT` is the application's
+internal listening port, found in its Compose file or documentation. It says
+the two may differ. Overview component and phone/desktop browser checks cover
+the instruction.
+
 ## Service attention wording — 2026-10-29
 
 The top-level Operator Attention item now uses “Atlas Core could not connect”

@@ -309,7 +309,10 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('run docker ps on the machine running that app and find its container');
         await expect(steps).toContainText('Its host port should appear under PORTS');
         await expect(steps).toContainText("If PORTS is blank, add a ports: mapping to the service's Compose file");
-        await expect(steps).toContainText('use docker run -p, then recreate the container so Atlas Core can reach it');
+        await expect(steps).toContainText("Map HOST_PORT:CONTAINER_PORT: set the host port to the port in Atlas's reported address");
+        await expect(steps).toContainText("Check the app's Compose file or documentation for its internal listening port and use that as the container port; the two ports may differ");
+        await expect(steps).toContainText('or use docker run -p. Map HOST_PORT:CONTAINER_PORT');
+        await expect(steps).toContainText('Then recreate the container so Atlas Core can reach it');
         await expect(steps).toContainText('run commands from the folder containing Atlas’s Compose file');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
