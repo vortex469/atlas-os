@@ -17,7 +17,7 @@ export function AgentOverviewContent({ evidence, loading = false }: { evidence?:
                 ? "Loading Agent details…"
                 : "Agent details are not available."
         : stale
-            ? "Showing last-known Agent details."
+            ? "Showing the last Agent report; current details could not be loaded."
             : null;
     return <>
         {hasData && <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -49,7 +49,7 @@ export function ProviderOverviewContent({ evidence, loading = false }: { evidenc
     return <>
         {providers && providers.length > 0 && <p>{stale ? "Showing providers from the last available report." : "Saved providers and the status Atlas reports for each one."}</p>}
         {providers === null && <p>{unavailableMessage}</p>}
-        {providers?.length === 0 && <p>{stale ? "No providers were in the last available list; the current list is unknown." : evidence?.unavailable ? "Provider configuration unknown." : "No providers configured."}</p>}
+        {providers?.length === 0 && <p>{stale ? "No providers were in the last available list; the current list is unknown." : "No providers configured."}</p>}
         {providers?.slice(0, 4).map(renderProvider)}
         {providers && additionalProviders > 0 && <details>
             <summary>{additionalProviders} more {additionalProviderNoun}</summary>

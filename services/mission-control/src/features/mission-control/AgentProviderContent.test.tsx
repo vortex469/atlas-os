@@ -36,7 +36,6 @@ describe("integrated agent/provider evidence", () => {
         const agent = within(screen.getByRole("region", { name: "Agent details" }));
         expect(agent.getByText("Loading Agent details…")).toBeVisible();
         expect(registry().getByText("Loading providers…")).toBeVisible();
-        expect(registry().queryByText("Provider configuration unknown.")).not.toBeInTheDocument();
 
         view.rerender(<MemoryRouter><Overview evidence={{ agent: { unavailable: true }, providers: { unavailable: true } }} /></MemoryRouter>);
         expect(agent.getByText("Agent details could not be loaded.")).toBeVisible();
@@ -100,11 +99,11 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(agent.queryByText("Evidence unavailable.")).not.toBeInTheDocument();
     });
-    it("labels retained Agent identity as last-known", () => {
+    it("explains when the latest Agent report could not be loaded", () => {
         show({ agent: { data: { app_name: "Development Agent" }, unavailable: true, stale: true } });
         const agent = within(screen.getByRole("region", { name: "Agent details" }));
         expect(agent.getByText("Development Agent")).toBeInTheDocument();
-        expect(agent.getByText("Showing last-known Agent details.")).toBeInTheDocument();
+        expect(agent.getByText("Showing the last Agent report; current details could not be loaded.")).toBeInTheDocument();
         expect(agent.queryByText(/workflow availability/i)).not.toBeInTheDocument();
         expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
