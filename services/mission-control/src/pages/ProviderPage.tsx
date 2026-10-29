@@ -98,12 +98,19 @@ export function ProviderPage() {
                 <div className="flex items-center gap-4">
                     <div className="text-right">
                         <p className="text-xs uppercase tracking-wider text-slate-500">
-                            Last Updated
+                            Last data refresh (local time)
                         </p>
 
                         <p className="mt-1 text-sm text-slate-300">
                             {lastUpdated
-                                ? lastUpdated.toLocaleTimeString()
+                                ? (
+                                    <time dateTime={lastUpdated.toISOString()}>
+                                        {lastUpdated.toLocaleString(undefined, {
+                                            dateStyle: "medium",
+                                            timeStyle: "short",
+                                        })}
+                                    </time>
+                                )
                                 : isLoading ? "Connecting..." : "Not updated yet"}
                         </p>
                     </div>

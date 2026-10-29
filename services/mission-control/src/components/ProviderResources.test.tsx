@@ -184,6 +184,15 @@ async function renderResources() {
 }
 
 describe("ProviderResources Provider Intent flow", () => {
+    it("labels the inventory refresh time as local and preserves its UTC instant", async () => {
+        await renderResources();
+
+        const time = screen.getByText(new Date(inventory.refreshed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(time.tagName).toBe("TIME");
+        expect(time).toHaveAttribute("datetime", inventory.refreshed_at);
+        expect(time.parentElement).toHaveTextContent("Observed inventory refreshed (local time):");
+    });
+
     it("explains provider-verified identity in plain language", async () => {
         await renderResources();
 

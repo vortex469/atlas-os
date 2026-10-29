@@ -200,7 +200,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         suggestions.map((suggestion) => [coordinate(suggestion.provider_id, suggestion.resource_type, suggestion.resource_id), suggestion]),
     ), [suggestions]);
     if (!supported) return null;
-    const refreshedAt = inventory ? new Date(inventory.refreshed_at).toLocaleString() : "Not refreshed yet";
+    const refreshedAt = inventory ? new Date(inventory.refreshed_at) : null;
     const operatorState = !session.authenticated
         ? "anonymous"
         : operatorLoading || managementLoading
@@ -222,7 +222,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     return (
         <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg shadow-slate-950/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
-                <div><SectionHeader title="Resources and monitoring" description="See what Atlas observes, whether it can identify each resource, and what monitoring expects." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed: {refreshedAt}</p></div>
+                <div><SectionHeader title="Resources and monitoring" description="See what Atlas observes, whether it can identify each resource, and what monitoring expects." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed (local time): {refreshedAt && !Number.isNaN(refreshedAt.getTime()) ? <time dateTime={inventory!.refreshed_at}>{refreshedAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : inventory ? "Time unavailable" : "Not refreshed yet"}</p></div>
                 <button type="button" onClick={() => void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()])} disabled={inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? "Refreshing..." : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">

@@ -143,4 +143,15 @@ describe("ProviderPage authority layout", () => {
         expect(screen.getByText("Suggestions for you to review. They don't change settings or run actions.")).toBeInTheDocument();
         expect(screen.getByText("No recommendations for this provider right now.")).toBeInTheDocument();
     });
+
+    it("labels the last provider data refresh as local time and preserves its UTC instant", () => {
+        const lastUpdated = new Date("2026-10-29T07:00:00.000Z");
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], { lastUpdated }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByText("Last data refresh (local time)")).toBeInTheDocument();
+        const time = screen.getByText(lastUpdated.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(time.tagName).toBe("TIME");
+        expect(time).toHaveAttribute("datetime", lastUpdated.toISOString());
+    });
 });

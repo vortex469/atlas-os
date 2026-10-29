@@ -109,6 +109,8 @@ for (const width of [320, 390, 1280]) {
         await expect(heading).toBeVisible();
         await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Recommendations" })).toBeVisible();
+        await expect(page.getByText("Last data refresh (local time)")).toBeVisible();
+        await expect(page.getByText("Last data refresh (local time)").locator("xpath=following-sibling::p/time")).toHaveAttribute("datetime", /Z$/);
         const spacing = await heading.evaluate((element) => {
             const page = element.closest("main");
             const overview = element.closest("section");

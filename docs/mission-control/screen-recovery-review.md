@@ -2654,3 +2654,12 @@ dashboard shows the relevant empty-state message without six redundant
 zero-count cards. The focused dashboard suite covers matching and empty
 filters (17 tests), as do all 15 built workflow-dashboard browser checks at
 320px, 390px and 1280px. Mission Control lint and production build pass.
+
+## Provider refresh time clarity — 2026-10-29
+
+The provider workspace and resource inventory label their refresh times as
+local and include the date, so the clock value is not mistaken for a provider
+event time. Each `<time>` value retains the exact UTC instant. The focused
+provider page and resource suites pass (65 tests), as do all three responsive
+provider detail browser checks at 320px, 390px and 1280px, Mission Control lint,
+and production build.
