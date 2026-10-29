@@ -3475,3 +3475,10 @@ the service listener and Docker network/port configuration before changing
 ports. The Docker status/network/ports command is shared with the expanded
 Overview checks. The focused Overview suite passes 75 tests; its development
 and built-preview browser suites each pass 29 tests. Lint and build pass.
+
+## Maintenance request type wording — 2026-10-29
+
+The maintenance capability summary now describes the QEMU resource type as
+“Virtual machine,” matching the operator-facing target choice without exposing
+the backend implementation term. The provider/resource contract and approval
+flow are unchanged.

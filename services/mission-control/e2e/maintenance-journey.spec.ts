@@ -58,6 +58,8 @@ for (const width of [320, 390, 1280]) {
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         await expect(page.getByText("VM type", { exact: true })).toBeVisible();
+        await expect(page.getByText("Virtual machine", { exact: true })).toBeVisible();
+        await expect(page.getByText("QEMU", { exact: true })).toHaveCount(0);
         const target = page.getByRole("radio", { name: /Browser fixture VM/ });
         const targetCard = page.locator("label").filter({ has: target });
         await expect(targetCard).toContainText("VM ID 110");

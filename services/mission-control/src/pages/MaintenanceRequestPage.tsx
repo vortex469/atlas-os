@@ -38,7 +38,7 @@ function resourceLoadErrorMessage(status: number | undefined): string {
 
 function descriptorLabel(value: string | undefined): string {
     if (!value) return "Not available";
-    if (value === "qemu") return "QEMU";
+    if (value === "qemu") return "Virtual machine";
     return value.charAt(0).toUpperCase() + value.slice(1).replaceAll("-", " ");
 }
 

@@ -139,7 +139,8 @@ describe("MaintenanceRequestPage", () => {
         expect(screen.getByText("Restart service")).toBeInTheDocument();
         expect(screen.getByText("Proxmox")).toBeInTheDocument();
         expect(screen.getByText("VM type")).toBeInTheDocument();
-        expect(screen.getByText("QEMU")).toBeInTheDocument();
+        expect(screen.getByText("Virtual machine")).toBeInTheDocument();
+        expect(screen.queryByText("QEMU")).not.toBeInTheDocument();
         expect(screen.getByText(/^VM ID\s*110$/)).toBeInTheDocument();
         expect(screen.getAllByText(/^Host\s*vorex469$/)).toHaveLength(2);
         expect(screen.getByText("Stopped")).toBeInTheDocument();
