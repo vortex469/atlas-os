@@ -349,7 +349,7 @@ describe("DiscoveryItemPage", () => {
         if (source === "plan") mockedGetDiscoveryInstallationPlan.mockResolvedValue(installationPlan("other"));
         renderPage();
         await screen.findByRole("heading", { name: "Frigate" });
-        const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Dynamic evidence unavailable" : source === "grounding" ? "Image grounding is currently unavailable." : "Installation plan is currently unavailable.";
+        const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Dynamic evidence unavailable" : source === "grounding" ? "The image check is unavailable right now." : "Installation plan is currently unavailable.";
         expect(await screen.findByText(message)).toBeInTheDocument();
         expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
     });
@@ -441,7 +441,7 @@ describe("DiscoveryItemPage", () => {
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).toBeVisible();
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
-        expect(await screen.findByRole("heading", { name: "Image grounding" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Image check" })).toBeInTheDocument();
         expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledWith("frigate");
     });
 
@@ -607,19 +607,19 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Image grounding is currently unavailable due to a local source or read failure.")).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Retry image grounding" }));
+        expect(await screen.findByText("Atlas could not finish checking the image. Try again.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry image check" }));
 
-        const deploymentBindingLabels = await screen.findAllByText("No deployment binding");
+        const deploymentBindingLabels = await screen.findAllByText("No deployment mapping");
         expect(deploymentBindingLabels.some((element) => element.tagName === "P")).toBe(true);
         expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledTimes(2);
         expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });
 
     it.each([
-        [404, "Item grounding projection unavailable or not found."],
-        [503, "Image grounding is currently unavailable due to a local source or read failure."],
-        [500, "Image grounding is currently unavailable."],
+        [404, "No image check is available for this item."],
+        [503, "Atlas could not finish checking the image. Try again."],
+        [500, "The image check is unavailable right now."],
     ])("bounds image-grounding HTTP %s without exposing backend details", async (status, copy) => {
         mockedGetDiscoveryImageGrounding.mockRejectedValue(
             httpError(status, "SECRET token=hidden /private/repository"),
