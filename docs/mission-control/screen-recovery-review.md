@@ -3054,3 +3054,7 @@ The nested worker binding now uses a short saved/expired status, readable UTC
 times, and one sentence that says the worker is not enabled or contacted.
 Technical lineage stays collapsed, and a failed read can be retried safely.
 The panel remains read-only and creates no binding or activation action.
+
+The nested activation review now says plainly that activation is unavailable
+and no worker or queue action was taken. It shows a short recorded/expired
+status, keeps technical evidence collapsed, and retries only its read request.

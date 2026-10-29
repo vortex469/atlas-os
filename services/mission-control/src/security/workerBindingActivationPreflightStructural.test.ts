@@ -21,18 +21,19 @@ describe("v0.47 worker binding activation preflight Mission Control boundary", (
         expect(router).not.toMatch(/worker-binding-activation-preflights|WorkerBindingActivationPreflight/i);
         expect(navigation).not.toMatch(/worker binding activation preflight|worker_binding_activation_preflight/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("keeps operator state simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/State: eligible for later activation consideration; activation: not defined; blocked: yes/);
-        expect(component).toMatch(/Advanced details/);
+        expect(component).toMatch(/Activation review \{status\.toLowerCase\(\)\}/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Worker capability fingerprint/);
         expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
         expect(component).toMatch(/Blockers/);
         expect(component).toMatch(/Worker binding activation preflight fixed-false authority fields/);
-        expect(component).toMatch(/No activation, store contact, runtime contact, queue claim, queue lease, queue acknowledgement/);
+        expect(component).toMatch(/This review checks whether the saved worker reference can be considered later\. It does not enable or contact the worker/);
+        expect(component).toMatch(/Activation is unavailable\. No worker or queue action was taken/);
         expect(component).not.toMatch(/worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /workerBindingActivationPreflight|WorkerBindingActivationPreflight|worker-binding-activation-preflights/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([

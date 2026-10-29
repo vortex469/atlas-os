@@ -20,22 +20,22 @@ const BLOCKERS: Record<string, string> = {
 export function WorkerBindingActivationPreflights({ candidateId, bindingId }: { candidateId: string; bindingId: string }) {
     const [items, setItems] = useState<WorkerBindingActivationPreflightV1[] | null>(null);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         let current = true;
         listWorkerBindingActivationPreflights(candidateId)
-            .then((value) => { if (current) setItems(value.items.filter((item) => item.one_shot_dequeue_worker_binding.binding_id === bindingId)); })
+            .then((value) => { if (current) { setItems(value.items.filter((item) => item.one_shot_dequeue_worker_binding.binding_id === bindingId)); setError(false); } })
             .catch(() => { if (current) setError(true); });
         return () => { current = false; };
-    }, [candidateId, bindingId]);
+    }, [candidateId, bindingId, readAttempt]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Worker binding activation preflight evidence">
-        <h6 className="font-semibold">Worker binding activation preflight</h6>
-        <p className="mt-2 text-sm">Mission Control shows v0.47 activation preflight evidence inside the existing installation workflow. It is readiness evidence only and does not activate a binding, contact a store or runtime, claim work, lease work, acknowledge work, start a worker, invoke Agent, or start execution.</p>
-        <p className="mt-1 text-sm">No activation, store contact, runtime contact, queue claim, queue lease, queue acknowledgement, worker-start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading worker binding activation preflight evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Worker binding activation preflight evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No worker binding activation preflight evidence has been recorded. Activation, worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Activation review</h6>
+        <p className="mt-2 text-sm">This review checks whether the saved worker reference can be considered later. It does not enable or contact the worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Checking the activation review…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Atlas could not load the activation review. Retry to check its status.</p><p className="text-xs text-slate-400">Private system details are hidden.</p><button type="button" onClick={() => { setItems(null); setError(false); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
+        {items?.length === 0 && !error && <p role="status" className="mt-3">No activation review has been saved.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Worker binding activation preflights">{items.map((item) => <Preflight key={item.preflight_id} item={item} />)}</ol>}
     </section>;
 }
@@ -45,12 +45,13 @@ function Preflight({ item }: { item: WorkerBindingActivationPreflightV1 }) {
     const worker = binding.worker_intake_admission.worker_identity;
     const intake = binding.worker_intake_admission.worker_intake_reference;
     const limits = binding.worker_intake_admission.inherited_limits;
+    const status = isExpired(item.valid_until) ? "Expired" : "Recorded";
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded worker binding activation preflight evidence</p>
-        <p className="mt-1">State: eligible for later activation consideration; activation: not defined; blocked: yes. Store contacted: false; runtime contacted: false; queue claimed: false; worker started: false; Agent invoked: false; execution started: false.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never activates the binding, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Activation review {status.toLowerCase()}</p>
+        <p className="mt-1">Activation is unavailable. No worker or queue action was taken.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(item.recorded_at)} · Expires {formatUtcTimestamp(item.valid_until)}</p>
         <details className="mt-3">
-            <summary>Advanced details</summary>
+            <summary>Technical details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Preflight ID" value={item.preflight_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -98,6 +99,16 @@ function Preflight({ item }: { item: WorkerBindingActivationPreflightV1 }) {
         </details>
         <WorkerBindingActivationEvidences candidateId={item.candidate_record_id} preflightId={item.preflight_id} />
     </li>;
+}
+
+function isExpired(value: string) {
+    const expiry = Date.parse(value);
+    return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
 }
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
