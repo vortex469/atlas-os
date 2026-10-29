@@ -1037,6 +1037,8 @@ test("provider registry retries an unavailable read", async ({ page }) => {
     });
     await page.goto("/providers");
     await expect(page.getByRole("heading", { name: "Providers could not load" })).toBeVisible();
+    await expect(page.getByRole("alert").getByRole("button")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(1);
     await expect(page.getByText("Try again to get the latest provider list.")).toHaveCount(0);
     await expect(page.getByText("PRIVATE_SERVER_ERROR")).toHaveCount(0);
     await page.getByRole("button", { name: "Try again" }).click();
@@ -1062,6 +1064,8 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Refresh" }).click();
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Provider refresh failed");
+        await expect(alert.getByRole("button")).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(1);
         await expect(alert).toContainText("Current provider information is unknown.");
         await expect(alert).not.toContainText("PRIVATE_SERVER_ERROR");
         await expect(list.getByRole("heading", { name: "Proxmox" })).toBeVisible();
