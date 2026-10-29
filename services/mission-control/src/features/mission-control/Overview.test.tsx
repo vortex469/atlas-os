@@ -305,10 +305,11 @@ describe("MC overview evidence", () => {
         const guidance = health.getByText('How to read health');
         expect(report).toBeVisible();
         expect(report.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(health.queryByText(/overall check time/)).not.toBeVisible();
+        expect(health.queryByText(/Each report updates on its own/)).not.toBeVisible();
         fireEvent.click(health.getByText('How to read health'));
-        expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
-        expect(health.getByText(/does not calculate one overall score/)).toBeVisible();
+        expect(health.getByText(/Each report updates on its own, so check times may differ/)).toBeVisible();
+        expect(health.getByText(/doesn't combine them into one score/)).toBeVisible();
+        expect(health.getByText(/Reports more than a minute old are marked out of date/)).toBeVisible();
 
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
         const explanation = checks.getByText("These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.");

@@ -494,9 +494,10 @@ for (const width of [390, 1280]) {
         const reportBox = await coreReport.boundingBox();
         const guidanceBox = await health.getByText('How to read health').boundingBox();
         expect(reportBox!.y).toBeLessThan(guidanceBox!.y);
-        await expect(health.getByText(/overall check time/)).toBeHidden();
+        await expect(health.getByText(/Each report updates on its own/)).toBeHidden();
         await health.getByText('How to read health').click();
-        await expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
+        await expect(health.getByText(/Each report updates on its own, so check times may differ/)).toBeVisible();
+        await expect(health.getByText(/Reports more than a minute old are marked out of date/)).toBeVisible();
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
         const explanation = checks.getByText('These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.');
         await expect(explanation).toBeHidden();

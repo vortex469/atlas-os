@@ -2584,3 +2584,13 @@ and authority behavior are unchanged. The component test and 26 built Overview
 browser checks pass across phone and desktop sizes. The provider preview browser
 check now waits for its fixture data before checking ordering, removing a load
 timing race.
+
+## Health report explanation — 2026-10-29
+
+The System health explanation now says each report updates separately, so
+their check times may differ. It also states that Atlas does not combine the
+reports into one score and marks reports older than a minute as out of date.
+This changes the wording only; report sources, freshness rules, and health
+states are unchanged. The overview and health presentation suites pass (130
+tests); Mission Control lint/build and all 26 built Overview browser checks pass
+across phone and desktop sizes.

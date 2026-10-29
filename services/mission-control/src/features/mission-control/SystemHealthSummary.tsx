@@ -40,7 +40,7 @@ export function SystemHealthSummary({ evidence, loading = false }: { evidence: O
                 );
             })}
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
-                <p>Atlas shows each source separately; it does not calculate one overall score. Core does not supply an overall check time. Reports older than a minute are marked out of date.</p>
+                <p>Atlas shows each report separately and doesn't combine them into one score. Each report updates on its own, so check times may differ. Reports more than a minute old are marked out of date.</p>
             </details>
         </section>
     );
