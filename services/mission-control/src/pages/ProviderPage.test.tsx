@@ -47,6 +47,18 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"]));
     });
 
+    it.each([
+        { isLoading: true, isRefreshing: false, label: "Loading…", disabled: true },
+        { isLoading: false, isRefreshing: true, label: "Refreshing…", disabled: true },
+        { isLoading: false, isRefreshing: false, label: "Refresh", disabled: false },
+    ])("shows the provider refresh control state: %j", (state) => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], state));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        const button = screen.getByRole("button", { name: state.label }) as HTMLButtonElement;
+        expect(button.disabled).toBe(state.disabled);
+    });
+
     it("explains an empty provider catalog instead of leaving the detail screen blank", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [] }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);

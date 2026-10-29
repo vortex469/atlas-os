@@ -120,10 +120,10 @@ export function ProviderPage() {
                     <button
                         type="button"
                         onClick={() => void refresh()}
-                        disabled={isRefreshing}
+                        disabled={isLoading || isRefreshing}
                         className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Refresh
+                        {isLoading ? "Loading…" : isRefreshing ? "Refreshing…" : "Refresh"}
                     </button>
                 </div>
             </div>
