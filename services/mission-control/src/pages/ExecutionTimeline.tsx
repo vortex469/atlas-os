@@ -116,7 +116,9 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
         return "Review Maintenance status for the latest result.";
     }
     const execution = workflow.execution;
-    if (execution.execution_status === "unknown") return "Worker outcome unknown. Check the original result; do not resubmit.";
+    if (workflow.worker_reconciliation?.outcome === "unknown" || execution.execution_status === "unknown") {
+        return "The change may have finished. Check its result before starting it again.";
+    }
     if (workflow.workflow_state === "executing") return "Execution running...";
     if (execution.execution_status === "succeeded") return "Execution complete.";
     if (execution.execution_status === "failed" || execution.execution_status === "timed_out" || execution.execution_status === "launch_failed") return "Execution failed.";

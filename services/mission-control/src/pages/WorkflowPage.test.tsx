@@ -474,12 +474,18 @@ describe("WorkflowPage", () => {
         renderPage();
 
         const check = await screen.findByRole("button", { name: "Check worker result" });
-        expect(screen.getByRole("heading", { name: "Worker outcome unknown" })).toBeInTheDocument();
-        expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("The worker result is unknown. Check the original result before taking another action.")).toBeVisible();
-        expect(screen.getByText(/Original request: original-worker-request/)).toBeInTheDocument();
-        const record = screen.getByText("Worker request record").closest("details");
+        expect(screen.getByRole("heading", { name: "Worker result not confirmed" })).toBeInTheDocument();
+        expect(within(screen.getByRole("region", { name: "Workflow summary" })).getByText("Atlas couldn't confirm whether the change finished. Check its result before starting the change again.")).toBeVisible();
+        expect(within(screen.getByRole("region", { name: "Change progress" })).getByRole("status")).toHaveTextContent("The change may have finished. Check its result before starting it again.");
+        const record = screen.getByText("Request details").closest("details");
         expect(record).not.toHaveAttribute("open");
-        expect(record).toHaveTextContent("execution-request-digest-v1:fixture");
+        const requestId = within(record as HTMLElement).getByText("Request ID: original-worker-request");
+        const requestDigest = within(record as HTMLElement).getByText("Request digest: execution-request-digest-v1:fixture");
+        expect(requestId).not.toBeVisible();
+        expect(requestDigest).not.toBeVisible();
+        fireEvent.click(screen.getByText("Request details"));
+        expect(requestId).toBeVisible();
+        expect(requestDigest).toBeVisible();
         expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
         fireEvent.click(check);
 
@@ -500,7 +506,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        await screen.findByRole("heading", { name: "Worker outcome unknown" });
+        await screen.findByRole("heading", { name: "Worker result not confirmed" });
         expect(screen.queryByRole("button", { name: "Check worker result" })).not.toBeInTheDocument();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });

@@ -2781,3 +2781,14 @@ commit as separate approvals. Workflow evidence, approval rules and execution
 behavior are unchanged. The WorkflowPage suite passes (88 tests), all 11 built
 repository journey browser tests pass at 320px, 390px and 1280px, and Mission
 Control lint and production build pass.
+
+## Unconfirmed worker result — 2026-10-29
+
+When Atlas cannot confirm whether a change finished, the workflow page now
+explains that the change may already have completed and tells the operator to
+check its result before starting it again. Request IDs and digests stay under
+collapsed request details. The progress timeline now uses the reconciliation
+result to show this state instead of incorrectly saying execution is
+unavailable. Checking remains an explicit operator action; approval and
+execution behavior are unchanged. The WorkflowPage and timeline suites pass
+(101 tests), as do Mission Control lint and production build.

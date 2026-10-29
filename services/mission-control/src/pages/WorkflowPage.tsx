@@ -520,18 +520,17 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
             {isRepository && workflow.worker_reconciliation?.outcome === "unknown" && (
                 <section aria-labelledby="worker-outcome-heading" className="rounded-xl border border-amber-500/50 bg-slate-900/70 p-5">
-                    <h2 id="worker-outcome-heading" className="text-lg font-semibold text-white">Worker outcome unknown</h2>
-                    <p className="mt-2 text-sm text-slate-300">The worker may have completed the change. Check its original result before taking further action. Do not submit another execution request.</p>
-                    <p className="mt-2 break-all text-sm text-slate-400">Original request: {workflow.worker_reconciliation.request_id}</p>
+                    <h2 id="worker-outcome-heading" className="text-lg font-semibold text-white">Worker result not confirmed</h2>
+                    <p className="mt-2 text-sm text-slate-300">The change may have finished. Check its original result before starting it again.</p>
                 </section>
             )}
 
-            {isRepository && workflow.worker_reconciliation?.request_digest && (
+            {isRepository && workflow.worker_reconciliation && (workflow.worker_reconciliation.request_digest || workflow.worker_reconciliation.outcome === "unknown") && (
                 <details className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
-                    <summary className="cursor-pointer text-sm text-slate-300">Worker request record</summary>
-                    <p className="mt-2 break-all text-sm text-slate-400">Request: {workflow.worker_reconciliation.request_id}</p>
-                    <p className="mt-2 break-all text-sm text-slate-400">Digest: {workflow.worker_reconciliation.request_digest}</p>
-                    <p className="mt-2 text-sm text-slate-400">This identifies the submitted request. It does not grant approval for another action.</p>
+                    <summary className="cursor-pointer text-sm text-slate-300">Request details</summary>
+                    <p className="mt-2 break-all text-sm text-slate-400">Request ID: {workflow.worker_reconciliation.request_id}</p>
+                    {workflow.worker_reconciliation.request_digest && <p className="mt-2 break-all text-sm text-slate-400">Request digest: {workflow.worker_reconciliation.request_digest}</p>}
+                    <p className="mt-2 text-sm text-slate-400">This identifies the submitted request. It does not approve another action.</p>
                 </details>
             )}
 
@@ -973,7 +972,7 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
             return "The commit is being recorded.";
         case "blocked":
             return workflow.worker_reconciliation?.outcome === "unknown"
-                ? "The worker result is unknown. Check the original result before taking another action."
+                ? "Atlas couldn't confirm whether the change finished. Check its result before starting the change again."
                 : "Workflow is blocked. Review the request and latest result below.";
         case "implementation_rejected":
             return "Implementation approval was rejected.";
