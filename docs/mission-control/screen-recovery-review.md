@@ -2404,3 +2404,7 @@ The top-level Operator Attention item now uses “Atlas Core could not connect�
 for an unavailable service, matching the Service checks card. This keeps a
 failed Core-side probe from reading like a claim that the service itself is
 offline. Component and phone/desktop browser checks cover the shared label.
+
+The collapsed “About service checks” note now explains in plain language that
+the result is reachability from Atlas Core, separate from Atlas Core's own
+health.

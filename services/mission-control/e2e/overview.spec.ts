@@ -486,9 +486,10 @@ for (const width of [390, 1280]) {
         await health.getByText('How to read health').click();
         await expect(health.getByText(/Core does not supply an overall check time/)).toBeVisible();
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
-        await expect(checks.getByText(/do not measure Atlas Core’s own process health/)).toBeHidden();
+        const explanation = checks.getByText('These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.');
+        await expect(explanation).toBeHidden();
         await checks.getByText('About service checks').click();
-        await expect(checks.getByText(/do not measure Atlas Core’s own process health/)).toBeVisible();
+        await expect(explanation).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

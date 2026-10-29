@@ -297,10 +297,10 @@ describe("MC overview evidence", () => {
         expect(health.getByText(/does not calculate one overall score/)).toBeVisible();
 
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
-        const coreLimit = checks.getByText(/do not measure Atlas Core’s own process health/);
-        expect(coreLimit).not.toBeVisible();
+        const explanation = checks.getByText("These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.");
+        expect(explanation).not.toBeVisible();
         fireEvent.click(checks.getByText('About service checks'));
-        expect(coreLimit).toBeVisible();
+        expect(explanation).toBeVisible();
     });
     it('keeps Atlas Doctor under a collapsed health disclosure', () => {
         show();

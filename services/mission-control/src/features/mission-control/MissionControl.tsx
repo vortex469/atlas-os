@@ -296,7 +296,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                     onClick={() => setShowAllServices(current => !current)}
                 >{showAllServices ? "Show fewer service checks" : `Show all ${services.length} service checks`}</button>}
                 <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">About service checks</summary>
-                    <p>These checks show whether configured service endpoints responded. They do not measure Atlas Core’s own process health.</p>
+                    <p>These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.</p>
                 </details>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
