@@ -542,6 +542,18 @@ it('includes configured AI failures in attention without asserting local availab
     expect(screen.getByText(/Atlas does not report where this provider runs/)).toBeInTheDocument();
 });
 
+it('routes provider warnings without safe detail ids to their overview cards', () => {
+    show({
+        providers: { data: [{ id: '../legacy', name: 'Legacy provider', health: { status: 'offline', message: 'Provider connection failed' } }] },
+        ai: { data: { provider: { id: '../runtime', name: 'Configured AI' }, health: { status: 'offline', message: 'AI connection failed' } } },
+    });
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+    expect(attention.getByRole('link', { name: 'Legacy provider' })).toHaveAttribute('href', '#providers');
+    expect(attention.getByRole('link', { name: 'Configured AI' })).toHaveAttribute('href', '#ai-provider');
+    expect(screen.getByRole('region', { name: 'Providers' })).toHaveAttribute('id', 'providers');
+    expect(screen.getByRole('region', { name: 'AI provider' })).toHaveAttribute('id', 'ai-provider');
+});
+
 it('deduplicates configured AI and provider evidence and preserves freshness', () => {
     show({
         ai: { stale: true, data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'blocked', message: 'Endpoint unavailable' } } },

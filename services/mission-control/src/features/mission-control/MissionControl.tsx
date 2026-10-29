@@ -238,10 +238,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "#service-checks", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
         })),
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
-            key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "/operations", stale: evidence.providers?.stale,
+            key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "#providers", stale: evidence.providers?.stale,
         })),
         ...(["degraded", "unavailable", "blocked"].includes(status(aiHealth.status)) ? [{
-            key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: providerDetailPath(aiProvider.id) ?? "/operations", stale: evidence.ai?.stale,
+            key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: providerDetailPath(aiProvider.id) ?? "#ai-provider", stale: evidence.ai?.stale,
         }] : []),
         ...findings.filter(f => typeof f.severity === "string" && ["warning", "critical", "blocked"].includes(f.severity)).map(f => ({
             key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
@@ -330,10 +330,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card title="Agent details" showSourceNote={false}>
                 <AgentOverviewContent evidence={evidence.agent} loading={loading} />
             </Card>
-            <Card title="AI provider" evidence={evidence.ai} showSourceNote={evidence.ai?.data !== undefined} loading={loading}>
+            <Card id="ai-provider" title="AI provider" evidence={evidence.ai} showSourceNote={evidence.ai?.data !== undefined} loading={loading}>
                 <LocalAiContent evidence={evidence.ai} loading={loading} />
             </Card>
-            <Card title="Providers" showSourceNote={false}>
+            <Card id="providers" title="Providers" showSourceNote={false}>
                 <ProviderOverviewContent evidence={evidence.providers} loading={loading} />
             </Card>
         </div>

@@ -3218,3 +3218,10 @@ When a service warning has no valid provider detail page, selecting it in
 generic Operations page. Services with a valid provider page keep that direct
 link. The 73-test Overview component suite and two responsive browser checks
 pass at 320px and 1280px; lint and build pass. This is navigation only.
+
+## Provider attention destinations — 2026-10-29
+
+Provider warnings without a safe provider detail ID now open the Providers
+summary card, and AI provider warnings without a safe detail ID open the AI
+provider card. Valid provider detail links remain direct. The Overview
+component suite covers both fallback destinations.
