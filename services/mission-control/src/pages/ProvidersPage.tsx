@@ -48,21 +48,19 @@ export function ProvidersPage() {
                     <h1 className="mt-3 text-3xl font-semibold text-white">Providers</h1>
                     <p className="mt-2 text-sm text-slate-400">See the providers Atlas knows about. Open a provider for details.</p>
                 </div>
-                <button type="button" onClick={() => void load()} disabled={loading} className="mc-control mc-focusable px-4 py-2 text-sm font-semibold disabled:opacity-50">Refresh</button>
+                <button type="button" onClick={() => void load()} disabled={loading} className="mc-control mc-focusable px-4 py-2 text-sm font-semibold disabled:opacity-50">{loading ? "Refreshing…" : error && providers === null ? "Try again" : "Refresh"}</button>
             </header>
             {loading && providers === null && <p role="status" className="text-slate-300">Loading providers…</p>}
             {loading && providers !== null && <p role="status" className="text-slate-300">Refreshing providers. Showing the last loaded information.</p>}
             {!loading && error && providers === null && (
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h2 className="font-semibold text-red-100">Providers could not load</h2>
-                    <button type="button" onClick={() => void load()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             )}
             {!loading && error && providers !== null && (
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h2 className="font-semibold text-amber-100">Provider refresh failed</h2>
                     <p className="mt-1 text-sm text-amber-100/80">Current provider information is unknown. The list shows the last loaded response.</p>
-                    <button type="button" onClick={() => void load()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             )}
             {!loading && !error && providers?.length === 0 && <p className="rounded-xl border border-slate-800 p-5 text-slate-300">No providers are listed yet.</p>}

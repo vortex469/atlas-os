@@ -60,6 +60,8 @@ describe("ProvidersPage", () => {
         show();
         const alert = await screen.findByRole("alert");
         expect(within(alert).getByRole("heading", { name: "Providers could not load" })).toBeInTheDocument();
+        expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: "Try again" })).toHaveLength(1);
         expect(within(alert).queryByText("Try again to get the latest provider list.")).not.toBeInTheDocument();
         expect(document.body.textContent).not.toContain("PRIVATE_SERVER_BODY");
         fireEvent.click(screen.getByRole("button", { name: "Try again" }));
@@ -102,6 +104,8 @@ describe("ProvidersPage", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Provider refresh failed");
         expect(alert).toHaveTextContent("Current provider information is unknown.");
+        expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(1);
         expect(screen.getByRole("region", { name: "Provider list" })).toBeInTheDocument();
         expect(within(list).getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
     });
