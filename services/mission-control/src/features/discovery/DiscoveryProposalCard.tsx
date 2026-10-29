@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import type { DiscoveryProposalNavigation } from "../../types/discovery";
 import { compatibilityStatusLabel } from "../../utils/operatorLanguage";
+import { evidenceTimestamp } from "../../utils/healthPresentation";
 import { resolveProposalNavigation } from "./proposalNavigation";
 
 const destinationLabels = {
@@ -18,6 +19,13 @@ function isReviewOnly(proposal: DiscoveryProposalNavigation): boolean {
     return proposal.status !== "current"
         || !proposal.actionable_navigation
         || proposal.destination_kind !== "operator_maintenance_selection";
+}
+
+function TimeFact({ name, value }: { name: string; value: string }) {
+    const timestamp = evidenceTimestamp(value);
+    if (timestamp === null) return <Fact name={`${name} (local time)`} value="Time unavailable" />;
+    const date = new Date(timestamp);
+    return <div><dt className="text-slate-500">{name} (local time)</dt><dd className="text-slate-200"><time dateTime={value}>{date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time></dd></div>;
 }
 
 export function DiscoveryProposalCard({
@@ -61,8 +69,8 @@ export function DiscoveryProposalCard({
                 <Fact name="Catalog source" value={label(proposal.catalog_source_type)} />
                 <Fact name="Finding references" value={String(proposal.finding_reference_count)} />
                 <Fact name="Evidence references" value={String(proposal.evidence_reference_count)} />
-                <Fact name="Generated" value={new Date(proposal.generated_at).toLocaleString()} />
-                <Fact name="Expires" value={new Date(proposal.expires_at).toLocaleString()} />
+                <TimeFact name="Generated" value={proposal.generated_at} />
+                <TimeFact name="Expires" value={proposal.expires_at} />
                 {proposal.intent_hint && <Fact name="Intent hint" value={proposal.intent_hint} />}
             </dl>
 

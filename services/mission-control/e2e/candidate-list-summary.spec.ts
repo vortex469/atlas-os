@@ -10,6 +10,7 @@ for (const width of [320, 390, 1280]) {
         await expect(proposalCard.getByText("atlas", { exact: true })).toBeVisible();
         await expect(proposalCard.getByText("Eligible for planning", { exact: true })).toBeVisible();
         await expect(proposalCard.getByText("Compatible", { exact: true })).toBeVisible();
+        await expect(proposalCard.getByText("Expires (local time)", { exact: true })).toBeVisible();
         await expect(proposalCard.getByText("candidate-browser-baseline", { exact: true })).toBeHidden();
         await expect(page.getByLabel("Category")).toBeHidden();
         await expect(page.getByLabel("Source")).toBeHidden();
@@ -20,6 +21,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByLabel("Source")).toBeVisible();
         await proposalCard.getByText("More proposal details", { exact: true }).click();
         await expect(proposalCard.getByText("candidate-browser-baseline", { exact: true })).toBeVisible();
+        await expect(proposalCard.getByText("Created (local time)", { exact: true })).toBeVisible();
         expect(rejectedMutationRequests).toEqual([]);
     });
 }

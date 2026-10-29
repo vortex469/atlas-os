@@ -43,6 +43,22 @@ describe("DiscoveryProposalCard", () => {
         expect(screen.queryByText(/vmgenid|provider action|target fingerprint/i)).not.toBeInTheDocument();
     });
 
+    it("labels proposal timestamps as local time and keeps the exact source values", () => {
+        renderCard(proposal());
+        const generated = screen.getByText("Generated (local time)").parentElement?.querySelector("time");
+        const expires = screen.getByText("Expires (local time)").parentElement?.querySelector("time");
+        expect(generated).toHaveAttribute("dateTime", "2026-08-15T00:00:00Z");
+        expect(expires).toHaveAttribute("dateTime", "2026-08-15T00:30:00Z");
+        expect(generated).not.toHaveTextContent("T00:00:00Z");
+    });
+
+    it("shows unavailable time when proposal timestamps are malformed", () => {
+        renderCard(proposal({ generated_at: "not-a-time", expires_at: "2026-02-30T00:30:00Z" }));
+        expect(screen.getByText("Generated (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Expires (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    });
+
     it.each([
         ["stale", "source_changed"],
         ["expired", "expired"],

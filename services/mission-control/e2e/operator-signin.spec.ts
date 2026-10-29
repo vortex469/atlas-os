@@ -72,6 +72,9 @@ for (const width of [320, 390, 1280]) {
             return route.fulfill({ status: 404, json: { detail: "Optional information unavailable in fixture." } });
         });
         await page.goto("/discovery/items/fixture-app");
+        const proposalCard = page.locator("article").filter({ hasText: proposal.proposal_id });
+        await expect(proposalCard.getByText("Generated (local time)")).toBeVisible();
+        await expect(proposalCard.getByText("Expires (local time)")).toBeVisible();
         await page.getByRole("link", { name: "Continue to maintenance selection for fixture-app" }).click();
         await expect(page.getByRole("heading", { name: "Operator login" })).toBeVisible();
         await expectLoginPagePadding(page, width);

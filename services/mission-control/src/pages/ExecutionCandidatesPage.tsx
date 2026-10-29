@@ -10,6 +10,7 @@ import type {
     ExecutionCandidateListQuery,
     ExecutionCandidatePage,
 } from "../types/executionCandidates";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { compatibilityStatusLabel } from "../utils/operatorLanguage";
 
 const PAGE_SIZE = 25;
@@ -251,7 +252,9 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
             </div>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <Field label="Compatibility" value={candidate.compatibility_status ? compatibilityStatusLabel(candidate.compatibility_status) : "Not reported"} />
-                <Field label="Expires" value={candidate.expires_at ? formatTimestamp(candidate.expires_at) : "No expiry"} />
+                {candidate.expires_at
+                    ? <TimeField label="Expires" value={candidate.expires_at} />
+                    : <Field label="Expires" value="No expiry" />}
             </dl>
             <details className="mt-4 border-t border-slate-800 pt-3">
                 <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">More proposal details</summary>
@@ -261,7 +264,7 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
                     <Field label="Required approval level" value={formatLabel(candidate.required_approval_level)} />
                     <Field label="Source" value={candidate.source_subsystem} />
                     <Field label="Evidence" value={`${candidate.evidence_ids.length} reference${candidate.evidence_ids.length === 1 ? "" : "s"}`} />
-                    <Field label="Created" value={formatTimestamp(candidate.created_at)} />
+                    <TimeField label="Created" value={candidate.created_at} />
                 </dl>
             </details>
         </article>
@@ -300,6 +303,18 @@ function Field({ label, value }: { label: string; value: string }) {
             <dd className="mt-1 break-words text-slate-200">{value}</dd>
         </div>
     );
+}
+
+function TimeField({ label, value }: { label: string; value: string }) {
+    const timestamp = evidenceTimestamp(value);
+    return <div>
+        <dt className="text-xs uppercase tracking-wider text-slate-500">{label} (local time)</dt>
+        <dd className="mt-1 break-words text-slate-200">
+            {timestamp === null
+                ? "Time unavailable"
+                : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>}
+        </dd>
+    </div>;
 }
 
 function toCandidateQuery(filters: FilterState, offset: number): ExecutionCandidateListQuery {
@@ -342,11 +357,6 @@ function statusText(status: string): string {
 
 function formatLabel(value: string): string {
     return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function formatTimestamp(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function isDisplayableCandidatePage(value: unknown): value is ExecutionCandidatePage {

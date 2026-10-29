@@ -2416,3 +2416,16 @@ text. The exact UTC time remains available in the time element's title and
 machine-readable value. Component and responsive browser checks verify the
 visible label and the UTC source value; action records and time conversion are
 unchanged.
+
+## Discovery proposal time clarity — 2026-10-29
+
+Proposal generation and expiry times are now labeled as browser local time.
+Malformed or impossible timestamps show “Time unavailable” instead of
+“Invalid Date.” The underlying proposal expiry and review-only decisions are
+unchanged. Component tests cover source timestamps and invalid values.
+
+The Change proposals list uses the same local-time labels for visible expiry
+and optional creation times. Invalid times show as unavailable rather than raw
+date strings. Planning eligibility and expiry enforcement are unchanged;
+component tests verify the source values and invalid-time fallback, while
+responsive browser checks verify the labels at phone and desktop widths.

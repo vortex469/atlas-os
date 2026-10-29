@@ -71,6 +71,7 @@ describe("ExecutionCandidatesPage", () => {
 
     it("leads candidate cards with the change and keeps technical details collapsed", async () => {
         const user = userEvent.setup();
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ expires_at: "2026-01-02T00:00:00Z" })]));
         renderPage();
 
         expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeInTheDocument();
@@ -78,6 +79,7 @@ describe("ExecutionCandidatesPage", () => {
         expect(screen.getByText("stack-home-assistant")).toBeVisible();
         expect(screen.getByRole("article")).toHaveTextContent("Target ID: stack-home-assistant · Type: Compose Stack");
         expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
+        expect(screen.getByText("Expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-01-02T00:00:00Z");
         expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
             "href",
             "/execution-candidates/candidate-1",
@@ -87,8 +89,19 @@ describe("ExecutionCandidatesPage", () => {
         await user.click(screen.getByText("More proposal details"));
         expect(screen.getByText("candidate-1")).toBeVisible();
         expect(screen.getByText("2 references")).toBeVisible();
+        expect(screen.getByText("Created (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-01-01T00:00:00Z");
         expect(screen.getByText("Planning")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
+    });
+
+    it("shows unavailable for malformed proposal timestamps", async () => {
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ created_at: "invalid", expires_at: "2026-02-30T00:00:00Z" })]));
+        renderPage();
+        await screen.findByRole("link", { name: "Review Update Compose Stack proposal" });
+        expect(screen.getByText("Expires (local time)").parentElement).toHaveTextContent("Time unavailable");
+        await userEvent.click(screen.getByText("More proposal details"));
+        expect(screen.getByText("Created (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
     });
 
     it("keeps newer search results when an older search completes later", async () => {
