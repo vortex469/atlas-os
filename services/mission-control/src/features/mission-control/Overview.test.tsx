@@ -225,7 +225,7 @@ describe("MC overview evidence", () => {
     });
 
     it.each([
-        ["[Errno 111] Connection refused", "On the service's host, confirm the service is listening on this port. If it runs in Docker, confirm the port is published. Then test again from Atlas Core."],
+        ["[Errno 111] Connection refused", "On the service computer, confirm the app is listening on this port. If it runs in Docker, run docker ps there and check PORTS. For a container using Docker port mappings, a blank PORTS field means there is no host port for Atlas Core to reach. Publish the listening port, then test again from Atlas Core."],
         ["[Errno 113] No route to host", "Check the target address and the network or firewall route from Atlas Core to the service host."],
         ["[Errno 101] Network is unreachable", "Check the target address and routing between Atlas Core and the service host."],
         ["[Errno -3] Temporary failure in name resolution", "Check that the host name is correct and resolves from the machine running Atlas Core."],

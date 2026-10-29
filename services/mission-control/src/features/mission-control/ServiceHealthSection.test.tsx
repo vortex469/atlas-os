@@ -183,7 +183,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                "On the service's host, confirm the service is listening on this port. If it runs in Docker, confirm the port is published. Then test again from Atlas Core.",
+                "On the service computer, confirm the app is listening on this port. If it runs in Docker, run docker ps there and check PORTS. For a container using Docker port mappings, a blank PORTS field means there is no host port for Atlas Core to reach. Publish the listening port, then test again from Atlas Core.",
             ),
         ).toBeInTheDocument();
     });
