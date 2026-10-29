@@ -126,6 +126,42 @@ for (const width of [320, 390, 1280]) {
 }
 
 for (const width of [320, 390, 1280]) {
+    test(`unknown workflow status is clear and its reported value stays optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+            items: [{
+                workflow_id: "workflow-future-status",
+                workflow_source: "candidate",
+                workflow_state: "future_state",
+                effect_kind: "repository_change",
+                execution_intent: "future-task",
+                candidate_id: null,
+                planning_session_id: null,
+                repository: null,
+                target_id: null,
+                last_result_summary: "Result unavailable",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 200,
+            offset: 0,
+        } }));
+        await page.goto("/workflows");
+
+        const title = page.getByRole("heading", { name: "Future Task", exact: true });
+        await expect(title).toBeVisible();
+        const card = title.locator("xpath=ancestor::article[1]");
+        await expect(card.getByText("Stage: Status unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Workflow summary counts" })).toContainText("Status unavailable");
+        await expect(card.getByText("Reported workflow status", { exact: true })).toBeHidden();
+        await card.getByText("Workflow details", { exact: true }).click();
+        await expect(card.getByText("future_state", { exact: true })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
     test(`workflow empty state explains the result without a duplicate count at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {

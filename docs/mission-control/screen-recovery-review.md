@@ -3334,6 +3334,8 @@ unavailable” instead of placing them under “No action needed.” Running and
 completed workflows are listed under “No action needed right now”; approval
 and blocked workflows remain under “Needs an operator step.” The focused page
 test checks each group so a future backend state is not presented as resolved.
+Workflow cards identify unknown states as unavailable and keep the raw reported
+value under their collapsed details; browser cases cover phone and desktop widths.
 
 ## Planning session saved-plan recovery — 2026-10-29
 

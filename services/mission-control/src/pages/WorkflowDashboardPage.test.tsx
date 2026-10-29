@@ -246,7 +246,14 @@ describe("WorkflowDashboardPage", () => {
 
         fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "unknown" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
-        expect(screen.getByRole("heading", { name: "Future Task" })).toBeInTheDocument();
+        const unknownWorkflow = screen.getByRole("heading", { name: "Future Task" }).closest("article");
+        expect(unknownWorkflow).not.toBeNull();
+        expect(within(unknownWorkflow as HTMLElement).getByText("Stage: Status unavailable")).toBeVisible();
+        const details = within(unknownWorkflow as HTMLElement).getByText("Workflow details", { exact: true });
+        const disclosure = details.closest("details");
+        expect(within(disclosure as HTMLElement).getByText("Reported workflow status")).not.toBeVisible();
+        fireEvent.click(details);
+        expect(within(disclosure as HTMLElement).getByText("future_state")).toBeVisible();
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
         counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         expect(countFor("Status unavailable")).toBe("1");

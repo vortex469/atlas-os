@@ -363,6 +363,7 @@ function workflowDashboardSummaryGroup(state: string): string {
 
 function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
     const nextStep = workflowNextStepLabel(workflow.workflow_state, workflow.effect_kind);
+    const workflowStatusUnavailable = workflowStatusGroup(workflow.workflow_state) === "unknown";
     const railId = `workflow-rail-${workflow.workflow_id}`;
     const title = workflow.execution_intent
         ? formatWorkflowLabel(workflow.execution_intent)
@@ -374,7 +375,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h3 className="break-words text-lg font-semibold text-white">{title}</h3>
-                    <p className="mt-1 text-sm text-slate-400">Stage: {workflowStageLabel(workflow.workflow_state, workflow.effect_kind)}</p>
+                    <p className="mt-1 text-sm text-slate-400">Stage: {workflowStatusUnavailable ? "Status unavailable" : workflowStageLabel(workflow.workflow_state, workflow.effect_kind)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     Open workflow
@@ -388,6 +389,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
                 <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
                 <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                     <Detail label="Workflow ID" value={workflow.workflow_id} />
+                    {workflowStatusUnavailable && <Detail label="Reported workflow status" value={workflow.workflow_state} />}
                     <Detail label="Started from" value={formatWorkflowLabel(workflow.workflow_source)} />
                     <Detail label="Candidate ID" value={formatWorkflowValue(workflow.candidate_id, "Not available")} />
                     <Detail label="Planning session" value={formatWorkflowValue(workflow.planning_session_id, "Not available")} />
