@@ -1055,6 +1055,38 @@ describe("WorkflowPage", () => {
         expect(verificationReview.getByText("Model-assisted review", { exact: true })).toBeVisible();
     });
 
+    it("keeps planned checks visible without empty future review panels", async () => {
+        const empty = workflow();
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            verification_evidence: {
+                ...empty.verification_evidence,
+                verification_status: null,
+                completed_time: null,
+                executed_checks: [],
+                check_results: [],
+                repository_head: null,
+                changed_files_digest: null,
+            },
+            review: {
+                ...empty.review,
+                review_result: null,
+                review_status: null,
+                approved: null,
+                evidence_summary: null,
+                changed_files: [],
+                review_fingerprint: null,
+            },
+        }));
+        renderPage();
+
+        const verification = within(await screen.findByRole("region", { name: "Verification and review" }));
+        expect(verification.getByRole("heading", { name: "Checks to run" })).toBeVisible();
+        expect(verification.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
+        expect(verification.queryByRole("heading", { name: "Check results" })).not.toBeInTheDocument();
+        expect(verification.queryByRole("heading", { name: "Review" })).not.toBeInTheDocument();
+        expect(verification.queryByRole("heading", { name: "Verification approval" })).not.toBeInTheDocument();
+    });
+
     it("shows the next verification step without empty result fields", async () => {
         const empty = workflow();
         mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({

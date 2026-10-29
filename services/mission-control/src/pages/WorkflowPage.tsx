@@ -716,7 +716,7 @@ function VerificationReviewSection({
                 </dl>
             </section>
 
-            <section aria-labelledby="verification-evidence-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+            {(hasVerificationResults || awaitingVerificationApproval) && <section aria-labelledby="verification-evidence-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="verification-evidence-heading" className="text-base font-semibold text-white">Check results</h3>
                 {hasVerificationResults ? (
                     <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
@@ -734,9 +734,9 @@ function VerificationReviewSection({
                                 : "Check results will appear after implementation and verification finish."}
                     </p>
                 )}
-            </section>
+            </section>}
 
-            <section aria-labelledby="review-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+            {(hasReviewResults || awaitingVerificationApproval) && <section aria-labelledby="review-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="review-heading" className="text-base font-semibold text-white">Review</h3>
                 {hasReviewResults ? (
                     <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
@@ -747,9 +747,9 @@ function VerificationReviewSection({
                 ) : (
                     <p className="mt-3 text-sm text-slate-300">Review results will appear after verification runs.</p>
                 )}
-            </section>
+            </section>}
 
-            <section aria-labelledby="verification-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+            {shouldShowVerificationApprovalSection(workflow, verificationApprovalResult, verificationApprovalError) && <section aria-labelledby="verification-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="verification-approval-heading" className="text-base font-semibold text-white">Verification approval</h3>
                 <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and verification approval decision.</p>
                 {canDecideVerification ? (
@@ -764,7 +764,7 @@ function VerificationReviewSection({
                 {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
                 {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
                 {verificationApprovalError && <WorkflowActionError failure={verificationApprovalError} />}
-            </section>
+            </section>}
 
         </section>
     );
@@ -922,6 +922,18 @@ function shouldShowCommitSection(workflow: WorkflowDetailResponse): boolean {
         || result.committed_files.length > 0
         || result.completion_time !== null;
     return workflow.commit_request !== null || commitHasStarted || commitResultExists;
+}
+
+function shouldShowVerificationApprovalSection(
+    workflow: WorkflowDetailResponse,
+    approvalResult: WorkflowVerificationApprovalResponse | null,
+    approvalError: WorkflowActionFailure | null,
+): boolean {
+    return workflow.workflow_state === "awaiting_verification_approval"
+        || workflow.verification_approval_status === "approved"
+        || workflow.verification_approval_status === "rejected"
+        || approvalResult !== null
+        || approvalError !== null;
 }
 
 function formatLabel(value: string): string {
