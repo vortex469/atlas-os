@@ -3296,3 +3296,11 @@ response differs from a timeout or connection failure. The 320px and
 1280px dashboard browser checks verify the command and keep the service
 computer/browser distinction visible; helper tests cover URL redaction, shell
 quoting, and invalid addresses. The command performs no service mutation.
+
+## Work activity detail cleanup — 2026-10-29
+
+Removed the “Queue size — Not reported” placeholder from optional workflow
+details because Atlas does not provide queue depth. The summary still explains
+that the screen reports workflow progress and results, not worker readiness;
+recorded outcomes and their limitations remain available in the disclosure.
+The focused component test checks that the non-actionable placeholder is absent.

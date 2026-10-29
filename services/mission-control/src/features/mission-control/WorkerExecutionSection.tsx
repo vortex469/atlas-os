@@ -74,9 +74,6 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <details className="mt-4 text-sm text-mc-text-secondary">
                 <summary className="mc-focusable cursor-pointer text-mc-primary">More workflow details</summary>
                 <div className="mt-3 space-y-4">
-                    <dl className="grid gap-4 sm:grid-cols-2">
-                        <Metric label="Queue size" value="Not reported" />
-                    </dl>
                     <EvidenceList key="outcomes" title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Mission Control could not read an execution result for one or more workflows." : "No execution outcomes recorded"} outcomes />
                     <p className="text-xs text-mc-text-muted">Finish times aren't available, so results aren't shown newest first. A workflow can be blocked before it starts.</p>
                 </div>

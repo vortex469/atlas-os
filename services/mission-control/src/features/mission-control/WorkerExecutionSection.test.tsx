@@ -45,10 +45,10 @@ describe("Work activity summary", () => {
         expect(within(section).getByText("No running or blocked workflows are listed.")).toBeInTheDocument();
         expect(within(section).getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
         expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
-        expect(within(section).getByText("Queue size").closest("details")?.open).toBe(false);
+        expect(within(section).queryByText("Queue size")).not.toBeInTheDocument();
         fireEvent.click(within(section).getByText("More workflow details"));
-        expect(within(section).getByText("Queue size")).toBeInTheDocument();
-        expect(within(section).getByText("Not reported")).toBeInTheDocument();
+        expect(within(section).queryByText("Queue size")).not.toBeInTheDocument();
+        expect(within(section).queryByText("Not reported")).not.toBeInTheDocument();
     });
     it("distinguishes executing from verification and links to encoded detail routes", () => {
         view(page([workflow("a/b?#", "executing", "current", "restart-service"), workflow("verify", "verifying", "completed")]));
