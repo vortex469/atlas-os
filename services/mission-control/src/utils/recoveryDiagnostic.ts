@@ -47,14 +47,19 @@ const SAFE_ACTION_TEXT: Record<WorkflowRecoveryDiagnostic["safe_next_action"], s
 export function recoveryPresentation(diagnostic: WorkflowRecoveryDiagnostic): RecoveryPresentation {
     const isUnknownStatus = !Object.hasOwn(STATUS_PRESENTATION, diagnostic.diagnostic_status);
     const status = STATUS_PRESENTATION[diagnostic.diagnostic_status] ?? UNKNOWN_STATUS_PRESENTATION;
+    const reason = diagnostic.controlled_reason === null
+        ? "No current issue has been reported."
+        : REASON_TEXT[diagnostic.controlled_reason] ?? "Mission Control could not interpret the reported reason.";
+    const safeNextAction = SAFE_ACTION_TEXT[diagnostic.safe_next_action]
+        ?? "Next step unavailable. Ask an operator to review before acting.";
     return {
         ...status,
         reason: isUnknownStatus
             ? "Mission Control cannot identify this maintenance status."
-            : diagnostic.controlled_reason ? REASON_TEXT[diagnostic.controlled_reason] : "No current issue has been reported.",
+            : reason,
         safeNextAction: isUnknownStatus
             ? "Do not repeat this request until its status is clear. Ask an operator to review it."
-            : SAFE_ACTION_TEXT[diagnostic.safe_next_action],
+            : safeNextAction,
     };
 }
 

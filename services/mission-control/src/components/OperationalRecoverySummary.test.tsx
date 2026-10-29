@@ -48,6 +48,16 @@ describe("OperationalRecoverySummary", () => {
         expect(screen.getByText(reason)).toBeInTheDocument();
     });
 
+    it("keeps an unknown reported reason readable", () => {
+        render(<OperationalRecoverySummary diagnostic={diagnostic({ controlled_reason: "future_reason" as never })} supportEvidenceAvailable={false} />);
+        expect(screen.getByText("Mission Control could not interpret the reported reason.")).toBeVisible();
+    });
+
+    it("does not omit an unknown next step", () => {
+        render(<OperationalRecoverySummary diagnostic={diagnostic({ safe_next_action: "future_action" as never })} supportEvidenceAvailable={false} />);
+        expect(screen.getByText("Next step unavailable. Ask an operator to review before acting.")).toBeVisible();
+    });
+
     it("keeps technical evidence closed until an operator asks to see it", () => {
         render(<OperationalRecoverySummary diagnostic={diagnostic()} supportEvidenceAvailable />);
 

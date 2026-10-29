@@ -3381,3 +3381,10 @@ future backend statuses visible without presenting an unknown value as a
 confirmed health state or suggesting that no action is needed. The page tells
 operators to wait for the status to become clear before repeating the request.
 The focused and full Mission Control suites pass; lint and build also pass.
+
+## Maintenance recovery summary fallbacks — 2026-10-29
+
+The recovery summary keeps showing a reason and next step when the backend
+returns a newer value the screen does not recognize. Unknown next steps ask
+for operator review without recommending another action. The focused recovery
+and history suites, full Mission Control suite, lint, and build pass.
