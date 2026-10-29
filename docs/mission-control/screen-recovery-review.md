@@ -3037,3 +3037,9 @@ receipt fingerprints, and authority flags are collapsed under technical
 details. A failed read offers a safe retry; an uncertain receipt save does not
 resend the request. The exact two-step receipt confirmation and Core permission
 checks are unchanged.
+
+The nested queue removal review now says what its saved record does and does
+not do, with plain blockers, readable times, and collapsed technical evidence.
+Failed reads offer a safe retry; uncertain saves do not resend. The existing
+two-step statement, authenticated permission checks, and evidence-only request
+remain unchanged.
