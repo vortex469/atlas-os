@@ -168,3 +168,24 @@ test("links without page-specific focus classes remain clearly visible to keyboa
     await expect(homeLink).toHaveCSS("outline-width", "2px");
     await expect(homeLink).toHaveCSS("outline-color", "rgb(34, 211, 238)");
 });
+
+test("operator login fields and sign-in button show keyboard focus", async ({ page }) => {
+    await page.goto("/operator/login");
+
+    const controls = [
+        page.getByLabel("Operator ID"),
+        page.getByLabel("Password"),
+        page.getByRole("button", { name: "Sign in", exact: true }),
+    ];
+    for (const control of controls) {
+        for (let tab = 0; tab < 40; tab += 1) {
+            await page.keyboard.press("Tab");
+            if (await control.evaluate((element) => element === document.activeElement)) break;
+        }
+
+        await expect(control).toBeFocused();
+        await expect(control).toHaveCSS("outline-style", "solid");
+        await expect(control).toHaveCSS("outline-width", "2px");
+        await expect(control).toHaveCSS("outline-color", "rgb(34, 211, 238)");
+    }
+});
