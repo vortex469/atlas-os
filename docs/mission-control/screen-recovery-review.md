@@ -3326,3 +3326,11 @@ request and adds no installation authority.
 The panel also distinguishes Core's not-found response from a temporary read
 failure. A missing plan item now explains that its catalog details remain
 available and does not suggest retrying a request that returned 404.
+
+## Workflow next-step filter — 2026-10-29
+
+The workflow filter now treats unrecognized workflow states as “Status
+unavailable” instead of placing them under “No action needed.” Running and
+completed workflows are listed under “No action needed right now”; approval
+and blocked workflows remain under “Needs an operator step.” The focused page
+test checks each group so a future backend state is not presented as resolved.

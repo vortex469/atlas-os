@@ -157,6 +157,26 @@ export function workflowNextStepLabel(state: string, effectKind?: string): strin
     }
 }
 
+export type WorkflowOperatorStepState = "needed" | "not_needed" | "unknown";
+
+export function workflowOperatorStepState(state: string): WorkflowOperatorStepState {
+    switch (state) {
+        case "awaiting_approval":
+        case "awaiting_implementation_approval":
+        case "awaiting_verification_approval":
+        case "awaiting_commit_approval":
+        case "blocked":
+            return "needed";
+        case "executing":
+        case "verifying":
+        case "committing":
+        case "completed":
+            return "not_needed";
+        default:
+            return "unknown";
+    }
+}
+
 export function workflowStageStatusLabel(status: string): string {
     switch (status) {
         case "completed": return "Done";

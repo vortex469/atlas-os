@@ -16,7 +16,9 @@ import {
     workflowStatusGroup,
     formatWorkflowResultSummary,
     workflowNextStepLabel,
+    workflowOperatorStepState,
 } from "../utils/workflowState";
+import type { WorkflowOperatorStepState } from "../utils/workflowState";
 
 const PAGE_SIZE = 10;
 const WORKFLOW_BATCH_SIZE = 200;
@@ -28,7 +30,7 @@ interface DashboardFilters {
     source: string;
     candidateId: string;
     workflowId: string;
-    operatorStep: string;
+    operatorStep: "" | WorkflowOperatorStepState;
 }
 
 const EMPTY_FILTERS: DashboardFilters = {
@@ -115,9 +117,7 @@ export function WorkflowDashboardPage() {
             if (filters.source && workflow.workflow_source !== filters.source) return false;
             if (filters.candidateId && !workflow.candidate_id?.toLowerCase().includes(filters.candidateId.toLowerCase())) return false;
             if (filters.workflowId && !workflow.workflow_id.toLowerCase().includes(filters.workflowId.toLowerCase())) return false;
-            const hasNextStep = workflowNextStepLabel(workflow.workflow_state, workflow.effect_kind) !== null;
-            if (filters.operatorStep === "needed" && !hasNextStep) return false;
-            if (filters.operatorStep === "not_needed" && hasNextStep) return false;
+            if (filters.operatorStep && workflowOperatorStepState(workflow.workflow_state) !== filters.operatorStep) return false;
             return true;
         });
     }, [filters, workflows]);
@@ -274,7 +274,8 @@ export function WorkflowDashboardPage() {
                             <select value={draftFilters.operatorStep} onChange={(event) => updateDraftFilter("operatorStep", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
                                 <option value="">Any workflow</option>
                                 <option value="needed">Needs an operator step</option>
-                                <option value="not_needed">No operator step needed</option>
+                                <option value="not_needed">No action needed right now</option>
+                                <option value="unknown">Status unavailable</option>
                             </select>
                         </label>
                     </div>

@@ -203,21 +203,26 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
     });
 
-    it("filters workflows by whether an operator has a next step", async () => {
+    it("separates unknown workflow status from workflows with no current operator action", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([
             workflow(),
             workflow({ workflow_id: "workflow-blocked", workflow_state: "blocked", execution_intent: "update-container-image" }),
             workflow({ workflow_id: "workflow-completed", workflow_state: "completed", execution_intent: "restart-service" }),
+            workflow({ workflow_id: "workflow-running", workflow_state: "executing", execution_intent: null }),
+            workflow({ workflow_id: "workflow-unknown", workflow_state: "future_state", execution_intent: "future-task" }),
         ]));
 
         renderDashboard();
 
         await screen.findAllByRole("heading", { name: "Update Compose Stack" });
+        expect(screen.getByRole("option", { name: "No action needed right now" })).toBeInTheDocument();
+        expect(screen.getByRole("option", { name: "Status unavailable" })).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "needed" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
         expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Future Task" })).not.toBeInTheDocument();
         let counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         const countFor = (label: string) => {
             const card = counts.getByText(label, { exact: true }).closest("article");
@@ -230,11 +235,21 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "not_needed" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
         expect(screen.getByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Repository change" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Future Task" })).not.toBeInTheDocument();
         counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         expect(countFor("Completed")).toBe("1");
+        expect(countFor("Running")).toBe("1");
         expect(counts.queryByText("Needs your input", { exact: true })).not.toBeInTheDocument();
         expect(counts.queryByText("Blocked", { exact: true })).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "unknown" } });
+        fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
+        expect(screen.getByRole("heading", { name: "Future Task" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
+        counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
+        expect(countFor("Status unavailable")).toBe("1");
     });
 
     it("supports pagination when more returned workflows exist", async () => {
