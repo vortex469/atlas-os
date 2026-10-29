@@ -170,6 +170,8 @@ describe("MC overview evidence", () => {
             status: "offline",
             message: "Connection refused",
         } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        expect(checks.getByText("These results show whether Atlas Core can reach each service. Unavailable means it got no response; the service may still be running on its own computer.")).toBeVisible();
         const attention = within(screen.getByRole("region", { name: "Needs attention" }));
         const conditions = within(attention.getByRole("list", { name: "Items needing attention" }));
         const condition = within(conditions.getByRole("listitem"));

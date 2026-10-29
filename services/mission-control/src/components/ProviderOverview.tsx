@@ -1,4 +1,5 @@
 import type { Provider } from "../types/provider";
+import { healthReason, healthState } from "../utils/healthPresentation";
 import { StatusBadge } from "./StatusBadge";
 
 type ProviderOverviewProps = {
@@ -27,6 +28,8 @@ export function ProviderOverview({
         typeof provider.health.details.url === "string"
             ? provider.health.details.url
             : null;
+    const isUnavailable = healthState(provider.health.status) === "Unavailable";
+    const connectionMessage = healthReason(provider.health.message);
 
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-5 sm:p-8">
@@ -58,6 +61,12 @@ export function ProviderOverview({
                     )}
                 </div>
             </div>
+
+            {isUnavailable && (
+                <p className="mt-4 text-sm text-slate-400">
+                    Atlas Core could not reach this provider. It may still be running on its own computer.
+                </p>
+            )}
 
             <div className="mt-6 grid gap-6 border-t border-slate-800 pt-6 lg:grid-cols-2">
                 <div>
@@ -144,10 +153,10 @@ export function ProviderOverview({
                 </dl>
             </details>
 
-            {provider.health.message && (
+            {connectionMessage && (
                 <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
                     <p className="text-sm text-amber-200">
-                        {provider.health.message}
+                        {connectionMessage}
                     </p>
                 </div>
             )}

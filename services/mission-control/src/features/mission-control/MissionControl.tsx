@@ -301,6 +301,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 </details>
             </Card>
             <Card title="Service checks" evidence={evidence.health} loading={loading}>
+                <p>These results show whether Atlas Core can reach each service. Unavailable means it got no response; the service may still be running on its own computer.</p>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
                 {displayedServices.length > 0 && <ul aria-label="Configured service checks" className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>

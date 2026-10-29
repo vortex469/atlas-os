@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Provider } from "../types/provider";
 import { ProviderOverview } from "./ProviderOverview";
 
-function view(capabilities: unknown, latencyMs: number | null = 24) {
+function view(capabilities: unknown, latencyMs: number | null = 24, status = "online", message: string | null = null) {
     const provider = {
         id: "proxmox",
         name: "Proxmox",
@@ -14,7 +14,7 @@ function view(capabilities: unknown, latencyMs: number | null = 24) {
         description: "Virtualization",
         icon: "server",
         capabilities,
-        health: { status: "online", latency_ms: latencyMs, http_status: 200, message: null, details: { url: "https://proxmox.example/health" } },
+        health: { status, latency_ms: latencyMs, http_status: 200, message, details: { url: "https://proxmox.example/health" } },
     } as unknown as Provider;
     render(<ProviderOverview provider={provider} />);
 }
@@ -52,6 +52,14 @@ describe("ProviderOverview feature data", () => {
         view([], null);
         expect(screen.queryByText(/Response time/)).not.toBeInTheDocument();
         expect(screen.queryByText("—")).not.toBeInTheDocument();
+    });
+
+    it("explains that an unavailable result is Core's connection check", () => {
+        view([], null, "offline", "Connection refused");
+        expect(screen.getByText("Offline", { exact: true })).toBeVisible();
+        expect(screen.getByText("Atlas Core could not reach this provider. It may still be running on its own computer.")).toBeVisible();
+        expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeVisible();
+        expect(screen.queryByText("Connection refused", { exact: true })).not.toBeInTheDocument();
     });
 
     it("distinguishes missing features from an empty advertised list", () => {
