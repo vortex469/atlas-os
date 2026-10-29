@@ -509,7 +509,7 @@ describe("DiscoveryItemPage", () => {
             limit: 25,
         });
         renderPage();
-        expect(await screen.findByRole("heading", { name: "Operator proposals" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Suggestions" })).toBeInTheDocument();
         expect(await screen.findByText("Suggestion")).toBeInTheDocument();
         expect(mockedListDiscoveryProposals).toHaveBeenCalledWith(25);
         expect(screen.queryByText("other")).not.toBeInTheDocument();
@@ -635,8 +635,8 @@ describe("DiscoveryItemPage", () => {
     it("distinguishes proposal transport failure from provider state", async () => {
         mockedListDiscoveryProposals.mockRejectedValue(new Error("transport unavailable"));
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Related proposals are temporarily unavailable");
-        expect(screen.getByText(/catalog information is still available/i)).toBeInTheDocument();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Suggestions are temporarily unavailable");
+        expect(screen.getByText(/catalog item is still available/i)).toBeInTheDocument();
     });
 
     it("retries the related proposal read without reloading the catalog item", async () => {
@@ -646,10 +646,10 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Related proposals are temporarily unavailable");
-        await user.click(screen.getByRole("button", { name: "Retry related proposals" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Suggestions are temporarily unavailable");
+        await user.click(screen.getByRole("button", { name: "Retry suggestions" }));
 
-        expect(await screen.findByText("No related proposals are available.")).toBeInTheDocument();
+        expect(await screen.findByText("No suggestions are available.")).toBeInTheDocument();
         expect(mockedListDiscoveryProposals).toHaveBeenCalledTimes(2);
         expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });

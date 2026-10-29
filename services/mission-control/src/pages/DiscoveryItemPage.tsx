@@ -336,7 +336,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
             .catch((requestError: unknown) => {
                 if (!cancelled) {
                     console.error(`Unable to load Discovery proposals for ${itemId}:`, requestError);
-                    setProposalsError("Related proposals are temporarily unavailable. The catalog information is still available.");
+                    setProposalsError("Suggestions are temporarily unavailable. The catalog item is still available.");
                 }
             })
             .finally(() => {
@@ -521,12 +521,12 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
             <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
                 <div>
-                    <h2 id="discovery-proposals-heading" className="text-xl font-semibold text-white">Operator proposals</h2>
-                    <p className="mt-1 text-sm text-slate-400">Suggestions based on this item. They do not authorize actions.</p>
+                    <h2 id="discovery-proposals-heading" className="text-xl font-semibold text-white">Suggestions</h2>
+                    <p className="mt-1 text-sm text-slate-400">Suggestions based on this item. They don’t authorize changes.</p>
                 </div>
-                {proposalsLoading && <p className="text-sm text-slate-400">Loading related proposals…</p>}
-                {proposalsError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><p>{proposalsError}</p><button type="button" onClick={retryRelatedProposals} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200">Retry related proposals</button></div>}
-                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No related proposals are available.</p>}
+                {proposalsLoading && <p className="text-sm text-slate-400">Loading suggestions…</p>}
+                {proposalsError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><p>{proposalsError}</p><button type="button" onClick={retryRelatedProposals} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200">Retry suggestions</button></div>}
+                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No suggestions are available.</p>}
                 {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} />)}
             </section>
 

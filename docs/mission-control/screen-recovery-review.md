@@ -2817,3 +2817,11 @@ While a workflow is being created, the planning button now carries the pending
 label without repeating the same message beside it. The disabled state and
 separate implementation approval remain unchanged. The focused planning page
 suite passes (36 tests), along with Mission Control lint and production build.
+
+## Discovery suggestion labels — 2026-10-29
+
+The catalog item screen now calls related proposals “Suggestions” and uses that
+term in its loading, empty and recovery states. The no-authorization message
+stays visible. The focused DiscoveryItemPage suite passes (37 tests), along
+with the responsive suggestions recovery browser checks (2 tests), Mission
+Control lint and production build.

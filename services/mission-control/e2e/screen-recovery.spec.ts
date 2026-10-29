@@ -522,7 +522,7 @@ for (const width of [390, 1280]) {
 }
 
 for (const width of [390, 1280]) {
-    test(`related proposals can retry without leaving the catalog item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+    test(`suggestions can retry without leaving the catalog item at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;
         const entry = discoveryItemsPage.entries[0];
         await page.setViewportSize({ width, height: 900 });
@@ -538,11 +538,11 @@ for (const width of [390, 1280]) {
         });
         await page.goto("/discovery/items/fixture-app");
 
-        const proposals = page.getByRole("region", { name: "Operator proposals" });
-        await expect(proposals.getByRole("alert")).toContainText("Related proposals are temporarily unavailable");
+        const proposals = page.getByRole("region", { name: "Suggestions" });
+        await expect(proposals.getByRole("alert")).toContainText("Suggestions are temporarily unavailable");
         await expect(proposals.getByRole("alert")).not.toContainText("PRIVATE_PROPOSAL_ERROR");
-        await proposals.getByRole("button", { name: "Retry related proposals" }).click();
-        await expect(proposals.getByText("No related proposals are available.")).toBeVisible();
+        await proposals.getByRole("button", { name: "Retry suggestions" }).click();
+        await expect(proposals.getByText("No suggestions are available.")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
         expect(reads).toBe(2);
         expect(rejectedMutationRequests).toEqual([]);
