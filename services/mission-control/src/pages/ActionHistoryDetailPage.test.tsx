@@ -65,7 +65,7 @@ describe("ActionHistoryDetailPage", () => {
         mockedGetProviderActionHistoryEntry.mockResolvedValue(auditEntry("other"));
         renderPage();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("The provider action history record does not match this link.");
+        expect(alert).toHaveTextContent("This action history record does not match this link.");
         expect(alert).not.toHaveTextContent("Try again.");
         expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
@@ -78,7 +78,7 @@ describe("ActionHistoryDetailPage", () => {
         </Routes></MemoryRouter></StrictMode>);
         const user = userEvent.setup();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Provider action details are unavailable. Try again to reload this record. This read does not run the provider action again.");
+        expect(alert).toHaveTextContent("Action details are unavailable. Try again to reload this record. This read does not run the action again.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Unavailable")).not.toBeVisible();
@@ -101,7 +101,7 @@ describe("ActionHistoryDetailPage", () => {
         await screen.findByText("Model unloaded.");
         await act(() => router.navigate("/operations/actions/audit-2"));
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
-        expect(screen.getByText("Loading provider action details…")).toBeInTheDocument();
+        expect(screen.getByText("Loading action details…")).toBeInTheDocument();
         await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-2"));
         await act(() => router.navigate("/operations/actions/audit-3"));
         await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-3"));
@@ -116,7 +116,7 @@ describe("ActionHistoryDetailPage", () => {
         mockedGetProviderActionHistoryEntry.mockResolvedValue({ ...auditEntry(), destructive: true });
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Provider action details" })).toBeVisible();
+        expect(await screen.findByRole("heading", { name: "Action details" })).toBeVisible();
         expect(
             await screen.findByRole("heading", {
                 name: "Unload Model",
@@ -141,7 +141,7 @@ describe("ActionHistoryDetailPage", () => {
         expect(screen.getByText("request-123")).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
-                name: "← Back to provider action history",
+                name: "← Back to action history",
             }),
         ).toHaveAttribute("href", "/operations");
     });
@@ -164,7 +164,7 @@ describe("ActionHistoryDetailPage", () => {
             window.location.href,
         );
         expect(
-            await screen.findByText("Provider action history link copied."),
+            await screen.findByText("Action history link copied."),
         ).toBeInTheDocument();
     });
 
@@ -175,13 +175,13 @@ describe("ActionHistoryDetailPage", () => {
         renderPage("/operations/actions/missing-entry");
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Provider action details are unavailable. Try again to reload this record. This read does not run the provider action again.");
+        expect(alert).toHaveTextContent("Action details are unavailable. Try again to reload this record. This read does not run the action again.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Action history entry not found.")).not.toBeVisible();
         await waitFor(() =>
             expect(
-                screen.queryByText("Loading provider action details…"),
+                screen.queryByText("Loading action details…"),
             ).not.toBeInTheDocument(),
         );
     });

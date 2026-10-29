@@ -109,11 +109,11 @@ describe("OperationsPage", () => {
     it("distinguishes loading action history from retention details", async () => {
         renderPage();
 
-        expect(screen.getByRole("heading", { name: "Provider action history" })).toBeInTheDocument();
-        expect(screen.getByText("Loading provider action history...")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Action history" })).toBeInTheDocument();
+        expect(screen.getByText("Loading action history...")).toBeInTheDocument();
         expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
         await screen.findByText("Unload Model");
-        expect(screen.queryByText("Loading provider action history...")).not.toBeInTheDocument();
+        expect(screen.queryByText("Loading action history...")).not.toBeInTheDocument();
         expect(screen.queryByText("Loading retention details…")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Atlas Doctor" })).not.toBeInTheDocument();
     });
@@ -124,7 +124,7 @@ describe("OperationsPage", () => {
 
         expect(await screen.findByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
-        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
         fireEvent.click(screen.getByText("Export or remove history records"));
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
@@ -138,7 +138,7 @@ describe("OperationsPage", () => {
         await userEvent.setup().click(screen.getByText("More filters", { exact: true }));
         expect(screen.getByRole("status")).toHaveTextContent("Provider options could not be loaded. Date filters are still available.");
         expect(screen.getByLabelText("From date")).toBeVisible();
-        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
     });
 
@@ -162,7 +162,7 @@ describe("OperationsPage", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
-                name: "View provider action details",
+                name: "View action details",
             }),
         ).toHaveAttribute(
             "href",
@@ -175,7 +175,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
-        const filters = screen.getByRole("group", { name: "Filter provider action history" });
+        const filters = screen.getByRole("group", { name: "Filter action history" });
         expect(within(filters).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
         expect(within(filters).getByRole("button", { name: "Succeeded" })).toHaveAttribute("aria-pressed", "false");
         expect(within(filters).getByRole("button", { name: "Failed" })).toHaveAttribute("aria-pressed", "false");
@@ -210,10 +210,10 @@ describe("OperationsPage", () => {
         await waitFor(() => expect(screen.queryByText("Unload Model")).not.toBeInTheDocument());
         fireEvent.click(screen.getByText("Export or remove history records"));
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
-        expect(screen.queryByRole("navigation", { name: "Provider action history pagination" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         const historyAlert = await screen.findByRole("alert");
-        expect(historyAlert).toHaveTextContent("Provider action history could not be loaded. Refresh history to try again. This read did not run a provider action.");
+        expect(historyAlert).toHaveTextContent("Action history could not be loaded. Refresh history to try again. This read did not run an action.");
         const technicalDetails = within(historyAlert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(historyAlert).queryByText("Filtered history unavailable")).not.toBeVisible();
@@ -224,7 +224,7 @@ describe("OperationsPage", () => {
         fireEvent.click(screen.getByText("More filters", { exact: true }));
         expect(within(screen.getByLabelText("Provider")).getByRole("option", { name: "Ollama" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
-        expect(screen.getByRole("status")).toHaveTextContent("Expired entries cannot be deleted until provider action history loads successfully.");
+        expect(screen.getByRole("status")).toHaveTextContent("Expired entries cannot be deleted until action history loads successfully.");
         await user.click(screen.getByRole("button", { name: "Refresh history" }));
         expect(await screen.findByText("Unload Model")).toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(3);
@@ -237,7 +237,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         expect(await screen.findByText("No actions recorded")).toBeVisible();
-        expect(screen.getByText("Provider actions Atlas has run will appear here.")).toBeVisible();
+        expect(screen.getByText("Atlas has not recorded any actions yet.")).toBeVisible();
     });
 
     it("ignores a slow filtered response after a newer filter has loaded", async () => {
@@ -254,7 +254,7 @@ describe("OperationsPage", () => {
         await screen.findByText("No matching actions");
         await act(async () => { resolveRead(originalPage); });
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
-        expect(screen.queryByRole("navigation", { name: "Provider action history pagination" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
         expect(screen.getByText("No matching actions")).toBeVisible();
         expect(screen.getByText("No actions match the filters you applied. Change or clear filters to see other history.")).toBeVisible();
     });
@@ -297,7 +297,7 @@ describe("OperationsPage", () => {
         );
         expect(
             await screen.findByText(
-                "Provider action history exported as JSON.",
+                "Action history exported as JSON.",
             ),
         ).toBeInTheDocument();
     });
@@ -312,13 +312,13 @@ describe("OperationsPage", () => {
         await user.click(screen.getByRole("button", { name: "Export JSON" }));
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Provider action history could not be exported. Try exporting again.");
+        expect(alert).toHaveTextContent("Action history could not be exported. Try exporting again.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Export failed")).not.toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
-        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
     });
 
     it("confirms and prunes expired history", async () => {
@@ -375,7 +375,7 @@ describe("OperationsPage", () => {
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled();
         await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
         expect(mockedPruneProviderActionHistory).toHaveBeenCalledOnce();
-        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
     });
 
     it("filters by provider and UTC date range", async () => {
@@ -383,7 +383,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
-        expect(screen.getByText("Provider actions and their results. Times are shown in your browser’s local time.")).toBeVisible();
+        expect(screen.getByText("Completed actions and their results. Times use your local time.")).toBeVisible();
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
         expect(screen.getByLabelText("From date")).not.toBeVisible();
@@ -441,7 +441,7 @@ describe("OperationsPage", () => {
 
         await screen.findByText("Unload Model");
         await user.type(
-            screen.getByLabelText("Provider action or request ID"),
+            screen.getByLabelText("Action or request ID"),
             "request-123",
         );
         expect(screen.getByText("Search text has changed. Select Search to update the results.")).toBeVisible();
@@ -484,7 +484,7 @@ describe("OperationsPage", () => {
             }),
         );
 
-        await user.type(screen.getByLabelText("Provider action or request ID"), "-new");
+        await user.type(screen.getByLabelText("Action or request ID"), "-new");
         expect(screen.getByText("Search text has changed. Select Search to update the results.")).toBeVisible();
         expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();

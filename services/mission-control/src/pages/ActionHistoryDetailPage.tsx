@@ -60,7 +60,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                 .then((result) => {
                     if (active) {
                         if (result.id !== auditId) {
-                            setError("The provider action history record does not match this link.");
+                            setError("This action history record does not match this link.");
                             setErrorDetails(null);
                             setIsReadFailure(false);
                             return;
@@ -70,9 +70,9 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                 })
                 .catch((requestError: unknown) => {
                     if (active) {
-                        const fallback = "Provider action history read failed without additional details.";
+                        const fallback = "Action history read failed without additional details.";
                         const details = getAtlasErrorMessage(requestError, fallback);
-                        setError("Mission Control could not load this provider action history entry.");
+                        setError("Mission Control could not load this action history entry.");
                         setErrorDetails(details === fallback ? null : details);
                         setIsReadFailure(true);
                     }
@@ -94,16 +94,16 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
             await navigator.clipboard.writeText(
                 window.location.href,
             );
-            setCopyMessage("Provider action history link copied.");
+            setCopyMessage("Action history link copied.");
         } catch {
             setCopyMessage(
-                "Unable to copy the provider action history link. Copy it from the address bar.",
+                "Unable to copy the action history link. Copy it from the address bar.",
             );
         }
     }, []);
     const displayedError = auditId
         ? error
-        : "This provider action history link is missing its record ID.";
+        : "This action history link is missing its record ID.";
 
     return (
         <main className="mx-auto max-w-6xl space-y-6 p-4 [overflow-wrap:anywhere] sm:p-6">
@@ -113,13 +113,13 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         to="/operations"
                         className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
                     >
-                        ← Back to provider action history
+                        ← Back to action history
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold text-slate-100">
-                        Provider action details
+                        Action details
                     </h1>
                     <p className="mt-1 text-sm text-slate-400">
-                        Recorded result of a provider action. Older action results may no longer be available.
+                        Recorded result of an action. Older results may no longer be available.
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
                         Times below use your browser’s local time.
@@ -142,7 +142,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
 
             {isLoading && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
-                    Loading provider action details…
+                    Loading action details…
                 </div>
             )}
 
@@ -152,11 +152,11 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Provider action history entry unavailable
+                        Action record unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
                         {auditId && isReadFailure
-                            ? "Provider action details are unavailable. Try again to reload this record. This read does not run the provider action again."
+                            ? "Action details are unavailable. Try again to reload this record. This read does not run the action again."
                             : displayedError}
                     </p>
                     {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
