@@ -496,15 +496,18 @@ function DiscoveryStatus({
           : error
             ? "Catalog status unavailable"
             : "Catalog status unknown";
+    const catalogTotal = metadata?.catalog_loaded && metadata.entry_count > 0
+        ? metadata.entry_count
+        : null;
 
     return (
         <>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className={`grid gap-3${catalogTotal !== null ? " sm:grid-cols-2" : ""}`}>
                 <StatusTile label="Status" value={label} />
-                <StatusTile
+                {catalogTotal !== null && <StatusTile
                     label="Catalog total"
-                    value={metadata ? String(metadata.entry_count) : isLoading ? "Loading" : "Unavailable"}
-                />
+                    value={String(catalogTotal)}
+                />}
             </div>
             {error && (
                 <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">

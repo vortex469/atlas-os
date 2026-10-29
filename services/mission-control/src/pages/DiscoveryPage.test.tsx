@@ -360,6 +360,7 @@ describe("DiscoveryPage", () => {
 
         expect(await screen.findByText("No catalog items are available.")).toBeInTheDocument();
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
+        expect(screen.queryByText("Catalog total")).not.toBeInTheDocument();
         expect(screen.queryByText("0 items listed", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByText("Clear filters or broaden your search.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
@@ -451,7 +452,7 @@ describe("DiscoveryPage", () => {
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(await screen.findByText("Catalog status could not be checked. Catalog items remain available.")).toBeInTheDocument();
         expect(screen.getByText("Catalog status unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Catalog total").nextElementSibling).toHaveTextContent("Unavailable");
+        expect(screen.queryByText("Catalog total")).not.toBeInTheDocument();
         expect(screen.getByText("1 item listed")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
