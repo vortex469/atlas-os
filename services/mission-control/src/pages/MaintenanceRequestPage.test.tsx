@@ -380,7 +380,7 @@ describe("MaintenanceRequestPage", () => {
         await user.click(screen.getByRole("button", { name: "Retry loading suggestion" }));
         expect(await screen.findByText("Loading suggestion details…")).toBeInTheDocument();
         await act(async () => resolveRetry(currentSuggestion));
-        expect(await screen.findByText("Status: Current")).toBeInTheDocument();
+        expect(await screen.findByText("Suggestion status: Current")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Retry loading suggestion" })).not.toBeInTheDocument();
         expect(getDiscoveryProposal).toHaveBeenCalledTimes(2);
         expect(getCapabilityResources).toHaveBeenCalledTimes(1);

@@ -36,7 +36,7 @@ describe("DiscoveryProposalCard", () => {
         renderCard(proposal());
         expect(screen.getByText("Suggestion")).toBeVisible();
         expect(screen.getByRole("heading", { name: "Frigate" })).toBeVisible();
-        expect(screen.getByText("Status: Current")).toBeInTheDocument();
+        expect(screen.getByText("Suggestion status: Current")).toBeInTheDocument();
         expect(screen.getByText("Compatibility").parentElement).toHaveTextContent("Compatible");
         expect(screen.getByText("Compatibility").parentElement).toBeVisible();
         expect(screen.getByText(/Atlas checks your permission and the current VM details/i)).toBeVisible();
@@ -65,12 +65,13 @@ describe("DiscoveryProposalCard", () => {
     });
 
     it.each([
-        ["stale", "source_changed"],
-        ["expired", "expired"],
-        ["not_actionable", "unsupported_resource"],
-        ["not_actionable", "evidence_missing"],
-    ] as const)("renders %s/%s as review only", (status, reason) => {
+        ["stale", "source_changed", "Out of date"],
+        ["expired", "expired", "Expired"],
+        ["not_actionable", "unsupported_resource", "Review only"],
+        ["not_actionable", "evidence_missing", "Review only"],
+    ] as const)("renders %s/%s as review only", (status, reason, expectedStatus) => {
         renderCard(proposal({ status, reason, actionable_navigation: false }));
+        expect(screen.getByText(`Suggestion status: ${expectedStatus}`)).toBeInTheDocument();
         expect(screen.getByText(/This suggestion can’t be used to request maintenance/i)).toBeVisible();
         expect(screen.getByRole("link", { name: /View catalog item/i })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: /maintenance selection/i })).not.toBeInTheDocument();

@@ -11,6 +11,13 @@ const destinationLabels = {
     operator_maintenance_selection: "Continue to maintenance selection",
 } as const;
 
+const proposalStatusLabels: Record<DiscoveryProposalNavigation["status"], string> = {
+    current: "Current",
+    stale: "Out of date",
+    expired: "Expired",
+    not_actionable: "Review only",
+};
+
 function label(value: string): string {
     return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (part) => part.toUpperCase());
 }
@@ -57,7 +64,7 @@ export function DiscoveryProposalCard({
                     <h3 className="mt-1 font-semibold text-slate-100">{label(proposal.catalog_item_id)}</h3>
                 </div>
                 <span className="rounded-full border border-slate-600 px-2.5 py-1 text-xs text-slate-200">
-                    Status: {label(proposal.status)}
+                    Suggestion status: {proposalStatusLabels[proposal.status]}
                 </span>
             </div>
 
