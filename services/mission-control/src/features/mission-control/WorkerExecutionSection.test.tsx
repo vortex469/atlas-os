@@ -66,10 +66,10 @@ describe("Work activity summary", () => {
         expect(within(section).getAllByText("Blocked workflows")[0].nextElementSibling).toHaveTextContent("1");
         expect(within(section).getByRole("link", { name: "Workflow · Blocked" })).toHaveAttribute("href", "/workflows/blocked");
         fireEvent.click(within(section).getByText("More workflow details"));
-        expect(within(section).getByText(/A workflow may be blocked before it starts running/)).toBeInTheDocument();
+        expect(within(section).getByText(/A workflow can be blocked before it starts/)).toBeInTheDocument();
         expect(screen.getByText("No execution outcomes recorded")).toBeInTheDocument();
     });
-    it("uses execution evidence, not the latest commit result, and discloses absent recency", () => {
+    it("uses execution evidence, not the latest commit result, and explains why results are not newest first", () => {
         view(page([workflow("success", "completed", "completed", "restart-service"), workflow("failure", "blocked", "failed", "update-container-image")]));
         fireEvent.click(screen.getByText("More workflow details"));
         const successLink = screen.getByRole("link", { name: "Restart Service · Execution completed" });
@@ -82,7 +82,7 @@ describe("Work activity summary", () => {
         fireEvent.click(within(successRow!).getByText("Technical details"));
         expect(successId).toBeVisible();
         expect(screen.queryByText("Commit completed")).not.toBeInTheDocument();
-        expect(screen.getByText(/Execution times are not available/)).toBeInTheDocument();
+        expect(screen.getByText(/Finish times aren't available, so results aren't shown newest first/)).toBeInTheDocument();
     });
     it("puts failed execution outcomes before completed outcomes in the short preview", () => {
         view(page([

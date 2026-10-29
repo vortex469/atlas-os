@@ -78,7 +78,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                         <Metric label="Queue size" value="Not reported" />
                     </dl>
                     <EvidenceList key="outcomes" title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Mission Control could not read an execution result for one or more workflows." : "No execution outcomes recorded"} outcomes />
-                    <p className="text-xs text-mc-text-muted">Execution times are not available, so outcomes cannot be sorted by recency. A workflow may be blocked before it starts running.</p>
+                    <p className="text-xs text-mc-text-muted">Finish times aren't available, so results aren't shown newest first. A workflow can be blocked before it starts.</p>
                 </div>
             </details>
             {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
