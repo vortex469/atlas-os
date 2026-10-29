@@ -53,6 +53,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/discovery");
 
         await expect(page.getByText("No catalog items are available.")).toBeVisible();
+        await expect(page.getByText("0 items listed", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Try clearing filters or using a broader keyword.")).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Clear filters" })).toHaveCount(0);
         await expect(page.getByText("Catalog total").locator("..").getByText("0")).toBeVisible();

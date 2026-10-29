@@ -3167,3 +3167,8 @@ separate provider registry card.
 An empty proposal search now shows its plain-language empty state without a
 second “0 proposals” count. Nonzero result totals remain visible above the
 proposal list.
+
+## Catalog empty results — 2026-10-29
+
+Empty catalog and search results now use their clear empty-state message without
+repeating it as a zero count. Positive result totals remain visible.

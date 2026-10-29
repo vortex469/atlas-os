@@ -359,6 +359,7 @@ describe("DiscoveryPage", () => {
 
         expect(await screen.findByText("No catalog items are available.")).toBeInTheDocument();
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
+        expect(screen.queryByText("0 items listed", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByText("Clear filters or broaden your search.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
     });
@@ -373,7 +374,7 @@ describe("DiscoveryPage", () => {
         await user.click(screen.getByRole("button", { name: "Search" }));
 
         expect(await screen.findByText("No items matched these filters.")).toBeInTheDocument();
-        expect(screen.getByText("0 matching items found")).toBeInTheDocument();
+        expect(screen.queryByText("0 matching items found", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText("Clear filters or broaden your search.")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
     });

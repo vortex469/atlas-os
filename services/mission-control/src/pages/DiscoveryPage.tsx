@@ -335,7 +335,7 @@ export function DiscoveryPage() {
                         <h2 className="text-xl font-semibold text-white">
                             {hasSubmittedFilters ? "Search results" : "Catalog items"}
                         </h2>
-                        {!catalogError && <p className="mt-1 text-sm text-slate-500">{resultSummary}</p>}
+                        {!catalogError && (isLoading || result.total > 0) && <p className="mt-1 text-sm text-slate-500">{resultSummary}</p>}
                     </div>
 
                     <div className="flex items-center gap-2">
