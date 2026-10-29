@@ -349,7 +349,7 @@ describe("DiscoveryItemPage", () => {
         if (source === "plan") mockedGetDiscoveryInstallationPlan.mockResolvedValue(installationPlan("other"));
         renderPage();
         await screen.findByRole("heading", { name: "Frigate" });
-        const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Dynamic evidence unavailable" : source === "grounding" ? "The image check is unavailable right now." : "Installation plan is currently unavailable.";
+        const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Release information unavailable" : source === "grounding" ? "The image check is unavailable right now." : "Installation plan is currently unavailable.";
         expect(await screen.findByText(message)).toBeInTheDocument();
         expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
     });
@@ -562,8 +562,8 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Release evaluation")).toBeInTheDocument();
-        expect(screen.getByText("Update available")).toBeInTheDocument();
+        expect(await screen.findByText("Version comparison")).toBeInTheDocument();
+        expect(screen.getByText("Newer release reported")).toBeInTheDocument();
         expect(screen.getByText("0.15.0")).toBeInTheDocument();
         expect(screen.getByText("Item version")).toBeInTheDocument();
         expect(screen.getByText("0.16.1")).toBeInTheDocument();
@@ -580,8 +580,8 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
-        expect(await screen.findByText("Dynamic evidence unavailable")).toBeInTheDocument();
-        expect(screen.getByText(/Showing the curated catalog only/i)).toBeInTheDocument();
+        expect(await screen.findByText("Release information unavailable")).toBeInTheDocument();
+        expect(screen.getByText("The catalog information is still available and unchanged.")).toBeInTheDocument();
         expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
     });
 
@@ -592,10 +592,10 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Dynamic evidence unavailable")).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Retry source evidence" }));
+        expect(await screen.findByText("Release information unavailable")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry release check" }));
 
-        expect(await screen.findByText("Curated catalog only")).toBeInTheDocument();
+        expect(await screen.findByText("Only catalog information is available")).toBeInTheDocument();
         expect(mockedGetDiscoveryItemEvidence).toHaveBeenCalledTimes(2);
         expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });

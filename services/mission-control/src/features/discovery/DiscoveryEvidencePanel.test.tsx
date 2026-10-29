@@ -63,7 +63,7 @@ const RELEASE_EVALUATION_STATES: readonly DiscoveryReleaseEvaluationStatus[] = [
 ];
 
 function releaseEvaluationSection(): HTMLElement {
-    const title = screen.getByText("Release evaluation");
+    const title = screen.getByText("Version comparison");
     const section = title.closest("div[role='status'], div[role='alert']");
     if (!(section instanceof HTMLElement)) {
         throw new Error("release evaluation section not found");
@@ -74,7 +74,7 @@ function releaseEvaluationSection(): HTMLElement {
 describe("DiscoveryEvidencePanel", () => {
     it("announces loading accessibly", () => {
         render(<DiscoveryEvidencePanel evidence={null} isLoading error={null} />);
-        expect(screen.getByRole("status")).toHaveTextContent("Loading source evidence");
+        expect(screen.getByRole("status")).toHaveTextContent("Checking release information");
     });
 
     it("leads with release freshness and keeps source records optional", () => {
@@ -82,21 +82,27 @@ describe("DiscoveryEvidencePanel", () => {
         vi.setSystemTime(new Date("2026-08-18T11:00:00Z"));
         render(<DiscoveryEvidencePanel evidence={evidence()} isLoading={false} error={null} />);
 
-        expect(screen.getByText("Sources agree")).toBeInTheDocument();
-        expect(screen.getByText("Fresh")).toBeInTheDocument();
-        expect(screen.getByText("Health: Healthy")).toBeInTheDocument();
-        expect(screen.getByText("Published (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-17T09:00:00Z");
-        expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("2 hours ago");
-        const sourceDetails = screen.getByText("Release source details").closest("details");
+        expect(screen.getByText("Release information agrees")).toBeInTheDocument();
+        expect(screen.getByText("Current report")).toBeInTheDocument();
+        expect(screen.getByText("Source: Available")).toBeInTheDocument();
+        expect(screen.getByText("Released (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-17T09:00:00Z");
+        expect(screen.getByText("Checked by Atlas (local time)").parentElement).toHaveTextContent("2 hours ago");
+        const sourceDetails = screen.getByText("Source details").closest("details");
         expect(sourceDetails).not.toHaveAttribute("open");
         expect(within(sourceDetails as HTMLDetailsElement).getByText("blakeblackshear/frigate")).not.toBeVisible();
-        expect(within(sourceDetails as HTMLDetailsElement).getByText("Supplemental")).not.toBeVisible();
-        fireEvent.click(within(sourceDetails as HTMLDetailsElement).getByText("Release source details"));
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("Additional information; catalog remains authoritative")).not.toBeVisible();
+        fireEvent.click(within(sourceDetails as HTMLDetailsElement).getByText("Source details"));
         expect(within(sourceDetails as HTMLDetailsElement).getByText("blakeblackshear/frigate")).toBeVisible();
-        expect(within(sourceDetails as HTMLDetailsElement).getByText("Supplemental")).toBeVisible();
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("Additional information; catalog remains authoritative")).toBeVisible();
+        const sourceSummary = screen.getByRole("list", { name: "Discovery source health" });
+        const technicalDetails = within(sourceSummary).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Source ID: frigate-github-latest-release-v1")).not.toBeVisible();
+        fireEvent.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Source ID: frigate-github-latest-release-v1")).toBeVisible();
         expect(screen.getByText(/2 hours ago/)).toBeInTheDocument();
-        expect(screen.getByText("Retrieved (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-18T09:00:00Z");
-        expect(screen.getByText("Freshness expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-19T09:00:00Z");
+        expect(screen.getByText("Checked by Atlas (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-18T09:00:00Z");
+        expect(screen.getByText("Source data valid until (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-19T09:00:00Z");
         vi.useRealTimers();
     });
 
@@ -107,10 +113,10 @@ describe("DiscoveryEvidencePanel", () => {
             published_at: "not-a-time",
             provenance: { ...claim.provenance, retrieved_at: "2026-02-30T09:00:00Z", expires_at: "not-a-time" },
         }] })} isLoading={false} error={null} />);
-        expect(screen.getByText("Published (local time)").parentElement).toHaveTextContent("Time unavailable");
-        expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("Time unavailable");
-        fireEvent.click(screen.getByText("Release source details"));
-        expect(screen.getByText("Freshness expires (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Released (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Checked by Atlas (local time)").parentElement).toHaveTextContent("Time unavailable");
+        fireEvent.click(screen.getByText("Source details"));
+        expect(screen.getByText("Source data valid until (local time)").parentElement).toHaveTextContent("Time unavailable");
         expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
     });
 
@@ -122,7 +128,7 @@ describe("DiscoveryEvidencePanel", () => {
             ...claim,
             provenance: { ...claim.provenance, retrieved_at: "2026-08-19T09:00:00Z" },
         }] })} isLoading={false} error={null} />);
-        expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("reported time is in the future");
+        expect(screen.getByText("Checked by Atlas (local time)").parentElement).toHaveTextContent("reported time is in the future");
         expect(screen.queryByText("less than 1 hour ago")).not.toBeInTheDocument();
         vi.useRealTimers();
     });
@@ -138,35 +144,33 @@ describe("DiscoveryEvidencePanel", () => {
             ],
         })} isLoading={false} error={null} />);
 
-        expect(screen.getByText("Stale")).toBeInTheDocument();
+        expect(screen.getByText("May be out of date")).toBeInTheDocument();
         expect(screen.getByText(
-            "Stale evidence may not describe the current upstream release.",
+            "This information may not reflect the latest release.",
         )).toBeInTheDocument();
-        for (const health of ["Healthy", "Degraded", "Unavailable", "Unknown"]) {
-            expect(screen.getByText(`Health: ${health}`)).toBeInTheDocument();
+        for (const health of ["Available", "Partly available", "Unavailable", "Status not reported"]) {
+            expect(screen.getByText(`Source: ${health}`)).toBeInTheDocument();
         }
-        expect(screen.getByText("Corrupt cached evidence was excluded.")).toBeInTheDocument();
-        expect(screen.getByText("No cached evidence is available.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas ignored unreadable saved evidence.")).toBeInTheDocument();
+        expect(screen.getByText("Saved evidence: None found")).toBeInTheDocument();
     });
 
     it("renders dynamic_conflict as an alert", () => {
         render(<DiscoveryEvidencePanel evidence={evidence({ conflict_state: "dynamic_conflict" })} isLoading={false} error={null} />);
-        expect(within(screen.getByRole("alert")).getByText("Dynamic source conflict")).toBeInTheDocument();
+        expect(within(screen.getByRole("alert")).getByText("Release sources disagree")).toBeInTheDocument();
     });
 
     it("renders curated_conflict and preserves curated authority", () => {
         render(<DiscoveryEvidencePanel evidence={evidence({ conflict_state: "curated_conflict" })} isLoading={false} error={null} />);
         const alert = screen.getByRole("alert");
-        expect(within(alert).getByText("Curated evidence conflict")).toBeInTheDocument();
-        expect(within(alert).getByText(
-            "Supplemental evidence differs from the curated release claim. Curated data remains authoritative.",
-        )).toBeInTheDocument();
+        expect(within(alert).getByText("Release report differs from the catalog")).toBeInTheDocument();
+        expect(within(alert).getByText("Supplemental information conflicts with the catalog, which remains authoritative.")).toBeInTheDocument();
     });
 
     it("explains when no dynamic sources are mapped", () => {
         render(<DiscoveryEvidencePanel evidence={evidence({ source_states: [] })} isLoading={false} error={null} />);
         expect(screen.getByText(
-            "No dynamic sources are mapped to this catalog item.",
+            "No supplemental release sources are available for this item.",
         )).toBeInTheDocument();
     });
 
@@ -176,17 +180,23 @@ describe("DiscoveryEvidencePanel", () => {
             source_states: [{ source_id: "source", health: null, cache_state: "corrupt" }],
             conflict_state: "none",
         })} isLoading={false} error={null} />);
-        expect(screen.getByText("Curated catalog only")).toBeInTheDocument();
-        expect(screen.getByText("Corrupt cached evidence was excluded.")).toBeInTheDocument();
+        expect(screen.getByText("Only catalog information is available")).toBeInTheDocument();
+        expect(screen.getByText("Atlas ignored unreadable saved evidence.")).toBeInTheDocument();
     });
 
     it("uses a non-blocking alert when the evidence request fails", () => {
         const onRetry = vi.fn();
         render(<DiscoveryEvidencePanel evidence={null} isLoading={false} error="Source offline" onRetry={onRetry} />);
         const alert = screen.getByRole("alert");
-        expect(alert).toHaveTextContent("Dynamic evidence unavailable");
-        expect(alert).toHaveTextContent("Showing the curated catalog only");
-        screen.getByRole("button", { name: "Retry source evidence" }).click();
+        expect(alert).toHaveTextContent("Release information unavailable");
+        expect(alert).toHaveTextContent("Atlas could not check release information.");
+        expect(alert).toHaveTextContent("The catalog information is still available and unchanged.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Source offline")).not.toBeVisible();
+        fireEvent.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Source offline")).toBeVisible();
+        screen.getByRole("button", { name: "Retry release check" }).click();
         expect(onRetry).toHaveBeenCalledOnce();
     });
 
@@ -198,14 +208,14 @@ describe("DiscoveryEvidencePanel", () => {
 
     describe("release evaluation", () => {
         const stateTitles: Record<DiscoveryReleaseEvaluationStatus, string> = {
-            up_to_date: "Up to date",
-            update_available: "Update available",
-            baseline_ahead: "Baseline ahead",
-            conflicted: "Conflicted release claims",
-            stale_evidence: "Stale release evidence",
-            no_baseline: "No baseline version",
-            no_dynamic_evidence: "No dynamic release evidence",
-            insufficient_information: "Insufficient information",
+            up_to_date: "Versions match",
+            update_available: "Newer release reported",
+            baseline_ahead: "Catalog lists a newer version",
+            conflicted: "Release information conflicts",
+            stale_evidence: "Release information may be out of date",
+            no_baseline: "Catalog version unavailable",
+            no_dynamic_evidence: "No release reports available",
+            insufficient_information: "Versions cannot be compared",
         };
 
         it.each(RELEASE_EVALUATION_STATES)(
@@ -220,7 +230,7 @@ describe("DiscoveryEvidencePanel", () => {
                 );
                 const section = releaseEvaluationSection();
                 expect(within(section).getByText(stateTitles[status])).toBeInTheDocument();
-                expect(within(section).getByText("Release evaluation")).toBeInTheDocument();
+                expect(within(section).getByText("Version comparison")).toBeInTheDocument();
             },
         );
 
@@ -240,11 +250,11 @@ describe("DiscoveryEvidencePanel", () => {
                     />,
                 );
                 const section = releaseEvaluationSection();
-                expect(within(section).getByText("Baseline version")).toBeInTheDocument();
+                expect(within(section).getByText("Catalog version")).toBeInTheDocument();
                 expect(within(section).getByText("0.15.0")).toBeInTheDocument();
-                expect(within(section).getByText("Baseline source")).toBeInTheDocument();
+                expect(within(section).getByText("Catalog version source")).toBeInTheDocument();
                 expect(within(section).getByText("Curated")).toBeInTheDocument();
-                expect(within(section).getByText("Latest candidate")).toBeInTheDocument();
+                expect(within(section).getByText("Latest reported release")).toBeInTheDocument();
                 expect(within(section).getByText("0.16.1")).toBeInTheDocument();
             },
         );
@@ -270,7 +280,7 @@ describe("DiscoveryEvidencePanel", () => {
                     />,
                 );
                 const section = releaseEvaluationSection();
-                expect(within(section).queryByText("Latest candidate")).not.toBeInTheDocument();
+                expect(within(section).queryByText("Latest reported release")).not.toBeInTheDocument();
                 expect(within(section).queryByText("0.16.1")).not.toBeInTheDocument();
             },
         );
@@ -286,9 +296,9 @@ describe("DiscoveryEvidencePanel", () => {
                 />,
             );
             const section = releaseEvaluationSection();
-            expect(within(section).queryByText("Baseline version")).not.toBeInTheDocument();
-            expect(within(section).queryByText("Baseline source")).not.toBeInTheDocument();
-            expect(within(section).queryByText("Latest candidate")).not.toBeInTheDocument();
+            expect(within(section).queryByText("Catalog version")).not.toBeInTheDocument();
+            expect(within(section).queryByText("Catalog version source")).not.toBeInTheDocument();
+            expect(within(section).queryByText("Latest reported release")).not.toBeInTheDocument();
         });
 
         it.each(["up_to_date", "update_available", "baseline_ahead"] as const)(
@@ -319,7 +329,7 @@ describe("DiscoveryEvidencePanel", () => {
                 expect(section).toHaveAttribute("role", "status");
                 expect(section.className).toContain("amber");
                 expect(section.className).not.toContain("emerald");
-                expect(within(section).getByText(/No positive comparison is made\./)).toBeInTheDocument();
+                expect(section.textContent).toMatch(/cannot compare it with confidence|No update is recommended/);
             },
         );
 
@@ -355,9 +365,9 @@ describe("DiscoveryEvidencePanel", () => {
             expect(section).toHaveAttribute("role", "alert");
             expect(section.className).toContain("red");
             expect(within(section).getByText(
-                "Release evidence conflicts, so no latest version is selected. Curated catalog data remains authoritative. No change is recommended or implied.",
+                "Sources disagree, so Atlas does not choose a latest version. The catalog remains authoritative.",
             )).toBeInTheDocument();
-            expect(within(section).queryByText("Latest candidate")).not.toBeInTheDocument();
+            expect(within(section).queryByText("Latest reported release")).not.toBeInTheDocument();
         });
 
         it("presents update_available as informational only", () => {
@@ -374,14 +384,14 @@ describe("DiscoveryEvidencePanel", () => {
             );
             expect(
                 within(releaseEvaluationSection()).getByText(
-                    /Informational only; nothing is scheduled, proposed, or applied\./,
+                    /This is information only; no change is proposed or applied\./,
                 ),
             ).toBeInTheDocument();
         });
 
         it("omits the release evaluation subsection when the field is absent", () => {
             render(<DiscoveryEvidencePanel evidence={evidence()} isLoading={false} error={null} />);
-            expect(screen.queryByText("Release evaluation")).not.toBeInTheDocument();
+            expect(screen.queryByText("Version comparison")).not.toBeInTheDocument();
         });
 
         it("omits the release evaluation subsection when the field is null", () => {
@@ -392,7 +402,7 @@ describe("DiscoveryEvidencePanel", () => {
                     error={null}
                 />,
             );
-            expect(screen.queryByText("Release evaluation")).not.toBeInTheDocument();
+            expect(screen.queryByText("Version comparison")).not.toBeInTheDocument();
         });
 
         it.each(RELEASE_EVALUATION_STATES)(
