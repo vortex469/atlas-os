@@ -305,7 +305,7 @@ for (const width of [320, 1280]) {
         await expect(nextStep).toBeVisible();
         await expect(nextStep).toContainText('Try this address from the Atlas Core machine or container:');
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
-        await expect(nextStep).toContainText('A blank PORTS field means no host port is published for Atlas Core to reach.');
+        await expect(nextStep).toContainText('For a container using Docker port mappings, a blank PORTS field means no host port is published for Atlas Core to reach.');
         const moreChecks = checks.getByText('More connection checks');
         await moreChecks.click();
         const steps = checks.getByRole('list', { name: 'How to check from Atlas Core' });
@@ -314,6 +314,7 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('Test from the Atlas Core machine or atlas-core container');
         await expect(steps).toContainText('A browser or the service computer may use a different network path');
         await expect(steps).toContainText('On another computer running Docker, use docker ps and check PORTS');
+        await expect(steps).toContainText('For containers using port mappings, a blank field means no host port is published');
         await expect(steps).toContainText('a mapping starting with 127.0.0.1: is reachable only from that computer');
         await expect(steps).toContainText("publish the app's listening port with Compose's ports: or docker run -p");
         await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');

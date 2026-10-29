@@ -80,7 +80,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         {unavailable && <div role="group" aria-label="Next connection check" className="rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
             <p className="font-medium text-mc-text-primary">Try this address from the Atlas Core machine or container:</p>
             <p className="mt-1 break-all font-mono text-mc-text-primary">{address ?? "Configured service address not reported"}</p>
-            <p className="mt-2">If the app runs in Docker on another computer, check <code>PORTS</code> in <code>docker ps</code> there. A blank <code>PORTS</code> field means no host port is published for Atlas Core to reach.</p>
+            <p className="mt-2">If the app runs in Docker on another computer, check <code>PORTS</code> in <code>docker ps</code> there. For a container using Docker port mappings, a blank <code>PORTS</code> field means no host port is published for Atlas Core to reach.</p>
         </div>}
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>
@@ -88,8 +88,8 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                 <ol aria-label="How to check from Atlas Core" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                     <li>Test from the Atlas Core machine or <code>atlas-core</code> container. A browser or the service computer may use a different network path.</li>
                     <li>
-                        On another computer running Docker, use <code>docker ps</code> and check <code>PORTS</code>. A blank field means no host port is published; a mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
-                        For a blank field, publish the app's listening port with Compose's <code>ports:</code> or <code>docker run -p</code>, then recreate the container. In <code>HOST_PORT:CONTAINER_PORT</code>, the host port must match Atlas's address and the container port must match the app's listening port.
+                        On another computer running Docker, use <code>docker ps</code> and check <code>PORTS</code>. For containers using port mappings, a blank field means no host port is published; a mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
+                        If the container uses port mappings, publish the app's listening port with Compose's <code>ports:</code> or <code>docker run -p</code>, then recreate the container. In <code>HOST_PORT:CONTAINER_PORT</code>, the host port must match Atlas's address and the container port must match the app's listening port.
                     </li>
                     <li>Run Compose commands from the folder containing the Compose file.</li>
                 </ol>
