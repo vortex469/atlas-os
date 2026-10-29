@@ -3250,3 +3250,10 @@ button tests cover first load, refresh, and idle states.
 Action history now distinguishes its first read (“Loading history…”) from
 later updates (“Refreshing history…”). Its page tests cover both states, with
 the existing loading and retry messages preserved.
+
+## Provider resources first-load label — 2026-10-29
+
+The provider resource panel now says “Loading resources…” on its initial
+inventory and monitoring reads. “Refreshing resources…” is reserved for a
+later update. The focused suite verifies the initial state and recovery to the
+ready control.

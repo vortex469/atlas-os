@@ -184,6 +184,25 @@ async function renderResources() {
 }
 
 describe("ProviderResources Provider Intent flow", () => {
+    it("labels the initial inventory and monitoring read as loading", async () => {
+        let resolveInventory!: (value: ProviderResourceCollection) => void;
+        let resolveManagement!: (value: ProviderManagementV2) => void;
+        vi.mocked(getProviderResources).mockReturnValueOnce(new Promise((resolve) => { resolveInventory = resolve; }));
+        vi.mocked(getProviderManagement).mockReturnValueOnce(new Promise((resolve) => { resolveManagement = resolve; }));
+
+        render(<ProviderResources provider={provider} />);
+
+        expect(screen.getByRole("button", { name: "Loading resources…" })).toBeDisabled();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading observed resources and monitoring state...");
+
+        await act(async () => {
+            resolveInventory(inventory);
+            resolveManagement(publicManagement());
+        });
+        expect(await screen.findByText("Frigate")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Refresh resources" })).toBeEnabled();
+    });
+
     it("labels the inventory refresh time as local and preserves its UTC instant", async () => {
         await renderResources();
 
