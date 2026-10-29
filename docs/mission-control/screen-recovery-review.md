@@ -3108,3 +3108,11 @@ When workflow status cannot be loaded, opening “More workflow details” now
 states that workflow outcomes are unavailable instead of showing the vague
 placeholder “Unknown.” The focused Work activity suite covers the unavailable
 state. Workflow reads, controls, and approval behavior are unchanged.
+
+## Service check location guidance — 2026-10-29
+
+Service-check help now says directly that tests must run from Atlas Core's
+computer or container. It also explains that a missing Compose file points to
+the command's location, not the service's health, and tells the operator to
+use the Atlas folder or the file's full path. The dashboard regression test
+covers both explanations; service checks remain read-only.
