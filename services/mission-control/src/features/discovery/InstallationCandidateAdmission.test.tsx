@@ -35,14 +35,14 @@ function fixture(admitted = false): InstallationCandidateAdmissionV1 {
     };
 }
 
-describe("installation candidate admission", () => {
+describe("review record check", () => {
     beforeEach(() => vi.resetAllMocks());
 
     it("leads with a plain-language result and keeps exact linkage collapsed", async () => {
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(fixture(true));
         const { container } = render(<InstallationCandidateAdmission itemId="example" selectionId="selection-1" />);
-        expect(await screen.findByText("Candidate record available for review only")).toBeInTheDocument();
-        expect(screen.getByText("This read-only check does not approve an installation or start work.")).toBeInTheDocument();
+        expect(await screen.findByText("A review record is available to save")).toBeInTheDocument();
+        expect(screen.getByText("Checks whether Atlas can save a review record for this plan and VM. It does not approve or start an installation.")).toBeInTheDocument();
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         for (const fingerprint of ["plan-fingerprint", "selection-fingerprint", "destination-fingerprint", "assessment-fingerprint", "fact-set-fingerprint"]) {
@@ -65,8 +65,8 @@ describe("installation candidate admission", () => {
     it("shows plain-language reasons and keeps their exact codes collapsed", async () => {
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(fixture(false));
         render(<InstallationCandidateAdmission itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText("No candidate record was created")).toBeInTheDocument();
-        const reasons = screen.getByRole("list", { name: /installation candidate admission reasons/i });
+        expect(await screen.findByText("This plan is not ready to save for review")).toBeInTheDocument();
+        const reasons = screen.getByRole("list", { name: /review record check reasons/i });
         expect(reasons.textContent).toMatch(/plan is not ready for review.*capability check did not confirm that requirements are met/i);
         expect(reasons.textContent).not.toMatch(/installation_plan_not_review_ready|capability_assessment_not_admissible/);
         const technicalDetails = screen.getByText("Technical details").closest("details");
@@ -78,28 +78,28 @@ describe("installation candidate admission", () => {
 
     it("renders empty, loading, error, and no-response states with redacted errors", async () => {
         const empty = render(<InstallationCandidateAdmission itemId="example" selectionId={null} />);
-        expect(screen.getByText(/no destination selection is available/i)).toBeInTheDocument();
+        expect(screen.getByText(/select a vm above before checking whether a review record can be saved/i)).toBeInTheDocument();
         empty.unmount();
 
         let rejectRequest: (reason: Error) => void = () => undefined;
         vi.mocked(getInstallationCandidateAdmission).mockReturnValueOnce(new Promise((_, reject) => { rejectRequest = reject; }));
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(fixture(false));
         const loading = render(<InstallationCandidateAdmission itemId="example" selectionId="selection-1" />);
-        expect(await screen.findByText(/loading installation candidate admission/i)).toBeInTheDocument();
+        expect(await screen.findByText(/checking whether a review record can be saved/i)).toBeInTheDocument();
         rejectRequest(new Error("credential secret at /internal/path and 10.0.0.1"));
-        await waitFor(() => expect(screen.getByRole("alert").querySelector(":scope > p")).toHaveTextContent("Atlas could not load candidate admission for this destination."));
+        await waitFor(() => expect(screen.getByRole("alert").querySelector(":scope > p")).toHaveTextContent("Atlas could not check whether a review record can be saved for this VM."));
         expect(loading.container).not.toHaveTextContent(/secret|internal\/path|10\.0\.0\.1/i);
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLElement).getByText("Installation candidate admission is currently unavailable.")).toBeInTheDocument();
-        await userEvent.setup().click(screen.getByRole("button", { name: "Retry admission check" }));
-        expect(await screen.findByText("No candidate record was created")).toBeInTheDocument();
+        expect(within(technicalDetails as HTMLElement).getByText("Review record check is currently unavailable.")).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByRole("button", { name: "Retry check" }));
+        expect(await screen.findByText("This plan is not ready to save for review")).toBeInTheDocument();
         expect(getInstallationCandidateAdmission).toHaveBeenCalledTimes(2);
         loading.unmount();
 
         vi.mocked(getInstallationCandidateAdmission).mockResolvedValueOnce(null as unknown as InstallationCandidateAdmissionV1);
         render(<InstallationCandidateAdmission itemId="example" selectionId="selection-1" />);
-        expect(await screen.findByText(/no installation candidate admission was returned/i)).toBeInTheDocument();
+        expect(await screen.findByText(/no result was returned for the review record check/i)).toBeInTheDocument();
     });
 
     it("does not expose injected provider data, controls, navigation, or authority actions", async () => {

@@ -52,7 +52,7 @@ export function InstallationCandidateLifecycle({
         listInstallationCandidateRecords()
             .then((values) => { if (current) setRecords(values); })
             .catch((requestError: unknown) => {
-                if (current) setListError(getAtlasErrorMessage(requestError, "Saved candidate records are currently unavailable."));
+                if (current) setListError(getAtlasErrorMessage(requestError, "Saved review records are currently unavailable."));
             })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
@@ -85,7 +85,7 @@ export function InstallationCandidateLifecycle({
             setPreserveRecovery({ request, idempotencyKey });
             setMutationError({
                 action: "preserve",
-                technicalDetail: getAtlasErrorMessage(requestError, "The candidate record could not be preserved."),
+                technicalDetail: getAtlasErrorMessage(requestError, "The review record could not be saved."),
             });
         } finally { setMutation(null); }
     };
@@ -99,7 +99,7 @@ export function InstallationCandidateLifecycle({
         catch (requestError: unknown) {
             setReviewError({
                 candidateRecordId,
-                technicalDetail: getAtlasErrorMessage(requestError, "The saved candidate record is currently unavailable."),
+                technicalDetail: getAtlasErrorMessage(requestError, "The saved review record is currently unavailable."),
             });
         } finally {
             setReviewingId(null);
@@ -121,7 +121,7 @@ export function InstallationCandidateLifecycle({
             setDeleteUncertainId(candidateRecordId);
             setMutationError({
                 action: "delete",
-                technicalDetail: getAtlasErrorMessage(requestError, "The saved candidate record could not be deleted."),
+                technicalDetail: getAtlasErrorMessage(requestError, "The saved review record could not be deleted."),
             });
         } finally { setMutation(null); }
     };
@@ -138,7 +138,7 @@ export function InstallationCandidateLifecycle({
             setReviewError(null);
             if (stillPresent) {
                 setDeletedId(null);
-                setRecoveryMessage(`Saved record ${candidateRecordId} is still present. You may delete it again if you still want it removed.`);
+                setRecoveryMessage("The review record is still saved. You can try deleting it again.");
             } else {
                 setReviewed((current) => current?.candidate_record_id === candidateRecordId ? null : current);
                 setDeletedId(candidateRecordId);
@@ -147,7 +147,7 @@ export function InstallationCandidateLifecycle({
         } catch (requestError: unknown) {
             setMutationError({
                 action: "delete",
-                technicalDetail: getAtlasErrorMessage(requestError, "Saved candidate records could not be refreshed."),
+                technicalDetail: getAtlasErrorMessage(requestError, "Saved review records could not be refreshed."),
             });
         } finally { setLoading(false); }
     };
@@ -158,57 +158,57 @@ export function InstallationCandidateLifecycle({
         && preserveRecovery.request.selection_id === selectionId
         && preserveRecovery.request.admission_fingerprint === admission?.admission_fingerprint;
     return <section aria-labelledby="candidate-lifecycle-heading" className="mt-5 border-t border-slate-700 pt-5">
-        <h5 id="candidate-lifecycle-heading" className="font-semibold text-slate-100">Saved candidate record lifecycle</h5>
-        <p className="mt-1 text-sm text-slate-300">Durable advisory records only. Preservation is not approval. Active means only that the exact source facts have not expired.</p>
-        <p className="mt-1 text-sm font-semibold text-amber-200">Every record is non-executable, non-approved, non-deployable, non-dispatchable, and has no Agent execution support.</p>
+        <h5 id="candidate-lifecycle-heading" className="font-semibold text-slate-100">Saved review records</h5>
+        <p className="mt-1 text-sm text-slate-300">Saved records are for reference only. Saving one does not approve or start an installation.</p>
+        <p className="mt-1 text-sm font-semibold text-amber-200">Saved records cannot install, deploy, dispatch, or run through an Agent.</p>
         {preservable && <div className="mt-3">
-            {csrfToken && <button type="button" disabled={mutation !== null || reviewingId !== null || deleteUncertainId !== null || (preserveRecovery !== null && !canRetryPreservation)} onClick={() => void preserve()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:opacity-50">{canRetryPreservation ? "Retry preservation" : "Preserve candidate record"}</button>}
-            {!csrfToken && <p className="text-xs text-slate-400">An authenticated operator session with mutation protection is required to preserve this record.</p>}
+            {csrfToken && <button type="button" disabled={mutation !== null || reviewingId !== null || deleteUncertainId !== null || (preserveRecovery !== null && !canRetryPreservation)} onClick={() => void preserve()} className="rounded-lg border border-blue-400/50 px-3 py-2 text-sm font-semibold text-blue-200 disabled:opacity-50">{canRetryPreservation ? "Retry save" : "Save review record"}</button>}
+            {!csrfToken && <p className="text-xs text-slate-400">Sign in as an operator to save this review record.</p>}
         </div>}
-        {!preservable && admission && <p className="mt-3 text-sm text-slate-400">This admission cannot be preserved because it has no positive non-executable candidate record.</p>}
-        {mutation === "preserve" && <p role="status" className="mt-3 text-sm text-slate-400">Preserving candidate record…</p>}
-        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading saved candidate records…</p>}
+        {!preservable && admission && <p className="mt-3 text-sm text-slate-400">This check did not produce a review record that can be saved.</p>}
+        {mutation === "preserve" && <p role="status" className="mt-3 text-sm text-slate-400">Saving review record…</p>}
+        {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading saved review records…</p>}
         {!loading && listError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-            <p>Atlas could not load the saved candidate records. Retry to check the current list.</p>
+            <p>Atlas could not load the saved review records. Retry to check the list.</p>
             <details className="mt-3 text-red-100/80">
                 <summary className="cursor-pointer">Technical details</summary>
                 <p className="mt-2 break-words">{listError}</p>
             </details>
-            <button type="button" onClick={() => setListAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry saved records</button>
+            <button type="button" onClick={() => setListAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry list</button>
         </div>}
-        {!loading && !listError && records.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No saved candidate records.</p>}
-        {!loading && !listError && records.length > 0 && <ul aria-label="Saved candidate records" className="mt-4 space-y-3">
+        {!loading && !listError && records.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No saved review records.</p>}
+        {!loading && !listError && records.length > 0 && <ul aria-label="Saved review records" className="mt-4 space-y-3">
             {records.map((record) => <li key={record.candidate_record_id} className="rounded-md border border-slate-700 p-3">
-                <p className="font-semibold text-slate-200">{record.candidate_record.item_id} · {record.lifecycle_state === "active" ? "Source facts current" : "Source facts expired"}</p>
-                <p className="mt-1 break-all text-xs text-slate-400">Record ID: {record.candidate_record_id}</p>
+                <p className="font-semibold text-slate-200">{record.candidate_record.item_id} · {record.lifecycle_state === "active" ? "Inputs up to date" : "Inputs outdated"}</p>
+                <details className="mt-1 text-xs text-slate-400"><summary className="mc-focusable cursor-pointer">Technical ID</summary><p className="mt-1 break-all">{record.candidate_record_id}</p></details>
                 <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" disabled={reviewingId !== null || mutation !== null || reviewError?.candidateRecordId === record.candidate_record_id} onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 disabled:opacity-50">Review saved record</button>
+                    <button type="button" disabled={reviewingId !== null || mutation !== null || reviewError?.candidateRecordId === record.candidate_record_id} onClick={() => void review(record.candidate_record_id)} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-200 disabled:opacity-50">View saved record</button>
                     <a href={`/installation/candidate-records/${encodeURIComponent(record.candidate_record_id)}/readiness-review`} className="rounded border border-slate-600 px-3 py-1.5 text-sm text-blue-200">Open readiness review</a>
-                    <button type="button" disabled={!csrfToken || mutation !== null || reviewingId !== null || preserveRecovery !== null || deleteUncertainId !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete saved record</button>
+                    <button type="button" disabled={!csrfToken || mutation !== null || reviewingId !== null || preserveRecovery !== null || deleteUncertainId !== null} onClick={() => void remove(record.candidate_record_id)} className="rounded border border-red-500/50 px-3 py-1.5 text-sm text-red-200 disabled:opacity-50">Delete review record</button>
                 </div>
-                {reviewingId === record.candidate_record_id && <p role="status" className="mt-3 text-sm text-slate-400">Loading saved record details…</p>}
+                {reviewingId === record.candidate_record_id && <p role="status" className="mt-3 text-sm text-slate-400">Opening saved review record…</p>}
                 {reviewError?.candidateRecordId === record.candidate_record_id && <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-                    <p>Atlas could not load this saved record. The saved-record list is still available.</p>
+                    <p>Atlas could not open this review record. Your saved review records are still available.</p>
                     <details className="mt-3 text-red-100/80">
                         <summary className="cursor-pointer">Technical details</summary>
                         <p className="mt-2 break-words">{reviewError.technicalDetail}</p>
                     </details>
-                    <button type="button" disabled={reviewingId !== null} onClick={() => void review(record.candidate_record_id)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 disabled:opacity-50">Retry record review</button>
+                    <button type="button" disabled={reviewingId !== null} onClick={() => void review(record.candidate_record_id)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 disabled:opacity-50">Retry opening record</button>
                 </div>}
-                <p className="mt-2 text-xs text-slate-400">Deletion removes only this advisory record. It cannot be replayed and does not cancel any external activity.</p>
+                <p className="mt-2 text-xs text-slate-400">Deleting this removes only the saved review record. It does not affect anything that has already started.</p>
             </li>)}
         </ul>}
         {mutationError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
             <p>{mutationError.action === "preserve"
-                ? "Atlas could not confirm whether it saved the candidate record. Retry the same request to recover the result."
-                : "Atlas could not confirm whether the saved record was removed. Refresh the saved records before deleting it again."}</p>
+                ? "Atlas could not confirm whether it saved the review record. Retry the same request to check."
+                : "Atlas could not confirm whether the review record was removed. Refresh the list before trying again."}</p>
             <details className="mt-3 text-red-100/80">
                 <summary className="cursor-pointer">Technical details</summary>
                 <p className="mt-2 break-words">{mutationError.technicalDetail}</p>
             </details>
-            {mutationError.action === "delete" && deleteUncertainId && <button type="button" disabled={loading} onClick={() => void refreshAfterDelete(deleteUncertainId)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 disabled:opacity-50">Refresh saved records</button>}
+            {mutationError.action === "delete" && deleteUncertainId && <button type="button" disabled={loading} onClick={() => void refreshAfterDelete(deleteUncertainId)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 disabled:opacity-50">Refresh list</button>}
         </div>}
-        {deletedId && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">Saved record {deletedId} is no longer present. The advisory record cannot be replayed.</p>}
+        {deletedId && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">The saved review record was deleted.</p>}
         {recoveryMessage && <p role="status" className="mt-4 rounded-md border border-slate-700 p-3 text-sm text-slate-300">{recoveryMessage}</p>}
         {reviewed && <RecordDetails record={reviewed} />}
         <InstallationApprovalIntents records={records} csrfToken={csrfToken} />
@@ -218,8 +218,8 @@ export function InstallationCandidateLifecycle({
 function RecordDetails({ record }: { record: InstallationCandidateRecordEnvelopeV1 }) {
     const candidate = record.candidate_record;
     return <section aria-labelledby="saved-record-detail-heading" className="mt-5 rounded-md border border-slate-700 p-3">
-        <h6 id="saved-record-detail-heading" className="font-semibold text-slate-100">Saved candidate record</h6>
-        <p className="mt-2 text-sm text-slate-300">Source facts {record.lifecycle_state === "active" ? "have not expired" : "have expired"}. This record is not approval to install or run anything.</p>
+        <h6 id="saved-record-detail-heading" className="font-semibold text-slate-100">Saved review record</h6>
+        <p className="mt-2 text-sm text-slate-300">Inputs {record.lifecycle_state === "active" ? "are up to date" : "are outdated"}. This record is not permission to install or run anything.</p>
         <details className="mt-3 text-sm text-slate-300">
             <summary className="mc-focusable cursor-pointer text-blue-200">Record details</summary>
             <dl className="mt-3 grid gap-3 sm:grid-cols-2">

@@ -2986,3 +2986,12 @@ anything. VM identity stays visible while selection IDs and audit timestamps
 are collapsed under details. Assessment blockers use plain-language titles;
 diagnostic codes remain under technical details. No assessment, approval, or
 installation request contract changed.
+
+## Installation review record check — 2026-10-29
+
+The candidate admission check now reads as a review record check, with a plain
+result, clear save action, and concise retry states. Saved records are listed
+as up-to-date or outdated inputs; record IDs and fingerprints stay under
+technical details. Saving or deleting a review record does not approve or run
+an installation. API requests, persistence rules, and approval boundaries are
+unchanged.
