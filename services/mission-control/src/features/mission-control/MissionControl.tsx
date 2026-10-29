@@ -77,7 +77,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
     return <details className="mt-2 text-xs text-mc-text-muted">
         <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Where Atlas checked</summary>
         <div className="mt-2 space-y-1">
-            <p>Run this check from the machine running Atlas Core. If Core runs in Docker, repeat the request inside the <code>atlas-core</code> container. Testing from your browser or the service machine uses a different network path.</p>
+            <p>Run this check from the machine running Atlas Core. If Core runs in Docker, repeat the request inside the <code>atlas-core</code> container. If you use Compose, run it from the folder containing Atlas’s Compose file. Browser or service-machine tests use a different network path.</p>
             <p>A container marked “Up” can still be unreachable. Check that the app listens on its configured port and that Atlas Core can reach it through the Docker network or published port.</p>
             <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
             <p>HTTP response: {response}</p>

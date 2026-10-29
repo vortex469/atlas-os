@@ -177,7 +177,8 @@ describe("MC overview evidence", () => {
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
         expect(disclosure).toHaveTextContent("Run this check from the machine running Atlas Core.");
         expect(disclosure).toHaveTextContent("If Core runs in Docker, repeat the request inside the atlas-core container.");
-        expect(disclosure).toHaveTextContent("Testing from your browser or the service machine uses a different network path.");
+        expect(disclosure).toHaveTextContent("If you use Compose, run it from the folder containing Atlas’s Compose file.");
+        expect(disclosure).toHaveTextContent("Browser or service-machine tests use a different network path.");
         expect(disclosure).toHaveTextContent("A container marked “Up” can still be unreachable.");
         expect(disclosure).toHaveTextContent("Check that the app listens on its configured port and that Atlas Core can reach it through the Docker network or published port.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");

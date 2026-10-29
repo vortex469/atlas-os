@@ -2384,3 +2384,11 @@ separate record is permanent, requires confirmation, and does not authorize or
 start installation or execution. The underlying request, confirmation, and
 authority fields are unchanged; component and responsive readiness tests cover
 the wording.
+
+## Compose reachability instructions — 2026-10-29
+
+The Overview now says to run Compose from the directory containing Atlas's
+Compose file on the Atlas Core machine. This clarifies why the file may be
+missing when the command is run from a service host or another directory. The
+guidance remains read-only and does not change service probes. Overview tests
+cover the instruction at component and phone/desktop browser level.
