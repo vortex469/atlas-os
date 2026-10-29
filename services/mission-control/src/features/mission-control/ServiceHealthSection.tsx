@@ -73,7 +73,7 @@ export function ServiceHealthSection({
             <section>
                 <SectionHeader
                     title="Service reachability"
-                    description="Atlas Core's checks of configured service addresses. Select a service to see the checked address and response details."
+                    description="Shows whether Atlas Core can reach each configured address. An “Unavailable” result means Core could not reach the address; the service may still be running on its own computer. Select a service to see the address Atlas checked."
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

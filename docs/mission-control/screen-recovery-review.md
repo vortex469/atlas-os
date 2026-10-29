@@ -2869,3 +2869,11 @@ and show the entered parameter values before an action runs. Declining still
 prevents the request, and no provider action or approval contract changed. The
 ProviderActions suite passes (12 tests), along with Mission Control lint and
 production build.
+
+## Service reachability scope — 2026-10-29
+
+The service reachability section now explains that an “Unavailable” result
+means Atlas Core could not reach the configured address; it does not prove the
+service is stopped. The checked address remains available in the service
+details drawer; health probes and status mapping are unchanged. The focused
+service-health suite, Mission Control lint and production build pass.

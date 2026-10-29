@@ -92,6 +92,12 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
+        expect(
+            screen.getByText(
+                "Shows whether Atlas Core can reach each configured address. An “Unavailable” result means Core could not reach the address; the service may still be running on its own computer. Select a service to see the address Atlas checked.",
+            ),
+        ).toBeInTheDocument();
+
         await user.click(
             screen.getByRole("button", {
                 name: "View details for Containers",
