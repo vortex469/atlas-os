@@ -3244,3 +3244,9 @@ page suite covers both initial completion and refresh recovery.
 The Overview refresh control now says “Loading…” until its first dashboard
 read completes, then says “Refreshing…” on later reads. Hook and rendered
 button tests cover first load, refresh, and idle states.
+
+## Action history initial loading label — 2026-10-29
+
+Action history now distinguishes its first read (“Loading history…”) from
+later updates (“Refreshing history…”). Its page tests cover both states, with
+the existing loading and retry messages preserved.

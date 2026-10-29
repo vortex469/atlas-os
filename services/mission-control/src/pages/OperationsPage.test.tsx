@@ -110,12 +110,33 @@ describe("OperationsPage", () => {
         renderPage();
 
         expect(screen.getByRole("heading", { name: "Action history" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Loading history…" })).toBeDisabled();
         expect(screen.getByText("Loading action history...")).toBeInTheDocument();
         expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
         await screen.findByText("Unload Model");
+        expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         expect(screen.queryByText("Loading action history...")).not.toBeInTheDocument();
         expect(screen.queryByText("Loading retention details…")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Atlas Doctor" })).not.toBeInTheDocument();
+    });
+
+    it("labels a later history request as refreshing", async () => {
+        renderPage();
+        await screen.findByText("Unload Model");
+
+        let resolveRefresh!: (value: Awaited<ReturnType<typeof getProviderActionHistory>>) => void;
+        mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((resolve) => { resolveRefresh = resolve; }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+
+        expect(screen.getByRole("button", { name: "Refreshing history…" })).toBeDisabled();
+        await act(async () => resolveRefresh({
+            items: [],
+            total: 0,
+            offset: 0,
+            limit: 25,
+            has_more: false,
+        }));
+        expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
     });
 
     it("keeps action records available when retention details fail to load", async () => {
