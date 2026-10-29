@@ -23,6 +23,7 @@ type AttentionItem = {
     state: unknown;
     to: string;
     stale?: boolean;
+    unavailableLabel?: string;
     actionRequired?: boolean;
     workflowId?: string;
     workflowState?: string;
@@ -164,7 +165,7 @@ function AttentionListItem({ item }: { item: AttentionItem }) {
                 <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
                 <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
             </details>
-        </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} />}
+        </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} unavailableLabel={item.unavailableLabel} />}
         {item.stale && !isWorkflowAttention(item) && <p>Last-known condition; current state unknown.</p>}
     </li>;
 }
@@ -208,7 +209,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention: AttentionItem[] = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
-            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale,
+            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
         })),
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
             key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "/operations", stale: evidence.providers?.stale,

@@ -161,6 +161,19 @@ describe("MC overview evidence", () => {
         expect(checks.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
     });
 
+    it("describes unavailable service attention as a failed connection from Atlas Core", () => {
+        show({ health: { data: { services: { iFileshare: {
+            status: "offline",
+            message: "Connection refused",
+        } } } } });
+        const attention = within(screen.getByRole("region", { name: "Operator Attention" }));
+        const conditions = within(attention.getByRole("list", { name: "Reported attention conditions" }));
+        const condition = within(conditions.getByRole("listitem"));
+
+        expect(condition.getByText("Atlas Core could not connect", { exact: true })).toBeVisible();
+        expect(condition.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
+    });
+
     it("shows the Core-side check location on demand without exposing URL secrets", () => {
         show({ health: { data: { atlas: "degraded", services: { iFileshare: {
             status: "offline",

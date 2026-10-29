@@ -287,6 +287,11 @@ for (const width of [320, 1280]) {
         } }));
         await page.goto('/');
 
+        const attention = page.getByRole('region', { name: 'Operator Attention', exact: true });
+        const serviceCondition = attention.getByRole('list', { name: 'Reported attention conditions' }).getByRole('listitem');
+        await expect(serviceCondition.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
+        await expect(serviceCondition.getByText('Unavailable', { exact: true })).toHaveCount(0);
+
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
         await expect(checks.getByText('iFileshare', { exact: true })).toBeVisible();
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();

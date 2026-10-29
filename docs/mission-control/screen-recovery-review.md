@@ -2397,3 +2397,10 @@ The same disclosure explains how to check a bridged service container's
 published host port with `docker ps`. This makes an empty `PORTS` column
 actionable when Atlas Core checks a service on another machine. The guidance
 does not assume host networking or change the configured probe.
+
+## Service attention wording — 2026-10-29
+
+The top-level Operator Attention item now uses “Atlas Core could not connect”
+for an unavailable service, matching the Service checks card. This keeps a
+failed Core-side probe from reading like a claim that the service itself is
+offline. Component and phone/desktop browser checks cover the shared label.
