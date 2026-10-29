@@ -2624,3 +2624,14 @@ health score and check count, and a failed request explains that no new report
 is available. The diagnostic request, report data, and health rules are
 unchanged. The focused Atlas Doctor and Overview suites pass (76 tests), as do
 Mission Control lint/build and the built Overview browser suite.
+
+## Deployment analysis port wording — 2026-10-29
+
+The service cards now explain which port is on the host machine and which is
+inside the container. They describe non-local bindings as potentially
+reachable from other computers, and say that Atlas has not checked firewall,
+router, or internet access. The “Public” and “Internal” labels are removed,
+and service cards no longer repeat the stack-wide risk; the overall reported
+risk remains in the Deployment Brief. Analysis data and deployment behavior are
+unchanged. The Forge component suite passes (12 tests), as do Mission Control
+lint/build and both built Forge browser checks at phone and desktop widths.

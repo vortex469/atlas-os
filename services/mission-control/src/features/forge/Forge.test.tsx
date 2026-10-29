@@ -121,6 +121,32 @@ describe("Forge analysis freshness", () => {
         expect(screen.queryByText(/security or operational concerns/)).not.toBeInTheDocument();
     });
 
+    it("explains port bindings without claiming internet access", async () => {
+        const result = analysis("Home services");
+        result.result.analysis.plan.components = [{
+            id: "web",
+            name: "web",
+            kind: "service",
+            image: "nginx:latest",
+            ports: [
+                { host_port: 8080, container_port: 80, protocol: "tcp", public: true },
+                { host_port: null, container_port: 443, protocol: "tcp", public: false },
+            ],
+        }];
+        analyze.mockResolvedValue(result);
+        render(<Forge />);
+        submit();
+
+        await screen.findByRole("heading", { name: "Network ports" });
+        expect(screen.getByText("Host ports are on this machine; service ports are inside the container. This review does not check whether a device can reach the service through a firewall, router, or the internet.")).toBeInTheDocument();
+        expect(screen.getByText("Host port 8080 → service port 80/TCP")).toBeInTheDocument();
+        expect(screen.getByText("The binding may accept connections from other computers.")).toBeInTheDocument();
+        expect(screen.getByText("No fixed host port was specified in this file → service port 443/TCP")).toBeInTheDocument();
+        expect(screen.getByText("Access from other computers was not reported.")).toBeInTheDocument();
+        expect(screen.queryByText("Public", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Analyzer" })).not.toBeInTheDocument();
+    });
+
     it("states what deployment analysis does and does not do", () => {
         render(<Forge />);
         expect(screen.getByRole("heading", { name: "Deployment analysis" })).toBeInTheDocument();

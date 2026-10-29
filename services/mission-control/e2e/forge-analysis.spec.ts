@@ -32,7 +32,13 @@ for (const width of [390, 1280]) {
             if (unavailable) return route.fulfill({ status: 503, json: { detail: "Analysis unavailable" } });
             return route.fulfill({ json: { result: {
                 analysis: { analyzer: "fixture", elapsed_ms: 1, diagnostics: [], plan: {
-                    id: "fixture-plan", name: body.reference, source: "compose", components: [], risk: "low", requires_approval: true,
+                    id: "fixture-plan", name: body.reference, source: "compose", components: [{
+                        id: "web", name: "web", kind: "service", image: "example.invalid/fixture:one",
+                        ports: [
+                            { host_port: 8080, container_port: 80, protocol: "tcp", public: true },
+                            { host_port: null, container_port: 443, protocol: "tcp", public: false },
+                        ],
+                    }], risk: "low", requires_approval: true,
                 } },
                 planning: { planner: "fixture", elapsed_ms: 1, warnings: [], proposal: {
                     id: "fixture-proposal", summary: "Review this simulated analysis.", steps: [],
@@ -60,6 +66,13 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Planner does not request approval", { exact: true })).toBeVisible();
         await expect(page.getByText("Not estimated", { exact: true }).first()).toBeVisible();
         await expect(page.getByText("0 minutes", { exact: true })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Network ports" })).toBeVisible();
+        await expect(page.getByText("Host port 8080 → service port 80/TCP", { exact: true })).toBeVisible();
+        await expect(page.getByText("The binding may accept connections from other computers.", { exact: true })).toBeVisible();
+        await expect(page.getByText("No fixed host port was specified in this file → service port 443/TCP", { exact: true })).toBeVisible();
+        await expect(page.getByText("Access from other computers was not reported.", { exact: true })).toBeVisible();
+        await expect(page.getByText("Public", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("Internal", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("alert")).toHaveCount(0);
         await expect(page.getByRole("button", { name: /approve|execute|deploy now/i })).toHaveCount(0);
         expect(reads).toBe(3);
