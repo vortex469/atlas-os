@@ -2835,3 +2835,12 @@ show target resolution. Section headings and empty states describe link
 direction in plain language, and hyphenated identifiers render as separate
 words. The DiscoveryItemPage suite passes (37 tests), along with Mission
 Control lint and production build.
+
+## Provider action refresh recovery — 2026-10-29
+
+When a provider action returns a confirmed success but the follow-up provider
+refresh fails, Mission Control keeps the success result and reports the stale
+provider view separately. Further direct actions pause until the operator
+refreshes provider information; a failed action request still uses the
+existing uncertain-result recovery path. The ProviderActions suite passes (12
+tests), along with Mission Control lint and production build.

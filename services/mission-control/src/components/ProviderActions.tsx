@@ -90,6 +90,9 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
     const [catalogError, setCatalogError] = useState<string | null>(null);
     const [catalogErrorDetails, setCatalogErrorDetails] = useState<string | null>(null);
     const [executionError, setExecutionError] = useState<string | null>(null);
+    const [providerRefreshError, setProviderRefreshError] = useState<string | null>(null);
+    const [providerRefreshErrorDetails, setProviderRefreshErrorDetails] = useState<string | null>(null);
+    const [isRefreshingProvider, setIsRefreshingProvider] = useState(false);
     const [result, setResult] =
         useState<ProviderActionResult | null>(null);
     const [parameters, setParameters] = useState<
@@ -180,6 +183,8 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
 
         setRunningActionId(action.id);
         setExecutionError(null);
+        setProviderRefreshError(null);
+        setProviderRefreshErrorDetails(null);
         setResult(null);
 
         try {
@@ -198,7 +203,17 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             setResult(actionResult);
 
             if (actionResult.success) {
-                await onActionCompleted();
+                try {
+                    await onActionCompleted();
+                } catch (refreshError) {
+                    if (!active.current) return;
+                    console.error(`Unable to refresh ${provider.id} after a provider action:`, refreshError);
+                    setProviderRefreshError("Action completed, but Mission Control could not refresh provider information. The details shown here may be out of date.");
+                    setProviderRefreshErrorDetails(getAtlasErrorMessage(
+                        refreshError,
+                        "Provider information could not be refreshed.",
+                    ));
+                }
             }
         } catch (requestError) {
             if (!active.current) return;
@@ -214,6 +229,25 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             );
         } finally {
             if (active.current) setRunningActionId(null);
+        }
+    }
+
+    async function retryProviderRefresh(): Promise<void> {
+        setIsRefreshingProvider(true);
+        try {
+            await onActionCompleted();
+            if (!active.current) return;
+            setProviderRefreshError(null);
+            setProviderRefreshErrorDetails(null);
+        } catch (refreshError) {
+            if (!active.current) return;
+            console.error(`Unable to refresh ${provider.id} after a provider action:`, refreshError);
+            setProviderRefreshErrorDetails(getAtlasErrorMessage(
+                refreshError,
+                "Provider information could not be refreshed.",
+            ));
+        } finally {
+            if (active.current) setIsRefreshingProvider(false);
         }
     }
 
@@ -317,6 +351,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                             const isBlocked =
                                 runningActionId !== null ||
                                 executionError !== null ||
+                                providerRefreshError !== null ||
                                 !action.enabled ||
                                 hasMissingRequiredParameter;
 
@@ -420,7 +455,8 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                                                                 disabled={
                                                                     runningActionId !==
                                                                     null ||
-                                                                    executionError !== null
+                                                                    executionError !== null ||
+                                                                    providerRefreshError !== null
                                                                 }
                                                                 onChange={(
                                                                     event,
@@ -491,6 +527,25 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
                         <p className="mt-2 break-words text-sm text-slate-400">{executionError}</p>
                     </details>
+                </div>
+            )}
+
+            {providerRefreshError && (
+                <div role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+                    <h3 className="font-semibold text-amber-200">Provider information needs a refresh</h3>
+                    <p className="mt-1 text-sm text-amber-100/80">{providerRefreshError} Refresh the provider information before running another action.</p>
+                    <button
+                        type="button"
+                        onClick={() => void retryProviderRefresh()}
+                        disabled={isRefreshingProvider}
+                        className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isRefreshingProvider ? "Refreshing provider information…" : "Refresh provider information"}
+                    </button>
+                    {providerRefreshErrorDetails && <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{providerRefreshErrorDetails}</p>
+                    </details>}
                 </div>
             )}
 

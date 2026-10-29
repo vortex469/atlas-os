@@ -161,6 +161,42 @@ describe("ProviderActions", () => {
         ).toBeInTheDocument();
     });
 
+    it("keeps a confirmed action result separate from a failed provider refresh", async () => {
+        const user = userEvent.setup();
+        const refreshProvider = vi.fn()
+            .mockRejectedValueOnce(new Error("Provider refresh unavailable."))
+            .mockResolvedValueOnce(undefined);
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Diagnostics completed.",
+            data: {},
+            warnings: [],
+        });
+        renderActions(refreshProvider);
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+
+        expect(await screen.findByText("Action completed")).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action completed, but Mission Control could not refresh provider information.");
+        expect(alert).toHaveTextContent("Refresh the provider information before running another action.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider refresh unavailable.")).not.toBeVisible();
+
+        await user.click(within(alert).getByRole("button", { name: "Refresh provider information" }));
+
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeEnabled();
+        expect(refreshProvider).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+    });
+
     it("keeps provider actions separate from monitoring policy and maintenance", async () => {
         renderActions();
         expect(await screen.findByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();
