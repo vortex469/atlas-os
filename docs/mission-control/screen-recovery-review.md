@@ -2563,6 +2563,15 @@ the list is complete, and no attention items or statuses are synthesized.
 The focused overview suites pass (95 tests), as do Mission Control lint/build
 and all 26 built Overview browser checks across phone and desktop sizes.
 
+## Work activity summary — 2026-10-29
+
+The Work activity note now explains that it shows read-only workflow progress
+and results, not whether a worker can take new work. Its collapsed detail link
+is labeled “More workflow details.” Workflow counts, recorded outcomes, and
+approval behavior are unchanged. The Work activity and overview component suites
+pass (102 tests). Mission Control lint/build and all 26 built Overview browser
+checks pass across phone and desktop sizes.
+
 ## Service connection first steps — 2026-10-29
 
 When Atlas Core cannot connect to a service, Overview now shows the reported

@@ -345,7 +345,7 @@ test('work activity reveals all workflow records on mobile without horizontal ov
     await page.goto('/');
 
     const section = page.getByRole('region', { name: 'Work activity' });
-    await expect(section.getByText('Counts and results come from recorded workflows. This summary is read-only.')).toBeVisible();
+    await expect(section.getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.")).toBeVisible();
     const running = section.getByRole('list', { name: 'Running workflows' });
     await expect(running.getByRole('listitem')).toHaveCount(3);
     await section.getByRole('button', { name: 'Show all 5 running workflows' }).click();
@@ -355,7 +355,7 @@ test('work activity reveals all workflow records on mobile without horizontal ov
     await section.getByRole('button', { name: 'Show all 5 blocked workflows' }).click();
     await expect(blocked.getByRole('listitem')).toHaveCount(5);
 
-    await section.getByText('More about execution data').click();
+    await section.getByText('More workflow details').click();
     const outcomes = section.getByRole('list', { name: 'Recorded execution outcomes' });
     await section.getByRole('button', { name: 'Show all 5 recorded execution outcomes' }).click();
     await expect(outcomes.getByRole('listitem')).toHaveCount(5);
@@ -389,7 +389,7 @@ test('work activity shows failed outcomes before completed outcomes in its previ
     await page.goto('/');
 
     const work = page.getByRole('region', { name: 'Work activity' });
-    await work.getByText('More about execution data').click();
+    await work.getByText('More workflow details').click();
     const outcomes = work.getByRole('list', { name: 'Recorded execution outcomes' });
     const first = outcomes.getByRole('listitem').first();
     await expect(first.getByRole('link', { name: 'Update Compose Stack · Execution failed' })).toBeVisible();
@@ -473,10 +473,10 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     const worker = page.getByRole('region', { name: 'Work activity' });
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();
-    await expect(worker.getByText('Atlas does not report whether a worker is available.', { exact: true })).toBeVisible();
+    await expect(worker.getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.", { exact: true })).toBeVisible();
     await expect(worker.getByText('No running workflows are listed.', { exact: true })).toBeVisible();
     await expect(worker.getByText('No running workflows are listed. Worker availability is unknown.', { exact: true })).toHaveCount(0);
-    const workerToggle = worker.locator('summary', { hasText: 'More about execution data' });
+    const workerToggle = worker.locator('summary', { hasText: 'More workflow details' });
     await workerToggle.focus();
     await page.keyboard.press('Enter');
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeVisible();

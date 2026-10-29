@@ -54,9 +54,8 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Review workflows →</Link>
             </div>
             <p className="mt-2 text-sm text-mc-text-muted">
-                Counts and results come from recorded workflows. This summary is read-only.
+                This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.
             </p>
-            <p className="mt-2 text-sm text-mc-text-secondary">Atlas does not report whether a worker is available.</p>
             {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}
             {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing workflow information; displayed results may be stale.</p>}
             {items && knownStates && (
@@ -73,7 +72,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 {blocked.length > 0 && <EvidenceList key="blocked" title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
             </div>
             <details className="mt-4 text-sm text-mc-text-secondary">
-                <summary className="mc-focusable cursor-pointer text-mc-primary">More about execution data</summary>
+                <summary className="mc-focusable cursor-pointer text-mc-primary">More workflow details</summary>
                 <div className="mt-3 space-y-4">
                     <dl className="grid gap-4 sm:grid-cols-2">
                         <Metric label="Queue size" value="Not reported" />

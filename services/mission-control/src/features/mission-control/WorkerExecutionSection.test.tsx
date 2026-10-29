@@ -40,10 +40,10 @@ describe("Work activity summary", () => {
         expect(within(section).getByText("Running workflows").nextElementSibling).toHaveTextContent("0");
         expect(within(section).getByText("Blocked workflows").nextElementSibling).toHaveTextContent("0");
         expect(within(section).getByText("No running workflows are listed.")).toBeInTheDocument();
-        expect(within(section).getByText("Atlas does not report whether a worker is available.")).toBeInTheDocument();
+        expect(within(section).getByText("This read-only summary shows workflow progress and results. It doesn't show whether a worker can take new work.")).toBeInTheDocument();
         expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
         expect(within(section).getByText("Queue size").closest("details")?.open).toBe(false);
-        fireEvent.click(within(section).getByText("More about execution data"));
+        fireEvent.click(within(section).getByText("More workflow details"));
         expect(within(section).getByText("Queue size")).toBeInTheDocument();
         expect(within(section).getByText("Not reported")).toBeInTheDocument();
     });
@@ -65,13 +65,13 @@ describe("Work activity summary", () => {
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getAllByText("Blocked workflows")[0].nextElementSibling).toHaveTextContent("1");
         expect(within(section).getByRole("link", { name: "Workflow · Blocked" })).toHaveAttribute("href", "/workflows/blocked");
-        fireEvent.click(within(section).getByText("More about execution data"));
+        fireEvent.click(within(section).getByText("More workflow details"));
         expect(within(section).getByText(/A workflow may be blocked before it starts running/)).toBeInTheDocument();
         expect(screen.getByText("No execution outcomes recorded")).toBeInTheDocument();
     });
     it("uses execution evidence, not the latest commit result, and discloses absent recency", () => {
         view(page([workflow("success", "completed", "completed", "restart-service"), workflow("failure", "blocked", "failed", "update-container-image")]));
-        fireEvent.click(screen.getByText("More about execution data"));
+        fireEvent.click(screen.getByText("More workflow details"));
         const successLink = screen.getByRole("link", { name: "Restart Service · Execution completed" });
         const failedLink = screen.getByRole("link", { name: "Update Container Image · Execution failed" });
         expect(successLink).toHaveAttribute("href", "/workflows/success");
@@ -92,7 +92,7 @@ describe("Work activity summary", () => {
             workflow("z-failed", "blocked", "failed", "update-compose-stack"),
         ]));
         const section = within(screen.getByRole("region", { name: "Work activity" }));
-        fireEvent.click(section.getByText("More about execution data"));
+        fireEvent.click(section.getByText("More workflow details"));
         const outcomes = within(section.getByRole("list", { name: "Recorded execution outcomes" }));
         const first = within(outcomes.getAllByRole("listitem")[0]);
 
@@ -122,7 +122,7 @@ describe("Work activity summary", () => {
         fireEvent.click(section.getByRole("button", { name: "Show fewer blocked workflows" }));
         expect(within(blocked).getAllByRole("listitem")).toHaveLength(3);
 
-        fireEvent.click(section.getByText("More about execution data"));
+        fireEvent.click(section.getByText("More workflow details"));
         const outcomes = section.getByRole("list", { name: "Recorded execution outcomes" });
         expect(within(outcomes).getAllByRole("listitem")).toHaveLength(3);
         fireEvent.click(section.getByRole("button", { name: "Show all 5 recorded execution outcomes" }));
@@ -154,7 +154,7 @@ describe("Work activity summary", () => {
     });
     it.each([{ timeline: [] }, { timeline: [{ name: "Execution", status: "surprise" }] }, { timeline: [{ name: "Execution", status: "completed" }, { name: "Execution", status: "failed" }] }])("does not fabricate outcomes from invalid execution stages", ({ timeline }) => {
         view(page([{ ...workflow("unknown", "completed"), timeline }]));
-        fireEvent.click(screen.getByText("More about execution data"));
+        fireEvent.click(screen.getByText("More workflow details"));
         expect(screen.getByText("Mission Control could not read an execution result for one or more workflows.")).toBeInTheDocument();
     });
     it("treats future workflow states as unknown rather than idle", () => {
@@ -169,7 +169,7 @@ describe("Work activity summary", () => {
         expect(within(section).getByRole("button", { name: "Show all 8 running workflows" })).toBeVisible();
         expect(section.querySelectorAll("button")).toHaveLength(1);
         expect(section.querySelectorAll("form,input,select,textarea")).toHaveLength(0);
-        expect(section).toHaveTextContent("This summary is read-only.");
+        expect(section).toHaveTextContent("This read-only summary shows workflow progress and results.");
     });
     it("rejects malformed JSON fields before the shared dashboard consumes them", () => {
         expect(isWorkflowEvidencePage({ ...page([]), total: Infinity })).toBe(false);
@@ -192,7 +192,7 @@ it.each(["..", "\ud800", " "])("rejects unsafe workflow navigation: %j", id => {
 it("redacts sensitive display text and discloses partially missing outcomes", () => {
     view(page([workflow("token=private-value", "completed", "completed"), { ...workflow("missing"), timeline: [] }]));
     expect(screen.queryByText(/private-value/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText("More about execution data"));
+    fireEvent.click(screen.getByText("More workflow details"));
     const redactedId = screen.getByText("Workflow ID: [Sensitive text withheld]");
     expect(redactedId).not.toBeVisible();
     fireEvent.click(within(redactedId.closest("li")!).getByText("Technical details"));
