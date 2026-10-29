@@ -2500,8 +2500,10 @@ policy loading, workflow polling, or approval behavior.
 Provider Policies now explains that the page lists rules Atlas uses to check
 connected providers and their resources, without relying on the “ACE” acronym.
 The degraded state leads with a plain issue count; raw paths, error types and
-messages stay under collapsed technical details. Its focused component suite
-passes (11 tests), with lint and build passing.
+messages stay under collapsed technical details. Recovery guidance now says
+when the last loaded policy settings remain visible and when policy settings
+are unavailable. Its focused component suite passes (12 tests), with lint and
+build passing.
 
 ## Health connection wording — 2026-10-29
 

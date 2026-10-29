@@ -166,7 +166,7 @@ describe("PolicyVisibilitySection", () => {
         expect(screen.getByText("Technical details (1)")).toBeInTheDocument();
         expect(screen.getByText("n8n.scan_truncated_severity")).not.toBeVisible();
         expect(
-            screen.getByText("The last policy snapshot remains in place when available. After correcting the policy file, refresh Mission Control to check it again."),
+            screen.getByText("Policy settings are unavailable. After correcting the policy file, refresh Mission Control to check it again."),
         ).toBeInTheDocument();
         expect(screen.queryByRole("table")).not.toBeInTheDocument();
 
@@ -174,5 +174,17 @@ describe("PolicyVisibilitySection", () => {
 
         expect(screen.getByText("n8n.scan_truncated_severity")).toBeVisible();
         expect(screen.getByText("Input should be 'info', 'warning' or 'critical'")).toBeVisible();
+    });
+
+    it("explains when last loaded policy settings remain available", () => {
+        render(
+            <PolicyVisibilitySection
+                policies={policies}
+                health={{ ...health, status: "degraded", error: "Source-reported reason" }}
+            />,
+        );
+
+        expect(screen.getByText("The last loaded policy settings remain visible. After correcting the policy file, refresh Mission Control to check it again.")).toBeInTheDocument();
+        expect(screen.getByRole("table")).toBeInTheDocument();
     });
 });

@@ -42,7 +42,7 @@ export function PolicyVisibilitySection({
                     description="This page shows the rules Atlas uses to check connected providers and their resources."
                 />
 
-                <PolicyReloadStatus health={health} />
+                <PolicyReloadStatus health={health} hasPolicyData={false} />
             </section>
         );
     }
@@ -150,7 +150,7 @@ export function PolicyVisibilitySection({
                 description="This page shows the rules Atlas uses to check connected providers and their resources."
             />
 
-            <PolicyReloadStatus health={health} />
+            <PolicyReloadStatus health={health} hasPolicyData />
 
             <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900">
                 <table className="w-full min-w-[620px] text-left text-sm">
@@ -200,8 +200,10 @@ export function PolicyVisibilitySection({
 
 function PolicyReloadStatus({
     health: payload,
+    hasPolicyData,
 }: {
     health: unknown;
+    hasPolicyData: boolean;
 }) {
     const health = evidenceRecord(payload);
     const state = healthState(health.status);
@@ -279,14 +281,13 @@ function PolicyReloadStatus({
                 </details>
             )}
 
-            {state === "Degraded" && policiesUnavailableMessage}
+            {state === "Degraded" && (
+                <p className="mt-3 text-sm text-red-200/80">
+                    {hasPolicyData
+                        ? "The last loaded policy settings remain visible."
+                        : "Policy settings are unavailable."} After correcting the policy file, refresh Mission Control to check it again.
+                </p>
+            )}
         </div>
     );
 }
-
-const policiesUnavailableMessage = (
-    <p className="mt-3 text-sm text-red-200/80">
-        The last policy snapshot remains in place when available.
-        After correcting the policy file, refresh Mission Control to check it again.
-    </p>
-);
