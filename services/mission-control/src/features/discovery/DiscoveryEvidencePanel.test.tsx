@@ -90,10 +90,11 @@ describe("DiscoveryEvidencePanel", () => {
         const sourceDetails = screen.getByText("Source details").closest("details");
         expect(sourceDetails).not.toHaveAttribute("open");
         expect(within(sourceDetails as HTMLDetailsElement).getByText("blakeblackshear/frigate")).not.toBeVisible();
-        expect(within(sourceDetails as HTMLDetailsElement).getByText("Additional information; catalog remains authoritative")).not.toBeVisible();
+        expect(screen.getByText("Release reports are for reference only. They don’t change this catalog item.")).toBeInTheDocument();
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("Additional report; catalog entry stays as listed")).not.toBeVisible();
         fireEvent.click(within(sourceDetails as HTMLDetailsElement).getByText("Source details"));
         expect(within(sourceDetails as HTMLDetailsElement).getByText("blakeblackshear/frigate")).toBeVisible();
-        expect(within(sourceDetails as HTMLDetailsElement).getByText("Additional information; catalog remains authoritative")).toBeVisible();
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("Additional report; catalog entry stays as listed")).toBeVisible();
         const sourceSummary = screen.getByRole("list", { name: "Discovery source health" });
         const technicalDetails = within(sourceSummary).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
@@ -164,13 +165,13 @@ describe("DiscoveryEvidencePanel", () => {
         render(<DiscoveryEvidencePanel evidence={evidence({ conflict_state: "curated_conflict" })} isLoading={false} error={null} />);
         const alert = screen.getByRole("alert");
         expect(within(alert).getByText("Release report differs from the catalog")).toBeInTheDocument();
-        expect(within(alert).getByText("Supplemental information conflicts with the catalog, which remains authoritative.")).toBeInTheDocument();
+        expect(within(alert).getByText("A release report differs from the catalog. The catalog entry remains unchanged.")).toBeInTheDocument();
     });
 
     it("explains when no dynamic sources are mapped", () => {
         render(<DiscoveryEvidencePanel evidence={evidence({ source_states: [] })} isLoading={false} error={null} />);
         expect(screen.getByText(
-            "No supplemental release sources are available for this item.",
+            "No release sources are available for this item.",
         )).toBeInTheDocument();
     });
 
@@ -365,7 +366,7 @@ describe("DiscoveryEvidencePanel", () => {
             expect(section).toHaveAttribute("role", "alert");
             expect(section.className).toContain("red");
             expect(within(section).getByText(
-                "Sources disagree, so Atlas does not choose a latest version. The catalog remains authoritative.",
+                "Sources disagree, so Atlas does not choose a latest version. The catalog version remains the reference.",
             )).toBeInTheDocument();
             expect(within(section).queryByText("Latest reported release")).not.toBeInTheDocument();
         });

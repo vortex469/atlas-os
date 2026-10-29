@@ -17,19 +17,19 @@ type Props = {
 const conflictCopy: Record<DiscoveryConflictState, { title: string; detail: string }> = {
     none: {
         title: "No conflict found",
-        detail: "No supplemental release information conflicts with the catalog.",
+        detail: "No release report disagrees with the catalog.",
     },
     agreement: {
         title: "Release information agrees",
-        detail: "The supplemental release information matches the catalog.",
+        detail: "The release reports match the catalog version.",
     },
     dynamic_conflict: {
         title: "Release sources disagree",
-        detail: "Supplemental sources report different releases. Atlas does not choose one as correct.",
+        detail: "Release sources report different versions. Atlas does not choose one as correct.",
     },
     curated_conflict: {
         title: "Release report differs from the catalog",
-        detail: "Supplemental information conflicts with the catalog, which remains authoritative.",
+        detail: "A release report differs from the catalog. The catalog entry remains unchanged.",
     },
 };
 
@@ -48,22 +48,22 @@ const releaseEvaluationCopy: Record<
 > = {
     up_to_date: {
         title: "Versions match",
-        detail: "The latest release reported by supplemental sources matches the catalog version. This check does not recommend a change.",
+        detail: "The latest release report matches the catalog version. This check does not recommend a change.",
         tone: "positive",
     },
     update_available: {
         title: "Newer release reported",
-        detail: "A supplemental source reports a newer release than the catalog. This is information only; no change is proposed or applied.",
+        detail: "A release source reports a newer version than the catalog. This is information only; no change is proposed or applied.",
         tone: "positive",
     },
     baseline_ahead: {
         title: "Catalog lists a newer version",
-        detail: "The catalog version is newer than the release reported by supplemental sources. This check does not recommend a change.",
+        detail: "The catalog lists a newer version than the release report. This check does not recommend a change.",
         tone: "positive",
     },
     conflicted: {
         title: "Release information conflicts",
-        detail: "Sources disagree, so Atlas does not choose a latest version. The catalog remains authoritative.",
+        detail: "Sources disagree, so Atlas does not choose a latest version. The catalog version remains the reference.",
         tone: "conflict",
     },
     stale_evidence: {
@@ -78,7 +78,7 @@ const releaseEvaluationCopy: Record<
     },
     no_dynamic_evidence: {
         title: "No release reports available",
-        detail: "No supplemental source reports a release. Catalog information remains available and authoritative.",
+        detail: "No release report is available. Catalog information remains available.",
         tone: "neutral",
     },
     insufficient_information: {
@@ -112,7 +112,7 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: 
                 Release evidence
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-                Supplemental, read-only observations. Curated catalog data remains authoritative.
+                Release reports are for reference only. They don’t change this catalog item.
             </p>
 
             {isLoading && (
@@ -149,7 +149,7 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: 
                         <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
                             <p className="font-medium text-slate-200">Only catalog information is available</p>
                             <p className="mt-1 text-sm text-slate-400">
-                                No supplemental release reports are available. Catalog information remains available and authoritative.
+                                No release reports are available. Catalog information is still available.
                             </p>
                         </div>
                     ) : (
@@ -183,7 +183,7 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: 
                                             <Fact label="Source ID" value={claim.provenance.source_id} />
                                             <Fact label="Source type" value="GitHub release information" />
                                             <Fact label="Repository" value={claim.provenance.repository} />
-                                            <Fact label="Source role" value="Additional information; catalog remains authoritative" />
+                                            <Fact label="Source role" value="Additional report; catalog entry stays as listed" />
                                             <TimeFact label="Source data valid until" value={claim.provenance.expires_at} />
                                             <Fact label="Release record ID" value={String(claim.provenance.upstream_release_id)} />
                                         </dl>
@@ -260,7 +260,7 @@ function ReleaseEvaluationNotice({
 
 function SourceSummary({ evidence }: { evidence: DiscoveryItemEvidence }) {
     if (evidence.source_states.length === 0) {
-        return <p className="text-sm text-slate-400">No supplemental release sources are available for this item.</p>;
+        return <p className="text-sm text-slate-400">No release sources are available for this item.</p>;
     }
     return (
         <ul aria-label="Discovery source health" className="grid gap-3 sm:grid-cols-2">
