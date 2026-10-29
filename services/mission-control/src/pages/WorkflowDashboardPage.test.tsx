@@ -129,6 +129,18 @@ describe("WorkflowDashboardPage", () => {
         expect(details.queryByText("Stage: Change approval")).not.toBeInTheDocument();
     });
 
+    it.each<[string | undefined, string]>([
+        ["Review changes_required", "Review changes required"],
+        ["Execution launch_failed", "Execution launch failed"],
+        [undefined, "No result reported yet"],
+    ])("shows a readable latest result for %s", async (last_result_summary, label) => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([workflow({ last_result_summary })]));
+
+        renderDashboard();
+
+        expect(await screen.findByText(label)).toBeInTheDocument();
+    });
+
     it("keeps the common filters visible and tucks source and ID searches under More filters", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([
             workflow(),

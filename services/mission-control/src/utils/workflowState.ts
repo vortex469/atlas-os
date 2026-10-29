@@ -54,6 +54,10 @@ export function formatWorkflowValue(value: string | null | undefined, fallback: 
     return value === null || value === undefined || value === "" ? fallback : value;
 }
 
+export function formatWorkflowResultSummary(value: string | null | undefined): string {
+    return formatWorkflowValue(value, "No result reported yet").replaceAll(/[_-]+/g, " ");
+}
+
 export function formatFingerprint(value: string | null | undefined): string {
     return formatWorkflowValue(value, "Not exposed");
 }

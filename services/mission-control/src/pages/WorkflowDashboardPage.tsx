@@ -14,6 +14,7 @@ import {
     workflowRailStages,
     workflowStageLabel,
     workflowStatusGroup,
+    formatWorkflowResultSummary,
 } from "../utils/workflowState";
 
 const PAGE_SIZE = 10;
@@ -324,7 +325,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
                 </Link>
             </div>
             <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                <Detail label="Latest result" value={formatWorkflowValue(workflow.last_result_summary, "No result reported yet")} />
+                <Detail label="Latest result" value={formatWorkflowResultSummary(workflow.last_result_summary)} />
                 <Detail label="Approval" value={actionRequired ? "Your approval is needed" : "No approval is waiting"} />
             </dl>
             <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
