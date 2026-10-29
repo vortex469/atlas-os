@@ -396,12 +396,13 @@ describe("DiscoveryItemPage", () => {
     });
 
     it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
+        const user = userEvent.setup();
         renderPage();
 
         const itemHeading = await screen.findByRole("heading", { name: "Frigate" });
         const itemHeadingDetails = within(itemHeading.closest("div") as HTMLElement).getByText("Technical details").closest("details");
         expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).not.toBeVisible();
-        await userEvent.setup().click(within(itemHeadingDetails as HTMLDetailsElement).getByText("Technical details"));
+        await user.click(within(itemHeadingDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).toBeVisible();
         expect(screen.getByText("Application")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
@@ -411,7 +412,11 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("nvr")).toBeInTheDocument();
         expect(screen.getByText("Runtime: docker")).toBeInTheDocument();
         expect(screen.getByText(/TCP 8971 inbound optional/i)).toBeInTheDocument();
-        expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
+        const sourceDetails = screen.getByText("Catalog source details").closest("details");
+        expect(sourceDetails).not.toHaveAttribute("open");
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).not.toBeVisible();
+        await user.click(within(sourceDetails as HTMLDetailsElement).getByText("Catalog source details"));
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).toBeVisible();
         expect(screen.getByText("Reviewed for D5: Yes")).toBeInTheDocument();
         expect(screen.getByText("Hardware acceleration is optional.")).toBeInTheDocument();
         expect(screen.queryByText("Ignored item metadata note.")).not.toBeInTheDocument();

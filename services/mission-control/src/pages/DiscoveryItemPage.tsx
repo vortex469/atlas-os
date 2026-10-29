@@ -856,8 +856,9 @@ function RelationshipsPanel({
 
 function ProvenancePanel({ entry }: { entry: DiscoveryCatalogEntry }) {
     return (
-        <InfoPanel title="Provenance">
-            <dl className="space-y-2 text-sm">
+        <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <summary className="mc-focusable cursor-pointer text-lg font-semibold text-white">Catalog source details</summary>
+            <dl className="mt-4 space-y-2 text-sm">
                 <KeyValue label="Source type" value={formatLabel(entry.provenance.source_type)} />
                 <KeyValue label="Source" value={entry.provenance.source} />
                 <KeyValue label="Trust" value={formatLabel(entry.provenance.trust_level)} />
@@ -866,7 +867,7 @@ function ProvenancePanel({ entry }: { entry: DiscoveryCatalogEntry }) {
                 )}
                 <KeyValue label="Schema" value={`v${entry.schema_version}`} />
             </dl>
-        </InfoPanel>
+        </details>
     );
 }
 

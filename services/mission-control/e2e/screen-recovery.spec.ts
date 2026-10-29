@@ -495,6 +495,11 @@ for (const width of [390, 1280]) {
         await expect(itemHeader.getByText("Catalog item ID: fixture-app", { exact: true })).toBeHidden();
         await itemHeader.getByText("Technical details", { exact: true }).click();
         await expect(itemHeader.getByText("Catalog item ID: fixture-app", { exact: true })).toBeVisible();
+        const sourceDetails = page.getByText("Catalog source details", { exact: true }).locator("xpath=ancestor::details");
+        await expect(sourceDetails).not.toHaveAttribute("open");
+        await expect(sourceDetails.getByText("browser-fixture", { exact: true })).toBeHidden();
+        await sourceDetails.getByText("Catalog source details", { exact: true }).click();
+        await expect(sourceDetails.getByText("browser-fixture", { exact: true })).toBeVisible();
 
         const summary = page.getByRole("heading", { name: "Compatibility summary" }).locator("xpath=..");
         const findings = page.getByRole("heading", { name: "What the check found" }).locator("xpath=..");

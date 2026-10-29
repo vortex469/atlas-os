@@ -2528,3 +2528,12 @@ digest stay under Technical details. The workflow page suite passes (87 tests),
 the responsive maintenance browser journey passes at 320, 390, and 1280 pixels
 (11 tests), and lint/build pass. Approval, maintenance execution, and audit
 behavior are unchanged; the browser fixtures confirm no added workflow writes.
+
+## Discovery catalog source details — 2026-10-29
+
+Catalog provenance no longer takes a full visible panel on each Discovery item
+page. Operators can expand Catalog source details when they need the source,
+trust level, entry ID, or schema. Catalog review notes, compatibility findings,
+and installation readiness remain visible in their existing sections. The
+Discovery item component suite covers the closed-by-default state and expansion;
+the phone and desktop recovery-browser check covers the same interaction.
