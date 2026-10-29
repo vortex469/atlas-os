@@ -98,6 +98,13 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Review maintenance request", exact: true })).toBeVisible();
         await expect(page.getByText("Maintenance request needs approval.", { exact: true })).toBeVisible();
         await expect(page.getByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
+        const supportFile = page.getByText("Optional support file", { exact: true });
+        const supportDetails = supportFile.locator("xpath=ancestor::details");
+        await expect(supportDetails).not.toHaveAttribute("open");
+        await supportFile.click();
+        await expect(supportDetails).toContainText("Prepare a sanitized support file to review.");
+        await expect(supportDetails.getByRole("button", { name: "Prepare support file", exact: true })).toBeVisible();
+        expect(fixture.writes).toHaveLength(5);
         const requestReferences = page.getByText("Request references", { exact: true });
         await requestReferences.click();
         await expect(

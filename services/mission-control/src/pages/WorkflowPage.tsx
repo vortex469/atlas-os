@@ -187,12 +187,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         try {
             const bundle = await getWorkflowSupportBundle(workflow.workflow_id);
             if (!bundle?.applicable) {
-                setSupportBundleError("Support evidence is not available for this workflow.");
+                setSupportBundleError("Support information is not available for this maintenance request.");
                 return;
             }
             setSupportBundle(bundle);
         } catch {
-            setSupportBundleError("Mission Control could not prepare sanitized support evidence.");
+            setSupportBundleError("Mission Control could not prepare a support file.");
         } finally {
             setIsDownloadingSupport(false);
         }
@@ -213,7 +213,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             anchor.remove();
             URL.revokeObjectURL(downloadUrl);
         } catch {
-            setSupportBundleError("Mission Control could not create the local download. Use Download support evidence to try again.");
+            setSupportBundleError("Mission Control could not download the support file. Try again.");
         }
     }
 
@@ -356,6 +356,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         && workflow.worker_reconciliation?.outcome === "unknown"
         && workflow.worker_reconciliation.can_check_result === true;
     const canResume = canResumeImplementation || canResumeVerification || canResumeCommit || canReconcileWorker;
+    const supportBundleIsIncomplete = Boolean(supportBundle && (
+        supportBundle.lifecycle.availability !== "complete"
+        || supportBundle.truncation.transitions_truncated
+        || supportBundle.truncation.audit_references_truncated
+        || supportBundle.truncation.text_fields_truncated.length > 0
+    ));
 
     const resumeButtonLabel = canReconcileWorker
         ? "Check worker result"
@@ -468,15 +474,30 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         error={diagnosticError}
                         supportEvidenceAvailable={operationalLifecycle !== null}
                     />
-                    <section aria-labelledby="support-evidence-heading" className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
-                        <h2 id="support-evidence-heading" className="text-lg font-semibold text-white">Support evidence</h2>
-                        <p className="mt-2 text-sm text-slate-300">Download one bounded, sanitized JSON projection. Nothing is uploaded or persisted by Mission Control.</p>
-                        <button type="button" onClick={() => void prepareSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
-                            {isDownloadingSupport ? "Preparing support evidence..." : supportBundleError && !supportBundle ? "Retry support evidence" : "Prepare support evidence"}
-                        </button>
-                        {supportBundle && <><dl className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><dt className="text-slate-400">Schema</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div><div><dt className="text-slate-400">Generated</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div><div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div><div><dt className="text-slate-400">Partial or truncated</dt><dd className="text-slate-100">{supportBundle.lifecycle.availability !== "complete" || supportBundle.truncation.transitions_truncated || supportBundle.truncation.audit_references_truncated || supportBundle.truncation.text_fields_truncated.length > 0 ? "Yes" : "No"}</dd></div></dl><p className="mt-3 text-sm text-slate-300">The digest supports integrity and correlation only; it is not a signature. The bundle is sanitized and no upload occurs automatically.</p><button type="button" onClick={downloadSupportEvidence} className="mt-3 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Download support evidence</button></>}
-                        {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
-                    </section>
+                    <details className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
+                        <summary className="mc-focusable cursor-pointer text-lg font-semibold text-white">Optional support file</summary>
+                        <div className="mt-3">
+                            <p className="text-sm text-slate-300">Prepare a sanitized support file to review. Atlas does not upload it; you choose if and when to download or share it.</p>
+                            <button type="button" onClick={() => void prepareSupportEvidence()} disabled={isDownloadingSupport} className="mt-4 rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-50">
+                                {isDownloadingSupport ? "Preparing support file..." : supportBundleError && !supportBundle ? "Retry support file" : "Prepare support file"}
+                            </button>
+                            {supportBundle && <>
+                                <p role="status" className="mt-3 text-sm text-slate-200">{supportBundleIsIncomplete ? "Support file ready. Some information is missing or shortened." : "Support file ready to download."}</p>
+                                <details className="mt-3">
+                                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                                    <dl className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+                                        <div><dt className="text-slate-400">File format</dt><dd className="text-slate-100">{supportBundle.metadata.schema_version}</dd></div>
+                                        <div><dt className="text-slate-400">Created</dt><dd className="text-slate-100">{supportBundle.metadata.generated_at}</dd></div>
+                                        <div><dt className="text-slate-400">Integrity digest</dt><dd className="break-all text-slate-100">{supportBundle.integrity.digest}</dd></div>
+                                        <div><dt className="text-slate-400">Information shortened</dt><dd className="text-slate-100">{supportBundleIsIncomplete ? "Yes" : "No"}</dd></div>
+                                    </dl>
+                                    <p className="mt-3 text-sm text-slate-300">The digest helps identify the file; it is not a digital signature.</p>
+                                </details>
+                                <button type="button" onClick={downloadSupportEvidence} className="mt-3 rounded-lg bg-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950">Download support file</button>
+                            </>}
+                            {supportBundleError && <p role="alert" className="mt-3 text-sm text-red-100">{supportBundleError}</p>}
+                        </div>
+                    </details>
                 </>
             )}
 

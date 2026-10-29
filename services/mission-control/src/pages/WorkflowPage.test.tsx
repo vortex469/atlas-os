@@ -927,26 +927,36 @@ describe("WorkflowPage", () => {
         const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Prepare support evidence" }));
+        const supportSummary = await screen.findByText("Optional support file");
+        const supportPanel = supportSummary.closest("details");
+        expect(supportPanel).not.toHaveAttribute("open");
+        expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
+        fireEvent.click(supportSummary);
+        fireEvent.click(await screen.findByRole("button", { name: "Prepare support file" }));
 
-        await screen.findByText("atlas-operational-support-bundle-v1");
+        expect(await screen.findByText("Support file ready. Some information is missing or shortened.")).toBeVisible();
         expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledWith("workflow-123");
-        expect(screen.getByText(/integrity and correlation only/i)).toBeInTheDocument();
-        expect(screen.getByText("Partial or truncated").nextElementSibling).toHaveTextContent("Yes");
+        const technicalDetails = within(supportPanel!).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(screen.getByText("atlas-operational-support-bundle-v1")).not.toBeVisible();
+        fireEvent.click(within(technicalDetails!).getByText("Technical details"));
+        expect(screen.getByText("atlas-operational-support-bundle-v1")).toBeVisible();
+        expect(screen.getByText("The digest helps identify the file; it is not a digital signature.")).toBeVisible();
+        expect(screen.getByText("Information shortened").nextElementSibling).toHaveTextContent("Yes");
         expect(createObjectURL).not.toHaveBeenCalled();
 
-        fireEvent.click(screen.getByRole("button", { name: "Download support evidence" }));
-        expect(await screen.findByText("Mission Control could not create the local download. Use Download support evidence to try again.")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Download support file" }));
+        expect(await screen.findByText("Mission Control could not download the support file. Try again.")).toBeInTheDocument();
         expect(createObjectURL).toHaveBeenCalledOnce();
         expect(click).not.toHaveBeenCalled();
         expect(document.body).not.toHaveTextContent("private download diagnostic");
 
-        fireEvent.click(screen.getByRole("button", { name: "Download support evidence" }));
+        fireEvent.click(screen.getByRole("button", { name: "Download support file" }));
 
         expect(createObjectURL).toHaveBeenCalledTimes(2);
         expect(click).toHaveBeenCalledOnce();
         expect(revokeObjectURL).toHaveBeenCalledWith("blob:support-evidence");
-        expect(screen.queryByText("Mission Control could not create the local download. Use Download support evidence to try again.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Mission Control could not download the support file. Try again.")).not.toBeInTheDocument();
         expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledTimes(1);
     });
 
@@ -957,15 +967,16 @@ describe("WorkflowPage", () => {
             .mockRejectedValueOnce(new Error("private diagnostic"));
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Prepare support evidence" }));
-        const message = await screen.findByText("Mission Control could not prepare sanitized support evidence.");
+        fireEvent.click(await screen.findByText("Optional support file"));
+        fireEvent.click(await screen.findByRole("button", { name: "Prepare support file" }));
+        const message = await screen.findByText("Mission Control could not prepare a support file.");
         expect(message.closest("[role=alert]")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Retry support evidence" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Retry support file" })).toBeEnabled();
         expect(document.body).not.toHaveTextContent("private diagnostic");
 
-        fireEvent.click(screen.getByRole("button", { name: "Retry support evidence" }));
+        fireEvent.click(screen.getByRole("button", { name: "Retry support file" }));
         await waitFor(() => expect(mockedGetWorkflowSupportBundle).toHaveBeenCalledTimes(2));
-        expect(screen.getByRole("button", { name: "Retry support evidence" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Retry support file" })).toBeEnabled();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();
         expect(mockedSubmitWorkflowCommitApproval).not.toHaveBeenCalled();
@@ -980,7 +991,7 @@ describe("WorkflowPage", () => {
         expect(mockedGetWorkflowRecoveryDiagnostic).not.toHaveBeenCalled();
         expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
         expect(screen.queryByRole("heading", { name: "Maintenance status" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Support evidence" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Optional support file")).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Maintenance status summary")).not.toBeInTheDocument();
     });
 

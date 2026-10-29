@@ -2517,3 +2517,14 @@ reported address was refused, rather than attributing that response to the
 service process. Timeout wording says Atlas Core received no response before
 the check timed out. The check and status behavior are unchanged; component
 and phone/desktop browser tests cover both messages.
+
+## Maintenance support file simplification — 2026-10-29
+
+Maintenance workflow details now keep the optional support file section
+collapsed until requested. The description says the file can be reviewed before
+sharing and is not uploaded by Atlas. Preparation and download remain separate
+operator actions; completeness is stated plainly, while format, timestamp, and
+digest stay under Technical details. The workflow page suite passes (87 tests),
+the responsive maintenance browser journey passes at 320, 390, and 1280 pixels
+(11 tests), and lint/build pass. Approval, maintenance execution, and audit
+behavior are unchanged; the browser fixtures confirm no added workflow writes.
