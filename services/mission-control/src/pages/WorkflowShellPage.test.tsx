@@ -607,8 +607,12 @@ describe("WorkflowShellPage", () => {
 
         renderPage();
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Workflow summary unavailable");
-        expect(screen.getByText("Workflow unavailable")).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Workflow summary unavailable");
+        expect(alert).toHaveTextContent("Atlas couldn’t load the workflow setup. Check the planning session before trying again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("Workflow unavailable", { exact: true })).not.toBeVisible();
         expect(screen.getByRole("link", { name: "Back to planning session" })).toHaveAttribute(
             "href",
             "/candidate-planning/candidate-plan-1",

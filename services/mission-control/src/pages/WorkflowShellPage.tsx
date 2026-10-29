@@ -37,6 +37,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
     const [isCreatingSuccessor, setIsCreatingSuccessor] = useState(false);
     const [isLoadingWorkflow, setIsLoadingWorkflow] = useState(true);
     const [workflowLoadError, setWorkflowLoadError] = useState<string | null>(null);
+    const [workflowLoadErrorDetails, setWorkflowLoadErrorDetails] = useState<string | null>(null);
     const [implementationError, setImplementationError] = useState<string | null>(null);
     const [implementationOutcomeUnknown, setImplementationOutcomeUnknown] = useState(false);
     const [implementationErrorDetails, setImplementationErrorDetails] = useState<string | null>(null);
@@ -53,6 +54,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             if (cancelled) return;
             setIsLoadingWorkflow(true);
             setWorkflowLoadError(null);
+            setWorkflowLoadErrorDetails(null);
 
             try {
                 const planningSession = workflowFromLocation === null
@@ -92,12 +94,10 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 }
 
                 setWorkflow(null);
-                setWorkflowLoadError(
-                    getAtlasAgentErrorMessage(
-                        error,
-                        "Mission Control could not load this workflow summary.",
-                    ),
-                );
+                const fallbackDetails = "No additional technical details were provided.";
+                const details = getAtlasAgentErrorMessage(error, fallbackDetails);
+                setWorkflowLoadError("Atlas couldn’t load the workflow setup. Check the planning session before trying again.");
+                setWorkflowLoadErrorDetails(details === fallbackDetails ? null : details);
             } finally {
                 if (!cancelled) {
                     setIsLoadingWorkflow(false);
@@ -260,6 +260,12 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                         {workflowLoadError
                             ?? "Return to the planning session to create or reopen this workflow."}
                     </p>
+                    {workflowLoadErrorDetails && (
+                        <details className="mt-3">
+                            <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                            <p className="mt-2 break-words text-sm text-slate-400">{workflowLoadErrorDetails}</p>
+                        </details>
+                    )}
                     <Link to={`/candidate-planning/${encodeURIComponent(sessionId)}`} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Back to planning session
                     </Link>

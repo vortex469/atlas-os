@@ -30,6 +30,11 @@ for (const width of [320, 1280]) {
         releasePlanningRead();
         const recoveryAlert = page.getByRole("alert");
         await expect(recoveryAlert).toContainText("Workflow summary unavailable");
+        await expect(recoveryAlert).toContainText("Atlas couldn’t load the workflow setup. Check the planning session before trying again.");
+        const technicalDetails = recoveryAlert.locator("details");
+        await expect(technicalDetails).not.toHaveAttribute("open");
+        await expect(technicalDetails).toContainText("Planning session was not found.");
+        await expect(technicalDetails.getByText("Planning session was not found.", { exact: true })).toBeHidden();
         await expect(recoveryAlert.getByRole("link", { name: "Back to planning session" })).toBeVisible();
         const recoveryPadding = await recoveryAlert.evaluate((element) => {
             const main = element.closest("main");
