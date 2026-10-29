@@ -287,7 +287,7 @@ for (const width of [320, 1280]) {
             atlas: 'degraded',
             services: { iFileshare: {
                 status: 'offline',
-                message: '[Errno 113] No route to host',
+                message: '[Errno 111] Connection refused',
                 details: { url: 'http://10.10.60.30:8080/', critical: false },
             } },
         } }));
@@ -320,7 +320,7 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');
         await expect(steps).toContainText('Run Compose commands from the folder containing the Compose file');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
-        await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
+        await expect(checks.getByText('Next check: On the service computer, confirm the app is listening on this port. If it runs in Docker, run docker ps there and check PORTS. For a container using Docker port mappings, a blank PORTS field means there is no host port for Atlas Core to reach. Publish the listening port, then test again from Atlas Core.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
