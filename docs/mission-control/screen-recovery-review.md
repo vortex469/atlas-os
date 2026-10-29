@@ -3467,3 +3467,11 @@ that filters include full UTC days while recorded action times display in the
 browser's local time. The Operations page suite passes 16 tests and the
 responsive date-filter browser suite passes at 320px, 390px, and 1280px; lint
 and build pass.
+
+## Service reachability next steps — 2026-10-29
+
+When Atlas Core gets a connection refusal, Mission Control now advises checking
+the service listener and Docker network/port configuration before changing
+ports. The Docker status/network/ports command is shared with the expanded
+Overview checks. The focused Overview suite passes 75 tests; its development
+and built-preview browser suites each pass 29 tests. Lint and build pass.

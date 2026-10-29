@@ -375,7 +375,7 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('A mapping starting with 127.0.0.1: is reachable only from that computer');
         await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
-        await expect(checks.getByText('Next check: On the service computer, confirm the app is listening on this port. If it runs in Docker, check PORTS with docker ps; if blank, publish the port unless the container uses host networking. Then test from Atlas Core.', { exact: true })).toBeVisible();
+        await expect(checks.getByText('Next check: On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

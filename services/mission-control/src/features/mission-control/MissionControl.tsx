@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { healthNextCheck } from "../../utils/healthPresentation";
-import { serviceReachabilityCommand } from "../../utils/serviceReachabilityCommand";
+import { serviceContainerCheckCommand, serviceReachabilityCommand } from "../../utils/serviceReachabilityCommand";
 import { SystemHealthSummary } from "./SystemHealthSummary";
 import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired, workflowNextStepLabel } from "../../utils/workflowState";
 import { conditionKey, detailPath, healthPriority, record, rows, safeText, status } from "./overviewEvidence";
@@ -97,7 +97,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             <div className="mt-2 space-y-1">
                 <ol aria-label="Docker and Compose checks" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                     <li>
-                        On the service computer, run <code>{"docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'"}</code> to show container names, running status, network, and published ports.
+                        On the service computer, run <code>{serviceContainerCheckCommand}</code> to show container names, running status, network, and published ports.
                     </li>
                     <li>
                         Find the service container. <code>Up</code> means the container is running, not that its web app is responding. If <code>Networks</code> says <code>host</code>, a blank <code>PORTS</code> field is expected. Otherwise, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
