@@ -292,7 +292,7 @@ export function OperationsPage() {
                         Operations
                     </p>
                     <h1 className="mt-2 text-3xl font-semibold text-slate-100">
-                        Action history
+                        Provider action history
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
                         Provider actions and their results. Times are shown in

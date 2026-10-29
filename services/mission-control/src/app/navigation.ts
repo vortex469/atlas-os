@@ -32,7 +32,7 @@ export const primaryNavigationItems: NavigationItem[] = [
         end: true,
     },
     {
-        label: "Action history",
+        label: "Provider action history",
         path: "/operations",
     },
     {
@@ -67,7 +67,7 @@ export const primaryNavigationItems: NavigationItem[] = [
  * Returns the most specific destination that owns the given path.
  * Used to surface the current route/page context in the shell header.
  * Longest prefix wins, so `/operations/history` resolves to
- * Maintenance history rather than its Action history parent.
+ * Maintenance history rather than its Provider action history parent.
  */
 export function navigationItemForPath(
     items: NavigationItem[],

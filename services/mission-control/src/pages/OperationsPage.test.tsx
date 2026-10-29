@@ -109,6 +109,7 @@ describe("OperationsPage", () => {
     it("distinguishes loading action history from retention details", async () => {
         renderPage();
 
+        expect(screen.getByRole("heading", { name: "Provider action history" })).toBeInTheDocument();
         expect(screen.getByText("Loading action history...")).toBeInTheDocument();
         expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
         await screen.findByText("Unload Model");
