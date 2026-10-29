@@ -3058,3 +3058,7 @@ The panel remains read-only and creates no binding or activation action.
 The nested activation review now says plainly that activation is unavailable
 and no worker or queue action was taken. It shows a short recorded/expired
 status, keeps technical evidence collapsed, and retries only its read request.
+
+The nested activation evidence record now uses a short saved/expired status and
+readable UTC times. Its summary says activation remains unavailable, keeps
+technical lineage collapsed, and offers only a safe retry of the read request.
