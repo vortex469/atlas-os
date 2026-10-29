@@ -36,6 +36,7 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 844 });
         await page.goto(`/installation/candidate-records/${uuid4}/readiness-review`);
         await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toBeVisible();
+        await expect(page.getByRole("alert")).toContainText("Atlas couldn't load this review. Try again.");
         await page.getByRole("button", { name: "Reload review", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Evidence is current, but installation cannot start", exact: true })).toBeVisible();
         await expect(page.getByText("Atlas has not defined a way to start this installation yet.", { exact: true })).toBeVisible();

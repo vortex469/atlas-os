@@ -63,8 +63,8 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
         {loading && <p role="status" className="mt-6">Loading readiness review…</p>}
         {!loading && error && <section role="alert" className="mt-6 rounded border border-red-500/40 p-4">
             <h2 className="font-semibold text-red-200">Review unavailable</h2>
-            <p className="mt-1 text-sm">Installation readiness review is unavailable.</p>
-            <p className="mt-1 text-xs text-slate-400">Private system details are hidden.</p>
+            <p className="mt-1 text-sm">Atlas couldn&apos;t load this review. Try again.</p>
+            <p className="mt-1 text-xs text-slate-400">Technical error details aren&apos;t shown here.</p>
             <button type="button" onClick={() => {
                 setResponse(null); setError(false); setLoading(true); setReadAttempt((attempt) => attempt + 1);
             }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload review</button>

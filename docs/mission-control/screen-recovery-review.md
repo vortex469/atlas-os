@@ -3490,3 +3490,11 @@ the app container means no host port is published unless it uses host
 networking. It connects that finding to the refused check and says the
 published host port must match Atlas's configured address. The check remains
 read-only; it does not change Docker or service configuration.
+
+## Installation review retry wording — 2026-10-29
+
+When an installation review cannot load, its recovery panel now says Atlas
+could not load the review and invites a retry instead of repeating the heading.
+It continues to hide technical error details and keeps the retry limited to
+reading the review; saved confirmation and installation boundaries are
+unchanged.

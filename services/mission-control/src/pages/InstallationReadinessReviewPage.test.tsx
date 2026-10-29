@@ -42,7 +42,10 @@ describe("InstallationReadinessReviewPage", () => {
         response[field].candidate_record_id = "00000000-0000-4000-8000-000000000002";
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Review unavailable");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Review unavailable");
+        expect(alert).toHaveTextContent("Atlas couldn't load this review. Try again.");
+        expect(alert).toHaveTextContent("Technical error details aren't shown here.");
         expect(listExecutionPermissionGrants).not.toHaveBeenCalled();
         expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
         expect(screen.queryByText("operator-a")).not.toBeInTheDocument();
@@ -163,7 +166,7 @@ describe("InstallationReadinessReviewPage", () => {
     it("renders redacted error and empty states without leaked details", async () => {
         vi.mocked(getInstallationReadinessReview).mockRejectedValue(new Error("secret token at /internal/path 10.0.0.1"));
         const { unmount } = renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Installation readiness review is unavailable.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas couldn't load this review. Try again.");
         expect(document.body).not.toHaveTextContent(/secret token|internal\/path|10\.0\.0\.1/i);
         unmount();
         renderPage("/empty");
