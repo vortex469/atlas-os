@@ -34,6 +34,13 @@ export function AgentProviderOverviewSection({
     const unconfirmed = providers.filter(
         (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unknown",
     );
+    const visibleHealthCounts = [
+        { label: "Available", count: available.length, valueClass: "text-emerald-400" },
+        { label: "Degraded", count: degraded.length, valueClass: "text-amber-400" },
+        { label: "Unavailable", count: unavailable.length, valueClass: "text-red-400" },
+        { label: "Blocked", count: blocked.length, valueClass: "text-red-400" },
+        { label: "Status unknown", count: unconfirmed.length, valueClass: "text-slate-300" },
+    ].filter(({ count }) => count > 0);
 
     const criticalProviders = providers.filter((p) => p.priority === "critical");
     const hasUnavailableCritical = criticalProviders.some(
@@ -68,51 +75,12 @@ export function AgentProviderOverviewSection({
                                 {providers.length}
                             </p>
                         </div>
-
-                        <div className="mc-surface rounded-mc-lg p-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Available
-                            </p>
-                            <p className="mt-2 text-2xl font-bold text-emerald-400">
-                                {available.length}
-                            </p>
-                        </div>
-
-                        <div className="mc-surface rounded-mc-lg p-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Degraded
-                            </p>
-                            <p className="mt-2 text-2xl font-bold text-amber-400">
-                                {degraded.length}
-                            </p>
-                        </div>
-
-                        <div className="mc-surface rounded-mc-lg p-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Unavailable
-                            </p>
-                            <p className="mt-2 text-2xl font-bold text-red-400">
-                                {unavailable.length}
-                            </p>
-                        </div>
-
-                        <div className="mc-surface rounded-mc-lg p-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Blocked
-                            </p>
-                            <p className="mt-2 text-2xl font-bold text-red-400">
-                                {blocked.length}
-                            </p>
-                        </div>
-
-                        <div className="mc-surface rounded-mc-lg p-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Status unknown
-                            </p>
-                            <p className="mt-2 text-2xl font-bold text-slate-300">
-                                {unconfirmed.length}
-                            </p>
-                        </div>
+                        {visibleHealthCounts.map(({ label, count, valueClass }) => (
+                            <div key={label} className="mc-surface rounded-mc-lg p-4">
+                                <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">{label}</p>
+                                <p className={`mt-2 text-2xl font-bold ${valueClass}`}>{count}</p>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Critical provider warnings */}

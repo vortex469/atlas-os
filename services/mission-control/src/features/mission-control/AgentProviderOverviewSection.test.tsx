@@ -48,7 +48,13 @@ describe("AgentProviderOverviewSection", () => {
         renderWithRouter(<AgentProviderOverviewSection providers={providers} />);
         const allOnes = screen.queryAllByText("1");
         expect(allOnes.length).toBeGreaterThan(0);
-        expect(screen.getByText("Total Providers")).toBeInTheDocument();
+        const counts = screen.getByRole("group", { name: "Provider health counts" });
+        expect(within(counts).getByText("Total Providers")).toBeInTheDocument();
+        expect(within(counts).getByText("Available")).toBeInTheDocument();
+        expect(within(counts).queryByText("Degraded")).not.toBeInTheDocument();
+        expect(within(counts).queryByText("Unavailable")).not.toBeInTheDocument();
+        expect(within(counts).queryByText("Blocked")).not.toBeInTheDocument();
+        expect(within(counts).queryByText("Status unknown")).not.toBeInTheDocument();
     });
 
     it("counts available providers", () => {
