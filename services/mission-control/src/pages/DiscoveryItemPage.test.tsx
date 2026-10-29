@@ -99,7 +99,7 @@ function entry(overrides: Partial<DiscoveryCatalogEntry> = {}): DiscoveryCatalog
             capabilities: ["video-ingest", "object-detection"],
             requirements: {
                 capabilities: [{ id: "container-orchestration" }],
-                resources: { gpu_required: false },
+                resources: { cpu_cores_min: 2, memory_mb_min: 4096, storage_gb_min: 20, gpu_required: false },
                 platform: {
                     architectures: [],
                     operating_systems: [],
@@ -406,12 +406,18 @@ describe("DiscoveryItemPage", () => {
         expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).toBeVisible();
         expect(screen.getByText("Application")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
+        expect(screen.getByText("These are catalog requirements. Atlas checks them against your environment separately; they don’t grant permission to make changes.")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "What it supports" })).toBeInTheDocument();
         expect(screen.getByText("Video ingest")).toBeInTheDocument();
         expect(screen.getByText("Object detection")).toBeInTheDocument();
         expect(screen.getByText("nvr")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "What this item needs" })).toBeInTheDocument();
+        expect(screen.getByText("Container orchestration")).toBeInTheDocument();
+        expect(screen.getByText("At least 2 CPU cores")).toBeInTheDocument();
+        expect(screen.getByText("At least 4096 MB memory")).toBeInTheDocument();
+        expect(screen.getByText("At least 20 GB storage")).toBeInTheDocument();
         expect(screen.getByText("Runtime: docker")).toBeInTheDocument();
-        expect(screen.getByText(/TCP 8971 inbound optional/i)).toBeInTheDocument();
+        expect(screen.getByText("Optional inbound TCP port 8971 — Common Frigate web interface port.")).toBeInTheDocument();
         const sourceDetails = screen.getByText("Catalog source details").closest("details");
         expect(sourceDetails).not.toHaveAttribute("open");
         expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).not.toBeVisible();

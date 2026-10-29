@@ -475,8 +475,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                         {item.description}
                     </p>
                     <p className="mt-3 text-xs text-slate-500">
-                        This is reference information. Compatibility, install
-                        support, and permission to make changes are checked separately.
+                        These are catalog requirements. Atlas checks them against your environment separately; they don’t grant permission to make changes.
                     </p>
                 </div>
             </header>
@@ -733,35 +732,34 @@ function CompatibilityPanel({
 function RequirementsPanel({ requirements }: { requirements: DiscoveryRequirements }) {
     const resourceRequirements = [
         requirements.resources.cpu_cores_min
-            ? `CPU cores: ${requirements.resources.cpu_cores_min}`
+            ? `At least ${requirements.resources.cpu_cores_min} CPU cores`
             : null,
         requirements.resources.memory_mb_min
-            ? `Memory: ${requirements.resources.memory_mb_min} MB`
+            ? `At least ${requirements.resources.memory_mb_min} MB memory`
             : null,
         requirements.resources.storage_gb_min
-            ? `Storage: ${requirements.resources.storage_gb_min} GB`
+            ? `At least ${requirements.resources.storage_gb_min} GB storage`
             : null,
-        requirements.resources.gpu_required ? "GPU required" : null,
+        requirements.resources.gpu_required ? "A GPU is required" : null,
         requirements.resources.gpu_memory_gb_min
-            ? `GPU memory: ${requirements.resources.gpu_memory_gb_min} GB`
+            ? `At least ${requirements.resources.gpu_memory_gb_min} GB GPU memory`
             : null,
     ].filter(Boolean) as string[];
     const platformRequirements = [
         ...requirements.platform.architectures.map((item) => `Architecture: ${item}`),
-        ...requirements.platform.operating_systems.map((item) => `OS: ${item}`),
+        ...requirements.platform.operating_systems.map((item) => `Operating system: ${item}`),
         ...requirements.platform.runtimes.map((item) => `Runtime: ${item}`),
         ...requirements.platform.devices.map((item) => `Device: ${item}`),
     ];
-    const capabilityRequirements = requirements.capabilities.map((item) => item.id);
+    const capabilityRequirements = requirements.capabilities.map((item) => formatCapability(item.id));
     const networkRequirements = [
         ...requirements.network.ports.map(
-            (port) =>
-                `${port.protocol.toUpperCase()} ${port.port} ${port.direction}${
-                    port.required ? " required" : " optional"
-                }${port.description ? `: ${port.description}` : ""}`,
+            (port) => `${port.required ? "Required" : "Optional"} ${port.direction} ${port.protocol.toUpperCase()} port ${port.port}${
+                port.description ? ` — ${port.description}` : ""
+            }`,
         ),
-        requirements.network.requires_internet === true ? "Internet access" : null,
-        requirements.network.requires_lan === true ? "LAN access" : null,
+        requirements.network.requires_internet === true ? "Internet connection required" : null,
+        requirements.network.requires_lan === true ? "Local network connection required" : null,
         requirements.network.notes ?? null,
     ].filter(Boolean) as string[];
 
@@ -776,11 +774,11 @@ function RequirementsPanel({ requirements }: { requirements: DiscoveryRequiremen
     }
 
     return (
-        <InfoPanel title="Requirements">
+        <InfoPanel title="What this item needs">
             <RequirementGroup title="Capabilities" values={capabilityRequirements} />
-            <RequirementGroup title="Resources" values={resourceRequirements} />
-            <RequirementGroup title="Platform" values={platformRequirements} />
-            <RequirementGroup title="Network" values={networkRequirements} />
+            <RequirementGroup title="Computer resources" values={resourceRequirements} />
+            <RequirementGroup title="Supported platform" values={platformRequirements} />
+            <RequirementGroup title="Network access" values={networkRequirements} />
         </InfoPanel>
     );
 }
