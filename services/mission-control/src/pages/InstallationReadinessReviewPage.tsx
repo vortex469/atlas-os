@@ -119,17 +119,22 @@ function Review({ response }: { response: InstallationReadinessReviewResponseV1 
         <section aria-labelledby="evidence-chain-heading" className="rounded border border-slate-700 p-4">
             <h2 id="evidence-chain-heading" className="font-semibold">Evidence reviewed</h2>
             <p className="mt-1 text-sm text-slate-300">Evidence is shown as it was at review time. Expired or outdated evidence blocks this review. This page does not refresh evidence.</p>
-            <ol aria-label="Installation evidence chain" className="mt-4 space-y-3">
-                {review.evidence.map((item) => <li key={item.release} className="rounded border border-slate-800 p-3 text-sm">
-                    <p className="font-semibold">{item.release} · {formatLabel(item.evidence_kind)} · {formatLabel(item.evidence_state)}</p>
-                    <p className="mt-1 text-xs text-slate-400">Valid until (UTC): {item.valid_until ? formatUtcTimestamp(item.valid_until) : "No released expiry"}</p>
-                    <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-slate-400">Evidence identifiers</summary>
-                        <p className="mt-2 break-all text-xs">Evidence ID: {item.evidence_id ?? "Not available"}</p>
-                        <p className="mt-1 break-all text-xs">Fingerprint: {item.evidence_fingerprint?.value ?? "Not available"}</p>
-                    </details>
-                </li>)}
-            </ol>
+            {review.evidence.length === 0
+                ? <p role="status" className="mt-3 text-sm text-slate-400">No evidence records were returned for this review.</p>
+                : <details className="mt-3 border-t border-slate-800 pt-3">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">View evidence records ({review.evidence.length})</summary>
+                    <ol aria-label="Installation evidence chain" className="mt-3 space-y-3">
+                        {review.evidence.map((item) => <li key={item.release} className="rounded border border-slate-800 p-3 text-sm">
+                            <p className="font-semibold">{item.release} · {formatLabel(item.evidence_kind)} · {formatLabel(item.evidence_state)}</p>
+                            <p className="mt-1 text-xs text-slate-400">Valid until (UTC): {item.valid_until ? formatUtcTimestamp(item.valid_until) : "No released expiry"}</p>
+                            <details className="mt-2">
+                                <summary className="cursor-pointer text-xs text-slate-400">Evidence identifiers</summary>
+                                <p className="mt-2 break-all text-xs">Evidence ID: {item.evidence_id ?? "Not available"}</p>
+                                <p className="mt-1 break-all text-xs">Fingerprint: {item.evidence_fingerprint?.value ?? "Not available"}</p>
+                            </details>
+                        </li>)}
+                    </ol>
+                </details>}
         </section>
 
         <details className="rounded border border-slate-700 p-4">

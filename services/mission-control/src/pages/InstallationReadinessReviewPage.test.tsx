@@ -93,6 +93,10 @@ describe("InstallationReadinessReviewPage", () => {
         expect(screen.getByText("Atlas has not defined a way to start this installation yet.")).toBeVisible();
         expect(screen.queryByRole("list", { name: "Ordered readiness blockers" })).not.toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Evidence reviewed" })).toBeInTheDocument();
+        const evidenceDetails = screen.getByText("View evidence records (14)").closest("details");
+        expect(evidenceDetails).not.toHaveAttribute("open");
+        expect(evidenceDetails?.querySelector('ol[aria-label="Installation evidence chain"]')).not.toBeVisible();
+        fireEvent.click(screen.getByText("View evidence records (14)"));
         expect(screen.getByText("Review record details").closest("details")).not.toHaveAttribute("open");
         fireEvent.click(screen.getByText("Review record details"));
         expect(screen.getByText("Authenticated operator").nextSibling).toHaveTextContent("operator-a");
@@ -107,6 +111,16 @@ describe("InstallationReadinessReviewPage", () => {
         expect(screen.getByText("v033_verification_fingerprint")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: /read-only audit evidence/i })).toBeInTheDocument();
         expect(screen.getByText("Mutation attempted").nextSibling).toHaveTextContent("false");
+    });
+
+    it("explains when a readiness review has no evidence records", async () => {
+        const response = structuredClone(readinessGatedFixture);
+        response.review.evidence = [];
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
+        renderPage();
+
+        expect(await screen.findByText("No evidence records were returned for this review.")).toBeVisible();
+        expect(screen.queryByText(/View evidence records/)).not.toBeInTheDocument();
     });
 
     it("renders ordered blocked and Home Assistant golden state", async () => {

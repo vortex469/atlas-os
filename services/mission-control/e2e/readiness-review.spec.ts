@@ -41,7 +41,12 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Atlas has not defined a way to start this installation yet.", { exact: true })).toBeVisible();
         await expect(page.getByRole("list", { name: "Ordered readiness blockers" })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "Evidence reviewed", exact: true })).toBeVisible();
-        await expect(page.getByRole("list", { name: "Installation evidence chain" }).getByRole("listitem")).toHaveCount(14);
+        const evidenceDetails = page.getByText("View evidence records (14)", { exact: true }).locator("xpath=ancestor::details");
+        await expect(evidenceDetails).not.toHaveAttribute("open");
+        const evidenceChain = page.locator('ol[aria-label="Installation evidence chain"]');
+        await expect(evidenceChain).toBeHidden();
+        await evidenceDetails.getByText("View evidence records (14)", { exact: true }).click();
+        await expect(evidenceChain.getByRole("listitem")).toHaveCount(14);
         await expect(page.getByText(uuid4, { exact: true }).first()).toBeHidden();
         await expect(page.getByText(fp.value, { exact: true }).first()).toBeHidden();
         await expect(page.getByText("execution_admission_not_defined", { exact: true })).toBeHidden();

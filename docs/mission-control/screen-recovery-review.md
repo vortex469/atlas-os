@@ -2544,3 +2544,12 @@ release ID are grouped under Release source details. The Discovery evidence
 component test and the phone/desktop sign-in journey verify that those records
 stay available and start collapsed; release evaluation and authority remain
 unchanged.
+
+## Readiness evidence chain — 2026-10-29
+
+The readiness result and plain-language blockers remain at the top of the page;
+the long evidence chain now opens only when requested and shows its record count.
+An empty evidence response now says so directly. Evidence contents, expiry
+rules, permission recording, and all execution boundaries are unchanged. The
+readiness component and phone/desktop browser checks cover collapsed and
+expanded records.
