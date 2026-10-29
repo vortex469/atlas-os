@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
@@ -90,6 +90,32 @@ describe("AgentProviderOverviewSection", () => {
         renderWithRouter(<AgentProviderOverviewSection providers={providers} />);
         expect(screen.getByText("Available")).toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
+    });
+
+    it("counts every provider health state using the same labels as provider cards", () => {
+        const providers: Provider[] = ["healthy", "critical", "warning", "offline", "blocked", "future-status"].map((status, index) => ({
+            id: `provider-${index}`,
+            name: `Provider ${index}`,
+            workspace: "infra",
+            priority: "standard",
+            version: "1",
+            description: "",
+            icon: "server",
+            capabilities: [],
+            health: { status, latency_ms: null, http_status: null, message: null, details: {} },
+        }));
+        renderWithRouter(<AgentProviderOverviewSection providers={providers} />);
+
+        const counts = screen.getByRole("group", { name: "Provider health counts" });
+        const expectCount = (label: string, count: number) => {
+            expect(within(counts).getByText(label, { exact: true }).parentElement).toHaveTextContent(String(count));
+        };
+        expectCount("Total Providers", 6);
+        expectCount("Available", 1);
+        expectCount("Degraded", 2);
+        expectCount("Unavailable", 1);
+        expectCount("Blocked", 1);
+        expectCount("Status not confirmed", 1);
     });
 
     it("warns about unavailable critical providers", () => {

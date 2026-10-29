@@ -20,26 +20,24 @@ export function AgentProviderOverviewSection({
     providers,
 }: AgentProviderOverviewProps) {
     const available = providers.filter(
-        (p) =>
-            p.health?.status?.toLowerCase() === "healthy" ||
-            p.health?.status?.toLowerCase() === "online",
+        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "healthy",
     );
     const unavailable = providers.filter(
-        (p) =>
-            p.health?.status?.toLowerCase() === "offline" ||
-            p.health?.status?.toLowerCase() === "unavailable",
+        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
     );
     const degraded = providers.filter(
-        (p) =>
-            p.health?.status?.toLowerCase() === "degraded" ||
-            p.health?.status?.toLowerCase() === "warning",
+        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "degraded",
+    );
+    const blocked = providers.filter(
+        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "blocked",
+    );
+    const unconfirmed = providers.filter(
+        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unknown",
     );
 
     const criticalProviders = providers.filter((p) => p.priority === "critical");
     const hasUnavailableCritical = criticalProviders.some(
-        (p) =>
-            p.health?.status?.toLowerCase() === "offline" ||
-            p.health?.status?.toLowerCase() === "unavailable",
+        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
     );
 
     return (
@@ -61,7 +59,7 @@ export function AgentProviderOverviewSection({
             ) : (
                 <>
                     {/* Summary Cards */}
-                    <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                    <div role="group" aria-label="Provider health counts" className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
                         <div className="mc-surface rounded-mc-lg p-4">
                             <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
                                 Total Providers
@@ -97,6 +95,24 @@ export function AgentProviderOverviewSection({
                                 {unavailable.length}
                             </p>
                         </div>
+
+                        <div className="mc-surface rounded-mc-lg p-4">
+                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
+                                Blocked
+                            </p>
+                            <p className="mt-2 text-2xl font-bold text-amber-400">
+                                {blocked.length}
+                            </p>
+                        </div>
+
+                        <div className="mc-surface rounded-mc-lg p-4">
+                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
+                                Status not confirmed
+                            </p>
+                            <p className="mt-2 text-2xl font-bold text-slate-300">
+                                {unconfirmed.length}
+                            </p>
+                        </div>
                     </div>
 
                     {/* Critical provider warnings */}
@@ -108,11 +124,7 @@ export function AgentProviderOverviewSection({
                             <div className="mt-2 space-y-1 text-xs text-mc-text-secondary">
                                 {criticalProviders
                                     .filter(
-                                        (p) =>
-                                            p.health?.status?.toLowerCase() ===
-                                                "offline" ||
-                                            p.health?.status?.toLowerCase() ===
-                                                "unavailable",
+                                        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
                                     )
                                     .map((p) => (
                                         <p key={p.id}>
