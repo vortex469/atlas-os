@@ -244,6 +244,7 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
     const managed = resource.inconsistent ? null : resource.management;
     const displayName = observed?.display_name ?? managed?.display_name ?? "Unknown resource";
     const resourceType = observed?.resource_type ?? managed?.resource_type ?? "unknown";
+    const resourceTypeLabel = formatResourceTypeLabel(resourceType);
     const resourceId = observed?.resource_id ?? managed?.resource_id ?? "unknown";
     const observedState = observed?.missing || (!observed && managed?.missing)
         ? "Missing"
@@ -275,7 +276,7 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
     return (
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" data-testid={`resource-row-${resourceType}-${resourceId}`}>
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm uppercase text-slate-400">{resourceType} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex gap-2"><dt>{column.label}:</dt><dd>{column.render(observed)}</dd></div>)}</dl>}</section>
+                <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm text-slate-400">{resourceTypeLabel} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex gap-2"><dt>{column.label}:</dt><dd>{column.render(observed)}</dd></div>)}</dl>}</section>
                 <FactSection title="Observed state" value={observedState} detail="Live provider inventory; not monitoring policy." />
                 <FactSection title="Identity check" value={presentation.identity} detail={identityDetail} />
                 <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
@@ -290,6 +291,14 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
 
 function FactSection({ title, value, detail }: { title: string; value: string; detail: string }) {
     return <section><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p><p className="mt-2 font-semibold text-slate-100">{value}</p><p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p></section>;
+}
+
+function formatResourceTypeLabel(value: string): string {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "qemu") return "Virtual machine";
+    if (normalized === "lxc") return "Container";
+    if (!normalized || normalized === "unknown") return "Resource";
+    return normalized.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatMetadata(value: unknown): string { return typeof value === "string" || typeof value === "number" ? String(value) : "—"; }

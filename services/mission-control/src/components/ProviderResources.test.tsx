@@ -188,6 +188,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await renderResources();
 
         expect(screen.getByText("See what Atlas observes, whether it can identify each resource, and what monitoring expects.")).toBeVisible();
+        expect(screen.getByText("Virtual machine 110")).toBeVisible();
         expect(screen.getByText("Provider verified")).toBeVisible();
         expect(screen.getByText("Atlas can detect if this provider instance is replaced.")).toBeVisible();
     });
@@ -511,6 +512,8 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         const qemu = await screen.findByTestId("resource-row-qemu-110");
         const lxc = screen.getByTestId("resource-row-lxc-110");
+        expect(within(qemu).getByText("Virtual machine 110")).toBeVisible();
+        expect(within(lxc).getByText("Container 110")).toBeVisible();
         expect(within(qemu).getByText("Atlas suggestion")).toBeInTheDocument();
         expect(within(lxc).queryByText("Atlas suggestion")).not.toBeInTheDocument();
     });
