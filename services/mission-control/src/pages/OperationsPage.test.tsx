@@ -126,7 +126,7 @@ describe("OperationsPage", () => {
         expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
         expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
-        fireEvent.click(screen.getByText("Export or delete provider action history"));
+        fireEvent.click(screen.getByText("Export or remove history records"));
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
     });
 
@@ -208,7 +208,7 @@ describe("OperationsPage", () => {
         mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
         await user.click(screen.getByRole("button", { name: "Failed" }));
         await waitFor(() => expect(screen.queryByText("Unload Model")).not.toBeInTheDocument());
-        fireEvent.click(screen.getByText("Export or delete provider action history"));
+        fireEvent.click(screen.getByText("Export or remove history records"));
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
         expect(screen.queryByRole("navigation", { name: "Provider action history pagination" })).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
@@ -308,7 +308,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
-        await user.click(screen.getByText("Export or delete provider action history"));
+        await user.click(screen.getByText("Export or remove history records"));
         await user.click(screen.getByRole("button", { name: "Export JSON" }));
 
         const alert = await screen.findByRole("alert");
@@ -327,7 +327,8 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
-        fireEvent.click(screen.getByText("Export or delete provider action history"));
+        fireEvent.click(screen.getByText("Export or remove history records"));
+        expect(screen.getByText("Removing expired records only clears the history. It does not undo provider actions.")).toBeVisible();
         await user.click(
             screen.getByRole("button", {
                 name: "Delete expired entries",
@@ -354,7 +355,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
-        await user.click(screen.getByText("Export or delete provider action history"));
+        await user.click(screen.getByText("Export or remove history records"));
         await user.click(screen.getByRole("button", { name: "Delete expired entries" }));
 
         const alert = await screen.findByRole("alert");

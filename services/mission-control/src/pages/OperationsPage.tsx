@@ -492,8 +492,9 @@ export function OperationsPage() {
                 {operationError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100"><p>{operationError.message}</p>{operationError.details && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{operationError.details}</p></details>}</div>}
                 {pruneNeedsRefresh && <p role="status" className="text-sm text-amber-200">Deleting expired entries is paused until Refresh history confirms the latest records and retention details.</p>}
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
-                    <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete provider action history</summary>
+                    <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or remove history records</summary>
                     <div className="mt-4 flex flex-wrap gap-2">
+                        <p className="w-full text-sm text-slate-400">Removing expired records only clears the history. It does not undo provider actions.</p>
                         <button
                             type="button"
                             onClick={() =>
