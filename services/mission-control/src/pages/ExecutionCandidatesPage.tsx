@@ -99,7 +99,7 @@ export function ExecutionCandidatesPage() {
         } catch (requestError) {
             if (generation !== requestGeneration.current) return;
             console.error("Unable to load change proposals:", requestError);
-            setError("Mission Control could not load the latest proposal results.");
+            setError("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
             setErrorDetails(getAtlasErrorMessage(
                 requestError,
                 "Proposal list request failed without additional details.",

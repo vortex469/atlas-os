@@ -165,7 +165,7 @@ describe("ExecutionCandidatesPage", () => {
         fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
         const alert = await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
-        expect(alert).toHaveTextContent("Mission Control could not load the latest proposal results.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Current search failed")).not.toBeVisible();
@@ -181,7 +181,7 @@ describe("ExecutionCandidatesPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Change proposals unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not load the latest proposal results.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(screen.queryByRole("heading", { name: "This page could not load" })).not.toBeInTheDocument();
@@ -330,7 +330,7 @@ describe("ExecutionCandidatesPage", () => {
 
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Core unavailable"));
         await user.click(screen.getByRole("button", { name: "Reset filters" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Mission Control could not load the latest proposal results.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
     });
 
     it("uses singular wording when one proposal is available", async () => {

@@ -92,7 +92,7 @@ for (const width of [320, 390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Change proposals unavailable");
-        await expect(alert).toContainText("Mission Control could not load the latest proposal results.");
+        await expect(alert).toContainText("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
         await expect(alert.getByRole("button", { name: "Retry search" })).toBeVisible();
         await expect(page.getByText("Results unavailable", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
@@ -119,7 +119,7 @@ for (const width of [320, 390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Change proposals unavailable");
-        await expect(alert).toContainText("Mission Control could not load the latest proposal results.");
+        await expect(alert).toContainText("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {
             await page.getByRole("button", { name: "Open navigation" }).click();
