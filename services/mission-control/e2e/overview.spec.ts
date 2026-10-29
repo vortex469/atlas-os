@@ -262,6 +262,25 @@ test('service check preview puts blocked and offline services first', async ({ p
 });
 
 for (const width of [320, 1280]) {
+    test(`keeps a missing service address readable at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 800 });
+        await page.route('**/api/v1/health', route => route.fulfill({ json: {
+            atlas: 'degraded',
+            services: { iFileshare: { status: 'offline', message: 'Connection refused' } },
+        } }));
+        await page.goto('/');
+
+        const checks = page.getByRole('region', { name: 'Service checks', exact: true });
+        const missingAddress = checks.getByRole('group', { name: 'Next connection check' })
+            .getByText('Configured service address not reported', { exact: true });
+        await expect(missingAddress).toBeVisible();
+        await expect(missingAddress).not.toHaveClass(/break-all/);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 1280]) {
     test(`shows the empty service-check explanation once at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 800 });
         await page.route('**/api/v1/health', route => route.fulfill({ json: {
