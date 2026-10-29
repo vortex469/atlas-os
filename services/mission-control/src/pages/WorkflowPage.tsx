@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -29,6 +30,7 @@ import type {
 } from "../types/atlasAgent";
 import { operationalRequest } from "../utils/operationalRequest";
 import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { workflowRailStages } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
@@ -651,7 +653,7 @@ function OperationalActionRequestSection({ request }: { request: WorkflowOperati
             <Detail label="Target" value={formatResourceTargetLabel(request.provider_id, request.resource_type, request.resource_id)} />
             <Detail label="Expected starting state" value={request.expected_pre_state} />
             <Detail label="Expected disruption" value={request.disruption_scope} />
-            <Detail label="Request expires" value={request.expires_at} />
+            <Detail label="Request expires (local time)" value={formatRequestTimestamp(request.expires_at, true)} />
             <Detail label="Expected outcome" value={request.verification.expected_post_state} />
             <Detail label="Health check" value={request.verification.health_requirement} />
             <Detail label="Uncertain outcome" value={request.verification.unknown_outcome_policy} />
@@ -664,7 +666,7 @@ function OperationalActionRequestSection({ request }: { request: WorkflowOperati
                 <Detail label="Target reference" value={formatResourceReference(request.provider_id, request.resource_type, request.resource_id)} />
                 <Detail label="Target fingerprint" value={request.target_fingerprint} />
                 <Detail label="Target version" value={request.target_version ?? "Not supplied"} />
-                <Detail label="Generated time" value={request.generated_at} />
+                <Detail label="Generated (local time)" value={formatRequestTimestamp(request.generated_at, false)} />
             </dl>
         </details>
     </section>;
@@ -927,7 +929,13 @@ function WorkflowRail({ workflow }: { workflow: WorkflowDetailResponse }) {
     );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function formatRequestTimestamp(value: string, isExpiry: boolean): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    if (timestamp === null) return isExpiry ? "Unverified expiry" : "Time unavailable";
+    return <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+}
+
+function Detail({ label, value }: { label: string; value: ReactNode }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value}</dd></div>;
 }
 

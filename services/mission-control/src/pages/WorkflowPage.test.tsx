@@ -139,17 +139,33 @@ describe("WorkflowPage", () => {
         await screen.findByRole("heading", { name: "Maintenance request" });
         expect(screen.getByText("Maintenance request needs approval.", { exact: true })).toBeVisible();
         expect(screen.getByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
+        const expiryTime = screen.getByText("Request expires (local time)").parentElement?.querySelector("time");
+        expect(expiryTime).toHaveAttribute("datetime", "2999-01-01T12:00:00Z");
         const references = screen.getByText("Request references", { exact: true });
         expect(references.closest("details")).not.toHaveAttribute("open");
         fireEvent.click(references);
         expect(within(references.closest("details") as HTMLElement).getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
+        const generatedTime = within(references.closest("details") as HTMLElement).getByText("Generated (local time)").parentElement?.querySelector("time");
+        expect(generatedTime).toHaveAttribute("datetime", "2026-01-01T12:00:00Z");
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
-        expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
         expect(screen.getByRole("button", { name: "Approve maintenance request" })).toBeEnabled();
         expect(screen.getByRole("button", { name: "Reject maintenance request" })).toBeEnabled();
         expect(screen.getByText(/Approval does not run it; choose Run approved maintenance separately/)).toBeVisible();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
+    });
+
+    it("labels an invalid request expiry as unverified without changing the recorded approval controls", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            effect_kind: "operational_action",
+            operational_action_request: operationalActionRequest({ expires_at: "2026-02-30T12:00:00Z" }),
+        }));
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Maintenance request" });
+        expect(screen.getByText("Unverified expiry")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Approve maintenance request" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Reject maintenance request" })).toBeEnabled();
     });
 
     it.each(["missing", "invalid", "unselected authority"])("does not offer approval when exact maintenance request is %s", async (kind) => {
