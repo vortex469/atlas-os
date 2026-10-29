@@ -3482,3 +3482,11 @@ The maintenance capability summary now describes the QEMU resource type as
 “Virtual machine,” matching the operator-facing target choice without exposing
 the backend implementation term. The provider/resource contract and approval
 flow are unchanged.
+
+## Fileshare Docker port diagnosis — 2026-10-29
+
+The visible connection check now explains that a blank Docker `PORTS` field on
+the app container means no host port is published unless it uses host
+networking. It connects that finding to the refused check and says the
+published host port must match Atlas's configured address. The check remains
+read-only; it does not change Docker or service configuration.

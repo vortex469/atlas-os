@@ -203,7 +203,7 @@ describe("MC overview evidence", () => {
         expect(command).not.toHaveTextContent(/password|private|token=/);
         expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
         expect(nextStep).toHaveTextContent("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
-        expect(nextStep).toHaveTextContent("Docker: a blank PORTS column usually means no host port is published. A container marked Up is running, but that does not confirm its web app is responding. Check the network mode before changing ports.");
+        expect(nextStep).toHaveTextContent("Docker: if this container runs the app, a blank PORTS field means no host port is published unless its network is host. That can explain the refusal. The published host port must match Atlas's configured address.");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);
         expect(disclosure).not.toHaveAttribute("open");
