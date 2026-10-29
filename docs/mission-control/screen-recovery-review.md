@@ -3346,3 +3346,11 @@ is missing and does not offer a retry. The plan must load and match its session
 before Mission Control shows workflow creation. The focused page suite covers
 temporary failure and recovery, missing-plan behavior, and the existing
 approval boundary.
+
+## Change proposal pagination context — 2026-10-29
+
+The proposal list now shows the visible result range and total count, so an
+operator can tell which proposals are on the current page. The changing count
+is announced as a status update, and singular wording is covered. An empty
+later page explains that the previous page may contain matching proposals. The
+focused page suite covers first-page, next-page, and empty-result summaries.

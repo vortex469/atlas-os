@@ -207,7 +207,11 @@ export function ExecutionCandidatesPage() {
                     </p>
                 )}
                 <div className="flex items-center justify-between gap-4 text-sm text-slate-400">
-                    {!error && (isLoading || result.total > 0) && <p>{isLoading ? "Loading change proposals…" : `${result.total} proposal${result.total === 1 ? "" : "s"}`}</p>}
+                    {!error && (isLoading || result.candidates.length > 0) && (
+                        <p role="status" aria-label="Proposal result range" aria-live="polite">
+                            {isLoading ? "Loading change proposals…" : proposalResultSummary(result)}
+                        </p>
+                    )}
                     <div className="flex gap-2">
                         <button type="button" aria-label="Previous change proposals page" onClick={goToPreviousPage} disabled={isLoading || Boolean(error) || hasUnappliedFilters || result.offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-50">
                             Previous
@@ -218,9 +222,11 @@ export function ExecutionCandidatesPage() {
                     </div>
                 </div>
 
-                {!isLoading && !error && result.candidates.length === 0 && (
+                {!isLoading && !error && !hasUnappliedFilters && result.candidates.length === 0 && (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
-                        {hasActiveFilters
+                        {result.total > 0 && result.offset > 0
+                            ? "No proposals are on this page. Try the previous page."
+                            : hasActiveFilters
                             ? "No change proposals match these filters."
                             : "No current change proposals."}
                     </div>
@@ -353,6 +359,13 @@ function statusText(status: string): string {
     if (status === "not_eligible") return "Not eligible for planning";
     if (status === "expired") return "Expired";
     return formatLabel(status);
+}
+
+function proposalResultSummary(result: CandidateResult): string {
+    const first = result.offset + 1;
+    const last = result.offset + result.candidates.length;
+    const noun = result.total === 1 ? "proposal" : "proposals";
+    return `Showing ${first}–${last} of ${result.total} ${noun}`;
 }
 
 function formatLabel(value: string): string {

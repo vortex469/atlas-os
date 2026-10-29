@@ -240,8 +240,12 @@ describe("ExecutionCandidatesPage", () => {
             }),
         );
         expect(screen.getByText("More filters · active")).toBeVisible();
+        expect(await screen.findByText("candidate-2")).toBeInTheDocument();
+        expect(screen.getByRole("status", { name: "Proposal result range" })).toHaveTextContent("Showing 1–1 of 50 proposals");
 
         await user.click(screen.getByRole("button", { name: "Next change proposals page" }));
+        expect(await screen.findByText("candidate-3")).toBeInTheDocument();
+        expect(screen.getByRole("status", { name: "Proposal result range" })).toHaveTextContent("Showing 26–26 of 50 proposals");
         await waitFor(() =>
             expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith({
                 status: "eligible",
@@ -265,9 +269,9 @@ describe("ExecutionCandidatesPage", () => {
         await screen.findByText("candidate-1");
         await user.selectOptions(screen.getByLabelText("Eligibility"), "expired");
 
-        expect(screen.getByRole("status")).toHaveTextContent(
+        expect(screen.getByText(
             "These filter changes haven't been searched yet. Select Search proposals to update the results.",
-        );
+        )).toHaveAttribute("role", "status");
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
         expect(mockedListExecutionCandidates).toHaveBeenCalledTimes(1);
 
@@ -282,7 +286,8 @@ describe("ExecutionCandidatesPage", () => {
             limit: 25,
             offset: 0,
         }));
-        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        expect(screen.queryByText("These filter changes haven't been searched yet. Select Search proposals to update the results.")).not.toBeInTheDocument();
+        expect(screen.getByRole("status", { name: "Proposal result range" })).toHaveTextContent("Showing 1–1 of 50 proposals");
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeEnabled();
     });
 
@@ -303,6 +308,26 @@ describe("ExecutionCandidatesPage", () => {
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Core unavailable"));
         await user.click(screen.getByRole("button", { name: "Reset filters" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Mission Control could not load the latest proposal results.");
+    });
+
+    it("uses singular wording when one proposal is available", async () => {
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate()]));
+        renderPage();
+
+        expect(await screen.findByRole("status", { name: "Proposal result range" })).toHaveTextContent("Showing 1–1 of 1 proposal");
+    });
+
+    it("explains when a later page has no rows but earlier matches remain", async () => {
+        const user = userEvent.setup();
+        mockedListExecutionCandidates
+            .mockResolvedValueOnce(page([candidate()], { total: 26, has_more: true }))
+            .mockResolvedValueOnce(page([], { total: 26, offset: 25 }));
+        renderPage();
+
+        await screen.findByText("candidate-1");
+        await user.click(screen.getByRole("button", { name: "Next change proposals page" }));
+
+        expect(await screen.findByText("No proposals are on this page. Try the previous page.")).toBeInTheDocument();
     });
 
     it("keeps unsupported or not eligible candidates visible", async () => {
