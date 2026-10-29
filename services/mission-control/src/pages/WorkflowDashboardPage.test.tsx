@@ -98,8 +98,9 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
         const counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
-        expect(counts.getByText("Prepare change for review")).toBeInTheDocument();
-        expect(counts.getByText("Approval or action")).toBeInTheDocument();
+        expect(counts.getByText("Needs your input")).toBeInTheDocument();
+        const needsInputCard = counts.getByText("Needs your input").closest("article");
+        expect(within(needsInputCard as HTMLElement).getByText("4")).toBeInTheDocument();
         expect(screen.getByText("Review the checks. If approved, choose Run approved checks.")).toBeVisible();
         expect(screen.getByText("Review the commit. If approved, choose Record approved commit.")).toBeVisible();
         expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
@@ -220,7 +221,7 @@ describe("WorkflowDashboardPage", () => {
             const card = counts.getByText(label, { exact: true }).closest("article");
             return within(card as HTMLElement).getByText(/^\d+$/).textContent;
         };
-        expect(countFor("Approval or action")).toBe("1");
+        expect(countFor("Needs your input")).toBe("1");
         expect(countFor("Blocked")).toBe("1");
         expect(countFor("Completed")).toBe("0");
 
@@ -230,7 +231,7 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
         counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         expect(countFor("Completed")).toBe("1");
-        expect(countFor("Approval or action")).toBe("0");
+        expect(countFor("Needs your input")).toBe("0");
         expect(countFor("Blocked")).toBe("0");
     });
 

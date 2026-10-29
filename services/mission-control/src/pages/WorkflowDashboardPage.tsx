@@ -41,8 +41,7 @@ const EMPTY_FILTERS: DashboardFilters = {
 
 const SUMMARY_GROUPS = [
     { key: "running", label: "Running" },
-    { key: "prepare_change", label: "Prepare change for review" },
-    { key: "approval_or_action", label: "Approval or action" },
+    { key: "needs_input", label: "Needs your input" },
     { key: "blocked", label: "Blocked" },
     { key: "completed", label: "Completed" },
     { key: "unknown", label: "Status unavailable" },
@@ -351,11 +350,10 @@ function dashboardFiltersEqual(left: DashboardFilters, right: DashboardFilters):
 function workflowDashboardSummaryGroup(state: string): string {
     switch (state) {
         case "awaiting_approval":
-            return "prepare_change";
         case "awaiting_implementation_approval":
         case "awaiting_verification_approval":
         case "awaiting_commit_approval":
-            return "approval_or_action";
+            return "needs_input";
         default:
             return workflowStatusGroup(state);
     }
