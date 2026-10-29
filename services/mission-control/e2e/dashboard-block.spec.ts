@@ -17,8 +17,8 @@ test("dashboard explains unavailable workflow data once and translates network e
 
     const attention = page.getByRole("region", { name: "Operator Attention" });
     const workActivity = page.getByRole("region", { name: "Work activity" });
-    await expect(attention.getByText("Some information is missing. Atlas cannot confirm this list includes everything that needs attention.")).toBeVisible();
-    await attention.getByText("Source status").click();
+    await expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
+    await attention.getByText("Which checks are missing?").click();
     await expect(attention.getByText("Workflows: current information could not be loaded.")).toBeVisible();
     await expect(attention.getByText("Workflow results are incomplete.")).toHaveCount(0);
     await expect(workActivity.getByText("Workflow status could not be loaded.")).toBeVisible();

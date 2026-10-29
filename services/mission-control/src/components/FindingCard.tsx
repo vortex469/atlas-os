@@ -13,9 +13,9 @@ type SeverityStyle = {
 };
 
 type UnavailableEntity = {
-    entity_id?: string;
-    name?: string;
-    state?: string;
+    entity_id: string | null;
+    name: string | null;
+    state: string | null;
 };
 
 const severityStyles: Record<string, SeverityStyle> = {
@@ -52,11 +52,19 @@ function getUnavailableEntities(
         return [];
     }
 
-    return value.filter(
-        (entity): entity is UnavailableEntity =>
-            typeof entity === "object" &&
-            entity !== null,
-    );
+    return value
+        .filter((entity): entity is Record<string, unknown> =>
+            typeof entity === "object" && entity !== null && !Array.isArray(entity),
+        )
+        .map((entity) => ({
+            entity_id: readableText(entity.entity_id),
+            name: readableText(entity.name),
+            state: readableText(entity.state),
+        }));
+}
+
+function readableText(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 export function FindingCard({ finding }: FindingCardProps) {
@@ -190,10 +198,10 @@ export function FindingCard({ finding }: FindingCardProps) {
                                     <p className="truncate text-sm font-medium text-slate-200">
                                         {entity.name ??
                                             entity.entity_id ??
-                                            "Unknown entity"}
+                                            "Entity not identified"}
                                     </p>
 
-                                    {entity.entity_id && (
+                                    {entity.name && entity.entity_id && (
                                         <p className="truncate text-xs text-slate-500">
                                             {entity.entity_id}
                                         </p>
@@ -201,7 +209,9 @@ export function FindingCard({ finding }: FindingCardProps) {
                                 </div>
 
                                 <span className="shrink-0 rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs uppercase text-slate-400">
-                                    {entity.state ?? "unknown"}
+                                    {entity.state && entity.state.toLowerCase() !== "unknown"
+                                        ? formatLabel(entity.state)
+                                        : "Status unknown"}
                                 </span>
                             </div>
                         ))}

@@ -2925,3 +2925,19 @@ unavailable” when those fields cannot be read, instead of “Unknown path” a
 “Unknown diagnostic type.” The diagnostics remain collapsed by default, and
 policy evaluation is unchanged. The focused PolicyVisibilitySection suite
 covers incomplete diagnostic records.
+
+## Finding entity fallback — 2026-10-29
+
+Unavailable-entity rows now identify themselves as “Entity not identified”
+when both name and ID are missing, and use “Status unknown” when no readable
+state is reported. Reported IDs remain visible when names are missing, and
+readable state codes use title case. Malformed array entries are ignored. The
+focused FindingCard suite covers these cases; finding and provider behavior is
+unchanged.
+
+## Dashboard recovery assertion — 2026-10-29
+
+The dashboard browser test now checks the current Operator Attention summary
+for incomplete source evidence. The previous assertion expected wording the
+dashboard no longer renders. The source-specific recovery details and
+read-only behavior remain covered by the same journey.
