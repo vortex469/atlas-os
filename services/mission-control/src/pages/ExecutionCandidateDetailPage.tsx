@@ -111,8 +111,8 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
         } catch (requestError) {
             console.error("Unable to create candidate planning session:", requestError);
             setPlanningError({
-                title: "Planning request result is unknown",
-                message: "The request may have created a planning session, but Mission Control did not receive confirmation. Select Start planning again to reopen or reuse the matching session. No approval or infrastructure change was made.",
+                title: "Planning status not confirmed",
+                message: "Atlas may have started a planning session but couldn’t confirm it. Select Start planning again to reopen or reuse the session. No approval or infrastructure change was made.",
                 details: getAtlasAgentErrorMessage(
                     requestError,
                     "Atlas Agent could not create or reuse a planning session.",

@@ -293,9 +293,9 @@ describe("ExecutionCandidateDetailPage", () => {
         mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         const planningAlert = await screen.findByRole("alert");
-        expect(planningAlert).toHaveTextContent("Planning request result is unknown");
-        expect(planningAlert).toHaveTextContent("The request may have created a planning session, but Mission Control did not receive confirmation.");
-        expect(planningAlert).toHaveTextContent("Select Start planning again to reopen or reuse the matching session.");
+        expect(planningAlert).toHaveTextContent("Planning status not confirmed");
+        expect(planningAlert).toHaveTextContent("Atlas may have started a planning session but couldn’t confirm it.");
+        expect(planningAlert).toHaveTextContent("Select Start planning again to reopen or reuse the session.");
         expect(planningAlert).toHaveTextContent("No approval or infrastructure change was made.");
         const technicalDetails = within(planningAlert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
