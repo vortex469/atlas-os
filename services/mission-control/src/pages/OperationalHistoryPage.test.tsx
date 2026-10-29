@@ -21,23 +21,27 @@ const mockedLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
 const mockedDiagnostic = vi.mocked(getWorkflowRecoveryDiagnostic);
 const mockedList = vi.mocked(listWorkflows);
 
+function historyWorkflow(executionIntent: string) {
+    return {
+        workflow_id: "workflow-operational-1",
+        workflow_source: "candidate" as const,
+        workflow_state: "completed" as const,
+        effect_kind: "operational_action" as const,
+        execution_intent: executionIntent,
+        candidate_id: "candidate-1",
+        planning_session_id: "planning-1",
+        repository: null,
+        target_id: "110",
+        last_result_summary: "verified",
+        timeline: [],
+    };
+}
+
 describe("OperationalHistoryPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockedList.mockResolvedValue({
-            items: [{
-                workflow_id: "workflow-operational-1",
-                workflow_source: "candidate",
-                workflow_state: "completed",
-                effect_kind: "operational_action",
-                execution_intent: "restart-service",
-                candidate_id: "candidate-1",
-                planning_session_id: "planning-1",
-                repository: null,
-                target_id: "110",
-                last_result_summary: "verified",
-                timeline: [],
-            }],
+            items: [historyWorkflow("restart-service")],
             total: 1,
             limit: 10,
             offset: 0,
@@ -76,6 +80,18 @@ describe("OperationalHistoryPage", () => {
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
+    it("shows a readable action name for maintenance intents beyond restart", async () => {
+        mockedList.mockResolvedValueOnce({
+            items: [historyWorkflow("start-service")],
+            total: 1,
+            limit: 10,
+            offset: 0,
+        });
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        expect(await screen.findByText(/Start Service · Healthy/)).toBeInTheDocument();
+    });
+
     it("shows diagnostic failure as unavailable rather than operational failure", async () => {
         mockedDiagnostic.mockRejectedValue(new Error("native secret exception"));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
@@ -90,7 +106,7 @@ describe("OperationalHistoryPage", () => {
 
         expect(await screen.findByRole("heading", { name: "Maintenance target 110" })).toBeVisible();
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
-        expect(screen.getByText(/Restart service · Healthy/)).toBeInTheDocument();
+        expect(screen.getByText(/Restart Service · Healthy/)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         expect(document.body.textContent).not.toContain("private lifecycle exception");
     });
@@ -100,7 +116,7 @@ describe("OperationalHistoryPage", () => {
         mockedDiagnostic.mockResolvedValue(operationalDiagnostic({ correlation: { workflow_id: "foreign-workflow", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true } }));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        expect(await screen.findByText(/Restart service · Status unavailable/)).toBeInTheDocument();
+        expect(await screen.findByText(/Restart Service · Status unavailable/)).toBeInTheDocument();
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Healthy" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
@@ -110,7 +126,7 @@ describe("OperationalHistoryPage", () => {
         mockedDiagnostic.mockResolvedValue(operationalDiagnostic());
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
-        expect(screen.getByText(/Restart service · Status unavailable/)).toBeInTheDocument();
+        expect(screen.getByText(/Restart Service · Status unavailable/)).toBeInTheDocument();
         expect(screen.getByText("Could not load the latest status for this request.")).toBeInTheDocument();
     });
 
@@ -119,7 +135,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByRole("link", { name: "Open workflow" });
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
-        expect(screen.getByText(/Restart service · Healthy/)).toBeInTheDocument();
+        expect(screen.getByText(/Restart Service · Healthy/)).toBeInTheDocument();
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
     });
 
@@ -174,7 +190,7 @@ describe("OperationalHistoryPage", () => {
 
         const actionFilter = screen.getByRole("combobox", { name: "Requested action" });
         expect(actionFilter).toBeVisible();
-        expect(within(actionFilter).getByRole("option", { name: "Restart service" })).toBeInTheDocument();
+        expect(within(actionFilter).getByRole("option", { name: "Restart Service" })).toBeInTheDocument();
         expect(within(actionFilter).getByRole("option", { name: "Start Service" })).toBeInTheDocument();
         const providerFilter = screen.getByRole("combobox", { name: "Provider" });
         expect(within(providerFilter).getByRole("option", { name: "Proxmox" })).toBeInTheDocument();

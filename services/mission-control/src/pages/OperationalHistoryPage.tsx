@@ -8,6 +8,7 @@ import {
 } from "../api/atlas-agent";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { recoveryPresentation } from "../utils/recoveryDiagnostic";
+import { formatWorkflowLabel } from "../utils/workflowState";
 import type {
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
@@ -169,7 +170,9 @@ export function OperationalHistoryPage() {
 function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, diagnostic, diagnosticUnavailable }: HistoryItem) {
     const outcome = diagnostic ? recoveryPresentation(diagnostic) : null;
     const resultTimestamp = lifecycle?.verification_completed_at ?? lifecycle?.dispatch_completed_at ?? null;
-    const action = workflow.execution_intent === "restart-service" ? "Restart service" : workflow.execution_intent ?? "Maintenance request";
+    const action = workflow.execution_intent
+        ? formatWorkflowLabel(workflow.execution_intent)
+        : "Maintenance request";
     return (
         <article className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -247,7 +250,7 @@ function maintenanceStageLabel(value: string): string {
 const FILTER_LABELS: Record<string, string> = {
     all: "Any", healthy: "Healthy", pending: "Pending", recovery_in_progress: "Recovering",
     attention_required: "Needs attention", outcome_uncertain: "Result unknown", unavailable: "Unavailable",
-    terminal: "Finished", non_terminal: "In progress", "restart-service": "Restart service",
+    terminal: "Finished", non_terminal: "In progress", "restart-service": "Restart Service",
     proxmox: "Proxmox", qemu: "Virtual machine", lxc: "Container",
 };
 
