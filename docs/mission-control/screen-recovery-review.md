@@ -2409,6 +2409,11 @@ The collapsed “About service checks” note now explains in plain language tha
 the result is reachability from Atlas Core, separate from Atlas Core's own
 health.
 
+The service-check guidance explicitly says that testing from the service host
+or browser does not establish reachability from Atlas Core. It names the Core
+machine/container as the right network location while retaining the Compose
+directory and published-port checks.
+
 ## Recent action time-zone label — 2026-10-29
 
 Recent provider actions now label completion times as local time in the visible
