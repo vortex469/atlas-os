@@ -175,9 +175,11 @@ describe("MC overview evidence", () => {
         fireEvent.click(location);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(disclosure).toHaveTextContent("Atlas sends this check from wherever Atlas Core runs.");
-        expect(disclosure).toHaveTextContent("If Core runs in Docker, repeat the request inside the Atlas Core container.");
-        expect(disclosure).toHaveTextContent("A successful check from your browser or the service's own server does not prove Core can reach it.");
+        expect(disclosure).toHaveTextContent("Run a reachability test on the Atlas host.");
+        expect(disclosure).toHaveTextContent("use the Compose file on that host to run the test inside the atlas-core container.");
+        expect(disclosure).toHaveTextContent("A test from the service host, browser, or another machine checks a different network path.");
+        expect(disclosure).toHaveTextContent("A Docker container marked “Up” can still be unreachable.");
+        expect(disclosure).toHaveTextContent("Check that the app listens on its configured port and that its Docker network or published port lets Atlas Core reach it.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);
