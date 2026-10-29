@@ -29,6 +29,7 @@ export function ProviderOverview({
             ? provider.health.details.url
             : null;
     const isUnavailable = healthState(provider.health.status) === "Unavailable";
+    const healthStatusLabel = isUnavailable ? "Unavailable" : formatLabel(provider.health.status);
     const connectionMessage = healthReason(provider.health.message);
 
     return (
@@ -50,7 +51,7 @@ export function ProviderOverview({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-                    <StatusBadge status={formatLabel(provider.health.status)} />
+                    <StatusBadge status={healthStatusLabel} />
                     {provider.health.latency_ms !== null && (
                         <p className="text-sm text-slate-400">
                             {"Response time "}

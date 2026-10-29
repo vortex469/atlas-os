@@ -56,7 +56,7 @@ describe("ProviderOverview feature data", () => {
 
     it("explains that an unavailable result is Core's connection check", () => {
         view([], null, "offline", "Connection refused");
-        expect(screen.getByText("Offline", { exact: true })).toBeVisible();
+        expect(screen.getByText("Unavailable", { exact: true })).toBeVisible();
         expect(screen.getByText("Atlas Core could not reach this provider. It may still be running on its own computer.")).toBeVisible();
         expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeVisible();
         expect(screen.queryByText("Connection refused", { exact: true })).not.toBeInTheDocument();
