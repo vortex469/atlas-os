@@ -63,12 +63,16 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
-        expect(screen.getByText(/^Requested \(local time\):/)).toBeVisible();
+        const requested = screen.getByText(/^Requested \(local time\):/);
+        expect(requested).toBeVisible();
+        expect(requested.querySelector("time")).toHaveAttribute("datetime", "2026-08-16T00:00:00Z");
         const targetReference = screen.getByText("proxmox/qemu/110");
         expect(targetReference).not.toBeVisible();
         fireEvent.click(screen.getByText("Request details", { exact: true }));
         expect(targetReference).toBeVisible();
-        expect(screen.getByText("Result recorded (local time)")).toBeVisible();
+        const resultRecorded = screen.getByText("Result recorded (local time)");
+        expect(resultRecorded).toBeVisible();
+        expect(resultRecorded.parentElement?.querySelector("time")).toHaveAttribute("datetime", "2026-08-16T00:03:00Z");
         expect(screen.getByText("Request stage", { exact: true })).toBeVisible();
         expect(screen.getByText("Status record check", { exact: true })).toBeVisible();
         expect(screen.getByText("Records match", { exact: true })).toBeVisible();

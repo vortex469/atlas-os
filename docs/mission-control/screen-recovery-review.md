@@ -2672,3 +2672,10 @@ semantic `<time>` element with the exact UTC instant. The Maintenance lifecycle
 panel test and the repository-free simulated maintenance journey at 320px,
 390px and 1280px verify the local-time label and timestamp value. The focused
 maintenance component suite, Mission Control lint, and production build pass.
+
+## Maintenance history timestamp semantics — 2026-10-29
+
+The request and result times in maintenance history remain labeled as local
+time and now expose their source UTC instants through semantic `<time>`
+elements. The history page suite verifies both timestamps (28 tests); lint and
+production build pass.

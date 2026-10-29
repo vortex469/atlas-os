@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -26,10 +26,12 @@ interface HistoryItem {
     diagnosticUnavailable: boolean;
 }
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(value: string | null): ReactNode {
     if (!value) return "Not reported";
     const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
+    return Number.isNaN(parsed.getTime())
+        ? "Unknown time"
+        : <time dateTime={value}>{parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function historyTargetName(workflow: WorkflowSummary, lifecycle: WorkflowOperationalLifecycle | null): string {
@@ -221,8 +223,8 @@ function verificationLabel(value: string | null): string {
     return labels[value] ?? value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function HistoryDetail({ label, value }: { label: string; value: string }) {
-    return <div><dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value.replaceAll("_", " ")}</dd></div>;
+function HistoryDetail({ label, value }: { label: string; value: ReactNode }) {
+    return <div><dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{typeof value === "string" ? value.replaceAll("_", " ") : value}</dd></div>;
 }
 
 function maintenanceStageLabel(value: string): string {
