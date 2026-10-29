@@ -2861,3 +2861,11 @@ own next step, so the summary is shorter without hiding whether the operator
 needs to prepare a change, approve it, or review a result. Running, blocked,
 completed, and unavailable counts remain separate. The focused dashboard
 suite passes (17 tests), along with Mission Control lint and production build.
+
+## Provider action confirmation context — 2026-10-29
+
+Confirmation prompts now name the provider and action, include its description,
+and show the entered parameter values before an action runs. Declining still
+prevents the request, and no provider action or approval contract changed. The
+ProviderActions suite passes (12 tests), along with Mission Control lint and
+production build.

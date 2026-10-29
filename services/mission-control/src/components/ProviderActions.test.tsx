@@ -308,6 +308,10 @@ describe("ProviderActions", () => {
             }),
         );
 
+        expect(window.confirm).toHaveBeenCalledOnce();
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Unload Model on Ollama requires confirmation."));
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Unload a model from memory."));
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Model: gemma4:12b"));
         expect(mockedRunProviderAction).not.toHaveBeenCalled();
     });
 

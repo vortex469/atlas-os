@@ -170,9 +170,22 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
         let confirmed = false;
 
         if (action.requires_confirmation) {
-            const confirmationMessage = action.destructive
-                ? `${action.label} is marked as destructive. Continue?`
-                : `${action.label} requires confirmation. Continue?`;
+            const actionParameters = parameters[action.id] ?? {};
+            const parameterSummary = Object.entries(actionParameters)
+                .flatMap(([name, value]) => {
+                    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+                        return [];
+                    }
+                    const displayValue = String(value).replace(/\s+/g, " ").trim();
+                    return displayValue ? [`${formatParameterLabel(name)}: ${displayValue}`] : [];
+                });
+            const confirmationMessage = [
+                `${action.label} on ${provider.name} requires confirmation.`,
+                action.description.trim().replace(/\s+/g, " "),
+                parameterSummary.length > 0 ? `Parameters:\n${parameterSummary.join("\n")}` : null,
+                action.destructive ? "This action is marked as destructive." : null,
+                "Continue?",
+            ].filter((line): line is string => Boolean(line)).join("\n\n");
 
             confirmed = window.confirm(confirmationMessage);
 
