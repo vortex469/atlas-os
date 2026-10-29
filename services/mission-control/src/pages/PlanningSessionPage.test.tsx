@@ -465,9 +465,9 @@ describe("PlanningSessionPage", () => {
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Workflow result not confirmed");
-        expect(alert).toHaveTextContent("The request may have created a workflow, but Mission Control did not receive confirmation.");
-        expect(alert).toHaveTextContent("Select Create Workflow again to retrieve or reuse this plan’s workflow.");
-        expect(alert).toHaveTextContent("Any implementation still needs separate approval; no infrastructure change has run.");
+        expect(alert).toHaveTextContent("Atlas may have created this workflow but couldn’t confirm it.");
+        expect(alert).toHaveTextContent("Select Create Workflow again to reopen or reuse this plan’s workflow.");
+        expect(alert).toHaveTextContent("Implementation still needs separate approval; no infrastructure change has run.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).not.toBeVisible();

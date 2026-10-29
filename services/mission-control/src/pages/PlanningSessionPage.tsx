@@ -220,7 +220,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             console.error(`Unable to create workflow shell for ${sessionId}:`, requestError);
             setWorkflowError({
                 title: "Workflow result not confirmed",
-                message: "The request may have created a workflow, but Mission Control did not receive confirmation. Select Create Workflow again to retrieve or reuse this plan’s workflow. Any implementation still needs separate approval; no infrastructure change has run.",
+                message: "Atlas may have created this workflow but couldn’t confirm it. Select Create Workflow again to reopen or reuse this plan’s workflow. Implementation still needs separate approval; no infrastructure change has run.",
                 details: getAtlasAgentErrorMessage(
                     requestError,
                     "Atlas Agent could not create this workflow.",
