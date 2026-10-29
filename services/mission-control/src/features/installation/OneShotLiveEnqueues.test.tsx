@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listOneShotLiveEnqueues } from "../../api/oneShotLiveEnqueue";
@@ -18,29 +18,36 @@ const props = {
 describe("OneShotLiveEnqueues", () => {
     beforeEach(() => { vi.resetAllMocks(); vi.mocked(listOneShotLiveEnqueues).mockResolvedValue(empty); });
 
-    it("renders loading, empty, and redacted error states", async () => {
+    it("renders checking, empty, and redacted error states with a safe retry", async () => {
         let resolve!: (value: OneShotLiveEnqueueCollectionV1) => void;
         vi.mocked(listOneShotLiveEnqueues).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<OneShotLiveEnqueues {...props} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading one-shot live enqueue evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/checking for a saved queue item record/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no one-shot live enqueue evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no queue item record has been saved/i));
         unmount();
 
-        vi.mocked(listOneShotLiveEnqueues).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
+        vi.mocked(listOneShotLiveEnqueues)
+            .mockRejectedValueOnce(new Error("secret /internal/path 10.0.0.1"))
+            .mockResolvedValueOnce(empty);
         render(<OneShotLiveEnqueues {...props} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/private system details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no queue item record has been saved/i));
+        expect(listOneShotLiveEnqueues).toHaveBeenCalledTimes(3);
     });
 
-    it("renders only inert reference evidence with fixed-false authority", async () => {
+    it("shows a plain queue item summary and keeps technical evidence collapsed", async () => {
         vi.mocked(listOneShotLiveEnqueues).mockResolvedValue(oneShotLiveEnqueueCollectionFixture);
         render(<OneShotLiveEnqueues {...props} />);
-        expect(await screen.findByText(/recorded one-shot live enqueue evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/inert reference-only item: true; payload constructed: false; payload serialized: false; dequeue defined: false; queue polling allowed: false/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/ordered one-shot live enqueue blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
-        expect(screen.getByText("Advanced one-shot enqueue evidence")).toBeInTheDocument();
+        expect(await screen.findByText("Queue item record is current")).toBeInTheDocument();
+        expect(screen.getByText(/This reference has no payload and has not contacted a worker/i)).toBeInTheDocument();
+        expect(screen.getByLabelText("What needs attention")).toHaveTextContent(/Atlas has not set up a way to remove queued work.*Atlas has not set up a way to read work from a queue.*Atlas has not set up a way to start a worker.*Atlas has not set up a safe way to start this installation/i);
+        expect(screen.getByText("Technical details")).toBeInTheDocument();
+        expect(screen.getByText("dequeue_not_defined")).not.toBeVisible();
         expect(screen.getByLabelText(/queue observation and enqueue receipt evidence/i)).toHaveTextContent(/nested queue observation evidence/i);
+        fireEvent.click(screen.getByText("Technical details"));
         expect(screen.getByText(/Permanent one-shot subject reservation: true/i)).toHaveTextContent(/replay bypass allowed: false/i);
         expect(screen.getByLabelText(/one-shot live enqueue fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
         expect(screen.queryByText(/Home Assistant installation/i)).not.toBeInTheDocument();

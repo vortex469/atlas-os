@@ -3030,3 +3030,10 @@ The nested queue handoff review now uses a short read-only summary, plain
 blockers, readable UTC times, and collapsed technical records. Failed reads
 offer a safe retry. Home Assistant remains visibly blocked once at the parent
 review instead of repeating the same notice on its nested queue item.
+
+The saved queue item and receipt screens now show a plain current/expired
+status, readable UTC times, and understandable blockers. IDs, blocker codes,
+receipt fingerprints, and authority flags are collapsed under technical
+details. A failed read offers a safe retry; an uncertain receipt save does not
+resend the request. The exact two-step receipt confirmation and Core permission
+checks are unchanged.

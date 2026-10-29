@@ -27,24 +27,36 @@ describe("QueueObservationEvidence", () => {
         vi.mocked(createQueueObservation).mockResolvedValue(queueObservationResultFixture);
     });
 
-    it("renders pending, observed, and redacted blocked states", async () => {
+    it("renders receipt states and retries a failed read without resending a write", async () => {
         let resolve!: (value: QueueObservationReceiptCollectionV1) => void;
         vi.mocked(listQueueObservations).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading queue observation evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/checking for a saved queue receipt/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByText(/state: pending or blocked/i)).toBeInTheDocument());
-        expect(screen.getByRole("status")).toHaveTextContent(/no observation receipt evidence/i);
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no queue receipt record has been saved/i));
+        unmount();
+
+        vi.mocked(listQueueObservations)
+            .mockRejectedValueOnce(new Error("secret /internal/path 10.0.0.1"))
+            .mockResolvedValueOnce(empty);
+        render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/retry to check its current status/i);
+        expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no queue receipt record has been saved/i));
+        expect(createQueueObservation).not.toHaveBeenCalled();
         unmount();
 
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         vi.mocked(listQueueObservations).mockResolvedValue(queueObservationCollectionFixture);
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        await waitFor(() => expect(screen.getAllByText(/state: observed/i).length).toBeGreaterThan(0));
-        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
-        expect(screen.getByText(/observed queued item/i)).toBeInTheDocument();
-        expect(screen.getByText("Advanced queue observation details")).toBeInTheDocument();
-        expect(screen.getByLabelText(/ordered queue observation blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
+        expect(await screen.findByText("A queue receipt record has been saved.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review receipt record statement" })).not.toBeInTheDocument();
+        expect(screen.getByText("Queue receipt record is current")).toBeInTheDocument();
+        expect(screen.getByText("Technical details")).toBeInTheDocument();
+        expect(screen.getByLabelText("What needs attention")).toHaveTextContent(/Atlas has not set up a way to remove queued work.*Atlas has not set up a way to read work from a queue.*Atlas has not set up a way to start a worker.*Atlas has not set up a safe way to start this installation/i);
+        expect(screen.getByText("dequeue_not_defined")).not.toBeVisible();
+        fireEvent.click(screen.getAllByText("Technical details")[0]);
         expect(screen.getByLabelText(/queue observation fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
         expect(document.body.textContent).not.toMatch(/amqp|secret|internal\/path|10\.0\.0\.1/i);
     });
@@ -52,13 +64,13 @@ describe("QueueObservationEvidence", () => {
     it("uses the exact two-step confirmation and dedicated permission before creating evidence", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
-        expect(await screen.findByText(/state: pending or blocked/i)).toBeInTheDocument();
-        fireEvent.click(await screen.findByRole("button", { name: "Review queue observation evidence statement" }));
+        expect(screen.queryByRole("button", { name: "Review receipt record statement" })).not.toBeInTheDocument();
+        expect(await screen.findByText(/no queue receipt record has been saved/i)).toBeInTheDocument();
+        fireEvent.click(await screen.findByRole("button", { name: "Review receipt record statement" }));
         expect(screen.getByLabelText("Queue observation evidence confirmation")).toHaveTextContent("Record bounded queue observation evidence only. This does not dequeue, poll as a consumer, claim, lease, acknowledge, contact or start a worker, invoke Agent or a workflow, dispatch, retry, resend, install, deploy, roll back, mutate, or execute anything.");
-        fireEvent.click(screen.getByRole("button", { name: "Record observation evidence" }));
+        fireEvent.click(screen.getByRole("button", { name: "Save receipt record" }));
         await waitFor(() => expect(createQueueObservation).toHaveBeenCalled());
-        await waitFor(() => expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review receipt record statement" })).not.toBeInTheDocument());
         expect(getOneShotLiveEnqueue).toHaveBeenCalledWith(oneShotLiveEnqueueFixture.candidate_record_id, oneShotLiveEnqueueFixture.enqueue_id);
         expect(createQueueObservation).toHaveBeenCalledWith(oneShotLiveEnqueueFixture.candidate_record_id, expect.objectContaining({
             schema: "queue-observation-receipt-create-v1",
@@ -74,8 +86,8 @@ describe("QueueObservationEvidence", () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: null };
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
 
-        expect(await screen.findByText(/recording remains blocked/i)).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
+        expect(await screen.findByText(/Saving this receipt needs a current queue item/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review receipt record statement" })).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Queue observation evidence confirmation")).not.toBeInTheDocument();
         expect(createQueueObservation).not.toHaveBeenCalled();
     });
@@ -84,11 +96,11 @@ describe("QueueObservationEvidence", () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.queue_observation.record", "installation.execution.one_shot_live_enqueue.read"] }, csrfToken: "csrf" };
         vi.mocked(createQueueObservation).mockResolvedValue(ambiguousQueueObservationResultFixture);
         render(<QueueObservationEvidence candidateId={oneShotLiveEnqueueFixture.candidate_record_id} oneShot={oneShotLiveEnqueueFixture} />);
-        expect(await screen.findByText(/state: pending or blocked/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Review queue observation evidence statement" }));
-        fireEvent.click(screen.getByRole("button", { name: "Record observation evidence" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent(/ambiguous state/i);
-        expect(screen.queryByRole("button", { name: "Review queue observation evidence statement" })).not.toBeInTheDocument();
+        expect(await screen.findByText(/no queue receipt record has been saved/i)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Review receipt record statement" }));
+        fireEvent.click(screen.getByRole("button", { name: "Save receipt record" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(/Atlas cannot confirm the observation status/i);
+        expect(screen.queryByRole("button", { name: "Review receipt record statement" })).not.toBeInTheDocument();
         expect(document.body.textContent).not.toMatch(/dequeue now|retry now|resend now|start worker|execute now|install now|deploy now|roll back now/i);
     });
 });
