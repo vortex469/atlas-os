@@ -155,7 +155,7 @@ export function OperationsPage() {
                 console.error("Unable to load provider action history:", historyResult.reason);
                 setHistoryError(getAtlasErrorMessage(
                     historyResult.reason,
-                    "Mission Control could not load action history.",
+                    "Mission Control could not load provider action history.",
                 ));
                 return;
             }
@@ -175,7 +175,7 @@ export function OperationsPage() {
             setHistoryError(
                 getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load action history.",
+                    "Mission Control could not load provider action history.",
                 ),
             );
         } finally {
@@ -201,24 +201,24 @@ export function OperationsPage() {
                     URL.createObjectURL(exportBlob);
                 const anchor = document.createElement("a");
                 anchor.href = downloadUrl;
-                anchor.download = `atlas-action-history.${format}`;
+                anchor.download = `atlas-provider-action-history.${format}`;
                 document.body.appendChild(anchor);
                 anchor.click();
                 anchor.remove();
                 URL.revokeObjectURL(downloadUrl);
                 setOperationMessage(
-                    `Action history exported as ${format.toUpperCase()}.`,
+                    `Provider action history exported as ${format.toUpperCase()}.`,
                 );
             } catch (requestError) {
                 console.error(
                     "Unable to export provider action history:",
                     requestError,
                 );
-                const fallback = "Mission Control could not export action history.";
+                const fallback = "Mission Control could not export provider action history.";
                 const details = getAtlasErrorMessage(requestError, fallback);
                 setOperationError({
                     kind: "export",
-                    message: "Action history could not be exported. Try exporting again.",
+                    message: "Provider action history could not be exported. Try exporting again.",
                     details: details === fallback ? null : details,
                 });
             } finally {
@@ -260,7 +260,7 @@ export function OperationsPage() {
                 "Unable to prune provider action history:",
                 requestError,
             );
-            const fallback = "Mission Control could not prune action history.";
+            const fallback = "Mission Control could not prune provider action history.";
             const details = getAtlasErrorMessage(requestError, fallback);
             setPruneNeedsRefresh(true);
             setOperationError({
@@ -314,7 +314,7 @@ export function OperationsPage() {
                 <div
                     className="flex rounded-lg border border-slate-800 bg-slate-900 p-1"
                     role="group"
-                    aria-label="Filter action history"
+                    aria-label="Filter provider action history"
                 >
                     {(
                         [
@@ -343,7 +343,7 @@ export function OperationsPage() {
                 </div>
             </div>
 
-            <section aria-label="Action history filters" className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
+            <section aria-label="Provider action history filters" className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <form
                     className="max-w-2xl"
                     onSubmit={(event) => {
@@ -356,7 +356,7 @@ export function OperationsPage() {
                         htmlFor="audit-search"
                         className="text-xs font-medium uppercase tracking-wider text-slate-500"
                     >
-                        Action or request ID
+                        Provider action or request ID
                     </label>
                     <div className="mt-2 flex">
                         <input
@@ -488,11 +488,11 @@ export function OperationsPage() {
                         </p>
                     </div>
                 </div>
-                {historyError && <p role="status" className="text-sm text-amber-200">Expired entries cannot be deleted until action history loads successfully.</p>}
+                {historyError && <p role="status" className="text-sm text-amber-200">Expired entries cannot be deleted until provider action history loads successfully.</p>}
                 {operationError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100"><p>{operationError.message}</p>{operationError.details && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{operationError.details}</p></details>}</div>}
                 {pruneNeedsRefresh && <p role="status" className="text-sm text-amber-200">Deleting expired entries is paused until Refresh history confirms the latest records and retention details.</p>}
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
-                    <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
+                    <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete provider action history</summary>
                     <div className="mt-4 flex flex-wrap gap-2">
                         <button
                             type="button"
@@ -541,10 +541,10 @@ export function OperationsPage() {
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        History unavailable
+                        Provider action history unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        Action history could not be loaded. Refresh history to try again. This read did not run a provider action.
+                        Provider action history could not be loaded. Refresh history to try again. This read did not run a provider action.
                     </p>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
@@ -555,7 +555,7 @@ export function OperationsPage() {
 
             {!historyError && isLoading && entries.length === 0 && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
-                    Loading action history...
+                    Loading provider action history...
                 </div>
             )}
 
@@ -616,7 +616,7 @@ export function OperationsPage() {
                                         )}`}
                                         className="mt-3 inline-flex text-sm font-medium text-blue-400 transition hover:text-blue-300"
                                     >
-                                        View action details
+                                        View provider action details
                                     </Link>
                                 </div>
 
@@ -654,7 +654,7 @@ export function OperationsPage() {
                     </div>
 
                     <nav
-                        aria-label="Action history pagination"
+                        aria-label="Provider action history pagination"
                         className="flex flex-col items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900 p-4 sm:flex-row"
                     >
                         <p className="text-sm text-slate-400">
