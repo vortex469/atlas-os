@@ -178,15 +178,20 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: 
                                         </p>
                                     )}
                                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                                        <Fact label="Source" value={claim.provenance.source_id} />
-                                        <Fact label="Source type" value="GitHub latest release" />
-                                        <Fact label="Repository" value={claim.provenance.repository} />
-                                        <Fact label="Trust" value="Supplemental" />
                                         <TimeFact label="Published" value={claim.published_at} />
                                         <TimeFact label="Retrieved" value={claim.provenance.retrieved_at} context={formatAge(claim.provenance.retrieved_at)} />
-                                        <TimeFact label="Freshness expires" value={claim.provenance.expires_at} />
-                                        <Fact label="Upstream release ID" value={String(claim.provenance.upstream_release_id)} />
                                     </dl>
+                                    <details className="mt-3 border-t border-slate-800 pt-3">
+                                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Release source details</summary>
+                                        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                                            <Fact label="Source ID" value={claim.provenance.source_id} />
+                                            <Fact label="Source type" value="GitHub latest release" />
+                                            <Fact label="Repository" value={claim.provenance.repository} />
+                                            <Fact label="Trust" value="Supplemental" />
+                                            <TimeFact label="Freshness expires" value={claim.provenance.expires_at} />
+                                            <Fact label="Upstream release ID" value={String(claim.provenance.upstream_release_id)} />
+                                        </dl>
+                                    </details>
                                 </li>
                             ))}
                         </ul>

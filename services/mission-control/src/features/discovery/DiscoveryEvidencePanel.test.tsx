@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type {
@@ -77,7 +77,7 @@ describe("DiscoveryEvidencePanel", () => {
         expect(screen.getByRole("status")).toHaveTextContent("Loading source evidence");
     });
 
-    it("renders provenance, trust, age, freshness, health, and agreement", () => {
+    it("leads with release freshness and keeps source records optional", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-08-18T11:00:00Z"));
         render(<DiscoveryEvidencePanel evidence={evidence()} isLoading={false} error={null} />);
@@ -85,10 +85,16 @@ describe("DiscoveryEvidencePanel", () => {
         expect(screen.getByText("Sources agree")).toBeInTheDocument();
         expect(screen.getByText("Fresh")).toBeInTheDocument();
         expect(screen.getByText("Health: Healthy")).toBeInTheDocument();
-        expect(screen.getByText("blakeblackshear/frigate")).toBeInTheDocument();
-        expect(screen.getByText("Supplemental")).toBeInTheDocument();
-        expect(screen.getByText(/2 hours ago/)).toBeInTheDocument();
         expect(screen.getByText("Published (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-17T09:00:00Z");
+        expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("2 hours ago");
+        const sourceDetails = screen.getByText("Release source details").closest("details");
+        expect(sourceDetails).not.toHaveAttribute("open");
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("blakeblackshear/frigate")).not.toBeVisible();
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("Supplemental")).not.toBeVisible();
+        fireEvent.click(within(sourceDetails as HTMLDetailsElement).getByText("Release source details"));
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("blakeblackshear/frigate")).toBeVisible();
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("Supplemental")).toBeVisible();
+        expect(screen.getByText(/2 hours ago/)).toBeInTheDocument();
         expect(screen.getByText("Retrieved (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-18T09:00:00Z");
         expect(screen.getByText("Freshness expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-19T09:00:00Z");
         vi.useRealTimers();
@@ -103,6 +109,7 @@ describe("DiscoveryEvidencePanel", () => {
         }] })} isLoading={false} error={null} />);
         expect(screen.getByText("Published (local time)").parentElement).toHaveTextContent("Time unavailable");
         expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("Time unavailable");
+        fireEvent.click(screen.getByText("Release source details"));
         expect(screen.getByText("Freshness expires (local time)").parentElement).toHaveTextContent("Time unavailable");
         expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
     });

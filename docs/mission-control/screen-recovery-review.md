@@ -2537,3 +2537,10 @@ trust level, entry ID, or schema. Catalog review notes, compatibility findings,
 and installation readiness remain visible in their existing sections. The
 Discovery item component suite covers the closed-by-default state and expansion;
 the phone and desktop recovery-browser check covers the same interaction.
+
+Release claims now lead with the version, freshness, publish date, and retrieval
+age. Repository, source type, trust label, exact freshness expiry, and upstream
+release ID are grouped under Release source details. The Discovery evidence
+component test and the phone/desktop sign-in journey verify that those records
+stay available and start collapsed; release evaluation and authority remain
+unchanged.

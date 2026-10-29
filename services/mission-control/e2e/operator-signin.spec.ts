@@ -97,6 +97,11 @@ for (const width of [320, 390, 1280]) {
         const releaseEvidence = page.getByRole("region", { name: "Release evidence" });
         await expect(releaseEvidence.getByText("Published (local time)", { exact: true })).toBeVisible();
         await expect(releaseEvidence.getByText("Retrieved (local time)", { exact: true })).toBeVisible();
+        const sourceDetails = releaseEvidence.getByText("Release source details", { exact: true }).locator("xpath=ancestor::details");
+        await expect(sourceDetails).not.toHaveAttribute("open");
+        await expect(sourceDetails.getByText("fixture-owner/fixture-app", { exact: true })).toBeHidden();
+        await sourceDetails.getByText("Release source details", { exact: true }).click();
+        await expect(sourceDetails.getByText("fixture-owner/fixture-app", { exact: true })).toBeVisible();
         await expect(releaseEvidence.getByText("Freshness expires (local time)", { exact: true })).toBeVisible();
         const proposalCard = page.locator("article").filter({ hasText: proposal.proposal_id });
         await expect(proposalCard.getByText("Generated (local time)")).toBeVisible();
