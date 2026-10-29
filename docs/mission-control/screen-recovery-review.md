@@ -2977,3 +2977,12 @@ details. When approval is present but Atlas Agent reports no execution result,
 Mission Control says the run status was not reported and offers a refresh.
 Unrecognized execution states also remain unconfirmed. Approval, execution and
 retry behavior are unchanged.
+
+## Installation plan destination check — 2026-10-29
+
+The installation plan review uses simpler VM selection and check labels. It
+states that selection is temporary and the check does not install or approve
+anything. VM identity stays visible while selection IDs and audit timestamps
+are collapsed under details. Assessment blockers use plain-language titles;
+diagnostic codes remain under technical details. No assessment, approval, or
+installation request contract changed.

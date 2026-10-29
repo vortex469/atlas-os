@@ -1,7 +1,15 @@
-import type { InstallationPlan } from "../../types/installationPlan";
+import type { InstallationPlan, InstallationPlanStatus } from "../../types/installationPlan";
 import { ProspectiveDestinationReview } from "./ProspectiveDestinationReview";
 
 const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const PLAN_STATUS_LABELS: Record<InstallationPlanStatus, string> = {
+    conflicted: "Plan has conflicting information",
+    missing_deployment_artifact: "Installation file missing",
+    incompatible: "Environment compatibility issue",
+    stale_evidence: "Plan evidence is out of date",
+    insufficient_information: "Plan needs more information",
+    plan_ready_for_review: "Ready for operator review",
+};
 
 export function InstallationPlanReview({
     plan,
@@ -18,7 +26,7 @@ export function InstallationPlanReview({
         <section aria-labelledby="installation-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <h2 id="installation-plan-heading" className="text-xl font-semibold text-white">Installation plan review</h2>
             <p className="mt-1 text-sm text-slate-400">
-                Informational only. This plan is not approval, authorization, an execution candidate, or an executable workflow.
+                This page reviews an installation plan. It does not authorize or run an installation.
             </p>
             {isLoading && <p className="mt-4 text-sm text-slate-400">Loading installation plan…</p>}
             {!isLoading && unavailable && <p role="status" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Installation plan is currently unavailable.</p>}
@@ -32,15 +40,15 @@ function PlanDetails({ plan }: { plan: InstallationPlan }) {
     return (
         <div className="mt-5 space-y-5">
             <div className={`rounded-lg border p-4 ${plan.blockers.length === 0 ? "border-blue-500/30 bg-blue-500/10" : "border-amber-500/30 bg-amber-500/10"}`}>
-                <p className="font-semibold text-slate-100">{label(plan.status)}</p>
+                <p className="font-semibold text-slate-100">{PLAN_STATUS_LABELS[plan.status]}</p>
                 <p className="mt-1 text-sm text-slate-300">
                     {plan.blockers.length === 0
-                        ? "Ready for operator review only; no execution authority has been granted."
-                        : `${plan.blockers.length} unresolved blocker${plan.blockers.length === 1 ? "" : "s"}; this plan is not executable.`}
+                        ? "Ready for review only. No installation is authorized."
+                        : `There ${plan.blockers.length === 1 ? "is" : "are"} ${plan.blockers.length} issue${plan.blockers.length === 1 ? "" : "s"} to review. This plan does not authorize an installation.`}
                 </p>
             </div>
             <details className="rounded-lg border border-slate-800 px-4 py-3">
-                <summary className="cursor-pointer text-sm font-medium text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Plan details</summary>
+                <summary className="cursor-pointer text-sm font-medium text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-300">View issues and plan details</summary>
                 <div className="mt-4 space-y-5">
                     <dl className="grid gap-3 text-sm sm:grid-cols-2">
                         <Value name="Fingerprint algorithm" value={plan.fingerprint.algorithm} />

@@ -60,16 +60,21 @@ describe("ProspectiveDestinationReview", () => {
     it("announces loading, renders only sanitized destination fields, and selects with the exact server tuple", async () => {
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        expect(screen.getByRole("status")).toHaveTextContent("Loading prospective installation destinations");
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Loading available VMs");
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
         expect(screen.getByText("Proxmox")).toBeInTheDocument();
-        expect(screen.getByText("QEMU", { selector: "dd" })).toBeInTheDocument();
-        expect(screen.getByText("existing guest")).toBeInTheDocument();
+        const destinationRow = within(screen.getByRole("list", { name: "VMs available for assessment" })).getByRole("listitem");
+        expect(within(destinationRow).getByText("VM ID").parentElement).toHaveTextContent("101");
+        expect(document.body).not.toHaveTextContent(/QEMU|prospective installation destination/i);
         expect(selectProspectiveInstallationDestination).toHaveBeenCalledWith(
             { resource_id: "101", enumeration_token: "b".repeat(64) }, "csrf", "mission-control-test-key",
         );
-        expect(await screen.findByRole("heading", { name: "Immutable selection summary" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "VM selected for assessment" })).toBeInTheDocument();
+        expect(screen.getByText("This is a temporary choice for a check. Atlas has not confirmed that this VM can run the app. It does not install or approve anything. It does not authorize execution.")).toBeInTheDocument();
         expect(screen.getByText(selection.selection_id)).toBeInTheDocument();
+        const selectionDetails = screen.getByText("Selection details").closest("details");
+        expect(selectionDetails).not.toHaveAttribute("open");
+        expect(within(selectionDetails as HTMLElement).getByText(selection.selection_id)).not.toBeVisible();
         expect(screen.queryByText(destination.destination_fingerprint)).not.toBeInTheDocument();
         expect(screen.queryByText(destination.enumeration_token)).not.toBeInTheDocument();
         expect(document.body).not.toHaveTextContent(/vmgenid|hostname|ip address|docker|compose|credential/i);
@@ -79,29 +84,29 @@ describe("ProspectiveDestinationReview", () => {
         vi.mocked(listProspectiveInstallationDestinations).mockResolvedValueOnce([destination, secondDestination]);
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
 
-        expect(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Select as prospective installation destination — QEMU resource 202" })).toBeInTheDocument();
-        expect(screen.getAllByText("Select as prospective installation destination", { selector: "button" })).toHaveLength(2);
+        expect(await screen.findByRole("button", { name: "Select VM 101 for assessment" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Select VM 202 for assessment" })).toBeInTheDocument();
+        expect(screen.getAllByText("Select this VM for assessment", { selector: "button" })).toHaveLength(2);
         expect(screen.queryByRole("button", { name: /^(install|plan|execute|approve|deploy)$/i })).not.toBeInTheDocument();
     });
 
-    it("states that selection cannot install or plan and preserves all non-authority disclaimers", async () => {
+    it("states that selection is temporary and does not authorize installation", async () => {
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
 
-        expect(await screen.findByText(/cannot install or plan the application/i)).toHaveTextContent(/does not approve installation/i);
-        expect(screen.getByText(/cannot install or plan the application/i)).toHaveTextContent(/does not prove the guest is installable/i);
-        expect(screen.getByText(/cannot install or plan the application/i)).toHaveTextContent(/does not authorize execution/i);
+        expect(await screen.findByText(/temporary choice for a check/i)).toHaveTextContent(/Atlas has not confirmed that this VM can run the app/i);
+        expect(screen.getByText(/temporary choice for a check/i)).toHaveTextContent(/does not install or approve anything/i);
+        expect(screen.getByText(/temporary choice for a check/i)).toHaveTextContent(/It does not authorize execution/i);
     });
 
     it("renders bounded empty and API unavailable states", async () => {
         vi.mocked(listProspectiveInstallationDestinations).mockResolvedValueOnce([]);
         const { rerender } = render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        expect(await screen.findByText("No prospective installation destinations are currently available.")).toBeInTheDocument();
+        expect(await screen.findByText("No existing Proxmox VMs are available to assess.")).toBeInTheDocument();
         vi.mocked(listProspectiveInstallationDestinations).mockRejectedValueOnce(new Error("raw secret"));
         rerender(<ProspectiveDestinationReview key="unavailable" plan={plan} csrfToken="csrf" />);
-        expect(await screen.findByRole("alert")).toHaveTextContent("Prospective installation destinations are currently unavailable.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas cannot list available VMs right now.");
         expect(document.body).not.toHaveTextContent("raw secret");
     });
 
@@ -118,20 +123,20 @@ describe("ProspectiveDestinationReview", () => {
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
 
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
 
-        const message = await screen.findByText("Atlas could not confirm whether it saved this destination selection. Retry the same request to recover its result.");
+        const message = await screen.findByText("Atlas could not confirm whether it saved this VM selection. Retry the same selection to check its status.");
         const alert = message.closest("[role=alert]") as HTMLElement;
-        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm whether it saved this destination selection.");
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm whether it saved this VM selection.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Installation selection request conflicts with current state.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Retry selection — QEMU resource 101" })).toBeEnabled();
-        expect(screen.getByRole("button", { name: "Select as prospective installation destination — QEMU resource 202" })).toBeDisabled();
-        expect(screen.queryByRole("button", { name: "Assess installation admission" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Retry selection — VM 101" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Select VM 202 for assessment" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Check this plan and VM" })).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole("button", { name: "Retry selection — QEMU resource 101" }));
-        expect(await screen.findByRole("heading", { name: "Immutable selection summary" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry selection — VM 101" }));
+        expect(await screen.findByRole("heading", { name: "VM selected for assessment" })).toBeInTheDocument();
         expect(selectProspectiveInstallationDestination).toHaveBeenNthCalledWith(
             1,
             { resource_id: "101", enumeration_token: "b".repeat(64) },
@@ -145,7 +150,7 @@ describe("ProspectiveDestinationReview", () => {
             "selection-request-key-1",
         );
         expect(installationIdempotencyKey).toHaveBeenCalledTimes(1);
-        expect(screen.queryByText("Atlas could not confirm whether it saved this destination selection.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas could not confirm whether it saved this VM selection.")).not.toBeInTheDocument();
     });
 
     it("shows plain assessment recovery, clears stale results, and reuses its request key", async () => {
@@ -165,21 +170,21 @@ describe("ProspectiveDestinationReview", () => {
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
 
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
-        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
-        expect(await screen.findByRole("heading", { name: "Assessment result" })).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
+        await user.click(screen.getByRole("button", { name: "Check this plan and VM" }));
+        expect(await screen.findByRole("heading", { name: "Check result" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Check this plan and VM" }));
 
-        const message = await screen.findByText("Atlas could not confirm the assessment result. Retry the assessment to request the result again.");
+        const message = await screen.findByText("Atlas could not confirm the check result. Retry the same check to retrieve it.");
         const alert = message.closest("[role=alert]") as HTMLElement;
-        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm the assessment result.");
-        expect(screen.queryByRole("heading", { name: "Assessment result" })).not.toBeInTheDocument();
+        expect(alert.querySelector(":scope > p")).toHaveTextContent("Atlas could not confirm the check result.");
+        expect(screen.queryByRole("heading", { name: "Check result" })).not.toBeInTheDocument();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Installation admission could not be assessed.")).toBeInTheDocument();
 
-        await user.click(screen.getByRole("button", { name: "Retry assessment" }));
-        expect(await screen.findByRole("list", { name: "Installation admission blockers" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry check" }));
+        expect(await screen.findByRole("list", { name: "Issues to review" })).toBeInTheDocument();
         expect(assessInstallationAdmission).toHaveBeenNthCalledWith(
             1,
             { item_id: "home-assistant", catalog_entry_id: "d5-home-assistant", plan_fingerprint: fingerprint, selection_id: selection.selection_id },
@@ -199,17 +204,22 @@ describe("ProspectiveDestinationReview", () => {
             "assessment-request-key-2",
         );
         expect(installationIdempotencyKey).toHaveBeenCalledTimes(3);
-        expect(screen.queryByText("Atlas could not confirm the assessment result. Retry the assessment to request the result again.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas could not confirm the check result. Retry the same check to retrieve it.")).not.toBeInTheDocument();
     });
 
     it.each(["cancelled", "expired", "stale"] as const)("shows %s as terminal and disables assessment", async (status) => {
         vi.mocked(selectProspectiveInstallationDestination).mockResolvedValueOnce({ ...selection, status, terminated_at: "2026-08-27T01:00:00Z" });
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
-        expect(await screen.findByText(new RegExp(`terminal selection — ${status}`, "i"))).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Assess installation admission" })).toBeDisabled();
-        expect(screen.getByText(/requires a current active prospective destination selection/i)).toBeInTheDocument();
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
+        const expected = {
+            cancelled: "Selection was cancelled. Select this VM again to start a new check.",
+            expired: "Selection expired. Select this VM again to start a new check.",
+            stale: "The destination changed. Select the current VM to start a new check.",
+        }[status];
+        expect(await screen.findByRole("status")).toHaveTextContent(expected);
+        expect(screen.getByRole("button", { name: "Check this plan and VM" })).toBeDisabled();
+        expect(screen.getByText("Select a current VM before requesting a check.")).toBeInTheDocument();
     });
 
     it("posts and renders the Home Assistant golden blocked assessment with all three non-authorizing blockers", async () => {
@@ -220,19 +230,19 @@ describe("ProspectiveDestinationReview", () => {
         ]));
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
-        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
+        await user.click(screen.getByRole("button", { name: "Check this plan and VM" }));
         expect(assessInstallationAdmission).toHaveBeenCalledWith({
             item_id: "home-assistant", catalog_entry_id: "d5-home-assistant", plan_fingerprint: fingerprint,
             selection_id: selection.selection_id,
         }, "csrf", "mission-control-test-key");
-        const blockers = await screen.findByRole("list", { name: "Installation admission blockers" });
+        const blockers = await screen.findByRole("list", { name: "Issues to review" });
         expect(within(blockers).getAllByRole("listitem")).toHaveLength(3);
-        expect(blockers).toHaveTextContent("Installation plan missing deployment artifact");
-        expect(blockers).toHaveTextContent("has not established in-guest installability, runtime, transport, or readiness");
-        expect(blockers).toHaveTextContent("Atlas Agent cannot plan this install intent yet");
+        expect(blockers).toHaveTextContent("Installation file is missing");
+        expect(blockers).toHaveTextContent("VM readiness is unknown");
+        expect(blockers).toHaveTextContent("Installation planning is not available yet");
         expect(screen.getByRole("status")).toHaveTextContent("Blocked by the issues below");
-        expect(screen.getByText(/Candidate eligibility has not been evaluated/)).toBeInTheDocument();
+        expect(screen.getByText("This check did not determine whether the app qualifies for installation or approve an install.")).toBeInTheDocument();
         expect(blockers).not.toHaveTextContent("agent_install_container_unsupported");
     });
 
@@ -242,10 +252,10 @@ describe("ProspectiveDestinationReview", () => {
         ]));
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
-        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
-        expect(await screen.findByText(/installation capability and Agent support remain unavailable/i)).toBeInTheDocument();
-        expect(screen.getByRole("status")).toHaveTextContent("Plan and destination checks passed; installation support is unavailable");
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
+        await user.click(screen.getByRole("button", { name: "Check this plan and VM" }));
+        expect(await screen.findByText("Atlas has not confirmed that this VM can run the app. This check does not authorize an installation.")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Atlas cannot plan this installation yet");
         expect(screen.getByRole("status")).not.toHaveTextContent("preconditions_satisfied_but_unsupported");
         expect(document.body).not.toHaveTextContent(/\bready\b|\beligible\b|\bapproved\b|\bexecutable\b/i);
     });
@@ -255,22 +265,26 @@ describe("ProspectiveDestinationReview", () => {
         vi.mocked(assessInstallationAdmission).mockResolvedValueOnce(assessment("blocked", codes));
         const user = userEvent.setup();
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" }));
-        await user.click(screen.getByRole("button", { name: "Assess installation admission" }));
-        const list = await screen.findByRole("list", { name: "Installation admission blockers" });
+        await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
+        await user.click(screen.getByRole("button", { name: "Check this plan and VM" }));
+        const list = await screen.findByRole("list", { name: "Issues to review" });
         expect(within(list).getAllByRole("listitem")).toHaveLength(16);
-        const assessmentSummary = screen.getByRole("region", { name: "Assessment result" });
+        const assessmentSummary = screen.getByRole("region", { name: "Check result" });
         const technicalDetails = within(assessmentSummary).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(technicalDetails).not.toBeNull();
-        for (const code of codes) expect(within(technicalDetails as HTMLElement).getByText(code)).toBeInTheDocument();
+        for (const code of codes) {
+            expect(within(technicalDetails as HTMLElement).getByText(code)).toBeInTheDocument();
+            expect(within(list).queryByText(code)).not.toBeInTheDocument();
+            expect(within(list).getByText(REASON_LABELS[code].title, { exact: false })).toBeInTheDocument();
+        }
     });
 
-    it("explains disabled mutation protection and exposes no prohibited control or authority navigation", async () => {
+    it("explains the sign-in requirement and exposes no prohibited control or authority navigation", async () => {
         render(<ProspectiveDestinationReview plan={plan} csrfToken={null} />);
-        const button = await screen.findByRole("button", { name: "Select as prospective installation destination — QEMU resource 101" });
+        const button = await screen.findByRole("button", { name: "Select VM 101 for assessment" });
         expect(button).toBeDisabled();
-        expect(screen.getByText(/authenticated operator session with mutation protection is required/i)).toBeInTheDocument();
+        expect(screen.getByText("An authenticated session is required to save a VM selection.")).toBeInTheDocument();
         expect(screen.queryByRole("link")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /^(install|execute|deploy|approve|plan|convert|dispatch|run|apply)$/i })).not.toBeInTheDocument();
     });

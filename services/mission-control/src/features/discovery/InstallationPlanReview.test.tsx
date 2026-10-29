@@ -109,29 +109,31 @@ describe("InstallationPlanReview", () => {
         const user = userEvent.setup();
         render(<InstallationPlanReview plan={genericPlan()} isLoading={false} unavailable={false} />);
 
-        expect(screen.getByText("Missing Deployment Artifact")).toBeVisible();
-        expect(screen.getByText("1 unresolved blocker; this plan is not executable.")).toBeVisible();
-        const details = screen.getByText("Plan details").closest("details");
+        expect(screen.getByText("Installation file missing")).toBeVisible();
+        expect(screen.getByText("There is 1 issue to review. This plan does not authorize an installation.")).toBeVisible();
+        expect(screen.getByText("This page reviews an installation plan. It does not authorize or run an installation.")).toBeVisible();
+        const details = screen.getByText("View issues and plan details").closest("details");
         expect(details).not.toBeNull();
         expect(details).not.toHaveAttribute("open");
         expect(screen.getByText(FINGERPRINT)).not.toBeVisible();
 
-        await user.click(screen.getByText("Plan details"));
+        await user.click(screen.getByText("View issues and plan details"));
         expect(screen.getByText(FINGERPRINT)).toBeVisible();
         expect(screen.getByRole("heading", { name: "Blockers" })).toBeVisible();
     });
 
-    it.each<InstallationPlanStatus>([
-        "conflicted",
-        "missing_deployment_artifact",
-        "incompatible",
-        "stale_evidence",
-        "insufficient_information",
-        "plan_ready_for_review",
-    ])("renders the closed %s status without execution authority", (status) => {
+    it.each<[InstallationPlanStatus, string]>([
+        ["conflicted", "Plan has conflicting information"],
+        ["missing_deployment_artifact", "Installation file missing"],
+        ["incompatible", "Environment compatibility issue"],
+        ["stale_evidence", "Plan evidence is out of date"],
+        ["insufficient_information", "Plan needs more information"],
+        ["plan_ready_for_review", "Ready for operator review"],
+    ])("renders the closed %s status without execution authority", (status, label) => {
         render(<InstallationPlanReview plan={genericPlan(status)} isLoading={false} unavailable={false} />);
         const panel = screen.getByRole("heading", { name: "Installation plan review" }).closest("section")!;
-        expect(within(panel).getAllByText(status.replaceAll("_", " "), { exact: false }).length).toBeGreaterThan(0);
+        expect(within(panel).getByText(label, { exact: true })).toBeVisible();
+        expect(within(panel).getByText("This page reviews an installation plan. It does not authorize or run an installation.")).toBeVisible();
         expect(within(panel).queryByRole("button")).not.toBeInTheDocument();
         expect(within(panel).queryByRole("link")).not.toBeInTheDocument();
     });
@@ -140,7 +142,7 @@ describe("InstallationPlanReview", () => {
         render(<InstallationPlanReview plan={genericPlan()} isLoading={false} unavailable={false} />);
         expect(screen.getByText(FINGERPRINT)).toBeInTheDocument();
         expect(screen.getByText("Integrity linkage only — not approval")).toBeInTheDocument();
-        expect(screen.getByText(/1 unresolved blocker; this plan is not executable/i)).toBeInTheDocument();
+        expect(screen.getByText(/There is 1 issue to review\. This plan does not authorize an installation/i)).toBeInTheDocument();
         expect(screen.getByText(/Confirm the storage migration risk/i)).toBeInTheDocument();
         expect(screen.getByText(/High · Compatibility Warning/i)).toBeInTheDocument();
         expect(screen.getByText(/Claim: deployment-binding · Source class: deployment_binding/i)).toHaveTextContent("Observed at: None · Attested at: None");
@@ -157,7 +159,7 @@ describe("InstallationPlanReview", () => {
 
     it("shows the exact Home Assistant missing-artifact result without action controls", () => {
         render(<InstallationPlanReview plan={homeAssistantGoldenPlan()} isLoading={false} unavailable={false} />);
-        expect(screen.getAllByText(/Missing Deployment Artifact/).length).toBeGreaterThan(0);
+        expect(screen.getByText("Installation file missing")).toBeInTheDocument();
         expect(screen.getAllByText("2026.8.3", { selector: "dd" })).toHaveLength(2);
         expect(screen.getByText("d5-home-assistant")).toBeInTheDocument();
         expect(screen.getByText("Home Assistant")).toBeInTheDocument();
@@ -181,7 +183,7 @@ describe("InstallationPlanReview", () => {
         expect(screen.getByText(/Claim: catalog_entry/)).toHaveTextContent("Source class: curated_catalog");
         expect(screen.getByText(/Claim: freshness/)).toHaveTextContent("Observed at: 2026-08-25T00:00:00Z");
         expect(screen.getByText(/Claim: immutable_image_release · Source class: image_release_evidence/)).toBeInTheDocument();
-        expect(screen.getByText(/9 unresolved blockers; this plan is not executable/i)).toBeInTheDocument();
+        expect(screen.getByText(/There are 9 issues to review\. This plan does not authorize an installation/i)).toBeInTheDocument();
         expect(screen.getByText(/Missing Immutable Image Identity/)).toBeInTheDocument();
         expect(screen.getByText(/Unknown Compatibility/)).toBeInTheDocument();
         for (const code of ["Deployment Artifact", "Immutable Image Identity", "Prerequisite Fact", "Compatibility Fact"]) {
