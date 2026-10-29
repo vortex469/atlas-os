@@ -61,7 +61,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             );
             const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
             const details = getAtlasErrorMessage(requestError, fallback);
-            setError("Connection settings could not be loaded. Refresh to try again. No settings were changed.");
+            setError("Atlas couldn’t load these connection settings. Refresh to try again. Your saved settings were not changed.");
             setErrorDetails(details === fallback ? null : details);
         } finally {
             setBusyMode(null);
@@ -98,7 +98,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     );
                     const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
                     const details = getAtlasErrorMessage(requestError, fallback);
-                    setError("Connection settings could not be loaded. Refresh to try again. No settings were changed.");
+                    setError("Atlas couldn’t load these connection settings. Refresh to try again. Your saved settings were not changed.");
                     setErrorDetails(details === fallback ? null : details);
                 })
                 .finally(() => {

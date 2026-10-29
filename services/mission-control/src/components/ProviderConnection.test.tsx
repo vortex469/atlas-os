@@ -183,7 +183,7 @@ describe("ProviderConnection", () => {
         render(<ProviderConnection provider={provider} />);
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Connection settings could not be loaded. Refresh to try again. No settings were changed.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load these connection settings. Refresh to try again. Your saved settings were not changed.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable")).not.toBeVisible();
