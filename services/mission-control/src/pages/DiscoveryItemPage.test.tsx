@@ -426,7 +426,7 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("Reviewed for D5: Yes")).toBeInTheDocument();
         expect(screen.getByText("Hardware acceleration is optional.")).toBeInTheDocument();
         expect(screen.queryByText("Ignored item metadata note.")).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /(?:^|\s)(?:install|approve|confirm|execute|deploy)(?:\s|$)/i })).not.toBeInTheDocument();
 
         expect(
             await screen.findByRole("heading", { name: "Compatibility summary" }),
@@ -471,8 +471,11 @@ describe("DiscoveryItemPage", () => {
     });
 
     it("shows loading and failure without plan details", async () => {
+        const user = userEvent.setup();
         const request = deferred<InstallationPlan>();
+        const retryRequest = deferred<InstallationPlan>();
         mockedGetDiscoveryInstallationPlan.mockReturnValueOnce(request.promise);
+        mockedGetDiscoveryInstallationPlan.mockReturnValueOnce(retryRequest.promise);
         renderPage();
 
         expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
@@ -482,6 +485,11 @@ describe("DiscoveryItemPage", () => {
         await act(async () => request.reject(new Error("unavailable")));
         expect(await screen.findByText("Installation plan is currently unavailable.")).toBeInTheDocument();
         expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry installation plan" }));
+        expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
+        await act(async () => retryRequest.resolve(installationPlan("frigate")));
+        expect(await screen.findByText("Installation file missing")).toBeInTheDocument();
+        expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledTimes(2);
     });
 
     it.each(["success", "failure"])(

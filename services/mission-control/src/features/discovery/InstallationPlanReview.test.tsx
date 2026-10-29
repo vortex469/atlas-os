@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { InstallationPlan, InstallationPlanBlockerCode, InstallationPlanStatus } from "../../types/installationPlan";
 import { InstallationPlanReview } from "./InstallationPlanReview";
@@ -120,6 +120,16 @@ describe("InstallationPlanReview", () => {
         await user.click(screen.getByText("View issues and plan details"));
         expect(screen.getByText(FINGERPRINT)).toBeVisible();
         expect(screen.getByRole("heading", { name: "Blockers" })).toBeVisible();
+    });
+
+    it("offers a read-only retry when the plan is unavailable", async () => {
+        const user = userEvent.setup();
+        const onRetry = vi.fn();
+        render(<InstallationPlanReview plan={null} isLoading={false} unavailable onRetry={onRetry} />);
+
+        expect(screen.getByRole("status")).toHaveTextContent("Installation plan is currently unavailable.");
+        await user.click(screen.getByRole("button", { name: "Retry installation plan" }));
+        expect(onRetry).toHaveBeenCalledOnce();
     });
 
     it.each<[InstallationPlanStatus, string]>([

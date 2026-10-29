@@ -3304,3 +3304,11 @@ details because Atlas does not provide queue depth. The summary still explains
 that the screen reports workflow progress and results, not worker readiness;
 recorded outcomes and their limitations remain available in the disclosure.
 The focused component test checks that the non-actionable placeholder is absent.
+
+## Installation plan read recovery — 2026-10-29
+
+When a read-only installation-plan request fails, Discovery now offers
+“Retry installation plan.” The failed read remains isolated to its panel, and
+retry returns it to a loading state before showing the result. The page test
+covers failure followed by successful recovery; the retry repeats only the GET
+request and adds no installation authority.

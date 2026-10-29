@@ -80,6 +80,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         loading: boolean;
         unavailable: boolean;
     }>({ itemId, plan: null, loading: true, unavailable: false });
+    const [installationPlanLoadAttempt, setInstallationPlanLoadAttempt] = useState(0);
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
@@ -152,7 +153,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 }
             });
         return () => { cancelled = true; };
-    }, [itemId, hasCatalogItem]);
+    }, [itemId, installationPlanLoadAttempt, hasCatalogItem]);
 
     const currentInstallationPlan = installationPlanState.itemId === itemId
         ? installationPlanState
@@ -373,6 +374,11 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         setGroundingLoadAttempt((attempt) => attempt + 1);
     }
 
+    function retryInstallationPlan() {
+        setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false });
+        setInstallationPlanLoadAttempt((attempt) => attempt + 1);
+    }
+
     if (isLoading) {
         return (
             <main className="mx-auto max-w-5xl p-4 sm:p-8">
@@ -507,6 +513,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 plan={currentInstallationPlan.plan}
                 isLoading={currentInstallationPlan.loading}
                 unavailable={currentInstallationPlan.unavailable}
+                onRetry={retryInstallationPlan}
                 csrfToken={operatorSession?.csrfToken ?? null}
             />
 

@@ -15,11 +15,13 @@ export function InstallationPlanReview({
     plan,
     isLoading,
     unavailable,
+    onRetry,
     csrfToken = null,
 }: {
     plan: InstallationPlan | null;
     isLoading: boolean;
     unavailable: boolean;
+    onRetry?: () => void;
     csrfToken?: string | null;
 }) {
     return (
@@ -29,7 +31,7 @@ export function InstallationPlanReview({
                 This page reviews an installation plan. It does not authorize or run an installation.
             </p>
             {isLoading && <p className="mt-4 text-sm text-slate-400">Loading installation plan…</p>}
-            {!isLoading && unavailable && <p role="status" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">Installation plan is currently unavailable.</p>}
+            {!isLoading && unavailable && <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p role="status">Installation plan is currently unavailable.</p>{onRetry && <button type="button" onClick={onRetry} className="mc-control mc-focusable mt-3 px-3 py-2 font-semibold">Retry installation plan</button>}</div>}
             {!isLoading && !unavailable && plan && <><PlanDetails plan={plan} /><ProspectiveDestinationReview plan={plan} csrfToken={csrfToken} /></>}
         </section>
     );
