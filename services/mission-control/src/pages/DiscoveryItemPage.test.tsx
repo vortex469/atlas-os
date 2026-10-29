@@ -349,7 +349,7 @@ describe("DiscoveryItemPage", () => {
         if (source === "plan") mockedGetDiscoveryInstallationPlan.mockResolvedValue(installationPlan("other"));
         renderPage();
         await screen.findByRole("heading", { name: "Frigate" });
-        const message = source === "compatibility" ? "Compatibility unavailable" : source === "evidence" ? "Release information unavailable" : source === "grounding" ? "The image check is unavailable right now." : "Installation plan is currently unavailable.";
+        const message = source === "compatibility" ? "Could not check compatibility" : source === "evidence" ? "Release information unavailable" : source === "grounding" ? "The image check is unavailable right now." : "Installation plan is currently unavailable.";
         expect(await screen.findByText(message)).toBeInTheDocument();
         expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
     });
@@ -428,16 +428,23 @@ describe("DiscoveryItemPage", () => {
         const summary = screen.getByRole("heading", { name: "Compatibility summary" }).closest("section");
         expect(within(summary as HTMLElement).getByText("Compatible")).toBeInTheDocument();
         expect(screen.getByText("Catalog item status is active.")).toBeInTheDocument();
-        expect(screen.getByText("Checked (local time)")).toBeInTheDocument();
-        const checkTime = screen.getByText("Checked (local time)").parentElement?.querySelector("time");
+        expect(screen.getByText("Checked against")).toBeInTheDocument();
+        expect(within(summary as HTMLElement).getByText("Atlas Environment")).toBeInTheDocument();
+        expect(screen.getByText("Last checked")).toBeInTheDocument();
+        const checkTime = screen.getByText("Last checked").parentElement?.querySelector("time");
         expect(checkTime).toHaveAttribute("datetime", "2026-08-05T18:00:00.000Z");
         expect(checkTime).toHaveTextContent(new Date("2026-08-05T18:00:00.000Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(screen.queryByText("2026-08-05T18:00:00.000Z")).not.toBeVisible();
+        const compatibilityDetails = within(summary as HTMLElement).getByText("Technical details").closest("details");
+        expect(compatibilityDetails).not.toHaveAttribute("open");
+        expect(within(compatibilityDetails as HTMLDetailsElement).getByText("atlas")).not.toBeVisible();
+        await user.click(within(compatibilityDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(compatibilityDetails as HTMLDetailsElement).getByText("atlas")).toBeVisible();
         const finding = screen.getByText("Catalog item status is active.").closest("article");
-        const technicalDetails = within(finding as HTMLElement).getByText("Evidence and technical details").closest("details");
+        const technicalDetails = within(finding as HTMLElement).getByText("Evidence details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).not.toBeVisible();
-        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence and technical details"));
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence details"));
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).toBeVisible();
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
@@ -451,8 +458,8 @@ describe("DiscoveryItemPage", () => {
         );
         renderPage();
 
-        expect(await screen.findByText("Checked (local time)")).toBeInTheDocument();
-        const checkTime = screen.getByText("Checked (local time)").parentElement;
+        expect(await screen.findByText("Last checked")).toBeInTheDocument();
+        const checkTime = screen.getByText("Last checked").parentElement;
         expect(checkTime).toHaveTextContent("Time unavailable");
         expect(checkTime?.querySelector("time")).toBeNull();
     });
@@ -718,7 +725,7 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByText("Warnings")).toBeInTheDocument();
-        expect(await screen.findByText("Blockers")).toBeInTheDocument();
+        expect(await screen.findByText("Blocking issues")).toBeInTheDocument();
         expect(screen.getByText("Memory is borderline.")).toBeInTheDocument();
         expect(screen.getByText("Required port is missing.")).toBeInTheDocument();
         const warning = screen.getByText("Memory is borderline.").closest("article");
@@ -728,10 +735,10 @@ describe("DiscoveryItemPage", () => {
         expect(screen.getByText("Open ports")).toBeInTheDocument();
         expect(screen.getByText("Installed services")).toBeInTheDocument();
         expect(screen.queryByText(/Checked field: requirements\.resources\.memory_mb_min/)).not.toBeVisible();
-        const technicalDetails = within(warning as HTMLElement).getByText("Evidence and technical details").closest("details");
+        const technicalDetails = within(warning as HTMLElement).getByText("Evidence details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).queryByText("Evidence e0002")).not.toBeVisible();
-        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence and technical details"));
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence details"));
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0002")).toBeVisible();
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Checked field: requirements.resources.memory_mb_min")).toBeVisible();
@@ -749,8 +756,8 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Loading compatibility assessment…")).toBeInTheDocument();
-        expect(await screen.findByRole("heading", { name: "Compatibility assessment" })).toBeInTheDocument();
+        expect(await screen.findByText("Checking compatibility…")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Compatibility check" })).toBeInTheDocument();
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
 
         await waitFor(() => {
@@ -770,8 +777,15 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
-        expect(await screen.findByText("Compatibility unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Retry compatibility check")).toBeInTheDocument();
+        expect(await screen.findByText("Could not check compatibility")).toBeInTheDocument();
+        expect(screen.getByText("Atlas could not confirm whether this item fits the selected environment.")).toBeInTheDocument();
+        const error = screen.getByText("Could not check compatibility").closest("div");
+        const technicalDetails = within(error as HTMLElement).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Temporary compatibility backend failure")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Temporary compatibility backend failure")).toBeVisible();
+        expect(screen.getByText("Retry check")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -782,9 +796,9 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("No findings were reported.")).toBeInTheDocument();
-        expect(screen.getByText("Atlas Environment · atlas")).toBeInTheDocument();
-        expect(screen.getByText("Information not confirmed")).toBeInTheDocument();
+        expect(await screen.findByText("No issues or notes were found.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Environment")).toBeInTheDocument();
+        expect(screen.getByText("Unconfirmed details")).toBeInTheDocument();
     });
 
     it("renders incoming and outgoing relationships separately with links and labels", async () => {

@@ -591,49 +591,47 @@ function CompatibilityPanel({
     );
 
     if (compatibilityLoading) {
-        return (
-            <InfoPanel title="Compatibility assessment">
-                <p className="text-sm text-slate-400">Loading compatibility assessment…</p>
-            </InfoPanel>
-        );
+        return <InfoPanel title="Compatibility check">
+            <p className="text-sm text-slate-400">Checking compatibility…</p>
+        </InfoPanel>;
     }
 
     if (compatibilityError) {
-        return (
-            <InfoPanel title="Compatibility assessment">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-                    <p className="font-semibold">Compatibility unavailable</p>
-                    <p className="mt-1 text-sm text-amber-200/90">{compatibilityError}</p>
-                    <button
-                        type="button"
-                        className="mt-3 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300 hover:text-amber-100"
-                        onClick={onRetry}
-                    >
-                        Retry compatibility check
-                    </button>
-                </div>
-            </InfoPanel>
-        );
+        return <InfoPanel title="Compatibility check">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+                <p className="font-semibold">Could not check compatibility</p>
+                <p className="mt-1 text-sm text-amber-200/90">Atlas could not confirm whether this item fits the selected environment.</p>
+                <details className="mt-2">
+                    <summary className="mc-focusable cursor-pointer text-xs text-amber-100/80">Technical details</summary>
+                    <p className="mt-2 break-words text-xs text-amber-100/80">{compatibilityError}</p>
+                </details>
+                <button
+                    type="button"
+                    className="mt-3 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300 hover:text-amber-100"
+                    onClick={onRetry}
+                >
+                    Retry check
+                </button>
+            </div>
+        </InfoPanel>;
     }
 
     if (!compatibility) {
-        return (
-            <InfoPanel title="Compatibility assessment">
-                <p className="text-sm text-slate-400">Compatibility assessment not available.</p>
-            </InfoPanel>
-        );
+        return <InfoPanel title="Compatibility check">
+            <p className="text-sm text-slate-400">No compatibility result is available.</p>
+        </InfoPanel>;
     }
 
     return (
         <section className="grid gap-4 lg:grid-cols-2">
             <InfoPanel title="Compatibility summary">
                 <dl className="grid gap-2 text-sm">
-                    <KeyValue label="Target" value={`${formatLabel(compatibility.target_type)} · ${compatibility.target_id}`} />
-                    <KeyValue label="Status" value={compatibilityStatusLabel(compatibility.status)} />
-                    <KeyValue label="Checked (local time)" value={formatLocalTimestamp(compatibility.checked_at)} />
-                    <KeyValue label="Findings" value={String(compatibility.findings.length)} />
+                    <KeyValue label="Checked against" value={formatLabel(compatibility.target_type)} />
+                    <KeyValue label="Result" value={compatibilityStatusLabel(compatibility.status)} />
+                    <KeyValue label="Last checked" value={formatLocalTimestamp(compatibility.checked_at)} />
+                    <KeyValue label="Results" value={String(compatibility.findings.length)} />
                     <KeyValue
-                        label="Information not confirmed"
+                        label="Unconfirmed details"
                         value={compatibility.unknown_facts.length === 0 ? "None" : String(compatibility.unknown_facts.length)}
                     />
                 </dl>
@@ -642,16 +640,17 @@ function CompatibilityPanel({
                     <dl className="mt-3 grid gap-2 text-sm">
                         <KeyValue label="Catalog item ID" value={compatibility.item_id} />
                         <KeyValue label="Target ID" value={compatibility.target_id} />
+                        <KeyValue label="Target type" value={compatibility.target_type} />
                         <KeyValue label="Evidence records" value={String(compatibility.evidence.length)} />
-                    <KeyValue label="Recorded check time (UTC)" value={compatibility.checked_at} />
+                        <KeyValue label="Recorded check time (UTC)" value={compatibility.checked_at} />
                     </dl>
                 </details>
             </InfoPanel>
 
-            <InfoPanel title="What the check found">
+            <InfoPanel title="What Atlas found">
                 <div className="space-y-4">
                     {compatibility.findings.length === 0 ? (
-                        <p className="text-sm text-slate-500">No findings were reported.</p>
+                        <p className="text-sm text-slate-500">No issues or notes were found.</p>
                     ) : (
                         Object.entries(findingsBySeverity).map(([severity, findings]) => (
                             <div key={`${targetItemId}-${severity}`}>
@@ -677,7 +676,7 @@ function CompatibilityPanel({
                                             </div>
                                             <p className="mt-2 text-sm text-slate-300">{finding.message}</p>
                                             <details className="mt-3 border-t border-slate-800 pt-2">
-                                                <summary className="mc-focusable cursor-pointer text-xs font-medium text-slate-400">Evidence and technical details</summary>
+                                                <summary className="mc-focusable cursor-pointer text-xs font-medium text-slate-400">Evidence details</summary>
                                                 <div className="mt-2 space-y-2 text-xs text-slate-400">
                                                     <p>Finding code: {finding.id}</p>
                                                     <p>Checked field: {finding.subject}</p>
@@ -717,7 +716,7 @@ function CompatibilityPanel({
 
                     {compatibility.unknown_facts.length > 0 && (
                         <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-500">Information Atlas could not confirm</p>
+                            <p className="text-xs uppercase tracking-wider text-slate-500">What Atlas could not confirm</p>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-400">
                                 {compatibility.unknown_facts.map((item) => (
                                     <li key={item}>{formatUnknownFact(item)}</li>
@@ -984,11 +983,11 @@ function formatCapability(value: string): string {
 
 function severityHeading(severity: string): string {
     switch (severity) {
-        case "blocker": return "Blockers";
+        case "blocker": return "Blocking issues";
         case "warning": return "Warnings";
-        case "info": return "Information";
-        case "unknown": return "Severity unknown";
-        default: return `${formatLabel(severity)} findings`;
+        case "info": return "Other notes";
+        case "unknown": return "Priority not reported";
+        default: return `${formatLabel(severity)} results`;
     }
 }
 
