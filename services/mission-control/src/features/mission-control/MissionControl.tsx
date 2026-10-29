@@ -90,17 +90,17 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                 <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
                 <p className="mt-2 text-sm"><strong>File not found?</strong> Compose did not run the check. Run it from Atlas&apos;s Compose folder or pass the full file path with <code>--file</code>.</p>
             </>}
-        <p className="mt-2"><strong>Docker:</strong> a blank <code>PORTS</code> column means no host port is published. Host networking is the exception; check the network mode before changing ports.</p>
+        <p className="mt-2"><strong>Docker:</strong> a blank <code>PORTS</code> column usually means no host port is published. A container marked <code>Up</code> is running, but that does not confirm its web app is responding. Check the network mode before changing ports.</p>
         </div>}
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>
             <div className="mt-2 space-y-1">
                 <ol aria-label="Docker and Compose checks" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                     <li>
-                        If this service runs in Docker, run <code>docker ps</code> on the computer running it and find its container.
+                        On the service computer, run <code>{"docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'"}</code> to show container names, running status, network, and published ports.
                     </li>
                     <li>
-                        Check the container&apos;s <code>PORTS</code> column. With port mappings, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
+                        Find the service container. <code>Up</code> means the container is running, not that its web app is responding. If <code>Networks</code> says <code>host</code>, a blank <code>PORTS</code> field is expected. Otherwise, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
                     </li>
                     <li>
                         To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. In <code>HOST_PORT:CONTAINER_PORT</code>, the number before the colon must match the port in Atlas&apos;s configured address. The number after it must match the app&apos;s listening port. Recreate the container after changing its ports.

@@ -3442,10 +3442,11 @@ candidate-list browser suite passes 14 cases, including the expiry query at
 
 ## Fileshare Docker port guidance — 2026-10-29
 
-The Overview's visible Fileshare connection check now explains that an empty
-Docker `PORTS` column means no host port is published, and tells operators to
-check network mode before changing ports because host networking is an
-exception. The longer Compose and port troubleshooting steps remain available
-in the existing disclosure. The focused Overview suite passes 75 tests; its
-development and built-preview browser suites each pass 29 tests. Lint and build
-pass. Browser data is synthetic; no live service was queried.
+The Overview's visible Fileshare connection check explains that a blank Docker
+`PORTS` column usually means no host port is published, and that a container
+marked `Up` may still have an unresponsive web app. Its existing disclosure
+provides one read-only `docker ps --format` command showing container status,
+network, and published ports, then explains the host-networking exception
+before describing port mappings. The focused Overview suite passes 75 tests;
+its development and built-preview browser suites each pass 29 tests. Lint and
+build pass. Browser data is synthetic; no live service was queried.

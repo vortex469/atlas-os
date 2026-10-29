@@ -354,7 +354,7 @@ for (const width of [320, 1280]) {
         await expect(connectionCommand).toContainText('http://10.10.60.30:8080/');
         await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
         await expect(nextStep).toContainText("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
-        await expect(nextStep).toContainText('Docker: a blank PORTS column means no host port is published. Host networking is the exception; check the network mode before changing ports.');
+        await expect(nextStep).toContainText('Docker: a blank PORTS column usually means no host port is published. A container marked Up is running, but that does not confirm its web app is responding. Check the network mode before changing ports.');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'More connection checks' });
         await moreChecks.click();
@@ -362,9 +362,11 @@ for (const width of [320, 1280]) {
         await expect(steps.getByRole('listitem')).toHaveCount(4);
         await expect(steps).toHaveCSS('font-size', '14px');
         await expect(steps).not.toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
-        await expect(steps).toContainText('If this service runs in Docker, run docker ps on the computer running it and find its container');
-        await expect(steps).toContainText("Check the container's PORTS column");
-        await expect(steps).toContainText('With port mappings, a blank field means no host port is published');
+        await expect(steps).toContainText("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        await expect(steps).toContainText('to show container names, running status, network, and published ports');
+        await expect(steps).toContainText('Up means the container is running, not that its web app is responding');
+        await expect(steps).toContainText('If Networks says host, a blank PORTS field is expected');
+        await expect(steps).toContainText('Otherwise, a blank field means no host port is published');
         await expect(steps).toContainText("To publish a port, use Compose's ports: or docker run -p");
         await expect(steps).toContainText("the number before the colon must match the port in Atlas's configured address");
         await expect(steps).toContainText("The number after it must match the app's listening port");
