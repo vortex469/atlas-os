@@ -4,6 +4,7 @@ import type {
     ProviderCollectionTiming,
 } from "../types/ace";
 import type { PolicySeverity } from "../types/policies";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 type PerformancePolicy = {
     maximum_collection_duration_ms: number;
@@ -166,7 +167,7 @@ function TrendChart({
                         return (
                             <div
                                 key={point.id}
-                                title={`${new Date(point.collectedAt).toLocaleString()} · ${duration(point.timing.duration_ms)} · ${status(point.timing.status)}`}
+                                title={`${formatLocalTime(point.collectedAt)} · ${duration(point.timing.duration_ms)} · ${status(point.timing.status)}`}
                                 aria-label={`${duration(point.timing.duration_ms)}, ${status(point.timing.status)}`}
                                 className={`min-w-1 flex-1 rounded-t ${
                                     unhealthy
@@ -186,8 +187,53 @@ function TrendChart({
                     })}
                 </div>
             </div>
+            <details className="mt-4">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-blue-300">
+                    Check details
+                </summary>
+                <ol
+                    aria-label="Provider check details"
+                    className="mt-3 space-y-2 text-sm text-slate-300"
+                >
+                    {points.map((point) => (
+                        <li
+                            key={point.id}
+                            className="flex flex-wrap gap-x-2"
+                        >
+                            <CheckTime value={point.collectedAt} />
+                            <span>
+                                · {duration(point.timing.duration_ms)} ·{" "}
+                                {status(point.timing.status)}
+                            </span>
+                        </li>
+                    ))}
+                </ol>
+            </details>
         </div>
     );
+}
+
+function CheckTime({ value }: { value: string }) {
+    const timestamp = evidenceTimestamp(value);
+    if (timestamp === null) {
+        return <span>Time unavailable</span>;
+    }
+    return (
+        <time dateTime={value}>
+            {new Date(timestamp).toLocaleString(undefined, {
+                dateStyle: "medium",
+                timeStyle: "short",
+            })}{" "}
+            (local time)
+        </time>
+    );
+}
+
+function formatLocalTime(value: string): string {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : `${new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (local time)`;
 }
 
 function Metric({

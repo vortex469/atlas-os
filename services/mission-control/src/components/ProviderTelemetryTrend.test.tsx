@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { IntelligenceTelemetrySnapshot } from "../types/ace";
@@ -81,6 +81,28 @@ describe("ProviderTelemetryTrend", () => {
             screen.getByLabelText("200 ms, Timed out"),
         ).toBeInTheDocument();
         expect(screen.queryByText("20 ms")).not.toBeInTheDocument();
+    });
+
+    it("provides local-time details for each plotted check", () => {
+        const { container } = render(
+            <ProviderTelemetryTrend providerId="qdrant" snapshots={snapshots} />,
+        );
+        const disclosure = screen.getByText("Check details");
+        expect(disclosure.tagName).toBe("SUMMARY");
+        const details = disclosure.closest("details");
+        expect(details).not.toHaveAttribute("open");
+        fireEvent.click(disclosure);
+        const list = within(details as HTMLDetailsElement).getByRole("list", {
+            name: "Provider check details",
+        });
+        expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+        expect(
+            Array.from(list.querySelectorAll("time")).map((time) =>
+                time.getAttribute("dateTime"),
+            ),
+        ).toEqual(["2026-07-25T19:00:00Z", "2026-07-25T19:01:00Z"]);
+        expect(list).toHaveTextContent("local time");
+        expect(container.querySelector('[role="img"]')).toBeInTheDocument();
     });
 
     it("shows an empty state without provider history", () => {

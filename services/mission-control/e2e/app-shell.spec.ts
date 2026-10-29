@@ -38,6 +38,25 @@ test("Mission Control dashboard loads from controlled Core and Agent responses",
     await expect(page.getByText("Proxmox").first()).toBeVisible();
 });
 
+test("provider check details open from the keyboard and show local time", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.goto("/providers/proxmox");
+
+    const disclosure = page.getByText("Check details", { exact: true });
+    await expect(disclosure).toBeVisible();
+    await disclosure.focus();
+    await expect(disclosure).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    const details = page.getByRole("list", { name: "Provider check details" });
+    await expect(details).toBeVisible();
+    await expect(details.locator("time")).toHaveAttribute(
+        "datetime",
+        "2026-09-06T12:00:00.000Z",
+    );
+    await expect(details).toContainText("local time");
+});
+
 test.describe("Mobile navigation", () => {
     test.use({
         viewport: { width: 320, height: 844 },

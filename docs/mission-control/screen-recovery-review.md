@@ -2414,6 +2414,13 @@ or browser does not establish reachability from Atlas Core. It names the Core
 machine/container as the right network location while retaining the Compose
 directory and published-port checks.
 
+Provider check history keeps its compact chart and now offers a closed
+“Check details” disclosure with each timestamp, duration, and outcome. The
+individual results can be opened without relying on hover, and timestamps are
+labeled as local time. Collection data and policy limits are unchanged.
+The component suite and a built phone-browser check cover the details list and
+keyboard opening.
+
 ## Recent action time-zone label — 2026-10-29
 
 Recent provider actions now label completion times as local time in the visible
