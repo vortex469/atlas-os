@@ -1061,7 +1061,7 @@ for (const width of [390, 1280]) {
         await expect(alert).toContainText("Current provider information is unknown.");
         await expect(alert).not.toContainText("PRIVATE_SERVER_ERROR");
         await expect(list.getByRole("heading", { name: "Proxmox" })).toBeVisible();
-        await expect(list.getByText("Last report: Healthy.", { exact: true })).toBeVisible();
+        await expect(list.getByText("Last known report (out of date): Healthy.", { exact: true })).toBeVisible();
         await expect(list.getByText("Healthy", { exact: true })).toHaveCount(0);
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

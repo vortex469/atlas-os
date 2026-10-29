@@ -221,7 +221,7 @@ describe("MC overview evidence", () => {
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
 
         expect(checks.getByText("Status unknown")).toBeInTheDocument();
-        expect(checks.getByText("Last report: Atlas Core could not connect.")).toBeInTheDocument();
+        expect(checks.getByText("Last known report (out of date): Atlas Core could not connect.")).toBeInTheDocument();
     });
 
     it.each([
@@ -545,7 +545,7 @@ it('deduplicates configured AI and provider evidence and preserves freshness', (
 it('keeps stale AI conditions explicitly unknown', () => {
     show({ ai: { stale: true, data: { health: { status: 'offline', message: 'Last connection failed' } } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getByText('Last report: Unavailable.')).toBeInTheDocument();
+    expect(attention.getByText('Last known report (out of date): Unavailable.')).toBeInTheDocument();
     expect(attention.getByText('Last-known condition; current state unknown.')).toBeInTheDocument();
 });
 
@@ -589,7 +589,7 @@ it('integrates one health summary with independent source freshness and safe rea
     expect(core.getByText('Healthy')).toBeInTheDocument();
     const ace = within(screen.getByRole('article', { name: 'System findings' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();
-    expect(ace.getByText('Last report: Healthy.')).toBeInTheDocument();
+    expect(ace.getByText('Last known report (out of date): Healthy.')).toBeInTheDocument();
     expect(ace.getByText('[Sensitive text withheld]')).toBeInTheDocument();
     expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     const policy = within(screen.getByRole('article', { name: 'Policy settings check' }));

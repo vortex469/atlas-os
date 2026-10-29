@@ -35,13 +35,15 @@ for (const width of [390, 1440]) {
         const down = checks.getByRole("list", { name: "Configured service checks" })
             .getByRole("listitem")
             .nth(1);
-        await down.getByText("Where Atlas checked").click();
-        await expect(down).toContainText("If the mapping starts with 127.0.0.1:, only that computer can connect; Atlas Core on another machine cannot.");
-        await expect(summary.getByText("Last report: Healthy.")).toBeVisible();
+        await down.getByText("More connection checks").click();
+        await expect(down.getByRole("list", { name: "How to check from Atlas Core" })).toContainText(
+            "a mapping starting with 127.0.0.1: is reachable only from that computer",
+        );
+        await expect(summary.getByText("Last known report (out of date): Healthy.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
         await expect(checks.getByText("Refresh failed. Showing the last available information.", { exact: true })).toBeVisible();
-        await expect(checks.getByText("Last report: Atlas Core could not connect.", { exact: true })).toBeVisible();
+        await expect(checks.getByText("Last known report (out of date): Atlas Core could not connect.", { exact: true })).toBeVisible();
         await expect(checks.getByText("Unavailable", { exact: true })).toHaveCount(0);
         await expect(summary.getByRole("article", { name: "System findings" }).getByText("Healthy", { exact: true })).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ json: { atlas: "healthy", services: {} } }));

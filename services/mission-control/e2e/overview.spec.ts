@@ -62,7 +62,7 @@ test('overview separates initial loading from unavailable data across dashboard 
     await expect(providers.getByText('Saved providers and the status Atlas reports for each one.')).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'Overall service status' }).getByText('Healthy', { exact: true })).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'System findings' }).getByText('Healthy', { exact: true })).toBeVisible();
-    await expect(healthReports.getByRole('article', { name: 'Policy settings check' }).getByText('Last report: Healthy.')).toBeVisible();
+    await expect(healthReports.getByRole('article', { name: 'Policy settings check' }).getByText('Last known report (out of date): Healthy.')).toBeVisible();
 });
 
 test('provider preview prioritizes problems and uses a singular extra-provider label', async ({ page, rejectedMutationRequests }) => {

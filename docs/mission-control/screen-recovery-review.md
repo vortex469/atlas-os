@@ -2594,3 +2594,15 @@ This changes the wording only; report sources, freshness rules, and health
 states are unchanged. The overview and health presentation suites pass (130
 tests); Mission Control lint/build and all 26 built Overview browser checks pass
 across phone and desktop sizes.
+
+## Stale health report wording — 2026-10-29
+
+When a report is stale, the status badge remains “Status unknown” and the
+accompanying line now labels the value as the last known report and says it is
+out of date. This makes the retained status distinct from a current result.
+Health state mapping, freshness timing, and refresh behavior are unchanged.
+Six focused component and provider suites pass (206 tests), and the built
+Overview and system-health browser suites pass all 30 cases across phone,
+tablet, and desktop widths. Mission Control lint and build pass. The browser
+check for service reachability now follows the current “More connection
+checks” disclosure and its visible guidance.

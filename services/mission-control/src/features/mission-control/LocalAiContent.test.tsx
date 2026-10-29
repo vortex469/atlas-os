@@ -66,7 +66,7 @@ describe("integrated Local AI runtime observations", () => {
         const card = show({ data: data(), stale: true, unavailable: true });
         expect(card.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
         expect(card.getByText("Status unknown", { exact: true })).toBeInTheDocument();
-        expect(card.getByText("Last report: Healthy.")).toBeInTheDocument();
+        expect(card.getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
         expect(card.getByText("Last known running models: running-model")).toBeInTheDocument();
         expect(card.getByText(/Current version, response time, and model list are unknown/)).toBeInTheDocument();
     });

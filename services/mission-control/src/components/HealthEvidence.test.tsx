@@ -38,7 +38,7 @@ describe("authoritative health presentation", () => {
             <HealthEvidence status="offline" unavailableLabel="Atlas Core could not connect" />
         </HealthEvidenceContext.Provider>);
         expect(screen.getByText("Status unknown")).toBeInTheDocument();
-        expect(screen.getByText("Last report: Atlas Core could not connect.")).toBeInTheDocument();
+        expect(screen.getByText("Last known report (out of date): Atlas Core could not connect.")).toBeInTheDocument();
     });
 
     it("retains source critical severity and renders reasons as plain text", () => {
@@ -84,7 +84,7 @@ describe("authoritative health presentation", () => {
         expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(Date.parse("2026-09-13T12:00:00Z")));
         expect(time).not.toHaveTextContent("2026-09-13T");
         act(() => vi.advanceTimersByTime(90_000));
-        expect(screen.getByText("Last report: Healthy.")).toBeInTheDocument();
+        expect(screen.getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
         expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText(/Last checked \(UTC\)/)).toBeInTheDocument();

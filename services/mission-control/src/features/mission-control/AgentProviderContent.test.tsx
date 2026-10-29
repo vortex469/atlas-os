@@ -111,7 +111,7 @@ describe("integrated agent/provider evidence", () => {
     it("retains stale observations without presenting cached success as current", () => {
         const view = show({ providers: { data: [provider("alpha", "healthy")], stale: true, unavailable: true }, agent: { unavailable: true } });
         expect(registry().queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(registry().getByText("Last report: Healthy.")).toBeInTheDocument();
+        expect(registry().getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
         expect(registry().getByText(/current list is unknown/)).toBeInTheDocument();
