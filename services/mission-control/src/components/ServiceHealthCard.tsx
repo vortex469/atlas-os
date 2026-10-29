@@ -41,11 +41,15 @@ export function ServiceHealthCard({
                         {name}
                     </h3>
                     <p className="mt-1 text-xs uppercase tracking-wider text-mc-text-muted">
-                        Service health
+                        Reachability from Atlas Core
                     </p>
                 </div>
 
-                <HealthEvidence status={health.status} reason={health.message} />
+                <HealthEvidence
+                    status={health.status}
+                    reason={health.message}
+                    unavailableLabel="Unreachable from Atlas Core"
+                />
             </div>
 
             <dl className="mc-divider mt-5 grid grid-cols-2 gap-4 border-t pt-4">

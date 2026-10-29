@@ -56,8 +56,8 @@ export function ServiceHealthSection({
         <>
             <section>
                 <SectionHeader
-                    title="Service Health"
-                    description="Source-reported reachability, response status, and latency for Atlas infrastructure. Select a service for more details."
+                    title="Service reachability"
+                    description="Atlas Core's checks of configured service addresses. Select a service to see the checked address and response details."
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

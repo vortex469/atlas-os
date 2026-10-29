@@ -2,6 +2,7 @@ import {
     fireEvent,
     render,
     screen,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -79,7 +80,7 @@ const providers: Provider[] = [
 ];
 
 describe("ServiceHealthSection", () => {
-    it("shows refreshed service details and provider operations", async () => {
+    it("shows Atlas Core reachability, the checked address, and provider operations", async () => {
         const user = userEvent.setup();
         const onRefresh = vi.fn();
         const { rerender } = render(
@@ -99,6 +100,7 @@ describe("ServiceHealthSection", () => {
         expect(
             screen.getByRole("dialog", { name: "Containers" }),
         ).toBeInTheDocument();
+        expect(within(screen.getByRole("dialog", { name: "Containers" })).getByText("Reachability from Atlas Core")).toBeInTheDocument();
         expect(
             screen.getByText("Operations for Docker"),
         ).toBeInTheDocument();
@@ -135,6 +137,20 @@ describe("ServiceHealthSection", () => {
             }),
         );
         expect(onRefresh).toHaveBeenCalledOnce();
+    });
+
+    it("labels a failed probe as unreachable from Atlas Core rather than offline", () => {
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: { ...service("ifileshare", 0), status: "offline", message: "Connection refused" } }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText("Unreachable from Atlas Core")).toBeInTheDocument();
+        expect(screen.queryByText("Offline")).not.toBeInTheDocument();
     });
 
     it("does not retain successful health or provider operations for a removed service", async () => {
