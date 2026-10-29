@@ -192,7 +192,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             setAudit(detail);
         } catch (error) {
             setLoadError({
-                message: "Mission Control could not load the workflow record.",
+                message: "Atlas couldn’t load this workflow’s history. Try again to see its activity.",
                 details: getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."),
             });
         } finally {
@@ -219,7 +219,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
                 <Link to={`/workflows/${workflowId}`} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <h1 className="text-lg font-semibold text-red-100">Workflow audit unavailable</h1>
+                    <h1 className="text-lg font-semibold text-red-100">Workflow history unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError.message}</p>
                     <button type="button" onClick={() => void loadAudit()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                     {loadError.details && <details className="mt-3">

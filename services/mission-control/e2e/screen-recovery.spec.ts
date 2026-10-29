@@ -377,7 +377,7 @@ test("audit recovery refuses another workflow without losing navigation", async 
             }) });
     });
     await page.goto("/workflows/audit-recovery/audit");
-    await expect(page.getByRole("heading", { name: "Workflow audit unavailable" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Workflow history unavailable" })).toBeVisible();
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("alert")).toContainText("does not match this workflow");
     await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
@@ -1348,9 +1348,9 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/workflows/audit-recovery/audit");
 
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("Workflow audit unavailable");
+        await expect(alert).toContainText("Workflow history unavailable");
         await expectResponsiveMainPadding(alert, width);
-        await expect(alert).toContainText("Mission Control could not load the workflow record.");
+        await expect(alert).toContainText("Atlas couldn’t load this workflow’s history. Try again to see its activity.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open", "");
         await expect(technicalDetails.getByText("Malformed workflow audit payload.")).not.toBeVisible();

@@ -371,7 +371,8 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage();
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not load the workflow record.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this workflow’s history. Try again to see its activity.");
+        expect(alert).toHaveTextContent("Workflow history unavailable");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable.")).not.toBeVisible();
