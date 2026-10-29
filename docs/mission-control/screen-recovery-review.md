@@ -3284,3 +3284,15 @@ show each provider name and normalized health state, while extra providers stay
 behind an expandable list. Component and overview-browser tests cover the live
 preview, status labels, stale-report wording, and mobile overflow. No API or
 authority behavior changes.
+
+## Service reachability check command — 2026-10-29
+
+When Atlas Core cannot reach a service, the dashboard now shows the exact
+read-only HTTP check to run from the Atlas Core host and its
+`compose.production.yaml` directory. The command runs inside the `atlas-core`
+container so it checks the same network path as Core. It omits URL credentials
+and query values, prints only the HTTP status, and explains that an HTTP
+response differs from a timeout or connection failure. The 320px and
+1280px dashboard browser checks verify the command and keep the service
+computer/browser distinction visible; helper tests cover URL redaction, shell
+quoting, and invalid addresses. The command performs no service mutation.

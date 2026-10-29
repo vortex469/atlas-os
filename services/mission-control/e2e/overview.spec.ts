@@ -347,8 +347,12 @@ for (const width of [320, 1280]) {
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();
-        await expect(nextStep).toContainText('Run the test from the computer or container running Atlas Core. The service computer checks a different network path:');
+        await expect(nextStep).toContainText('Run this from the computer running Atlas Core, in the folder containing compose.production.yaml. It makes a read-only request from inside the atlas-core container. Running it on iFileshare or in your browser checks a different network path.');
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
+        const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
+        await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');
+        await expect(connectionCommand).toContainText('http://10.10.60.30:8080/');
+        await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
         await expect(nextStep).toContainText('Docker port and Compose steps are in the details below.');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'More connection checks' });

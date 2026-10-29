@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { healthNextCheck } from "../../utils/healthPresentation";
+import { serviceReachabilityCommand } from "../../utils/serviceReachabilityCommand";
 import { SystemHealthSummary } from "./SystemHealthSummary";
 import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired, workflowNextStepLabel } from "../../utils/workflowState";
 import { conditionKey, detailPath, healthPriority, record, rows, safeText, status } from "./overviewEvidence";
@@ -70,6 +71,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
     const url = record(evidence.details).url;
     const address = formatHealthCheckAddress(url);
     const unavailable = status(evidence.status) === "unavailable";
+    const command = unavailable ? serviceReachabilityCommand(url) : null;
     const nextCheck = healthNextCheck(evidence.message);
     const httpStatus = formatHttpStatus(evidence.http_status);
     const response = httpStatus ?? (status(evidence.status) === "unavailable" ? "No response received" : "Not reported");
@@ -78,8 +80,15 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         ? `${Math.round(evidence.latency_ms)} ms` : null;
     return <div className="mt-2">
         {unavailable && <div role="group" aria-label="Next connection check" className="rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
-            <p className="font-medium text-mc-text-primary">Run the test from the computer or container running Atlas Core. The service computer checks a different network path:</p>
+            <p className="font-medium text-mc-text-primary">Run this from the computer running Atlas Core, in the folder containing <code>compose.production.yaml</code>. It makes a read-only request from inside the <code>atlas-core</code> container. Running it on iFileshare or in your browser checks a different network path.</p>
             <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
+            {command && <>
+                <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>
+                <div role="group" aria-label="Read-only Core connection check command" className="mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2">
+                    <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{command}</pre>
+                </div>
+                <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
+            </>}
         <p className="mt-2">Docker port and Compose steps are in the details below.</p>
         </div>}
         <details className="mt-2 text-xs text-mc-text-muted">

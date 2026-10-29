@@ -195,8 +195,13 @@ describe("MC overview evidence", () => {
         const summary = checks.getByText("More connection checks");
         const disclosure = summary.closest("details");
 
-        expect(nextStep).toHaveTextContent("Run the test from the computer or container running Atlas Core. The service computer checks a different network path:");
+        expect(nextStep).toHaveTextContent("Run this from the computer running Atlas Core, in the folder containing compose.production.yaml.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
+        const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
+        expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
+        expect(command).toHaveTextContent('httpx.get("http://10.10.60.30:8080/"');
+        expect(command).not.toHaveTextContent(/password|private|token=/);
+        expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
         expect(nextStep).toHaveTextContent("Docker port and Compose steps are in the details below.");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);
