@@ -1,4 +1,7 @@
+import type { ReactNode } from "react";
+
 import type { WorkflowDetailResponse, WorkflowExecutionSummary, WorkflowTimelineStage } from "../types/atlasAgent";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { workflowStageStatusLabel } from "../utils/workflowState";
 
 interface ExecutionTimelineProps {
@@ -89,8 +92,8 @@ function ExecutionSection({ execution, workflowState, approvalStatus }: { execut
             {hasResult && (
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Execution status" value={formatLabel(execution.execution_status ?? "not_available")} />
-                    <Detail label="Started time" value={execution.started_at ?? "Not exposed by Atlas Agent"} />
-                    <Detail label="Completed time" value={execution.completed_at ?? "Not exposed by Atlas Agent"} />
+                    <Detail label="Started (local time)" value={formatExecutionTime(execution.started_at)} />
+                    <Detail label="Completed (local time)" value={formatExecutionTime(execution.completed_at)} />
                     <Detail label="Execution result" value={formatLabel(execution.result ?? "not_available")} />
                     <Detail label="Changed files count" value={String(execution.changed_files_count)} />
                     <Detail label="Tool" value={execution.tool ?? "Not exposed"} />
@@ -129,7 +132,15 @@ function stageClass(status: string): string {
     return "border-slate-800 bg-slate-950/50 text-slate-500";
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function formatExecutionTime(value: string | null): ReactNode {
+    if (value === null) return "Not exposed by Atlas Agent";
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+}
+
+function Detail({ label, value }: { label: string; value: ReactNode }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value}</dd></div>;
 }
 

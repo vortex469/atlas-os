@@ -2694,3 +2694,4 @@ the date. The semantic `<time>` value retains its UTC instant; malformed values
 show “Time unavailable.” The focused provider connection suite, Mission Control
 lint, and production build pass.
 Proposal detail creation and expiry times now use the same validated local display as proposal lists. Their `<time>` elements preserve the source timestamp for assistive technology, and malformed values are shown as unavailable or unverified instead of raw dates. Focused tests cover exact source timestamps and invalid dates.
+Execution start and completion times in the change workflow summary now use readable local time while retaining the original instant in semantic `<time>` elements. Missing times keep the existing “Not exposed” message; malformed times display “Time unavailable.” Focused tests cover the displayed value and both source timestamps.

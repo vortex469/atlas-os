@@ -184,8 +184,8 @@ describe("ExecutionTimeline", () => {
             timeline: workflow().timeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "completed" } : stage),
             execution: {
                 execution_status: "succeeded",
-                started_at: null,
-                completed_at: null,
+                started_at: "2026-07-25T17:00:00Z",
+                completed_at: "2026-07-25T17:00:01Z",
                 result: "succeeded",
                 changed_files_count: 2,
                 tool: "docker-compose",
@@ -202,6 +202,11 @@ describe("ExecutionTimeline", () => {
         expect(screen.getByText("docker-compose")).toBeInTheDocument();
         expect(screen.getByText("exec-123")).toBeInTheDocument();
         expect(screen.getByText("compose.yaml, services/demo/Dockerfile")).toBeInTheDocument();
+        const startedTime = screen.getByText("Started (local time)").parentElement?.querySelector("time");
+        expect(startedTime).toHaveAttribute("datetime", "2026-07-25T17:00:00Z");
+        expect(startedTime).toHaveTextContent(new Date("2026-07-25T17:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        const completedTime = screen.getByText("Completed (local time)").parentElement?.querySelector("time");
+        expect(completedTime).toHaveAttribute("datetime", "2026-07-25T17:00:01Z");
     });
 
     it("directs a blocked maintenance workflow to its status panel", () => {
@@ -239,6 +244,21 @@ describe("ExecutionTimeline", () => {
 
         expect(screen.getByText("Execution failed.")).toBeInTheDocument();
         expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
+    });
+
+    it("does not present malformed execution timestamps as verified times", () => {
+        renderTimeline(workflow({
+            execution: {
+                ...workflow().execution,
+                execution_status: "succeeded",
+                started_at: "2026-02-30T12:00:00Z",
+                completed_at: "not-a-time",
+            },
+        }));
+
+        expect(screen.getByText("Started (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Completed (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.queryByText("2026-02-30T12:00:00Z")).not.toBeInTheDocument();
     });
 
     it("refreshes and blocks duplicate refresh while pending", () => {
