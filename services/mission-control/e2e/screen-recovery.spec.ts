@@ -945,16 +945,17 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/operations/history");
         const itemHeading = page.getByRole("heading", { name: "Virtual machine 110" });
         await expect(itemHeading).toBeVisible();
+        await expect(page.getByText("Past requests and each request's latest maintenance status. This is not a live service check.", { exact: true })).toBeVisible();
         await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeHidden();
-        await expect(page.getByRole("combobox", { name: "Current status", exact: true })).toBeVisible();
+        await expect(page.getByRole("combobox", { name: "Latest maintenance status", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
         await expect(page.getByRole("combobox", { name: "Completion", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toHaveCount(0);
         await page.getByRole("combobox", { name: "Completion", exact: true }).selectOption("terminal");
         await expect(page.getByText("Additional filters are applied")).toBeVisible();
-        await page.getByRole("combobox", { name: "Current status", exact: true }).selectOption("unavailable");
+        await page.getByRole("combobox", { name: "Latest maintenance status", exact: true }).selectOption("unavailable");
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         await expect(page.getByText("A problem checking status does not mean the maintenance request failed.")).toBeVisible();
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
@@ -1318,7 +1319,7 @@ for (const width of [390, 1280]) {
         await page.goto("/operations/history");
 
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
-        await expect(page.getByText("Requested action: Restart Service · Current status: Unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("Requested action: Restart Service · Latest maintenance status: Unavailable", { exact: true })).toBeVisible();
         await expect(page.getByText("Maintenance status details unavailable")).toBeVisible();
         await expect(page.getByText("A problem checking status does not mean the maintenance request failed.")).toBeVisible();
         await expect(page.getByText("execution confirmed", { exact: false })).toHaveCount(0);

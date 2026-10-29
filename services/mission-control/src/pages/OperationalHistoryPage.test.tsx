@@ -63,6 +63,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        expect(screen.getByText("Past requests and each request's latest maintenance status. This is not a live service check.")).toBeVisible();
         const requested = screen.getByText(/^Requested \(local time\):/);
         expect(requested).toBeVisible();
         expect(requested.querySelector("time")).toHaveAttribute("datetime", "2026-08-16T00:00:00Z");
@@ -103,7 +104,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByText("Requested action: Start Service", { exact: true })).toBeInTheDocument();
-        expect(screen.queryByText(/Current status: Healthy/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Latest maintenance status: Healthy/)).not.toBeInTheDocument();
     });
 
     it("shows diagnostic failure as unavailable rather than operational failure", async () => {
@@ -121,7 +122,7 @@ describe("OperationalHistoryPage", () => {
         expect(await screen.findByRole("heading", { name: "Maintenance target 110" })).toBeVisible();
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
         expect(screen.getByText("Requested action: Restart Service", { exact: true })).toBeInTheDocument();
-        expect(screen.queryByText(/Current status: Healthy/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Latest maintenance status: Healthy/)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         expect(document.body.textContent).not.toContain("private lifecycle exception");
     });
@@ -131,7 +132,7 @@ describe("OperationalHistoryPage", () => {
         mockedDiagnostic.mockResolvedValue(operationalDiagnostic({ correlation: { workflow_id: "foreign-workflow", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true } }));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        expect(await screen.findByText("Requested action: Restart Service · Current status: Unavailable")).toBeInTheDocument();
+        expect(await screen.findByText("Requested action: Restart Service · Latest maintenance status: Unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Healthy" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
@@ -141,7 +142,7 @@ describe("OperationalHistoryPage", () => {
         mockedDiagnostic.mockResolvedValue(operationalDiagnostic());
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
-        expect(screen.getByText("Requested action: Restart Service · Current status: Unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Requested action: Restart Service · Latest maintenance status: Unavailable")).toBeInTheDocument();
         expect(screen.getByText("Could not load the latest status for this request.")).toBeInTheDocument();
     });
 
@@ -151,7 +152,7 @@ describe("OperationalHistoryPage", () => {
         await screen.findByRole("link", { name: "Open workflow" });
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.getByText("Requested action: Restart Service", { exact: true })).toBeInTheDocument();
-        expect(screen.queryByText(/Current status: Healthy/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Latest maintenance status: Healthy/)).not.toBeInTheDocument();
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
     });
 
@@ -165,7 +166,7 @@ describe("OperationalHistoryPage", () => {
         expect(await screen.findByRole("heading", { name: "Status unavailable" })).toBeVisible();
         expect(screen.getByText("Mission Control cannot identify this maintenance status.")).toBeVisible();
         expect(screen.getByText("Do not repeat this request until its status is clear. Ask an operator to review it.")).toBeVisible();
-        fireEvent.change(screen.getByRole("combobox", { name: "Current status" }), { target: { value: "unavailable" } });
+        fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
     });
 
@@ -174,7 +175,7 @@ describe("OperationalHistoryPage", () => {
         await screen.findByRole("heading", { name: "Virtual machine 110" });
 
         expect(screen.getByText("Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.")).toBeVisible();
-        const diagnosticFilter = screen.getByRole("combobox", { name: "Current status" });
+        const diagnosticFilter = screen.getByRole("combobox", { name: "Latest maintenance status" });
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
         expect(screen.queryByRole("combobox", { name: "Requested action" })).not.toBeInTheDocument();
@@ -427,7 +428,7 @@ describe("maintenance history recovery", () => {
         mockedDiagnostic.mockRejectedValue(new Error("not available"));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("unreadable-target");
-        fireEvent.change(screen.getByRole("combobox", { name: "Current status" }), { target: { value: "unavailable" } });
+        fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/history-unreadable");
         expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });

@@ -3450,3 +3450,12 @@ network, and published ports, then explains the host-networking exception
 before describing port mappings. The focused Overview suite passes 75 tests;
 its development and built-preview browser suites each pass 29 tests. Lint and
 build pass. Browser data is synthetic; no live service was queried.
+
+## Maintenance history status context — 2026-10-29
+
+Maintenance history now calls each entry's diagnostic the latest recorded
+maintenance status and states that it is not a live service check. The filter
+and unavailable fallback use the same label. This keeps a past verification
+result from reading like a current health probe. The Operational History unit
+suite passes 43 tests and the screen-recovery browser suite passes 88 tests;
+lint and build pass.

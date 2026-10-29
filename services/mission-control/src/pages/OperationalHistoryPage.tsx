@@ -144,7 +144,7 @@ export function OperationalHistoryPage() {
     return (
         <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
             <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Maintenance</p><h1 className="mt-2 text-3xl font-semibold text-white">Maintenance history</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">Review past requests and the latest service status Atlas reported.</p></div>
+                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Maintenance</p><h1 className="mt-2 text-3xl font-semibold text-white">Maintenance history</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">Past requests and each request&apos;s latest maintenance status. This is not a live service check.</p></div>
                 <div className="flex gap-3"><Link to="/operations/request" className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100">Request maintenance</Link><button type="button" onClick={() => void load()} disabled={isLoading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50">Refresh history</button></div>
             </header>
             {isLoading && !hasCurrentPage && <p role="status" className="text-slate-300">Loading operational history...</p>}
@@ -154,7 +154,7 @@ export function OperationalHistoryPage() {
             {hasCurrentPage && items.length > 0 && <section aria-label="Operational history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <p className="text-sm text-slate-400">Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.</p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                    <Filter label="Current status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
+                    <Filter label="Latest maintenance status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
                 </div>
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-200">
@@ -189,7 +189,7 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h2 className="break-all text-lg font-semibold text-white">{historyTargetName(workflow, lifecycle)}</h2>
-                    <p className="mt-1 text-sm text-slate-400">Requested action: {action}{!outcome && " · Current status: Unavailable"}</p>
+                    <p className="mt-1 text-sm text-slate-400">Requested action: {action}{!outcome && " · Latest maintenance status: Unavailable"}</p>
                     <p className="mt-1 text-sm text-slate-400">Requested (local time): {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Open workflow</Link>
