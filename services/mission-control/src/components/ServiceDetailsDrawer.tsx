@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
-import { healthNextCheck } from "../utils/healthPresentation";
+import { healthNextCheck, healthState } from "../utils/healthPresentation";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
 
@@ -91,6 +91,10 @@ export function ServiceDetailsDrawer({
     );
     const hasTechnicalDetails = Object.keys(technicalDetails).length > 0;
     const nextCheck = healthNextCheck(health.message);
+    const currentHealthState = healthState(health.status);
+    const healthReason = ["Unavailable", "Degraded", "Blocked"].includes(currentHealthState)
+        ? health.message
+        : undefined;
 
     return (
         <div
@@ -140,6 +144,7 @@ export function ServiceDetailsDrawer({
                             </span>
                             <HealthEvidence
                                 status={health.status}
+                                reason={healthReason}
                                 unavailableLabel="Unreachable from Atlas Core"
                                 compact
                             />

@@ -2756,9 +2756,11 @@ repeat test from Core. Expanded guidance explains that a blank Docker `PORTS`
 field means no host mapping when the container uses port mappings; Docker host
 networking uses the service computer's port directly. It also explains
 loopback-only mappings and that Compose commands belong in the folder
-containing Atlas's Compose file, or can name that file with `--file`. These
-instructions do not change probe behavior or service configuration. Component
-and responsive browser tests cover the guidance.
+containing Atlas's Compose file, or can name that file with `--file`. The
+details drawer also shows the plain-language failure reason beside the status,
+while retaining the specific next step and raw message. These instructions do
+not change probe behavior or service configuration. Component and responsive
+browser tests cover the guidance.
 
 ## Work activity status wording — 2026-10-29
 

@@ -185,6 +185,11 @@ describe("ServiceHealthSection", () => {
         );
 
         expect(
+            within(screen.getByRole("dialog", { name: "iFileshare" })).getByText(
+                "Atlas Core's connection to this address was refused.",
+            ),
+        ).toBeInTheDocument();
+        expect(
             screen.getByRole("heading", { name: "What to check next" }),
         ).toBeInTheDocument();
         expect(
