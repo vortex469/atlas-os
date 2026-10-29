@@ -107,15 +107,6 @@ export function WorkflowDashboardPage() {
         return () => window.clearInterval(interval);
     }, [hasActiveWorkflow, loadDashboard, workflows.length]);
 
-    const summaryCounts = useMemo(() => {
-        const counts = new Map<string, number>();
-        for (const workflow of workflows) {
-            const group = workflowDashboardSummaryGroup(workflow.workflow_state);
-            counts.set(group, (counts.get(group) ?? 0) + 1);
-        }
-        return counts;
-    }, [workflows]);
-
     const hasAppliedMoreFilters = Boolean(filters.source || filters.candidateId || filters.workflowId);
     const hasUnappliedFilters = !dashboardFiltersEqual(draftFilters, filters);
 
@@ -131,6 +122,15 @@ export function WorkflowDashboardPage() {
             return true;
         });
     }, [filters, workflows]);
+
+    const summaryCounts = useMemo(() => {
+        const counts = new Map<string, number>();
+        for (const workflow of filteredWorkflows) {
+            const group = workflowDashboardSummaryGroup(workflow.workflow_state);
+            counts.set(group, (counts.get(group) ?? 0) + 1);
+        }
+        return counts;
+    }, [filteredWorkflows]);
 
     const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / PAGE_SIZE));
     const currentPage = Math.min(pageIndex, totalPages - 1);
@@ -246,7 +246,7 @@ export function WorkflowDashboardPage() {
                 </div>
             )}
 
-            {workflows.length > 0 && (
+            {filteredWorkflows.length > 0 && (
                 <section aria-labelledby="workflow-counts-heading" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <h2 id="workflow-counts-heading" className="sr-only">Workflow summary counts</h2>
                     {SUMMARY_GROUPS.map((group) => (

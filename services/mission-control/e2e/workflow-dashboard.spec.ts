@@ -40,6 +40,7 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Apply filters" }).click();
         await expect(page.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toHaveCount(0);
         await expect(page.getByText("No workflows match the current filters.")).toBeVisible();
+        await expect(page.getByRole("region", { name: "Workflow summary counts" })).toHaveCount(0);
         await page.getByRole("button", { name: "Clear filters" }).click();
         await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

@@ -2646,9 +2646,11 @@ unchanged. The WorkflowAuditPage suite passes (26 tests), as do Mission Control
 lint/build and all 11 built repository journey browser checks at phone and
 desktop widths.
 
-## Workflow dashboard empty state — 2026-10-29
+## Workflow dashboard counts and empty states — 2026-10-29
 
-When no workflows are loaded, the dashboard now shows the empty-state message
-without six redundant zero-count cards above it. Counts remain visible when
-there are workflows to summarize. The focused dashboard suite passes (17
-tests), and Mission Control lint and production build pass.
+Summary counts now follow the applied filters, so they describe the same
+workflows as the list. When no workflows match, or none are loaded, the
+dashboard shows the relevant empty-state message without six redundant
+zero-count cards. The focused dashboard suite covers matching and empty
+filters (17 tests), as do all 15 built workflow-dashboard browser checks at
+320px, 390px and 1280px. Mission Control lint and production build pass.

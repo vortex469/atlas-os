@@ -215,11 +215,23 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
+        let counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
+        const countFor = (label: string) => {
+            const card = counts.getByText(label, { exact: true }).closest("article");
+            return within(card as HTMLElement).getByText(/^\d+$/).textContent;
+        };
+        expect(countFor("Approval or action")).toBe("1");
+        expect(countFor("Blocked")).toBe("1");
+        expect(countFor("Completed")).toBe("0");
 
         fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "not_needed" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
         expect(screen.getByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
+        counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
+        expect(countFor("Completed")).toBe("1");
+        expect(countFor("Approval or action")).toBe("0");
+        expect(countFor("Blocked")).toBe("0");
     });
 
     it("supports pagination when more returned workflows exist", async () => {
@@ -347,6 +359,7 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getAllByLabelText("Workflow ID contains")[1], { target: { value: "missing" } });
         fireEvent.click(screen.getAllByRole("button", { name: /Apply filters/i })[1]);
         expect(screen.getByText("No workflows match the current filters.")).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Workflow summary counts" })).not.toBeInTheDocument();
         expect(screen.queryByText("0 workflows", { exact: true })).not.toBeInTheDocument();
 
         vi.mocked(listWorkflows).mockReset();
