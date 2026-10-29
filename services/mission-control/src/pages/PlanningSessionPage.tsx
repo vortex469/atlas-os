@@ -259,7 +259,9 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             </section>
 
             <section aria-labelledby="generate-plan-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">Candidate plan</h2>
+                <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">
+                    {operationalPlan ? "Maintenance plan" : "Candidate plan"}
+                </h2>
                 <p className="mt-2 text-sm text-slate-400">{planSectionDescription(session, hasPlan)}</p>
                 {session.status === "planning" && (
                     <button type="button" onClick={checkPlanningStatus} className="mt-4 rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">
@@ -378,7 +380,6 @@ function validOperationalPlan(plan: OperationalCandidatePlanApiResponse, session
 
 function MaintenancePlanViewer({ plan }: { plan: OperationalCandidatePlanApiResponse }) {
     return <article className="mt-5 space-y-5 rounded-xl border border-blue-400/30 bg-blue-400/5 p-5">
-        <h3 className="text-xl font-bold text-white">Maintenance plan</h3>
         <p className="text-sm text-slate-300">Review this plan before creating a workflow. This does not restart anything; the action still needs a separate exact approval.</p>
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <Detail label="Action" value={formatLabel(plan.intended_action)} />

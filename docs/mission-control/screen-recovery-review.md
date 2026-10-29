@@ -2366,3 +2366,12 @@ the screen does not present an unavailable response as a new service result.
 The full Mission Control component suite passes (2,869 tests), all 221 local
 browser checks pass, and lint and production build pass. Browser fixtures remain
 isolated and reject unconfigured mutations.
+
+## Planning page labels — 2026-10-29
+
+The planning page now labels a maintenance plan as “Maintenance plan” at the
+section heading and avoids repeating that heading inside the plan card.
+Repository plans retain “Candidate plan.” This removes repository-specific
+wording from the maintenance journey without changing plan requests or workflow
+approval. Planning page tests and the maintenance browser journey cover both
+labels.

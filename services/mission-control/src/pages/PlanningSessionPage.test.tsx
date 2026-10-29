@@ -105,7 +105,10 @@ describe("PlanningSessionPage", () => {
     it("renders the existing maintenance plan without requesting a repository plan", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan() }));
         renderPage();
-        await screen.findByRole("heading", { name: "Maintenance plan" });
+        const title = await screen.findByRole("heading", { name: /^Maintenance plan$/ });
+        expect(title.tagName).toBe("H2");
+        expect(screen.getAllByRole("heading", { name: /^Maintenance plan$/ })).toHaveLength(1);
+        expect(screen.queryByRole("heading", { name: /^Candidate plan$/ })).not.toBeInTheDocument();
         expect(screen.getByText("Proxmox virtual machine 110")).toBeVisible();
         const references = screen.getByText("Plan references", { exact: true });
         expect(references.closest("details")).not.toHaveAttribute("open");
@@ -302,6 +305,8 @@ describe("PlanningSessionPage", () => {
         renderPage();
 
         expect(await screen.findByText("Plan details")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /^Candidate plan$/ })).toBeVisible();
+        expect(screen.queryByRole("heading", { name: /^Maintenance plan$/ })).not.toBeInTheDocument();
         expect(mockedGetCandidatePlan).toHaveBeenCalledWith("candidate-plan-1");
     });
 

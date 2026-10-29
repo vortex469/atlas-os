@@ -80,6 +80,7 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("link", { name: "Continue planning", exact: true }).click();
         await page.getByRole("button", { name: "Generate Plan", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Maintenance plan", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Candidate plan", exact: true })).toHaveCount(0);
         await expect(page.getByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
         const planReferences = page.getByText("Plan references", { exact: true });
         await planReferences.click();
