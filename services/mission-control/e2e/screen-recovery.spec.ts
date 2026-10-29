@@ -504,16 +504,16 @@ for (const width of [390, 1280]) {
         await expect(sourceDetails.getByText("browser-fixture", { exact: true })).toBeVisible();
 
         const summary = page.getByRole("heading", { name: "Compatibility summary" }).locator("xpath=..");
-        const findings = page.getByRole("heading", { name: "What the check found" }).locator("xpath=..");
+        const findings = page.getByRole("heading", { name: "What Atlas found" }).locator("xpath=..");
         await expect(summary.getByText("Compatible with warnings", { exact: true })).toBeVisible();
-        await expect(summary.getByText("Checked (local time)", { exact: true })).toBeVisible();
+        await expect(summary.getByText("Last checked", { exact: true })).toBeVisible();
         await expect(summary.getByText(checkedAt, { exact: true })).toBeHidden();
         await expect(findings.getByText("Warnings", { exact: true })).toBeVisible();
         await expect(findings.getByText("Compatible with warnings", { exact: true })).toBeVisible();
         await expect(findings.getByText("Memory is borderline.", { exact: true })).toBeVisible();
         await expect(findings.getByText("Installed services", { exact: true })).toBeVisible();
         await expect(findings.getByText("Finding code: finding-browser-1", { exact: true })).toBeHidden();
-        await findings.getByText("Evidence and technical details", { exact: true }).click();
+        await findings.getByText("Evidence details", { exact: true }).click();
         await expect(findings.getByText("Finding code: finding-browser-1", { exact: true })).toBeVisible();
         await expect(findings.getByText("Checked field: requirements.resources.memory_mb_min", { exact: true })).toBeVisible();
         expect(rejectedMutationRequests).toEqual([]);
@@ -575,10 +575,10 @@ for (const width of [390, 1280]) {
         await page.goto("/discovery/items/fixture-app");
 
         const evidence = page.getByRole("region", { name: "Release evidence" });
-        await expect(evidence.getByRole("alert")).toContainText("Dynamic evidence unavailable");
+        await expect(evidence.getByRole("alert")).toContainText("Release information unavailable");
         await expect(evidence.getByRole("alert")).not.toContainText("PRIVATE_EVIDENCE_ERROR");
-        await evidence.getByRole("button", { name: "Retry source evidence" }).click();
-        await expect(evidence.getByText("Curated catalog only")).toBeVisible();
+        await evidence.getByRole("button", { name: "Retry release check" }).click();
+        await expect(evidence.getByText("Only catalog information is available")).toBeVisible();
         await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
         expect(reads).toBe(2);
         expect(rejectedMutationRequests).toEqual([]);
@@ -611,11 +611,11 @@ for (const width of [390, 1280]) {
         });
         await page.goto("/discovery/items/fixture-app");
 
-        const grounding = page.getByRole("region", { name: "Image grounding" });
-        await expect(grounding.getByRole("status")).toContainText("Image grounding is currently unavailable due to a local source or read failure.");
+        const grounding = page.getByRole("region", { name: "Image check" });
+        await expect(grounding.getByRole("status")).toContainText("Atlas could not finish checking the image. Try again.");
         await expect(grounding.getByRole("status")).not.toContainText("PRIVATE_GROUNDING_ERROR");
-        await grounding.getByRole("button", { name: "Retry image grounding" }).click();
-        await expect(grounding.getByText("No deployment binding").first()).toBeVisible();
+        await grounding.getByRole("button", { name: "Retry image check" }).click();
+        await expect(grounding.getByText("No deployment mapping").first()).toBeVisible();
         await expect(page.getByRole("heading", { name: "Fixture Application" })).toBeVisible();
         expect(reads).toBe(2);
         expect(rejectedMutationRequests).toEqual([]);
@@ -646,11 +646,11 @@ for (const width of [390, 1280]) {
         await page.goto("/discovery/items/fixture-app");
 
         const panel = page.getByRole("region", { name: "Installation plan review" });
-        await expect(panel.getByText("1 unresolved blocker; this plan is not executable.")).toBeVisible();
-        const details = panel.locator("details").filter({ hasText: "Plan details" });
+        await expect(panel.getByText("There is 1 issue to review. This plan does not authorize an installation.")).toBeVisible();
+        const details = panel.locator("details").filter({ hasText: "View issues and plan details" });
         expect(await details.evaluate((element) => (element as HTMLDetailsElement).open)).toBe(false);
         await expect(panel.getByText("a".repeat(64))).toBeHidden();
-        await panel.getByText("Plan details", { exact: true }).click();
+        await panel.getByText("View issues and plan details", { exact: true }).click();
         await expect(panel.getByText("a".repeat(64))).toBeVisible();
         expect(rejectedMutationRequests).toEqual([]);
         expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);

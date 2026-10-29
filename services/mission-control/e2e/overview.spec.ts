@@ -45,8 +45,8 @@ test('overview separates initial loading from unavailable data across dashboard 
             await expect(report.getByText('Unknown', { exact: true })).toHaveCount(0);
         }
         releaseHealth();
-        const attention = page.getByRole('region', { name: 'Operator Attention' });
-        await expect(attention.getByRole('status')).toHaveText("Checking current reports. The attention list may change when the remaining checks finish.");
+        const attention = page.getByRole('region', { name: 'Needs attention' });
+        await expect(attention.getByRole('status')).toHaveText("Checking the latest information. This list may update when more checks finish.");
         await expect(attention).not.toContainText("Some checks aren't available. This list may be incomplete.");
     } finally {
         releaseAgent();
@@ -107,7 +107,7 @@ for (const width of [320, 768, 1440]) {
         await expect(agent.getByRole('link', { name: 'View agent workflows' })).toHaveCount(0);
         await expect(agent.getByText('Unknown', { exact: true })).toHaveCount(0);
         await expect(agent.getByText('Evidence unknown.', { exact: true })).toHaveCount(0);
-        const attention = page.getByRole('region', { name: 'Operator Attention' });
+        const attention = page.getByRole('region', { name: 'Needs attention' });
         await expect(attention.getByRole('link', { name: 'Review operational conditions →' })).toHaveCount(0);
         await expect(attention.getByRole('link', { name: 'Review workflow attention →' })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -171,7 +171,7 @@ for (const width of [320, 390, 1280]) {
         } }));
         await page.goto("/");
 
-        const attention = page.getByRole("region", { name: "Operator Attention" });
+        const attention = page.getByRole("region", { name: "Needs attention" });
         await expect(attention.getByRole("link", { name: "Restart Service", exact: true })).toHaveAttribute("href", "/workflows/maintenance-review");
         await expect(attention.getByText("Action needed: Review the maintenance request. If approved, choose Run approved maintenance.", { exact: true })).toBeVisible();
         await expect(attention.getByText("Waiting for implementation approval", { exact: true })).toHaveCount(0);
@@ -312,8 +312,8 @@ for (const width of [320, 1280]) {
         } }));
         await page.goto('/');
 
-        const attention = page.getByRole('region', { name: 'Operator Attention', exact: true });
-        const serviceCondition = attention.getByRole('list', { name: 'Reported attention conditions' }).getByRole('listitem');
+        const attention = page.getByRole('region', { name: 'Needs attention', exact: true });
+        const serviceCondition = attention.getByRole('list', { name: 'Items needing attention' }).getByRole('listitem');
         await expect(serviceCondition.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
         await expect(serviceCondition.getByText('Unavailable', { exact: true })).toHaveCount(0);
 
@@ -324,23 +324,25 @@ for (const width of [320, 1280]) {
         await expect(nextStep).toBeVisible();
         await expect(nextStep).toContainText('Try this address from the Atlas Core machine or container:');
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
-        await expect(nextStep).toContainText('For a container using Docker port mappings, a blank PORTS field means no host port is published for Atlas Core to reach.');
+        await expect(nextStep).toContainText('With port mappings, a blank field means no port is published for Atlas Core.');
+        await expect(nextStep).toContainText('With host networking, a blank field is normal; check that the app listens on the address above.');
         const moreChecks = checks.getByText('More connection checks');
         await moreChecks.click();
         const steps = checks.getByRole('list', { name: 'How to check from Atlas Core' });
         await expect(steps.getByRole('listitem')).toHaveCount(3);
         await expect(steps).toHaveCSS('font-size', '14px');
-        await expect(steps).toContainText('Test from the Atlas Core machine or atlas-core container');
-        await expect(steps).toContainText('A browser or the service computer may use a different network path');
+        await expect(steps).toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
+        await expect(steps).toContainText('Running it on the service computer or in your browser checks a different network path');
         await expect(steps).toContainText('On another computer running Docker, use docker ps and check PORTS');
         await expect(steps).toContainText('For containers using port mappings, a blank field means no host port is published');
         await expect(steps).toContainText("With Docker host networking, the app listens directly on the service computer's port, so a published-port mapping is not expected");
         await expect(steps).toContainText('a mapping starting with 127.0.0.1: is reachable only from that computer');
         await expect(steps).toContainText("publish the app's listening port with Compose's ports: or docker run -p");
         await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');
-        await expect(steps).toContainText('Run Compose commands from the folder containing the Compose file');
+        await expect(steps).toContainText("If Compose says the file is missing, the command ran outside the Atlas folder or on another computer. That error doesn't show whether the service is running.");
+        await expect(steps).toContainText('Run Compose from the folder containing the file, or pass its full path with --file');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
-        await expect(checks.getByText('Next check: On the service computer, confirm the app is listening on this port. If it runs in Docker, run docker ps there and check PORTS. For a container using Docker port mappings, a blank PORTS field means there is no host port for Atlas Core to reach. Publish the listening port, then test again from Atlas Core.', { exact: true })).toBeVisible();
+        await expect(checks.getByText('Next check: On the service computer, confirm the app is listening on this port. If it runs in Docker, check PORTS with docker ps; if blank, publish the port unless the container uses host networking. Then test from Atlas Core.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
@@ -429,7 +431,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
         { id: 'proxmox', name: 'Proxmox', workspace: 'operations', priority: 'critical', version: 'fixture-v1', description: 'Virtualization provider fixture.', icon: 'server', health: { status: 'warning', message: 'Capacity limited', details: {} } },
     ] }));
     await page.goto('/');
-    const attention = page.getByRole('region', { name: 'Operator Attention' });
+    const attention = page.getByRole('region', { name: 'Needs attention' });
     await expect(attention.getByText('Endpoint offline')).toBeVisible();
     await expect(attention.getByText('Reported status: offline', { exact: true })).toHaveCount(0);
     await expect(attention.getByText('Check time unavailable.', { exact: true })).toHaveCount(0);
@@ -452,7 +454,7 @@ test('mobile attention includes configured AI failure and follows its provider r
         health: { status: 'offline', message: 'Runtime endpoint unavailable' },
     } }));
     await page.goto('/');
-    const attention = page.getByRole('region', { name: 'Operator Attention' });
+    const attention = page.getByRole('region', { name: 'Needs attention' });
     await expect(attention.getByText('Runtime endpoint unavailable')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await attention.getByRole('link', { name: 'Configured runtime', exact: true }).click();
@@ -464,7 +466,7 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled();
-    const attention = page.getByRole('region', { name: 'Operator Attention' });
+    const attention = page.getByRole('region', { name: 'Needs attention' });
     const grid = page.getByTestId('overview-grid');
     const attentionBox = await attention.boundingBox();
     const gridBox = await grid.boundingBox();
@@ -522,7 +524,7 @@ for (const width of [390, 1280]) {
         await expect(health.getByText(/Each report updates on its own, so check times may differ/)).toBeVisible();
         await expect(health.getByText(/Reports more than a minute old are marked out of date/)).toBeVisible();
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
-        const explanation = checks.getByText('These checks show whether Atlas Core can reach each configured service. They do not show whether Atlas Core itself is healthy.');
+        const explanation = checks.getByText("These checks cover the listed services. For Atlas Core's own health, use the System health card.");
         await expect(explanation).toBeHidden();
         await checks.getByText('About service checks').click();
         await expect(explanation).toBeVisible();

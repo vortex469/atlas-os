@@ -3120,3 +3120,17 @@ covers both explanations; service checks remain read-only.
 The short Docker hint also states the host-networking exception next to the
 blank-port explanation, so a blank `PORTS` column isn't treated as proof that
 the service is stopped. The focused overview test checks both cases.
+
+## Dashboard browser checks follow the current layout — 2026-10-29
+
+The app-shell, overview, and unavailable-data browser specs now assert the
+current “Needs attention” region, source-recovery text, and service-check
+guidance. They had retained selectors and copy from the removed
+“Operator Attention” presentation. All 44 browser checks across those specs
+pass against synthetic API fixtures at desktop and narrow viewport sizes.
+
+The full browser suite also had old discovery and readiness assertions for
+release timestamps, image checks, installation plans, and saved confirmation
+records. The specs now use the current labels and verify the existing read-only
+and collapsed-detail behavior. No runtime or approval behavior changed; all
+228 development browser checks pass against synthetic API fixtures.

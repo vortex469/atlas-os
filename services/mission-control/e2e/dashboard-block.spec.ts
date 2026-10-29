@@ -15,10 +15,10 @@ test("dashboard explains unavailable workflow data once and translates network e
 
     await page.goto("/");
 
-    const attention = page.getByRole("region", { name: "Operator Attention" });
+    const attention = page.getByRole("region", { name: "Needs attention" });
     const workActivity = page.getByRole("region", { name: "Work activity" });
     await expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
-    await attention.getByText("Which checks are missing?").click();
+    await attention.getByText("Which results are missing?").click();
     await expect(attention.getByText("Workflows: current information could not be loaded.")).toBeVisible();
     await expect(attention.getByText("Workflow results are incomplete.")).toHaveCount(0);
     await expect(workActivity.getByText("Workflow status could not be loaded.")).toBeVisible();
@@ -82,7 +82,7 @@ for (const width of [320, 390, 1280]) {
             } });
         });
         await page.goto("/");
-        const attention = page.getByRole("region", { name: "Operator Attention" });
+        const attention = page.getByRole("region", { name: "Needs attention" });
         const activity = page.getByRole("region", { name: "Recent provider actions" });
         await expect(attention.getByText("Action needed: Review the change. If approved, choose Run approved change.", { exact: true })).toBeVisible();
         await expect(activity.getByRole("listitem")).toHaveCount(1);

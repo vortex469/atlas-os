@@ -28,7 +28,7 @@ test("Mission Control application shell renders with primary navigation", async 
 test("Mission Control dashboard loads from controlled Core and Agent responses", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Operator Attention" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Needs attention" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Update Compose Stack" })).toBeVisible();
     await expect(page.getByText("Action needed: Review the change. If approved, choose Run approved change.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Review workflows →", exact: true })).toHaveAttribute("href", "/workflows");
