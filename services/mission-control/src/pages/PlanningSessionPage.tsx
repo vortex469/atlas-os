@@ -123,7 +123,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     return;
                 }
                 console.error(`Unable to load planning session ${sessionId}:`, requestError);
-                setError("Mission Control could not load this planning session, so its current status is unknown.");
+                setError("Atlas couldn’t load this planning session. Try again to check its status.");
                 setErrorDetails(getAtlasAgentErrorMessage(
                     requestError,
                     "Planning session read failed without additional details.",

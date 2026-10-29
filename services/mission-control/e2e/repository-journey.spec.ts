@@ -253,6 +253,35 @@ for (const width of [320, 390, 1280]) {
 }
 
 for (const width of [390, 1280]) {
+    test(`an unavailable planning session can be checked again at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installRepositoryJourney(page, false, { baseURL });
+        await page.setViewportSize({ width, height: 844 });
+        let sessionReads = 0;
+        let allowRecovery = false;
+        await page.route(`**/agent-api/candidate-planning/${journey.session}`, async (route) => {
+            if (route.request().method() !== "GET") return route.fallback();
+            sessionReads += 1;
+            if (!allowRecovery) {
+                return route.fulfill({ status: 503, json: { detail: "Planning session fixture is unavailable." } });
+            }
+            return route.fallback();
+        });
+
+        await page.goto(`/candidate-planning/${journey.session}`);
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Planning session unavailable");
+        await expect(alert).toContainText("Atlas couldn’t load this planning session. Try again to check its status.");
+        await expect(alert.locator("details")).not.toHaveAttribute("open");
+        await expect(page.getByRole("button", { name: "Generate Plan" })).toHaveCount(0);
+        allowRecovery = true;
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByRole("heading", { name: "Plan this change" })).toBeVisible();
+        expect(sessionReads).toBeGreaterThanOrEqual(2);
+        expect(fixture.writes).toEqual([]);
+        expect(fixture.unexpected).toEqual([]);
+        await fitsViewport(page);
+    });
+
     test(`an unreadable workflow shows a clear retry and recovers at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, true, { baseURL });
         await page.setViewportSize({ width, height: 844 });

@@ -387,7 +387,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Planning session unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not load this planning session, so its current status is unknown.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this planning session. Try again to check its status.");
         expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
         const readError = within(alert).getByText("Agent unavailable");
         const readErrorDetails = readError.closest("details");
@@ -555,7 +555,7 @@ describe("PlanningSessionPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not load this planning session, so its current status is unknown.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this planning session. Try again to check its status.");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
     });
