@@ -144,7 +144,7 @@ export function ServiceDetailsDrawer({
                             </dd>
                         </dl>
                         <p className="mt-2 text-sm text-slate-400">
-                            Atlas Core checks this address from its own machine. A service can open in your browser and still be unreachable from Atlas Core.
+                            Run a network test from the machine running Atlas Core. If Atlas Core runs in Docker Compose, run it inside the <code>atlas-core</code> container. A test from the service's machine or your browser only checks that machine's connection.
                         </p>
                         {nextCheck && (
                             <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">

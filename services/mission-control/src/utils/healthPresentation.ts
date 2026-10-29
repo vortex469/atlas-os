@@ -42,7 +42,7 @@ export function healthNextCheck(value: unknown): string | null {
     const { message } = parseHealthError(text);
     switch (message.toLowerCase()) {
         case "connection refused":
-            return "Check that the service is listening on this port and that Atlas Core can reach it.";
+            return "On the service's host, confirm the service is listening on this port. If it runs in Docker, confirm the port is published. Then test again from Atlas Core.";
         case "no route to host":
             return "Check the target address and the network or firewall route from Atlas Core to the service host.";
         case "network is unreachable":

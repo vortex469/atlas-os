@@ -2744,3 +2744,12 @@ Action history keeps its local-time note and now rejects malformed timestamps
 instead of normalizing impossible dates. Valid completion times retain their
 source instants in semantic `<time>` elements. The focused history suite covers
 valid and malformed values.
+
+## Service reachability guidance — 2026-10-29
+
+The health drawer now says where to test connectivity: from the machine running
+Atlas Core, inside its `atlas-core` Compose service when applicable. A
+connection-refused result points operators to the service host, its listening
+port, Docker port publication when used, then a repeat test from Core. Health
+probe behavior and service state are unchanged. The focused service-health
+suite covers the location and recovery guidance.
