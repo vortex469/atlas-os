@@ -415,7 +415,7 @@ export function OperationsPage() {
                                 htmlFor="audit-from-filter"
                                 className="text-xs font-medium uppercase tracking-wider text-slate-500"
                             >
-                                From date
+                                From date (UTC)
                             </label>
                             <input
                                 id="audit-from-filter"
@@ -435,7 +435,7 @@ export function OperationsPage() {
                                 htmlFor="audit-to-filter"
                                 className="text-xs font-medium uppercase tracking-wider text-slate-500"
                             >
-                                To date
+                                To date (UTC)
                             </label>
                             <input
                                 id="audit-to-filter"
@@ -451,7 +451,7 @@ export function OperationsPage() {
                             />
                         </div>
                         <p id="audit-date-filter-help" className="text-xs text-slate-500 sm:col-span-2 xl:col-span-3">
-                            Selected dates cover full UTC days.
+                            Date filters use full UTC days; action times use your local time.
                         </p>
                     </div>
                 </details>

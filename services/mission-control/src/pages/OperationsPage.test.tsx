@@ -158,7 +158,7 @@ describe("OperationsPage", () => {
         expect(await screen.findByText("Unload Model")).toBeInTheDocument();
         await userEvent.setup().click(screen.getByText("More filters", { exact: true }));
         expect(screen.getByRole("status")).toHaveTextContent("Provider options could not be loaded. Date filters are still available.");
-        expect(screen.getByLabelText("From date")).toBeVisible();
+        expect(screen.getByLabelText("From date (UTC)")).toBeVisible();
         expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
     });
@@ -440,21 +440,21 @@ describe("OperationsPage", () => {
         expect(screen.getByText("Completed actions and their results. Times use your local time.")).toBeVisible();
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
-        expect(screen.getByLabelText("From date")).not.toBeVisible();
+        expect(screen.getByLabelText("From date (UTC)")).not.toBeVisible();
         await user.click(moreFilters);
-        expect(screen.getByText("Selected dates cover full UTC days.", { exact: true })).toBeVisible();
-        expect(screen.getByLabelText("From date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
-        expect(screen.getByLabelText("To date")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
+        expect(screen.getByText("Date filters use full UTC days; action times use your local time.", { exact: true })).toBeVisible();
+        expect(screen.getByLabelText("From date (UTC)")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
+        expect(screen.getByLabelText("To date (UTC)")).toHaveAttribute("aria-describedby", "audit-date-filter-help");
         await user.selectOptions(
             screen.getByLabelText("Provider"),
             "ollama",
         );
         await user.type(
-            screen.getByLabelText("From date"),
+            screen.getByLabelText("From date (UTC)"),
             "2026-07-01",
         );
         await user.type(
-            screen.getByLabelText("To date"),
+            screen.getByLabelText("To date (UTC)"),
             "2026-07-25",
         );
 
@@ -476,8 +476,8 @@ describe("OperationsPage", () => {
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Clear filters" }));
         expect(screen.getByLabelText("Provider")).toHaveValue("all");
-        expect(screen.getByLabelText("From date")).toHaveValue("");
-        expect(screen.getByLabelText("To date")).toHaveValue("");
+        expect(screen.getByLabelText("From date (UTC)")).toHaveValue("");
+        expect(screen.getByLabelText("To date (UTC)")).toHaveValue("");
         await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenLastCalledWith({
             limit: 25,
             offset: 0,

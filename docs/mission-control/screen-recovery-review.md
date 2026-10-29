@@ -3459,3 +3459,11 @@ and unavailable fallback use the same label. This keeps a past verification
 result from reading like a current health probe. The Operational History unit
 suite passes 43 tests and the screen-recovery browser suite passes 88 tests;
 lint and build pass.
+
+## Action history date zones — 2026-10-29
+
+Action history date fields now identify UTC directly. Their help text explains
+that filters include full UTC days while recorded action times display in the
+browser's local time. The Operations page suite passes 16 tests and the
+responsive date-filter browser suite passes at 320px, 390px, and 1280px; lint
+and build pass.
