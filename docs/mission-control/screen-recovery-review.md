@@ -3406,3 +3406,10 @@ The Overview labels its execution count “Currently executing workflows,” so
 operators can distinguish change execution from verification and commit stages.
 The empty and unavailable messages use the same scope. Workflow outcomes and
 execution behavior are unchanged.
+
+## Workflow progress approval states — 2026-10-29
+
+The progress panel now distinguishes a rejected change from one waiting for
+approval and says when an approved change or maintenance request is ready for
+the operator to run. The panel still performs no action; approval and run
+controls remain separate.

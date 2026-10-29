@@ -114,6 +114,25 @@ describe("ExecutionTimeline", () => {
         expect(within(screen.getByRole("list", { name: "Change stages" })).getAllByText("Not started").length).toBeGreaterThan(0);
     });
 
+    it("does not describe a rejected change as waiting for approval", () => {
+        renderTimeline(workflow({
+            workflow_state: "implementation_rejected",
+            implementation_approval_status: "rejected",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("The change was not applied because implementation approval was rejected.");
+        expect(screen.queryByRole("status")).not.toHaveTextContent("Waiting for implementation approval.");
+    });
+
+    it("says when an approved change is ready for the operator to run", () => {
+        renderTimeline(workflow({
+            workflow_state: "awaiting_execution",
+            implementation_approval_status: "approved",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Approval is recorded. Run the change when you are ready.");
+    });
+
     it("does not present an unrecognized server stage status as not started", () => {
         renderTimeline(workflow({
             timeline: workflow().timeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "unexpected" } : stage),
@@ -161,10 +180,21 @@ describe("ExecutionTimeline", () => {
     it("describes a rejected operational decision as a rejected maintenance request", () => {
         renderTimeline(workflow({
             effect_kind: "operational_action",
+            workflow_state: "implementation_rejected",
             implementation_approval_status: "rejected",
         }));
 
-        expect(screen.getByText("Maintenance request rejected.")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("The maintenance request was rejected; it was not run.");
+    });
+
+    it("describes approved maintenance as ready for the operator to run", () => {
+        renderTimeline(workflow({
+            effect_kind: "operational_action",
+            workflow_state: "awaiting_execution",
+            implementation_approval_status: "approved",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Maintenance is approved. Run it when you are ready.");
     });
 
     it("renders running state", () => {
