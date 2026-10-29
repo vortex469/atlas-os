@@ -292,11 +292,13 @@ describe("ExecutionCandidatesPage", () => {
 
         renderPage();
         expect(await screen.findByText("No current change proposals.")).toBeInTheDocument();
+        expect(screen.queryByText("0 proposals", { exact: true })).not.toBeInTheDocument();
 
         mockedListExecutionCandidates.mockResolvedValueOnce(page([]));
         await user.selectOptions(screen.getByLabelText("Eligibility"), "not_eligible");
         await user.click(screen.getByRole("button", { name: "Search proposals" }));
         expect(await screen.findByText("No change proposals match these filters.")).toBeInTheDocument();
+        expect(screen.queryByText("0 proposals", { exact: true })).not.toBeInTheDocument();
 
         mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Core unavailable"));
         await user.click(screen.getByRole("button", { name: "Reset filters" }));

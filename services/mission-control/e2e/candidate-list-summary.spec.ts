@@ -47,6 +47,7 @@ for (const width of [320, 390, 1280]) {
 
         await alert.getByRole("button", { name: "Retry search" }).click();
         await expect(page.getByText("No current change proposals.")).toBeVisible();
+        await expect(page.getByText("0 proposals", { exact: true })).toHaveCount(0);
         expect(requestCount).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
@@ -76,6 +77,7 @@ for (const width of [320, 390, 1280]) {
 
         await alert.getByRole("button", { name: "Retry search" }).click();
         await expect(page.getByText("No current change proposals.", { exact: true })).toBeVisible();
+        await expect(page.getByText("0 proposals", { exact: true })).toHaveCount(0);
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);

@@ -3161,3 +3161,9 @@ implicit; every workflow still appears in the list with its stage.
 The AI provider card now names the missing data as provider status and says
 directly when Atlas could not load it, so the message is distinct from the
 separate provider registry card.
+
+## Change proposal empty results — 2026-10-29
+
+An empty proposal search now shows its plain-language empty state without a
+second “0 proposals” count. Nonzero result totals remain visible above the
+proposal list.
