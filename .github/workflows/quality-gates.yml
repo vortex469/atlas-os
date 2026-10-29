@@ -113,7 +113,13 @@ jobs:
           pytest -vv --tb=long --durations=25 -o faulthandler_timeout=300 "${core_nodes[@]}"
 
   mission-control:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --init --shm-size=1g
+    env:
+      PLAYWRIGHT_IMAGE_VERSION: "1.63.0"
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     timeout-minutes: 10
 
     steps:
@@ -143,9 +149,17 @@ jobs:
         working-directory: services/mission-control
         run: npm run build
 
-      - name: Install browser test runtime
+      - name: Check pinned browser test runtime
         working-directory: services/mission-control
-        run: ./node_modules/.bin/playwright install --with-deps chromium
+        run: |
+          node <<'NODE'
+          const { existsSync } = require("node:fs");
+          const { chromium } = require("@playwright/test");
+          const { version } = require("@playwright/test/package.json");
+          if (version !== process.env.PLAYWRIGHT_IMAGE_VERSION || !existsSync(chromium.executablePath())) {
+            throw new Error("Playwright package and pinned browser image must match.");
+          }
+          NODE
 
       - name: Test Mission Control operator journeys
         id: browser-tests
