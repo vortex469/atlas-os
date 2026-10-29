@@ -3077,3 +3077,8 @@ The nested queue receipt now calls the saved item a review record, not a
 completed queue claim, lease, or acknowledgement. It shows whether the review
 is current or expired, keeps fingerprints collapsed, and safely retries its
 Core read after a load failure.
+
+The worker runtime prerequisite panel now uses a clear saved/missing/unavailable
+state, explains that worker start is not available, and retries only failed
+Core reads. Technical fingerprints remain collapsed and no runtime action is
+introduced.
