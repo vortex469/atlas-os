@@ -65,8 +65,8 @@ export function InstallationExecutionAdmissions({ candidateId, grants, homeAssis
         <p className="mt-2 text-sm">This records a review step only. It does not pick a machine, install anything, or start work.</p>
         <details className="mt-2">
             <summary className="cursor-pointer text-xs text-slate-400">How this record works</summary>
-            <p className="mt-2 text-sm">Admission gated is an evidence status, not runner binding, execution start, installation, dispatch, retry or resend, Agent invocation, workflow or worker start, Docker, Podman, shell or process execution, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or mutation authority.</p>
-            <p className="mt-2 text-sm">Core binds the authenticated operator, exact v0.20–v0.35 fingerprints, and the v0.35 permission grant. Freshness inherits at most 30 seconds. Expiry never refreshes evidence. Idempotency and grant subjects remain reserved permanently; raw keys are not persisted and replay is not allowed.</p>
+            <p className="mt-2 text-sm">This record is evidence only. It does not connect a machine, start work, or allow system changes.</p>
+            <p className="mt-2 text-sm">It is tied to this operator and the exact earlier reviews and confirmation. If it expires, it cannot be renewed or reused.</p>
         </details>
         {admissions === null && !error && <p role="status" className="mt-4">Checking for saved run review records…</p>}
         {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Atlas could not load the run review record. Retry to check its current status." : "Atlas could not save the run review record."}</p><p className="text-xs text-slate-400">Private system details are hidden.</p>{error === "load" && <button type="button" onClick={() => { setAdmissions(null); setError(null); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button>}</div>}

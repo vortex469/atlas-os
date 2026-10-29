@@ -47,6 +47,11 @@ describe("InstallationExecutionAdmissions", () => {
         render(<InstallationExecutionAdmissions candidateId={uuid4} grants={[grantResultFixture]} homeAssistantBlocked={false} />);
         expect(await screen.findByRole("heading", { name: "Run review record is current" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review run statement" })).not.toBeInTheDocument();
+        const explanation = screen.getByText("How this record works").closest("details");
+        expect(explanation).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("How this record works"));
+        expect(explanation).toHaveTextContent("This record is evidence only. It does not connect a machine, start work, or allow system changes.");
+        expect(explanation).toHaveTextContent("It is tied to this operator and the exact earlier reviews and confirmation. If it expires, it cannot be renewed or reused.");
         expect(screen.getByText("Technical details").closest("details")).not.toHaveAttribute("open");
         fireEvent.click(screen.getByText("Technical details"));
         expect(screen.getByText(/readiness: admission_gated; lifecycle: active/i)).toBeVisible();
