@@ -1,4 +1,5 @@
 import { mapServiceStatusToHealthState } from "../../components/health/healthPresentation";
+import { evidenceTimestamp } from "../../utils/healthPresentation";
 
 export const record = (value: unknown): Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -13,9 +14,8 @@ export function safeText(value: unknown): string {
     return value.slice(0, 240);
 }
 export function timestamp(value: unknown): Date | null {
-    if (typeof value !== "string" || !/^\d{4}-\d\d-\d\dT/.test(value)) return null;
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : null;
+    const parsed = evidenceTimestamp(value);
+    return parsed === null ? null : new Date(parsed);
 }
 export const status = (value: unknown) => mapServiceStatusToHealthState(value);
 export function healthPriority(value: unknown): number {

@@ -31,13 +31,19 @@ export function RecentActivity({ evidence, loading = false }: { evidence?: Evide
             const date = timestamp(event.completed_at);
             const outcome = event.status === "failed" ? "Failed" : event.status === "succeeded" ? "Succeeded" : "Outcome unknown";
             const message = safeText(event.message);
+            const missingTime = event.completed_at === null
+                || event.completed_at === undefined
+                || (typeof event.completed_at === "string" && !event.completed_at.trim());
+            const unavailableTimeLabel = missingTime
+                ? "Completion time not reported."
+                : "Completion time unavailable.";
             return <li key={String(event.id)} className="min-w-0 rounded-lg border border-mc-border-subtle p-3">
                 <p className="font-medium">{outcome} · {safeText(event.action_label)}</p>
                 <p className="mt-1 text-xs text-mc-text-muted">{safeText(event.provider_name) || "Provider unknown."}</p>
                 {message && <p className="mt-2 text-sm">{message}</p>}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>
-                    {date ? <time dateTime={date.toISOString()} title={`UTC ${date.toISOString()}`} className="text-mc-text-muted">Completed (local time) {date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : <span className="text-mc-text-muted">Completion time unknown.</span>}
+                    {date ? <time dateTime={date.toISOString()} title={`UTC ${date.toISOString()}`} className="text-mc-text-muted">Completed (local time) {date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : <span className="text-mc-text-muted">{unavailableTimeLabel}</span>}
                 </div>
             </li>;
         })}</ol>

@@ -69,13 +69,22 @@ describe("integrated attention and activity", () => {
         expect(activity().queryByText("No recent provider actions recorded.")).not.toBeInTheDocument();
         expect(activity().queryByRole("listitem")).not.toBeInTheDocument();
     });
-    it("preserves usable rows and explicit unknown outcomes/times without leaking arbitrary fields", () => {
+    it("preserves usable rows and marks malformed times unavailable without leaking arbitrary fields", () => {
         render(dashboard({ activity: { data: { items: [null, { ...event, status: { toString: null }, completed_at: "bad", provider_name: "token=private", message: "https://user:pass@host", details: { secret: "private-value" }, href: "javascript:alert(1)" }] } } }));
         expect(activity().getByText("Outcome unknown · Restart")).toBeVisible();
-        expect(activity().getByText("Completion time unknown.")).toBeVisible();
+        expect(activity().getByText("Completion time unavailable.")).toBeVisible();
         expect(activity().getByText("Some provider action records could not be read.")).toBeVisible();
         expect(screen.queryByText(/private-value|token=private|user:pass/)).not.toBeInTheDocument();
         expect(activity().getByRole("link", { name: "Inspect action →" })).toHaveAttribute("href", "/operations/actions/audit%2F1");
+    });
+    it("distinguishes a missing completion time from an invalid timestamp", () => {
+        render(dashboard({ activity: { data: { items: [
+            { ...event, id: "missing-time", completed_at: null },
+            { ...event, id: "invalid-time", completed_at: "2026-02-30T12:00:00Z" },
+        ] } } }));
+        expect(activity().getByText("Completion time not reported.")).toBeVisible();
+        expect(activity().getByText("Completion time unavailable.")).toBeVisible();
+        expect(activity().getAllByRole("listitem")).toHaveLength(2);
     });
     it("shows unavailable, stale, and recovered history without accumulating a client audit log", () => {
         const view = render(dashboard({ activity: { unavailable: true } }));

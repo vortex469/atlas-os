@@ -30,6 +30,38 @@ test("dashboard explains unavailable workflow data once and translates network e
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+test("dashboard marks impossible action times as unavailable", async ({ page }) => {
+    await page.route("**/api/v1/ops/actions/page?**", route => route.fulfill({ json: {
+        items: [{
+            id: "audit/invalid-time",
+            provider_id: "fixture-provider",
+            provider_name: "Provider",
+            action_id: "restart",
+            action_label: "Restart",
+            status: "succeeded",
+            success: true,
+            message: "Fixture action completed.",
+            confirmed: true,
+            destructive: false,
+            parameter_names: [],
+            request_id: "request-invalid-time",
+            started_at: "2026-02-28T12:00:00Z",
+            completed_at: "2026-02-30T12:00:00Z",
+            duration_ms: 1000,
+        }],
+        total: 1,
+        offset: 0,
+        limit: 5,
+        has_more: false,
+    } }));
+
+    await page.goto("/");
+
+    const activity = page.getByRole("region", { name: "Recent provider actions" });
+    await expect(activity.getByText("Completion time unavailable.")).toBeVisible();
+    await expect(activity.getByText(/^Completed \(local time\)/)).toHaveCount(0);
+});
+
 for (const width of [320, 390, 1280]) {
     test(`attention and source history fit ${width}px with safe navigation`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });

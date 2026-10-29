@@ -2941,3 +2941,10 @@ The dashboard browser test now checks the current Operator Attention summary
 for incomplete source evidence. The previous assertion expected wording the
 dashboard no longer renders. The source-specific recovery details and
 read-only behavior remain covered by the same journey.
+
+## Dashboard action timestamp evidence — 2026-10-29
+
+Recent provider actions now use the shared strict timestamp validator, so
+impossible calendar dates cannot appear as real completion times. The summary
+distinguishes a time the service did not report from a reported time Atlas
+could not parse. Action ordering and the linked history remain unchanged.

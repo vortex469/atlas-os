@@ -466,7 +466,7 @@ describe('operational activity and runtime evidence', () => {
         show({ activity: { data: { items: [{ id: 'audit/1', action_label: 'Inspect resource', status: 'failed', message: 'Provider unavailable', completed_at: 'invalid' }] } }, ai: { data: { models: { running: [{ name: 'model-a' }] }, errors: {} } } });
         expect(screen.getByText('Failed · Inspect resource')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Inspect action →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
-        expect(screen.getByText('Completion time unknown.')).toBeInTheDocument();
+        expect(screen.getByText('Completion time unavailable.')).toBeInTheDocument();
         expect(screen.getByText('Running models: model-a')).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
     });
