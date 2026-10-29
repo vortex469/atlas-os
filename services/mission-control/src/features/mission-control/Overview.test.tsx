@@ -109,9 +109,11 @@ describe("MC overview evidence", () => {
         expect(visibleItems).toHaveLength(5);
         expect(within(visibleItems[0]).getByRole('link')).toHaveTextContent('blocked');
         expect(within(visibleItems[1]).getByRole('link', { name: 'Critical condition' })).toBeVisible();
+        expect(within(visibleItems[1]).getByRole('link', { name: 'Critical condition' })).toHaveAttribute('href', '#system-health');
         expect(within(visibleItems[2]).getByRole('link', {
             name: 'Update Compose Stack',
         })).toBeVisible();
+        expect(screen.getByRole('region', { name: 'System health' })).toHaveAttribute('id', 'system-health');
         const expand = attention.getByRole('button', { name: 'Show all 9 items' });
         expect(expand).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expand);
@@ -481,7 +483,9 @@ describe('operational activity and runtime evidence', () => {
     });
     it('deduplicates an identical finding and provider condition', () => {
         show({ providers: { data: [{ id: 'p', name: 'Provider', health: { status: 'offline', message: 'No connection' } }] }, summary: { data: { findings: [{ id: 'f', source: 'p', title: 'Provider offline', message: 'No connection', severity: 'critical' }] } } });
-        expect(within(screen.getByRole('region', { name: 'Needs attention' })).getAllByText('No connection')).toHaveLength(1);
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+    expect(attention.getAllByText('No connection')).toHaveLength(1);
+    expect(attention.getByRole('link', { name: 'Provider offline' })).toHaveAttribute('href', '/providers/p');
     });
 });
 
@@ -546,6 +550,10 @@ it('routes provider warnings without safe detail ids to their overview cards', (
     show({
         providers: { data: [{ id: '../legacy', name: 'Legacy provider', health: { status: 'offline', message: 'Provider connection failed' } }] },
         ai: { data: { provider: { id: '../runtime', name: 'Configured AI' }, health: { status: 'offline', message: 'AI connection failed' } } },
+        summary: { data: { findings: [
+            { id: 'legacy-finding', source: '../legacy', title: 'Legacy provider', message: 'Provider connection failed', severity: 'critical' },
+            { id: 'ai-finding', source: '../runtime', title: 'Configured AI', message: 'AI connection failed', severity: 'critical' },
+        ] } },
     });
     const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getByRole('link', { name: 'Legacy provider' })).toHaveAttribute('href', '#providers');
@@ -597,7 +605,9 @@ it('deduplicates an AI condition also reported as an operational finding', () =>
         ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'offline', message: 'Connection failed' } } },
         summary: { data: { findings: [{ id: 'f', source: 'runtime', title: 'Runtime offline', message: 'Connection failed', severity: 'critical' }] } },
     });
-    expect(within(screen.getByRole('region', { name: 'Needs attention' })).getAllByText('Connection failed')).toHaveLength(1);
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+    expect(attention.getAllByText('Connection failed')).toHaveLength(1);
+    expect(attention.getByRole('link', { name: 'Runtime offline' })).toHaveAttribute('href', '/providers/runtime');
 });
 
 it('integrates one health summary with independent source freshness and safe reasons', () => {

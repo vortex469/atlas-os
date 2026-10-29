@@ -3225,3 +3225,10 @@ Provider warnings without a safe provider detail ID now open the Providers
 summary card, and AI provider warnings without a safe detail ID open the AI
 provider card. Valid provider detail links remain direct. The Overview
 component suite covers both fallback destinations.
+
+## System finding attention destinations — 2026-10-29
+
+Unmatched system findings now point to System health. Findings that replace a
+duplicate provider or service warning retain that condition's safe detail or
+summary destination, so their higher priority does not send operators to
+generic action history.

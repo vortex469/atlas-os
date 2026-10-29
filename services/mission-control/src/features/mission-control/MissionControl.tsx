@@ -175,6 +175,30 @@ function attentionKey(finding: Record<string, unknown>, providers: Record<string
     return conditionKey("finding", finding.id, finding.source, finding.title, finding.message);
 }
 
+function findingAttentionPath(
+    finding: Record<string, unknown>,
+    providers: Record<string, unknown>[],
+    aiProvider: Record<string, unknown>,
+    aiHealth: Record<string, unknown>,
+    services: [string, unknown][],
+) {
+    const { source, message } = finding;
+    if (typeof source !== "string" || typeof message !== "string") return "#system-health";
+
+    const matchingService = services.some(([, raw]) =>
+        record(raw).provider_id === source && record(raw).message === message);
+    if (matchingService) return providerDetailPath(source) ?? "#service-checks";
+
+    const matchingProvider = providers.some(p =>
+        p.id === source && record(p.health).message === message);
+    if (matchingProvider) return providerDetailPath(source) ?? "#providers";
+
+    if (aiProvider.id === source && aiHealth.message === message) {
+        return providerDetailPath(source) ?? "#ai-provider";
+    }
+    return "#system-health";
+}
+
 function AttentionListItem({ item }: { item: AttentionItem }) {
     return <li>
         {item.to.startsWith("#")
@@ -244,7 +268,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             key: detailPath("/providers", aiProvider.id) ? conditionKey(aiProvider.id, aiHealth.message) : conditionKey("ai/status", null, aiHealth.message), label: safeText(aiProvider.name) || "Configured AI provider", reason: safeText(aiHealth.message), state: aiHealth.status, to: providerDetailPath(aiProvider.id) ?? "#ai-provider", stale: evidence.ai?.stale,
         }] : []),
         ...findings.filter(f => typeof f.severity === "string" && ["warning", "critical", "blocked"].includes(f.severity)).map(f => ({
-            key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: "/operations", stale: evidence.summary?.stale,
+            key: attentionKey(f, [...providers, { ...aiProvider, health: aiHealth }], services), label: safeText(f.title), reason: safeText(f.message), state: f.severity, to: findingAttentionPath(f, providers, aiProvider, aiHealth, services), stale: evidence.summary?.stale,
         })),
         ...validWorkflows.filter(w => w.workflow_state === "blocked" || workflowActionRequired(String(w.workflow_state))).map(w => {
             const workflowEffectKind = typeof w.effect_kind === "string" ? w.effect_kind : undefined;
@@ -295,7 +319,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             >{showAllAttention ? "Show fewer items" : `Show all ${uniqueAttention.length} items`}</button>}
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
-            <Card title="System health" showSourceNote={false}>
+            <Card id="system-health" title="System health" showSourceNote={false}>
                 <SystemHealthSummary evidence={evidence} loading={loading} />
                 <details>
                     <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Use Atlas Doctor</summary>
