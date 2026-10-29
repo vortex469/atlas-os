@@ -58,7 +58,7 @@ describe("review record check", () => {
         if (!flags) throw new Error("candidate authority flags were not rendered");
         expect(within(flags).getAllByText("false")).toHaveLength(5);
         const buttonLabels = Array.from(container.querySelectorAll("button"), (button) => button.textContent?.trim());
-        expect(buttonLabels.every((label) => label === "Retry saved records" || label === "Retry approval records")).toBe(true);
+        expect(buttonLabels).toEqual(["Retry approval records", "Retry request records"]);
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
     });
 
