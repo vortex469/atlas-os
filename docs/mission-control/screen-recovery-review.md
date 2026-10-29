@@ -2375,3 +2375,12 @@ Repository plans retain “Candidate plan.” This removes repository-specific
 wording from the maintenance journey without changing plan requests or workflow
 approval. Planning page tests and the maintenance browser journey cover both
 labels.
+
+## Readiness review boundary wording — 2026-10-29
+
+The readiness page now distinguishes its read-only evidence review from the
+separate permission-evidence section. The banner explains that saving the
+separate record is permanent, requires confirmation, and does not authorize or
+start installation or execution. The underlying request, confirmation, and
+authority fields are unchanged; component and responsive readiness tests cover
+the wording.

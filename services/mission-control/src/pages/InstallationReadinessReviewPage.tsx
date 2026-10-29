@@ -74,8 +74,9 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
 }
 
 function AuthorityNotice() {
-    return <aside aria-label="Read-only authority boundary" className="mt-4 rounded border border-amber-400/40 bg-amber-400/5 p-4 text-sm text-amber-100">
-        <p className="font-semibold">Evidence review only. This page does not authorize installation or execution.</p>
+    return <aside aria-label="Review and permission boundary" className="mt-4 rounded border border-amber-400/40 bg-amber-400/5 p-4 text-sm text-amber-100">
+        <p className="font-semibold">Reviewing evidence is read-only. It does not install or run anything.</p>
+        <p className="mt-2">The separate permission-evidence section below can save a permanent record after you review and confirm its statement. That record does not authorize or start installation or execution.</p>
         <details className="mt-2">
             <summary className="cursor-pointer text-xs text-amber-100/80">Full authority boundary</summary>
             <p className="mt-2">This review is not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything.</p>

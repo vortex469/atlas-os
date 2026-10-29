@@ -174,7 +174,9 @@ describe("InstallationReadinessReviewPage", () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
         renderPage();
         await waitFor(() => expect(screen.getByRole("heading", { name: "Evidence is current, but installation cannot start" })).toBeInTheDocument());
-        const boundary = screen.getByLabelText("Read-only authority boundary");
+        const boundary = screen.getByLabelText("Review and permission boundary");
+        expect(boundary).toHaveTextContent("Reviewing evidence is read-only. It does not install or run anything.");
+        expect(boundary).toHaveTextContent("The separate permission-evidence section below can save a permanent record after you review and confirm its statement. That record does not authorize or start installation or execution.");
         expect(boundary).toHaveTextContent(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
         expect(boundary).toHaveTextContent(/not approval, admission, authorization, installability, or executability/i);
         expect(screen.queryAllByRole("button")).toHaveLength(0);

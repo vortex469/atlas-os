@@ -62,8 +62,9 @@ for (const width of [390, 1280]) {
         await expect(page.getByText(/Core binds the authenticated operator, exact v0\.20–v0\.35 fingerprints/).first()).toBeHidden();
         await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /record|approve|install|execute|start|deploy/i })).toHaveCount(0);
-        await expect(page.getByRole("complementary", { name: "Read-only authority boundary" })).toBeVisible();
-        await expect(page.getByLabel("Read-only authority boundary")).toContainText("Evidence review only. This page does not authorize installation or execution.");
+        await expect(page.getByRole("complementary", { name: "Review and permission boundary" })).toBeVisible();
+        await expect(page.getByLabel("Review and permission boundary")).toContainText("Reviewing evidence is read-only. It does not install or run anything.");
+        await expect(page.getByLabel("Review and permission boundary")).toContainText("The separate permission-evidence section below can save a permanent record after you review and confirm its statement.");
         expect(evidenceReads).toContain("execution-permission-grants");
         expect(reviewReads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
