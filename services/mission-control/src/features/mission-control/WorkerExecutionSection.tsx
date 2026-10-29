@@ -60,15 +60,15 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             {!loading && evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Atlas couldn't load the latest workflow report. The statuses shown may have changed.</p>}
             {items && knownStates && (active.length > 0 || blocked.length > 0) && (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <Metric label="Running workflows" value={String(active.length)} />
+                    <Metric label="Currently executing workflows" value={String(active.length)} />
                     <Metric label="Blocked workflows" value={String(blocked.length)} />
                 </dl>
             )}
             {loading && !items && <p role="status" className="mt-3 text-sm text-mc-text-secondary">Checking workflow status…</p>}
-            {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized. Running and blocked counts are hidden.</p>}
-            {items && knownStates && active.length === 0 && blocked.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running or blocked workflows are listed.</p>}
+            {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized. Execution and blocked counts are hidden.</p>}
+            {items && knownStates && active.length === 0 && blocked.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No workflows are currently executing or blocked.</p>}
             <div className="mt-4 grid gap-4">
-                {active.length > 0 && <EvidenceList key="running" title="Running workflows" items={active} available={!!items} empty="Unknown" />}
+                {active.length > 0 && <EvidenceList key="running" title="Currently executing workflows" items={active} available={!!items} empty="Unknown" />}
                 {blocked.length > 0 && <EvidenceList key="blocked" title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
             </div>
             <details className="mt-4 text-sm text-mc-text-secondary">
@@ -79,7 +79,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 </div>
             </details>
             {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
-            {!items && !loading && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Couldn't load all workflows, so the running and blocked counts aren't shown."}</p>}
+            {!items && !loading && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Couldn't load all workflows, so the execution and blocked counts aren't shown."}</p>}
         </section>
     );
 }

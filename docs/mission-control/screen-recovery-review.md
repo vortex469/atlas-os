@@ -3399,3 +3399,10 @@ states remain unavailable. Verification preparation keeps the workflow list's
 read-only refresh active. This changes display and refresh behavior only; the
 separate approval and run controls are unchanged. The full Mission Control
 suite passes 2,973 tests across 187 files, along with lint and build.
+
+## Work activity count scope — 2026-10-29
+
+The Overview labels its execution count “Currently executing workflows,” so
+operators can distinguish change execution from verification and commit stages.
+The empty and unavailable messages use the same scope. Workflow outcomes and
+execution behavior are unchanged.
