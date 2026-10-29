@@ -2966,3 +2966,12 @@ inside `atlas-core` when Core runs in Compose. Compose file-location help is
 collapsed unless the operator needs it. The connection-refused guidance keeps
 the Docker port check and host-networking exception in a shorter instruction.
 Service probes and settings are unchanged.
+
+## Repository execution status — 2026-10-29
+
+The change-progress summary is now the single status message for execution.
+Running, failed and unconfirmed results no longer get a contradictory second
+status line in the detail panel. When approval is present but Atlas Agent
+reports no execution result, Mission Control says the run status was not
+reported and offers a refresh. Unrecognized execution states also remain
+unconfirmed. Approval, execution and retry behavior are unchanged.

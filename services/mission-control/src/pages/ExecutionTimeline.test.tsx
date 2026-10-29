@@ -174,7 +174,8 @@ describe("ExecutionTimeline", () => {
             timeline: workflow().timeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "current" } : stage),
         }));
 
-        expect(screen.getAllByText("Execution running...").length).toBeGreaterThan(0);
+        expect(screen.getByRole("status")).toHaveTextContent("Execution running...");
+        expect(screen.getAllByText("Execution running...")).toHaveLength(1);
     });
 
     it("renders successful execution result", () => {
@@ -196,7 +197,8 @@ describe("ExecutionTimeline", () => {
             },
         }));
 
-        expect(screen.getAllByText("Execution complete.").length).toBeGreaterThan(0);
+        expect(screen.getByRole("status")).toHaveTextContent("Execution complete.");
+        expect(screen.getAllByText("Execution complete.")).toHaveLength(1);
         expect(screen.getAllByText("Succeeded").length).toBeGreaterThan(0);
         expect(screen.getByText("2")).toBeInTheDocument();
         expect(screen.getByText("docker-compose")).toBeInTheDocument();
@@ -243,7 +245,39 @@ describe("ExecutionTimeline", () => {
         }));
 
         expect(screen.getByText("Execution failed.")).toBeInTheDocument();
+        expect(screen.queryByText("Execution complete.")).not.toBeInTheDocument();
         expect(screen.getAllByText("Failed").length).toBeGreaterThan(0);
+    });
+
+    it("keeps an unconfirmed execution result distinct from completion", () => {
+        renderTimeline(workflow({
+            implementation_approval_status: "approved",
+            execution: { ...workflow().execution, execution_status: "unknown" },
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("The change may have finished. Check its result before starting it again.");
+        expect(screen.getByText("Unknown", { selector: "dd" })).toBeInTheDocument();
+        expect(screen.queryByText("Execution complete.")).not.toBeInTheDocument();
+    });
+
+    it("explains when Atlas Agent has not reported an approved execution", () => {
+        renderTimeline(workflow({
+            implementation_approval_status: "approved",
+            workflow_state: "blocked",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Atlas Agent has not reported whether the change ran. Refresh to check again.");
+        expect(screen.queryByText("Execution unavailable.")).not.toBeInTheDocument();
+    });
+
+    it("does not call an unrecognized execution status complete", () => {
+        renderTimeline(workflow({
+            implementation_approval_status: "approved",
+            execution: { ...workflow().execution, execution_status: "waiting_for_worker" },
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Atlas Agent reported an execution status Mission Control does not recognize. Refresh before continuing.");
+        expect(screen.queryByText("Execution complete.")).not.toBeInTheDocument();
     });
 
     it("does not present malformed execution timestamps as verified times", () => {

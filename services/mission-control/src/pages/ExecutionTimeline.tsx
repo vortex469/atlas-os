@@ -38,7 +38,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
 
             {isOperational
                 ? <p className="mt-5 text-sm text-slate-300">Check Maintenance status above for the outcome and verification.</p>
-                : <ExecutionSection execution={workflow.execution} workflowState={workflow.workflow_state} approvalStatus={workflow.implementation_approval_status} />}
+                : <ExecutionSection execution={workflow.execution} />}
         </section>
     );
 }
@@ -78,17 +78,12 @@ function operationalStageLabel(name: string): string {
     }
 }
 
-function ExecutionSection({ execution, workflowState, approvalStatus }: { execution: WorkflowExecutionSummary; workflowState: string; approvalStatus: string }) {
+function ExecutionSection({ execution }: { execution: WorkflowExecutionSummary }) {
     const hasResult = execution.execution_status !== null;
-    const running = workflowState === "executing";
 
     return (
         <section aria-labelledby="execution-section-heading" className="mt-5 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
             <h3 id="execution-section-heading" className="text-base font-semibold text-white">Execution</h3>
-            {!hasResult && !running && approvalStatus !== "approved" && <p className="mt-2 text-sm text-slate-300">Waiting for implementation approval.</p>}
-            {!hasResult && !running && approvalStatus === "approved" && <p className="mt-2 text-sm text-slate-300">Execution unavailable.</p>}
-            {running && <p role="status" className="mt-2 text-sm text-blue-200">Execution running...</p>}
-            {hasResult && <p role="status" className="mt-2 text-sm text-emerald-200">Execution complete.</p>}
             {hasResult && (
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                     <Detail label="Execution status" value={formatLabel(execution.execution_status ?? "not_available")} />
@@ -122,8 +117,9 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
     if (workflow.workflow_state === "executing") return "Execution running...";
     if (execution.execution_status === "succeeded") return "Execution complete.";
     if (execution.execution_status === "failed" || execution.execution_status === "timed_out" || execution.execution_status === "launch_failed") return "Execution failed.";
+    if (execution.execution_status !== null) return "Atlas Agent reported an execution status Mission Control does not recognize. Refresh before continuing.";
     if (workflow.implementation_approval_status !== "approved") return "Waiting for implementation approval.";
-    return "Execution unavailable.";
+    return "Atlas Agent has not reported whether the change ran. Refresh to check again.";
 }
 
 function stageClass(status: string): string {
