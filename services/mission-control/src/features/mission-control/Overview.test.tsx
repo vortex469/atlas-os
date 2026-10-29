@@ -193,7 +193,7 @@ describe("MC overview evidence", () => {
 
         expect(nextStep).toHaveTextContent("Run the test from the computer or container running Atlas Core. The service computer checks a different network path:");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(nextStep).toHaveTextContent("If the service runs in Docker, open More connection checks for port and Compose steps.");
+        expect(nextStep).toHaveTextContent("Docker port and Compose steps are in the details below.");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);
         expect(disclosure).not.toHaveAttribute("open");

@@ -322,11 +322,11 @@ for (const width of [320, 1280]) {
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();
-        await expect(nextStep).toContainText('Try this address from the Atlas Core machine or container:');
+        await expect(nextStep).toContainText('Run the test from the computer or container running Atlas Core. The service computer checks a different network path:');
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
-        await expect(nextStep).toContainText('With port mappings, a blank field means no port is published for Atlas Core.');
-        await expect(nextStep).toContainText('With host networking, a blank field is normal; check that the app listens on the address above.');
-        const moreChecks = checks.getByText('More connection checks');
+        await expect(nextStep).toContainText('Docker port and Compose steps are in the details below.');
+        await expect(nextStep).not.toContainText('With port mappings');
+        const moreChecks = checks.locator('summary', { hasText: 'More connection checks' });
         await moreChecks.click();
         const steps = checks.getByRole('list', { name: 'How to check from Atlas Core' });
         await expect(steps.getByRole('listitem')).toHaveCount(3);

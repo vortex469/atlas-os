@@ -80,7 +80,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         {unavailable && <div role="group" aria-label="Next connection check" className="rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
             <p className="font-medium text-mc-text-primary">Run the test from the computer or container running Atlas Core. The service computer checks a different network path:</p>
             <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
-        <p className="mt-2">If the service runs in Docker, open More connection checks for port and Compose steps.</p>
+        <p className="mt-2">Docker port and Compose steps are in the details below.</p>
         </div>}
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>
