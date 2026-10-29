@@ -2325,3 +2325,9 @@ When catalog results cannot be loaded, the Discovery page no longer repeats an
 “Items unavailable” count above the “Results unavailable” panel. The retry
 button, selected filters, and collapsed technical error remain available.
 Page and responsive browser tests cover the unavailable and retry states.
+
+## Provider registry keyboard focus — 2026-10-29
+
+The registry's Mission Control and provider-detail links now use the shared
+visible keyboard-focus style. A focused page test checks tab order and both link
+focus styles.

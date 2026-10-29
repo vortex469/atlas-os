@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +26,24 @@ describe("ProvidersPage", () => {
         expect(screen.getByRole("link", { name: "Open Proxmox provider" })).toHaveAttribute("href", "/providers/proxmox");
         expect(get).toHaveBeenCalledExactlyOnceWith("/providers");
         expect(screen.queryByRole("button", { name: /approve|execute|restart/i })).not.toBeInTheDocument();
+    });
+
+    it("keeps registry navigation links visible in keyboard focus", async () => {
+        const user = userEvent.setup();
+        get.mockResolvedValue({ data: [provider()] });
+        show();
+
+        const backLink = await screen.findByRole("link", { name: "← Mission Control" });
+        const providerLink = screen.getByRole("link", { name: "Open Proxmox provider" });
+        expect(backLink).toHaveClass("mc-focusable");
+        expect(providerLink).toHaveClass("mc-focusable");
+
+        await user.tab();
+        expect(backLink).toHaveFocus();
+        await user.tab();
+        expect(screen.getByRole("button", { name: "Refresh" })).toHaveFocus();
+        await user.tab();
+        expect(providerLink).toHaveFocus();
     });
 
     it("keeps registry health readable without empty check-time placeholders", async () => {

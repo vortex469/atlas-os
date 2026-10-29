@@ -44,7 +44,7 @@ export function ProvidersPage() {
         <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <Link to="/" className="text-sm text-blue-300">← Mission Control</Link>
+                    <Link to="/" className="mc-focusable text-sm text-blue-300">← Mission Control</Link>
                     <h1 className="mt-3 text-3xl font-semibold text-white">Providers</h1>
                     <p className="mt-2 text-sm text-slate-400">See the providers Atlas knows about. Open a provider for details.</p>
                 </div>
@@ -85,7 +85,7 @@ export function ProvidersPage() {
                         <article key={provider.path ?? index} className="min-w-0 space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-5 [overflow-wrap:anywhere]">
                             <h2 className="text-lg font-semibold text-white">{provider.name}</h2>
                             <HealthEvidence status={safeText(provider.status)} reason={safeText(provider.reason)} stale={loading || error} compact />
-                            {provider.path && <Link to={provider.path} className="inline-block text-sm font-semibold text-blue-300">Open {provider.name} provider</Link>}
+                            {provider.path && <Link to={provider.path} className="mc-focusable inline-block text-sm font-semibold text-blue-300">Open {provider.name} provider</Link>}
                         </article>
                     ))}
                 </section>
