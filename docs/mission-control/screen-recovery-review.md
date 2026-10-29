@@ -3175,3 +3175,10 @@ repeating it as a zero count. Positive result totals remain visible.
 
 The catalog also shows a single loading message while results are being fetched,
 instead of repeating the status above and inside the results panel.
+
+## Workflow review summary wording — 2026-10-29
+
+Workflow review counts now read as a short sentence, such as “No findings or
+recommendations” or “2 findings and 1 recommendation,” instead of repeating the
+count in the field label. Unrecognized evidence summaries remain visible as
+reported.

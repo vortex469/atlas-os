@@ -1080,7 +1080,8 @@ describe("WorkflowPage", () => {
         const review = within(screen.getByRole("region", { name: "Review" }));
         expect(review.getByText("Decision")).toBeVisible();
         expect(review.getByText("Approved", { exact: true })).toBeVisible();
-        expect(review.getByText("0 findings, 0 recommendations")).toBeVisible();
+        expect(review.getByText("Summary")).toBeVisible();
+        expect(review.getByText("No findings or recommendations.", { exact: true })).toBeVisible();
         expect(review.getByText("compose.yaml")).toBeVisible();
         expect(review.queryByText("Review result", { exact: true })).not.toBeInTheDocument();
         expect(review.queryByText("Review status", { exact: true })).not.toBeInTheDocument();
@@ -1099,6 +1100,21 @@ describe("WorkflowPage", () => {
         expect(verificationReview.getByText("Review status", { exact: true })).toBeVisible();
         expect(verificationReview.getByText("review-fingerprint-123")).toBeVisible();
         expect(verificationReview.getByText("Model-assisted review", { exact: true })).toBeVisible();
+    });
+
+    it.each([
+        ["1 finding, 0 recommendations", "1 finding and no recommendations."],
+        ["0 findings, 2 recommendations", "No findings and 2 recommendations."],
+        ["2 findings, 1 recommendation", "2 findings and 1 recommendation."],
+    ])("formats review counts as plain language: %s", async (evidenceSummary, expected) => {
+        const current = workflow();
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            review: { ...current.review, evidence_summary: evidenceSummary },
+        }));
+        renderPage();
+
+        const review = within(await screen.findByRole("region", { name: "Review" }));
+        expect(review.getByText(expected, { exact: true })).toBeVisible();
     });
 
     it("keeps planned checks visible without empty future review panels", async () => {

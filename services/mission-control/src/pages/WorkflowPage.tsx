@@ -798,7 +798,7 @@ function VerificationReviewSection({
                 {hasReviewResults ? (
                     <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                         <Detail label="Decision" value={reviewDecision ? formatLabel(reviewDecision) : "Not available"} />
-                        <Detail label="Findings" value={review.evidence_summary ?? "Not available"} />
+                        <Detail label="Summary" value={formatReviewEvidenceSummary(review.evidence_summary)} />
                         <Detail label="Changed files" value={review.changed_files.length > 0 ? review.changed_files.join(", ") : "None reported"} />
                     </dl>
                 ) : (
@@ -1009,4 +1009,23 @@ function shouldShowVerificationApprovalSection(
 
 function formatLabel(value: string): string {
     return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatReviewEvidenceSummary(value: string | null): string {
+    if (!value) return "Not available";
+
+    const match = value.match(/^(\d+) findings?, (\d+) recommendations?$/);
+    if (!match) return value;
+
+    const findingCount = Number(match[1]);
+    const recommendationCount = Number(match[2]);
+    if (findingCount === 0 && recommendationCount === 0) return "No findings or recommendations.";
+
+    const findings = findingCount === 0
+        ? "no findings"
+        : `${findingCount} finding${findingCount === 1 ? "" : "s"}`;
+    const recommendations = recommendationCount === 0
+        ? "no recommendations"
+        : `${recommendationCount} recommendation${recommendationCount === 1 ? "" : "s"}`;
+    return `${findings[0].toUpperCase()}${findings.slice(1)} and ${recommendations}.`;
 }
