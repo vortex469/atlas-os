@@ -59,7 +59,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 if (isAxiosError(requestError) && requestError.response?.status === 404) {
                     setNotFound(true);
                 }
-                setError("Mission Control could not load this proposal. Its current details are unknown.");
+                setError("Atlas couldn't load this proposal. Its current details are unknown.");
                 setErrorDetails(message);
             })
             .finally(() => {

@@ -414,7 +414,7 @@ describe("ExecutionCandidateDetailPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Change proposal unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not load this proposal. Its current details are unknown.");
+        expect(alert).toHaveTextContent("Atlas couldn't load this proposal. Its current details are unknown.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         const readError = within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable");

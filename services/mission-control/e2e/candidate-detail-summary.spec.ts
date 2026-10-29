@@ -23,3 +23,25 @@ for (const width of [320, 390, 1280]) {
         expect(rejectedMutationRequests).toEqual([]);
     });
 }
+
+test("proposal detail retry clearly identifies unavailable current details", async ({ page, rejectedMutationRequests }) => {
+    const candidate = executionCandidates[0];
+    let reads = 0;
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.route(`**/api/v1/execution-candidates/${candidate.id}`, (route) => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ status: 503, json: { detail: "PRIVATE_BACKEND_DETAIL" } })
+            : route.fulfill({ json: candidate });
+    });
+    await page.goto(`/execution-candidates/${candidate.id}`);
+
+    const alert = page.getByRole("alert");
+    await expect(alert).toContainText("Change proposal unavailable");
+    await expect(alert).toContainText("Atlas couldn't load this proposal. Its current details are unknown.");
+    await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
+    await alert.getByRole("button", { name: "Retry loading proposal" }).click();
+    await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
+    expect(reads).toBe(2);
+    expect(rejectedMutationRequests).toEqual([]);
+});

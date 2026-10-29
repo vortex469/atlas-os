@@ -3505,3 +3505,10 @@ The provider detail timestamp area now says “Loading provider data” during i
 initial read instead of “Connecting,” which could sound like Atlas was testing
 the provider's network connection. No provider check or connection behavior
 changed.
+
+## Change proposal read error — 2026-10-29
+
+The change proposal detail screen now says Atlas could not load the proposal
+and that its current details are unknown, instead of using Mission Control's
+internal product name in the recovery message. The existing retry still reads
+the proposal only; it does not submit or approve a change.
