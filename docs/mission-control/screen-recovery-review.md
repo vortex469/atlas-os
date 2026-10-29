@@ -239,6 +239,14 @@ focused component tests, six overview browser checks, lint and build pass. The
 browser fixture rejects mutations; provider actions and permission checks are
 unchanged.
 
+## Installation readiness review — 2026-10-29
+
+The readiness page now calls its second section an operator confirmation record
+and explains in plain language that saving it does not approve or start work.
+The two-step confirmation, exact statement, operator checks, and saved record
+behavior are unchanged. Loading, missing-record, and error messages use the
+same review-record language as the preceding screen.
+
 ## Provider detail status simplification — 2026-10-28
 
 Provider health appears once as a readable badge; the duplicate status metric

@@ -57,14 +57,14 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
     return <main className="mx-auto max-w-6xl p-6 text-slate-200">
         <Link to="/discovery" className="text-sm text-blue-300">← Catalog</Link>
         <h1 className="mt-4 text-2xl font-semibold">Installation readiness review</h1>
-        <p className="mt-2 text-sm text-slate-300">See the evidence Atlas checked before considering an installation.</p>
+        <p className="mt-2 text-sm text-slate-300">See the information Atlas checked before considering an installation.</p>
         <AuthorityNotice />
-        {!candidateRecordId && <p role="status" className="mt-6">No candidate record selected.</p>}
-        {loading && <p role="status" className="mt-6">Loading installation readiness review…</p>}
+        {!candidateRecordId && <p role="status" className="mt-6">No saved review record was selected.</p>}
+        {loading && <p role="status" className="mt-6">Loading readiness review…</p>}
         {!loading && error && <section role="alert" className="mt-6 rounded border border-red-500/40 p-4">
             <h2 className="font-semibold text-red-200">Review unavailable</h2>
             <p className="mt-1 text-sm">Installation readiness review is unavailable.</p>
-            <p className="mt-1 text-xs text-slate-400">No candidate, operator, evidence, endpoint, credential, or internal source detail is disclosed.</p>
+            <p className="mt-1 text-xs text-slate-400">Private system details are hidden.</p>
             <button type="button" onClick={() => {
                 setResponse(null); setError(false); setLoading(true); setReadAttempt((attempt) => attempt + 1);
             }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Reload review</button>
@@ -76,7 +76,7 @@ function InstallationReadinessReview({ candidateRecordId }: { candidateRecordId:
 function AuthorityNotice() {
     return <aside aria-label="Review and permission boundary" className="mt-4 rounded border border-amber-400/40 bg-amber-400/5 p-4 text-sm text-amber-100">
         <p className="font-semibold">Reviewing evidence is read-only. It does not install or run anything.</p>
-        <p className="mt-2">The separate permission-evidence section below can save a permanent record after you review and confirm its statement. That record does not authorize or start installation or execution.</p>
+        <p className="mt-2">An authorized operator can save a permanent record of their confirmation below. It does not allow Atlas to install, run, or change anything.</p>
         <details className="mt-2">
             <summary className="cursor-pointer text-xs text-amber-100/80">Full authority boundary</summary>
             <p className="mt-2">This review is not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything.</p>
@@ -227,25 +227,26 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
         session.principal?.permissions.includes("installation.execution.permission.grant") &&
         Boolean(session.csrfToken);
     return <><section aria-labelledby="permission-grants-heading" className="rounded border border-slate-700 p-4">
-        <h2 id="permission-grants-heading" className="font-semibold">Execution permission evidence</h2>
-        <p className="mt-2 text-sm">This records permission evidence for later review. It does not authorize installation, execution, or system changes.</p>
+        <h2 id="permission-grants-heading" className="font-semibold">Operator confirmation record</h2>
+        <p className="mt-2 text-sm">This saves the operator’s confirmation for later review. It does not authorize or start an installation, run code, or change the system.</p>
         <details className="mt-2">
-            <summary className="cursor-pointer text-xs text-slate-400">How permission evidence is handled</summary>
+            <summary className="cursor-pointer text-xs text-slate-400">Technical details</summary>
             <p className="mt-2 text-sm">This durable grant is not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, worker execution, Docker, Podman, shell or process execution, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything.</p>
             <p className="mt-2 text-sm">Core binds the authenticated operator and exact v0.20–v0.34 evidence/readiness fingerprints. Validity inherits at most 30 seconds; expiry never refreshes evidence. The review subject and idempotency subject are reserved permanently, with no replay.</p>
         </details>
-        {grants === null && !error && <p role="status" className="mt-4">Loading execution permission evidence…</p>}
-        {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Execution permission evidence is unavailable." : "Execution permission evidence could not be recorded."}</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, or internal path is shown.</p>{error === "load" && <button type="button" onClick={() => { setGrants(null); setError(null); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Reload permission evidence</button>}</div>}
-        {grants?.length === 0 && !error && <p role="status" className="mt-4">No execution permission evidence has been recorded.</p>}
-        {grants && grants.length > 0 && <ol aria-label="Execution permission grants" className="mt-4 space-y-4">{grants.map((item) => <Grant key={item.grant!.grant_id} result={item} />)}</ol>}
-        {mayCreate && !confirming && <button type="button" onClick={begin} className="mt-4 rounded border border-blue-400 px-3 py-2 text-sm">Review permission evidence statement</button>}
-        {mayCreate && confirming && <div aria-label="Permission evidence confirmation" className="mt-4 rounded border border-amber-400/40 p-4">
-            <p className="font-semibold">Step 2 of 2 — explicitly confirm durable evidence</p>
+        {grants === null && !error && <p role="status" className="mt-4">Checking for saved confirmation records…</p>}
+        {error && <div role="alert" className="mt-4 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Atlas could not load the confirmation record." : "Atlas could not save your confirmation."}</p><p className="text-xs text-slate-400">Private system details are hidden.</p>{error === "load" && <button type="button" onClick={() => { setGrants(null); setError(null); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button>}</div>}
+        {grants?.length === 0 && !error && <p role="status" className="mt-4">No confirmation record has been saved.</p>}
+        {grants && grants.length > 0 && <ol aria-label="Saved confirmation records" className="mt-4 space-y-4">{grants.map((item) => <Grant key={item.grant!.grant_id} result={item} />)}</ol>}
+        {mayCreate && !confirming && <button type="button" onClick={begin} className="mt-4 rounded border border-blue-400 px-3 py-2 text-sm">Review confirmation statement</button>}
+        {mayCreate && confirming && <div aria-label="Operator confirmation" className="mt-4 rounded border border-amber-400/40 p-4">
+            <p className="font-semibold">Step 2 of 2 — confirm and save your response</p>
+            <p className="mt-2 text-sm">Read the statement. It saves a record only and gives Atlas no ability to install or run anything.</p>
             <p className="mt-2 text-sm">{EXECUTION_PERMISSION_CONFIRMATION}</p>
-            <p className="mt-2 text-xs">This creates durable permission evidence only. It grants no execution admission or mutation authority.</p>
-            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record permission evidence</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
+            <p className="mt-2 text-xs">Saving this does not approve an installation or let Atlas change the system.</p>
+            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Save confirmation record</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
-        {grants?.length === 0 && !error && !mayCreate && <p className="mt-4 text-sm text-amber-200">Permission evidence cannot be recorded yet. A current review, an authenticated operator with the required permission, and a valid session are required.</p>}
+        {grants?.length === 0 && !error && !mayCreate && <p className="mt-4 text-sm text-amber-200">A current review and an operator account with permission are needed before a confirmation can be saved.</p>}
     </section><InstallationExecutionAdmissions
         candidateId={candidateId}
         grants={grants ?? []}
@@ -256,11 +257,11 @@ function PermissionGrants({ response }: { response: InstallationReadinessReviewR
 function Grant({ result }: { result: ExecutionPermissionGrantResultV1 }) {
     const grant = result.grant!; const status = result.status!; const audit = result.audit_evidence!;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <h3 className="font-semibold">{status.lifecycle === "active" ? "Current evidence record" : "Expired evidence record"}</h3>
+        <h3 className="font-semibold">{status.lifecycle === "active" ? "Current confirmation record" : "Expired confirmation record"}</h3>
         <p className="mt-1">Recorded {formatUtcTimestamp(grant.recorded_at)}; valid until {formatUtcTimestamp(grant.valid_until)}; status checked {formatUtcTimestamp(status.observed_at)}. Expiry does not erase or renew this record.</p>
         <p className="mt-2">Confirmation: {grant.confirmation_text}</p>
         <details className="mt-3">
-            <summary className="cursor-pointer text-xs text-slate-400">Record IDs and audit details</summary>
+            <summary className="cursor-pointer text-xs text-slate-400">Technical IDs and audit details</summary>
             <p className="mt-2">Lifecycle: {status.lifecycle}; disposition: {result.disposition}; record state: {grant.record_state}.</p>
             <dl className="mt-3 grid gap-2 sm:grid-cols-2"><Value name="Authenticated operator" value={grant.operator_id} /><Value name="Grant ID" value={grant.grant_id} /><Value name="Grant fingerprint" value={grant.grant_fingerprint.value} /><Value name="Status fingerprint" value={status.status_fingerprint.value} /><Value name="v0.34 review ID" value={grant.linkage.v034_review_id} /><Value name="v0.34 review fingerprint" value={grant.linkage.v034_review_fingerprint.value} /><Value name="v0.34 audit fingerprint" value={grant.linkage.v034_audit_evidence_fingerprint.value} /><Value name="v0.34 operator fingerprint" value={grant.linkage.v034_operator_fingerprint.value} /><Value name="v0.20–v0.34 linkage fingerprint" value={grant.linkage.linkage_fingerprint.value} /><Value name="Request fingerprint" value={grant.request_fingerprint.value} /><Value name="Idempotency-key fingerprint" value={grant.idempotency_key_fingerprint.value} /><Value name="Audit evidence fingerprint" value={audit.evidence_fingerprint.value} /><Value name="Audit outcome" value={audit.outcome} /><Value name="Audit correlation ID" value={audit.correlation_id} /></dl>
             <details className="mt-3"><summary>Required v0.20–v0.34 evidence linkage</summary><dl className="mt-2 grid gap-2 sm:grid-cols-2">{LINKAGE_KEYS.map((key) => <Value key={key} name={key} value={display(grant.linkage.readiness_linkage[key])} />)}</dl></details>
