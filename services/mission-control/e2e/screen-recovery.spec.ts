@@ -506,6 +506,8 @@ for (const width of [390, 1280]) {
         const summary = page.getByRole("heading", { name: "Compatibility summary" }).locator("xpath=..");
         const findings = page.getByRole("heading", { name: "What Atlas found" }).locator("xpath=..");
         await expect(summary.getByText("Compatible with warnings", { exact: true })).toBeVisible();
+        await expect(summary.getByText("Findings", { exact: true }).locator("xpath=..").locator("dd")).toHaveText("1");
+        await expect(summary.getByText("Results", { exact: true })).toHaveCount(0);
         await expect(summary.getByText("Last checked", { exact: true })).toBeVisible();
         await expect(summary.getByText(checkedAt, { exact: true })).toBeHidden();
         await expect(findings.getByText("Warnings", { exact: true })).toBeVisible();

@@ -3182,3 +3182,9 @@ Workflow review counts now read as a short sentence, such as “No findings or
 recommendations” or “2 findings and 1 recommendation,” instead of repeating the
 count in the field label. Unrecognized evidence summaries remain visible as
 reported.
+
+## Empty compatibility findings — 2026-10-29
+
+Compatibility summaries now show a findings count only when there are findings.
+The “What Atlas found” panel remains the single clear empty state when none are
+reported.

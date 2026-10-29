@@ -628,7 +628,7 @@ function CompatibilityPanel({
                     <KeyValue label="Checked against" value={formatLabel(compatibility.target_type)} />
                     <KeyValue label="Result" value={compatibilityStatusLabel(compatibility.status)} />
                     <KeyValue label="Last checked" value={formatLocalTimestamp(compatibility.checked_at)} />
-                    <KeyValue label="Results" value={String(compatibility.findings.length)} />
+                    {compatibility.findings.length > 0 && <KeyValue label="Findings" value={String(compatibility.findings.length)} />}
                     <KeyValue
                         label="Unconfirmed details"
                         value={compatibility.unknown_facts.length === 0 ? "None" : String(compatibility.unknown_facts.length)}

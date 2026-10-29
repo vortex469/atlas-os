@@ -803,6 +803,9 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByText("No issues or notes were found.")).toBeInTheDocument();
+        const summary = screen.getByRole("heading", { name: "Compatibility summary" }).closest("section");
+        expect(within(summary as HTMLElement).queryByText("Findings")).not.toBeInTheDocument();
+        expect(within(summary as HTMLElement).queryByText("Results")).not.toBeInTheDocument();
         expect(screen.getByText("Atlas Environment")).toBeInTheDocument();
         expect(screen.getByText("Unconfirmed details")).toBeInTheDocument();
     });
