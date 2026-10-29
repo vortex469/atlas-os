@@ -3091,3 +3091,8 @@ The nested runtime plan panel now shows a concise saved, missing, or unavailable
 state. It clarifies that the plan is reference-only and does not set up or start
 a runtime; technical evidence remains collapsed. A failed Core read can be
 retried safely, while runtime start and execution remain unavailable.
+
+The nested consistency review now has a short saved, missing, or unavailable
+status and readable UTC times. It explains that the review does not define or
+start a runtime, keeps technical findings collapsed, and retries only a failed
+Core read.
