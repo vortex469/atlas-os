@@ -3144,7 +3144,7 @@ items. The focused component and overview browser checks cover both states.
 
 ## Service check location — 2026-10-29
 
-The visible next step now says to run the connection test from the computer or
-container running Atlas Core. It also explains that testing from the service
-computer follows a different network path, before the operator opens the
-technical connection checks.
+The visible next step says to run the connection test from the computer or
+container running Atlas Core and explains that the service computer uses a
+different network path. The Docker hint stays short, while port mapping and
+Compose steps remain in the collapsed connection checks.
