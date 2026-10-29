@@ -8,7 +8,6 @@ export function SystemHealthSummary({ evidence, loading = false }: { evidence: O
     const core = record(evidence.health?.data);
     const ace = record(evidence.summary?.data);
     const policy = record(evidence.policyHealth?.data);
-    const hasServiceMap = core.services !== null && typeof core.services === "object" && !Array.isArray(core.services);
     const sources = [
         { title: "Overall service status", evidence: evidence.health, status: core.atlas },
         { title: "System findings", evidence: evidence.summary, status: ace.status, reason: ace.summary },
@@ -40,7 +39,6 @@ export function SystemHealthSummary({ evidence, loading = false }: { evidence: O
                     </article>
                 );
             })}
-            {hasServiceMap && Object.keys(record(core.services)).length === 0 && <p>No configured service checks were reported.</p>}
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
                 <p>Atlas shows each source separately; it does not calculate one overall score. Core does not supply an overall check time. Reports older than a minute are marked out of date.</p>
             </details>

@@ -284,7 +284,11 @@ describe("MC overview evidence", () => {
     });
     it("describes an empty health report as missing service checks", () => {
         show({ health: { data: { atlas: 'healthy', services: {} } } });
-        expect(screen.getAllByText('No configured service checks were reported.')).toHaveLength(2);
+        const message = 'No configured service checks were reported.';
+        const serviceChecks = within(screen.getByRole('region', { name: 'Service checks' }));
+        const systemHealth = within(screen.getByRole('region', { name: 'System health' }));
+        expect(serviceChecks.getByText(message)).toBeVisible();
+        expect(systemHealth.queryByText(message)).not.toBeInTheDocument();
         expect(screen.queryByText('Core did not report subsystem health.')).not.toBeInTheDocument();
     });
     it("shows a checking state instead of an empty result during the first load", () => {

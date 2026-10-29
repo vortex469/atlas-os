@@ -2311,3 +2311,9 @@ network location. Exact service messages remain available in the visible health
 summary, while the disclosure keeps the address and response details optional.
 Health state and probing behavior are unchanged. Overview tests cover all three
 failure types at component level and the no-route case in the browser suite.
+
+## Empty service-check summary — 2026-10-29
+
+When Core reports no configured service checks, the empty-state explanation now
+appears only in the Service checks card instead of repeating in System health.
+The focused Overview test confirms the message remains with its list.

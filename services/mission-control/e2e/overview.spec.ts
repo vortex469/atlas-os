@@ -256,6 +256,25 @@ test('service check preview puts blocked and offline services first', async ({ p
 });
 
 for (const width of [320, 1280]) {
+    test(`shows the empty service-check explanation once at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 800 });
+        await page.route('**/api/v1/health', route => route.fulfill({ json: {
+            atlas: 'healthy',
+            services: {},
+        } }));
+        await page.goto('/');
+
+        const message = 'No configured service checks were reported.';
+        const serviceChecks = page.getByRole('region', { name: 'Service checks', exact: true });
+        const systemHealth = page.getByRole('region', { name: 'System health', exact: true });
+        await expect(serviceChecks.getByText(message, { exact: true })).toBeVisible();
+        await expect(systemHealth.getByText(message, { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 1280]) {
     test(`service check explains where Atlas tested iFileshare and what to check next at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 800 });
         await page.route('**/api/v1/health', route => route.fulfill({ json: {
