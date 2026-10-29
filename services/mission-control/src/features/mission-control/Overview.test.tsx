@@ -316,7 +316,7 @@ describe("MC overview evidence", () => {
         for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Needs attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
-        expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
+        expect(screen.getByText("Couldn't load all workflows, so the execution and blocked counts aren't shown.")).toBeInTheDocument();
     });
     it('keeps health source limitations available without crowding the dashboard scan', () => {
         show({ health: { data: { atlas: 'healthy', services: { api: { status: 'healthy' } } } } });
@@ -446,7 +446,7 @@ describe("MC overview evidence", () => {
         expect(screen.getByRole('link', { name: 'View Alpha →' })).toHaveAttribute('href', '/providers/alpha');
         expect(screen.getByRole('link', { name: 'Workflow · Blocked' })).toHaveAttribute('href', '/workflows/w%2F1');
         expect(within(screen.getByRole('region', { name: 'Needs attention' })).getAllByText('Beta')).toHaveLength(1);
-        expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
+        expect(screen.getByText("Couldn't load all workflows, so the execution and blocked counts aren't shown.")).toBeInTheDocument();
         expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
@@ -499,7 +499,7 @@ describe('operational activity and runtime evidence', () => {
 describe('overview fail-closed regressions', () => {
     it.each(['', 'idle', 'future_state', null, {}])('does not count malformed or unsupported workflow states: %s', state => {
         show({ workflows: { data: { items: [{ workflow_id: 'w', workflow_state: state }] } } });
-        expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
+        expect(screen.getByText("Couldn't load all workflows, so the execution and blocked counts aren't shown.")).toBeInTheDocument();
         expect(screen.queryByText(/Active: 0/)).not.toBeInTheDocument();
     });
     it('retains distinct conditions for the same provider and does not call approval waits blocked', () => {
@@ -532,8 +532,8 @@ describe('overview fail-closed regressions', () => {
         fireEvent.click(attention.getByText('Which results are missing?'));
         expect(attention.queryByText('Workflows: workflow results are incomplete.')).not.toBeInTheDocument();
         const activity = within(screen.getByRole('region', { name: 'Work activity' }));
-        expect(activity.getByText('No running or blocked workflows are listed.')).toBeVisible();
-        expect(activity.queryByText('Some workflow statuses are not recognized. Running and blocked counts are hidden.')).not.toBeInTheDocument();
+        expect(activity.getByText('No workflows are currently executing or blocked.')).toBeVisible();
+        expect(activity.queryByText('Some workflow statuses are not recognized. Execution and blocked counts are hidden.')).not.toBeInTheDocument();
     });
     it('keeps a malformed provider unknown even in the expanded list', () => {
         show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: String(i) })), { health: { status: 'healthy' } }] } });
@@ -547,10 +547,10 @@ describe('overview fail-closed regressions', () => {
     });
 });
 
-it('distinguishes running workflows from verification and commit activity', () => {
+it('distinguishes currently executing workflows from verification and commit activity', () => {
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
     const activity = within(screen.getByRole('region', { name: 'Work activity' }));
-    expect(activity.getAllByText('Running workflows')[0].nextElementSibling).toHaveTextContent('1');
+    expect(activity.getAllByText('Currently executing workflows')[0].nextElementSibling).toHaveTextContent('1');
     expect(activity.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
 });
 
