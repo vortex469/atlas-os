@@ -16,7 +16,7 @@ type ServiceDetailsDrawerProps = {
 
 function formatLatency(latency: number | null): string {
     if (latency === null) {
-        return "Unavailable";
+        return "Not recorded";
     }
 
     return `${Math.round(latency)} ms`;
@@ -114,7 +114,7 @@ export function ServiceDetailsDrawer({
                     <dl className="grid gap-4 sm:grid-cols-2">
                         <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
                             <dt className="text-xs uppercase tracking-wider text-slate-500">
-                                Latency
+                                Response time
                             </dt>
                             <dd className="mt-2 text-lg font-semibold text-slate-100">
                                 {formatLatency(health.latency_ms)}

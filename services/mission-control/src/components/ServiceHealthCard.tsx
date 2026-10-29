@@ -9,7 +9,7 @@ type ServiceHealthCardProps = {
 
 function formatLatency(latency: number | null): string {
     if (latency === null) {
-        return "Unavailable";
+        return "Not recorded";
     }
 
     return `${Math.round(latency)} ms`;
@@ -56,7 +56,7 @@ export function ServiceHealthCard({
             <dl className="mc-divider mt-5 grid grid-cols-2 gap-4 border-t pt-4">
                 <div>
                     <dt className="text-xs uppercase tracking-wider text-mc-text-muted">
-                        Latency
+                        Response time
                     </dt>
                     <dd className="mt-1 text-sm font-medium text-mc-text-secondary">
                         {formatLatency(health.latency_ms)}

@@ -143,7 +143,7 @@ describe("ServiceHealthSection", () => {
     it("labels a failed probe as unreachable from Atlas Core rather than offline", () => {
         render(
             <ServiceHealthSection
-                services={{ iFileshare: { ...service("ifileshare", 0), status: "offline", message: "Connection refused" } }}
+                services={{ iFileshare: { ...service("ifileshare", 0), latency_ms: null, status: "offline", message: "Connection refused" } }}
                 providers={providers}
                 isRefreshing={false}
                 onRefresh={vi.fn()}
@@ -153,6 +153,8 @@ describe("ServiceHealthSection", () => {
         expect(screen.getByText("Unreachable from Atlas Core")).toBeInTheDocument();
         expect(screen.queryByText("Offline")).not.toBeInTheDocument();
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+        expect(screen.getByText("Response time")).toBeInTheDocument();
+        expect(screen.getByText("Not recorded")).toBeInTheDocument();
     });
 
     it("shows a plain next step for a refused service connection", async () => {
