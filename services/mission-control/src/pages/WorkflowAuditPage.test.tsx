@@ -48,7 +48,7 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockResolvedValue(response);
         renderAuditPage();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("The returned record does not match this workflow link.");
+        expect(alert).toHaveTextContent("Atlas returned a different workflow than this link requested. Try again to load the right history.");
         expect(alert).not.toHaveTextContent("Try loading it again.");
         expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
     });

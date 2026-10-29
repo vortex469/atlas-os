@@ -379,7 +379,7 @@ test("audit recovery refuses another workflow without losing navigation", async 
     await page.goto("/workflows/audit-recovery/audit");
     await expect(page.getByRole("heading", { name: "Workflow history unavailable" })).toBeVisible();
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("alert")).toContainText("does not match this workflow");
+    await expect(page.getByRole("alert")).toContainText("Atlas returned a different workflow than this link requested. Try again to load the right history.");
     await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
     await expect(page.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute("href", "/workflows/audit-recovery");
     expect(reads).toBe(2);

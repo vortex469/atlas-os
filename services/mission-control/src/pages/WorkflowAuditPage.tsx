@@ -186,7 +186,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             const detail = await getWorkflowAudit(workflowId);
             if (detail && (detail.workflow_id !== workflowId || detail.workflow.workflow_id !== workflowId)) {
                 setAudit(null);
-                setLoadError({ message: "The returned record does not match this workflow link." });
+                setLoadError({ message: "Atlas returned a different workflow than this link requested. Try again to load the right history." });
                 return;
             }
             setAudit(detail);
