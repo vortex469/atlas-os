@@ -515,6 +515,26 @@ describe('overview fail-closed regressions', () => {
         expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/w');
         expect(attention.getByText('Action needed: Prepare the change for review.')).toBeVisible();
     });
+    it('recognizes review, run-ready, and verification-preparation workflow states', () => {
+        const items = [
+            { workflow_id: 'planned-workflow', workflow_state: 'planned', execution_intent: 'update-compose-stack', last_result_summary: 'Workflow is ready for review.', timeline: [] },
+            { workflow_id: 'ready-workflow', workflow_state: 'awaiting_execution', effect_kind: 'operational_action', execution_intent: 'restart-service', last_result_summary: 'Approved and ready to run', timeline: [] },
+            { workflow_id: 'patch-workflow', workflow_state: 'patch_applied_pending_verification', execution_intent: 'update-container-image', last_result_summary: 'Implementation is complete. Verification is next.', timeline: [] },
+        ];
+        show({ workflows: { data: { items, total: items.length, offset: 0, limit: 200 } } });
+
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+        expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toHaveAttribute('href', '/workflows/planned-workflow');
+        expect(attention.getByText('Action needed: Review the workflow before continuing.')).toBeVisible();
+        expect(attention.getByRole('link', { name: 'Restart Service' })).toHaveAttribute('href', '/workflows/ready-workflow');
+        expect(attention.getByText('Action needed: Maintenance is approved. Choose Run approved maintenance when ready.')).toBeVisible();
+
+        fireEvent.click(attention.getByText('Which results are missing?'));
+        expect(attention.queryByText('Workflows: workflow results are incomplete.')).not.toBeInTheDocument();
+        const activity = within(screen.getByRole('region', { name: 'Work activity' }));
+        expect(activity.getByText('No running or blocked workflows are listed.')).toBeVisible();
+        expect(activity.queryByText('Some workflow statuses are not recognized. Running and blocked counts are hidden.')).not.toBeInTheDocument();
+    });
     it('keeps a malformed provider unknown even in the expanded list', () => {
         show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: String(i) })), { health: { status: 'healthy' } }] } });
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();

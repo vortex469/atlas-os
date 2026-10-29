@@ -82,14 +82,18 @@ describe("WorkflowDashboardPage", () => {
         expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(7);
         expect(Array.from((screen.getByLabelText("Workflow status") as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
             "Any status",
+            "Ready for review",
             "Prepare change for review",
             "Review change, then run if approved",
+            "Approved and ready to run",
             "Applying change",
+            "Preparing verification",
             "Review checks, then run if approved",
             "Running checks",
             "Review commit, then record if approved",
             "Recording commit",
             "Blocked",
+            "Approval rejected",
             "Completed",
         ]);
         expect(screen.getByText("Execution running")).toBeInTheDocument();
@@ -257,6 +261,41 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
         counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         expect(countFor("Status unavailable")).toBe("1");
+    });
+
+    it("shows recognized intermediate and legacy states with clear stages and counts", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([
+            workflow({ workflow_id: "planned", workflow_state: "planned" }),
+            workflow({ workflow_id: "patch-applied", workflow_state: "patch_applied_pending_verification", execution_intent: "restart-service" }),
+            workflow({ workflow_id: "ready-to-run", workflow_state: "awaiting_execution", execution_intent: "update-container-image" }),
+            workflow({ workflow_id: "rejected", workflow_state: "implementation_rejected", execution_intent: "start-service" }),
+        ]));
+
+        renderDashboard();
+
+        const plannedCard = (await screen.findByRole("heading", { name: "Update Compose Stack" })).closest("article");
+        expect(within(plannedCard as HTMLElement).getByText("Stage: Ready for review")).toBeVisible();
+        expect(within(plannedCard as HTMLElement).getByText("Review the workflow before continuing.")).toBeVisible();
+
+        const patchCard = screen.getByRole("heading", { name: "Restart Service" }).closest("article");
+        expect(within(patchCard as HTMLElement).getByText("Stage: Preparing verification")).toBeVisible();
+        expect(within(patchCard as HTMLElement).queryByText("Stage: Status unavailable")).not.toBeInTheDocument();
+
+        const readyCard = screen.getByRole("heading", { name: "Update Container Image" }).closest("article");
+        expect(within(readyCard as HTMLElement).getByText("Stage: Approved and ready to run")).toBeVisible();
+        expect(within(readyCard as HTMLElement).getByText("The change is approved. Choose Run approved change when ready.")).toBeVisible();
+
+        const rejectedCard = screen.getByRole("heading", { name: "Start Service" }).closest("article");
+        expect(within(rejectedCard as HTMLElement).getByText("Stage: Approval rejected")).toBeVisible();
+        const counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
+        const countFor = (label: string) => {
+            const card = counts.getByText(label, { exact: true }).closest("article");
+            return within(card as HTMLElement).getByText(/^\d+$/).textContent;
+        };
+        expect(countFor("Needs your input")).toBe("2");
+        expect(countFor("Running")).toBe("1");
+        expect(countFor("Rejected")).toBe("1");
+        expect(counts.queryByText("Status unavailable", { exact: true })).not.toBeInTheDocument();
     });
 
     it("supports pagination when more returned workflows exist", async () => {

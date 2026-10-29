@@ -5,6 +5,7 @@ import { WorkflowMiniRail } from "./WorkflowMiniRail";
 import {
     WORKFLOW_STATES,
     workflowActionRequired,
+    isActiveWorkflowState,
     workflowNextStepLabel,
     workflowRailStages,
     workflowStageLabel,
@@ -53,41 +54,59 @@ describe("WorkflowMiniRail", () => {
         const groups = WORKFLOW_STATES.map((state) => workflowStatusGroup(state));
 
         expect(labels).toEqual([
+            "Ready for review",
             "Prepare change",
             "Change approval",
+            "Approved and ready to run",
             "Apply change",
+            "Preparing verification",
             "Verify change",
             "Verify change",
             "Commit",
             "Commit",
             "Blocked",
+            "Approval rejected",
             "Completed",
         ]);
         expect(groups).toEqual([
             "waiting_approval",
+            "waiting_approval",
             "waiting_implementation_approval",
+            "waiting_implementation_approval",
+            "running",
             "running",
             "waiting_verification_approval",
             "running",
             "waiting_commit_approval",
             "running",
             "blocked",
+            "rejected",
             "completed",
         ]);
     });
 
     it("marks waiting approval states as action required", () => {
+        expect(workflowActionRequired("planned")).toBe(true);
         expect(workflowActionRequired("awaiting_implementation_approval")).toBe(true);
+        expect(workflowActionRequired("awaiting_execution")).toBe(true);
         expect(workflowActionRequired("awaiting_verification_approval")).toBe(true);
         expect(workflowActionRequired("awaiting_commit_approval")).toBe(true);
         expect(workflowActionRequired("executing")).toBe(false);
         expect(workflowActionRequired("completed")).toBe(false);
     });
 
+    it("keeps verification preparation in the workflow refresh cycle", () => {
+        expect(isActiveWorkflowState("patch_applied_pending_verification")).toBe(true);
+        expect(isActiveWorkflowState("future_state")).toBe(false);
+    });
+
     it("gives a safe next step for each operator action state", () => {
+        expect(workflowNextStepLabel("planned")).toBe("Review the workflow before continuing.");
         expect(workflowNextStepLabel("awaiting_approval")).toBe("Prepare the change for review.");
         expect(workflowNextStepLabel("awaiting_implementation_approval")).toBe("Review the change. If approved, choose Run approved change.");
         expect(workflowNextStepLabel("awaiting_implementation_approval", "operational_action")).toBe("Review the maintenance request. If approved, choose Run approved maintenance.");
+        expect(workflowNextStepLabel("awaiting_execution")).toBe("The change is approved. Choose Run approved change when ready.");
+        expect(workflowNextStepLabel("awaiting_execution", "operational_action")).toBe("Maintenance is approved. Choose Run approved maintenance when ready.");
         expect(workflowNextStepLabel("awaiting_verification_approval")).toBe("Review the checks. If approved, choose Run approved checks.");
         expect(workflowNextStepLabel("awaiting_commit_approval")).toBe("Review the commit. If approved, choose Record approved commit.");
         expect(workflowNextStepLabel("executing")).toBeNull();

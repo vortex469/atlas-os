@@ -145,8 +145,10 @@ function attentionPriority(value: unknown, actionRequired = false) {
 
 function workflowAttentionStage(state: string, effectKind?: string): string {
     switch (state) {
+        case "planned": return "initial review";
         case "awaiting_approval": return "change preparation";
         case "awaiting_implementation_approval": return effectKind === "operational_action" ? "maintenance request approval" : "change approval";
+        case "awaiting_execution": return effectKind === "operational_action" ? "the approved maintenance run" : "the approved change run";
         case "awaiting_verification_approval": return "verification approval";
         case "awaiting_commit_approval": return "commit approval";
         default: return formatWorkflowLabel(state);
@@ -163,10 +165,12 @@ function workflowReasonRepeatsStage(reason: string, state: string, effectKind?: 
 
 function legacyWorkflowAttentionStatus(state: string, effectKind?: string): string[] {
     switch (state) {
+        case "planned": return ["Ready for review"];
         case "awaiting_approval": return ["Waiting for approval"];
         case "awaiting_implementation_approval": return effectKind === "operational_action"
             ? ["Waiting for maintenance request approval", "Waiting for implementation approval"]
             : ["Waiting for implementation approval"];
+        case "awaiting_execution": return ["Approved and ready to run"];
         case "awaiting_verification_approval": return ["Waiting for verification approval"];
         case "awaiting_commit_approval": return ["Waiting for commit approval"];
         default: return [];

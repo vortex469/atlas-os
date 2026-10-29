@@ -3388,3 +3388,14 @@ The recovery summary keeps showing a reason and next step when the backend
 returns a newer value the screen does not recognize. Unknown next steps ask
 for operator review without recommending another action. The focused recovery
 and history suites, full Mission Control suite, lint, and build pass.
+
+## Workflow state coverage — 2026-10-29
+
+The Overview and workflow directory now recognize all workflow states already
+returned by Agent or handled by workflow detail screens, including planned,
+verification preparation, approved-to-run, and rejected states. These states
+receive readable labels and appropriate directory counts; unknown future
+states remain unavailable. Verification preparation keeps the workflow list's
+read-only refresh active. This changes display and refresh behavior only; the
+separate approval and run controls are unchanged. The full Mission Control
+suite passes 2,973 tests across 187 files, along with lint and build.
