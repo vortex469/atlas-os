@@ -2429,3 +2429,8 @@ and optional creation times. Invalid times show as unavailable rather than raw
 date strings. Planning eligibility and expiry enforcement are unchanged;
 component tests verify the source values and invalid-time fallback, while
 responsive browser checks verify the labels at phone and desktop widths.
+
+Discovery release evidence also labels published, retrieved, and freshness
+expiry times as local time. Invalid timestamps show as unavailable, and the
+retrieval age remains alongside its timestamp. Source trust and freshness
+decisions are unchanged.

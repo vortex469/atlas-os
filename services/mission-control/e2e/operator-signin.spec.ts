@@ -59,6 +59,28 @@ for (const width of [320, 390, 1280]) {
             if (path === "/operator-auth/session") return route.fulfill({ status: 401, json: { detail: "Sign in required." } });
             if (path === "/discovery/items/fixture-app") return route.fulfill({ json: discoveryItemsPage.entries[0] });
             if (path === "/discovery/items/fixture-app/relationships") return route.fulfill({ json: { item_id: "fixture-app", incoming: [], outgoing: [] } });
+            if (path === "/discovery/items/fixture-app/evidence") return route.fulfill({ json: {
+                schema_version: "discovery-merged-item-v1",
+                catalog_item_id: "fixture-app",
+                curated: discoveryItemsPage.entries[0],
+                dynamic_claims: [{
+                    fact_kind: "latest_stable_release",
+                    version: "1.2.3",
+                    published_at: "2026-10-28T12:00:00Z",
+                    freshness: "fresh",
+                    provenance: {
+                        source_id: "fixture-release-source",
+                        source_type: "github_latest_release",
+                        trust_tier: "supplemental",
+                        repository: "fixture-owner/fixture-app",
+                        upstream_release_id: 1,
+                        retrieved_at: "2026-10-28T13:00:00Z",
+                        expires_at: "2026-11-01T12:00:00Z",
+                    },
+                }],
+                source_states: [],
+                conflict_state: "none",
+            } });
             if (path === "/discovery/proposals") return route.fulfill({ json: { proposals: [proposal], total: 1, limit: 25 } });
             if (path === `/discovery/proposals/${proposal.proposal_id}`) {
                 proposalReads += 1;
@@ -72,6 +94,10 @@ for (const width of [320, 390, 1280]) {
             return route.fulfill({ status: 404, json: { detail: "Optional information unavailable in fixture." } });
         });
         await page.goto("/discovery/items/fixture-app");
+        const releaseEvidence = page.getByRole("region", { name: "Release evidence" });
+        await expect(releaseEvidence.getByText("Published (local time)", { exact: true })).toBeVisible();
+        await expect(releaseEvidence.getByText("Retrieved (local time)", { exact: true })).toBeVisible();
+        await expect(releaseEvidence.getByText("Freshness expires (local time)", { exact: true })).toBeVisible();
         const proposalCard = page.locator("article").filter({ hasText: proposal.proposal_id });
         await expect(proposalCard.getByText("Generated (local time)")).toBeVisible();
         await expect(proposalCard.getByText("Expires (local time)")).toBeVisible();

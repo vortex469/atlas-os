@@ -88,7 +88,23 @@ describe("DiscoveryEvidencePanel", () => {
         expect(screen.getByText("blakeblackshear/frigate")).toBeInTheDocument();
         expect(screen.getByText("Supplemental")).toBeInTheDocument();
         expect(screen.getByText(/2 hours ago/)).toBeInTheDocument();
+        expect(screen.getByText("Published (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-17T09:00:00Z");
+        expect(screen.getByText("Retrieved (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-18T09:00:00Z");
+        expect(screen.getByText("Freshness expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-08-19T09:00:00Z");
         vi.useRealTimers();
+    });
+
+    it("shows unavailable for malformed release evidence timestamps", () => {
+        const claim = evidence().dynamic_claims[0];
+        render(<DiscoveryEvidencePanel evidence={evidence({ dynamic_claims: [{
+            ...claim,
+            published_at: "not-a-time",
+            provenance: { ...claim.provenance, retrieved_at: "2026-02-30T09:00:00Z", expires_at: "not-a-time" },
+        }] })} isLoading={false} error={null} />);
+        expect(screen.getByText("Published (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Freshness expires (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
     });
 
     it("renders stale, degraded, unavailable, and unknown health explicitly", () => {

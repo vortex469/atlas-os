@@ -5,6 +5,7 @@ import type {
     DiscoveryReleaseEvaluationStatus,
     DiscoverySourceHealth,
 } from "../../types/discovery";
+import { evidenceTimestamp } from "../../utils/healthPresentation";
 
 type Props = {
     evidence: DiscoveryItemEvidence | null;
@@ -181,9 +182,9 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: 
                                         <Fact label="Source type" value="GitHub latest release" />
                                         <Fact label="Repository" value={claim.provenance.repository} />
                                         <Fact label="Trust" value="Supplemental" />
-                                        <Fact label="Published" value={formatTimestamp(claim.published_at)} />
-                                        <Fact label="Retrieved" value={`${formatTimestamp(claim.provenance.retrieved_at)} (${formatAge(claim.provenance.retrieved_at)})`} />
-                                        <Fact label="Freshness expires" value={formatTimestamp(claim.provenance.expires_at)} />
+                                        <TimeFact label="Published" value={claim.published_at} />
+                                        <TimeFact label="Retrieved" value={claim.provenance.retrieved_at} context={formatAge(claim.provenance.retrieved_at)} />
+                                        <TimeFact label="Freshness expires" value={claim.provenance.expires_at} />
                                         <Fact label="Upstream release ID" value={String(claim.provenance.upstream_release_id)} />
                                     </dl>
                                 </li>
@@ -288,18 +289,25 @@ function Fact({ label: factLabel, value }: { label: string; value: string }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{factLabel}</dt><dd className="mt-1 break-words text-slate-300">{value}</dd></div>;
 }
 
+function TimeFact({ label: factLabel, value, context }: { label: string; value: string; context?: string }) {
+    const timestamp = evidenceTimestamp(value);
+    return <div>
+        <dt className="text-xs uppercase tracking-wider text-slate-500">{factLabel} (local time)</dt>
+        <dd className="mt-1 break-words text-slate-300">
+            {timestamp === null
+                ? "Time unavailable"
+                : <><time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>{context ? ` (${context})` : null}</>}
+        </dd>
+    </div>;
+}
+
 function label(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1).replaceAll("_", " ");
 }
 
-function formatTimestamp(value: string): string {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "Unknown" : parsed.toLocaleString();
-}
-
 function formatAge(value: string): string {
-    const time = new Date(value).getTime();
-    if (Number.isNaN(time)) return "age unknown";
+    const time = evidenceTimestamp(value);
+    if (time === null) return "age unknown";
     const elapsed = Math.max(0, Date.now() - time);
     const hours = Math.floor(elapsed / 3_600_000);
     if (hours < 1) return "less than 1 hour ago";
