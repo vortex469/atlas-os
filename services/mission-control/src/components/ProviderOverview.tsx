@@ -72,12 +72,12 @@ export function ProviderOverview({
 
                 <div>
                     <p className="text-xs uppercase tracking-wider text-slate-500">
-                        Capabilities
+                        Supported features
                     </p>
 
                     {capabilities === null ? (
                         <p className="mt-2 text-sm text-slate-500">
-                            Capabilities unavailable.
+                            Features unavailable.
                         </p>
                     ) : capabilities.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -92,7 +92,7 @@ export function ProviderOverview({
                         </div>
                     ) : (
                         <p className="mt-2 text-sm text-slate-500">
-                            No capabilities advertised.
+                            No supported features are listed.
                         </p>
                     )}
                 </div>

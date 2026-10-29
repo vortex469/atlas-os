@@ -56,13 +56,13 @@ describe("ProviderOverview feature data", () => {
 
     it("distinguishes missing features from an empty advertised list", () => {
         view(undefined);
-        expect(screen.getByText("Capabilities unavailable.")).toBeInTheDocument();
-        expect(screen.queryByText("No capabilities advertised.")).not.toBeInTheDocument();
+        expect(screen.getByText("Features unavailable.")).toBeInTheDocument();
+        expect(screen.queryByText("No supported features are listed.")).not.toBeInTheDocument();
     });
 
-    it("reports an empty but valid capability list plainly", () => {
+    it("reports an empty but valid feature list plainly", () => {
         view([]);
-        expect(screen.getByText("No capabilities advertised.")).toBeInTheDocument();
-        expect(screen.queryByText("Capabilities unavailable.")).not.toBeInTheDocument();
+        expect(screen.getByText("No supported features are listed.")).toBeInTheDocument();
+        expect(screen.queryByText("Features unavailable.")).not.toBeInTheDocument();
     });
 });
