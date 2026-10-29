@@ -2467,3 +2467,11 @@ expiry times as local time. Invalid timestamps show as unavailable, and the
 retrieval age remains alongside its timestamp. Source trust and freshness
 decisions are unchanged. A future retrieval timestamp is identified as such
 instead of being reported as “less than 1 hour ago.”
+
+## Health connection wording — 2026-10-29
+
+The connection-refused summary now says Atlas Core's connection to the
+reported address was refused, rather than attributing that response to the
+service process. Timeout wording says Atlas Core received no response before
+the check timed out. The check and status behavior are unchanged; component
+and phone/desktop browser tests cover both messages.

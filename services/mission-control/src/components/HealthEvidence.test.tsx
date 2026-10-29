@@ -54,21 +54,21 @@ describe("authoritative health presentation", () => {
             <HealthEvidence compact status="critical" reason="Policy failure" />
         </>);
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("The service refused the connection.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeInTheDocument();
         expect(screen.queryByText("Reported status: offline")).not.toBeInTheDocument();
         expect(screen.getByText("Reported status: critical")).toBeInTheDocument();
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
     });
 
     it.each([
-        ["[Errno 111] Connection refused", "The service refused the connection."],
-        ["Connection refused", "The service refused the connection."],
+        ["[Errno 111] Connection refused", "Atlas Core's connection to this address was refused."],
+        ["Connection refused", "Atlas Core's connection to this address was refused."],
         ["[Errno 113] No route to host", "The service could not be reached over the network."],
         ["No route to host", "The service could not be reached over the network."],
         ["[Errno 101] Network is unreachable", "Atlas Core has no reachable network path to the service host."],
         ["[Errno -3] Temporary failure in name resolution", "Atlas Core could not resolve the service host name."],
-        ["[Errno 110] Connection timed out", "The service did not respond in time."],
-        ["timed out", "The service did not respond in time."],
+        ["[Errno 110] Connection timed out", "Atlas Core got no response before the check timed out."],
+        ["timed out", "Atlas Core got no response before the check timed out."],
     ])("explains network failures in plain language: %s", (reason, explanation) => {
         render(<HealthEvidence compact status="offline" reason={reason} />);
         expect(screen.getByText(explanation)).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe("authoritative health presentation", () => {
         rerender(<HealthEvidenceContext.Provider value={{ stale: false }}><HealthEvidence status="offline" reason="Connection refused" /></HealthEvidenceContext.Provider>);
         expect(screen.queryByText("Status unknown")).not.toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("The service refused the connection.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeInTheDocument();
     });
 
     it.each([null, [], "healthy", { atlas: true, services: [] }, { services: { broken: null, bad: { status: {}, message: [], details: null, latency_ms: "5", http_status: {} } } }])("handles malformed API evidence %j", (payload) => {

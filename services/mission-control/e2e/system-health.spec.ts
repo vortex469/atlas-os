@@ -31,7 +31,7 @@ for (const width of [390, 1440]) {
         for (const state of ["Degraded", "Atlas Core could not connect", "Blocked", "Status unknown"]) {
             await expect(checks.getByText(state, { exact: true })).toBeVisible();
         }
-        await expect(checks.getByText("The service refused the connection.", { exact: true })).toBeVisible();
+        await expect(checks.getByText("Atlas Core's connection to this address was refused.", { exact: true })).toBeVisible();
         await expect(summary.getByText("Last report: Healthy.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();

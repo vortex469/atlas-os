@@ -24,14 +24,14 @@ export function healthReason(value: unknown): string | null {
     if (!text) return null;
     const { errno, message } = parseHealthError(text);
     switch (message.toLowerCase()) {
-        case "connection refused": return "The service refused the connection.";
+        case "connection refused": return "Atlas Core's connection to this address was refused.";
         case "no route to host": return "The service could not be reached over the network.";
         case "network is unreachable": return "Atlas Core has no reachable network path to the service host.";
         case "name or service not known":
         case "temporary failure in name resolution":
         case "getaddrinfo failed": return "Atlas Core could not resolve the service host name.";
         case "connection timed out":
-        case "timed out": return "The service did not respond in time.";
+        case "timed out": return "Atlas Core got no response before the check timed out.";
         default: return errno ? message || "The connection failed." : text;
     }
 }
