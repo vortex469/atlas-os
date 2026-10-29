@@ -3082,3 +3082,7 @@ The worker runtime prerequisite panel now uses a clear saved/missing/unavailable
 state, explains that worker start is not available, and retries only failed
 Core reads. Technical fingerprints remain collapsed and no runtime action is
 introduced.
+
+The nested runtime admission panel now separates a saved review from actual
+runtime readiness. It says worker start remains unavailable, keeps lineage
+collapsed, and retries only failed Core reads.
