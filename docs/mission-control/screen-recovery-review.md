@@ -3096,3 +3096,8 @@ The nested consistency review now has a short saved, missing, or unavailable
 status and readable UTC times. It explains that the review does not define or
 start a runtime, keeps technical findings collapsed, and retries only a failed
 Core read.
+
+The runtime interface inventory now shows a short saved, missing, or unavailable
+status and readable UTC times. It states that the inventory does not make a
+runtime ready, contact a worker, or allow start; technical lineage remains
+collapsed and failed Core reads can be retried safely.
