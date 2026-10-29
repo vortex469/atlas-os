@@ -96,8 +96,16 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             <div className="mt-2 space-y-1">
                 <ol aria-label="Docker and Compose checks" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                     <li>
-                        On another computer running Docker, use <code>docker ps</code> and check <code>PORTS</code>. For containers using port mappings, a blank field means no host port is published; a mapping starting with <code>127.0.0.1:</code> is reachable only from that computer. With Docker host networking, the app listens directly on the service computer&apos;s port, so a published-port mapping is not expected.
-                        If the container uses port mappings, publish the app's listening port with Compose's <code>ports:</code> or <code>docker run -p</code>, then recreate the container. In <code>HOST_PORT:CONTAINER_PORT</code>, the host port must match Atlas's address and the container port must match the app's listening port.
+                        If this service runs in Docker, run <code>docker ps</code> on the computer running it and find its container.
+                    </li>
+                    <li>
+                        Check the container&apos;s <code>PORTS</code> column. With port mappings, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
+                    </li>
+                    <li>
+                        To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. In <code>HOST_PORT:CONTAINER_PORT</code>, the number before the colon must match the port in Atlas&apos;s configured address. The number after it must match the app&apos;s listening port. Recreate the container after changing its ports.
+                    </li>
+                    <li>
+                        With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer&apos;s port.
                     </li>
                     <li>If Compose says the file is missing, the command ran outside the Atlas folder or on another computer. That error doesn't show whether the service is running. Run Compose from the folder containing the file, or pass its full path with <code>--file</code>.</li>
                 </ol>

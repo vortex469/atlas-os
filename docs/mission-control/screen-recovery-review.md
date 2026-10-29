@@ -3300,7 +3300,12 @@ quoting, and invalid addresses. The command performs no service mutation.
 Expanded connection details now focus on Docker port mappings and Compose file
 location. The Atlas Core versus service-computer/browser distinction appears
 once in the visible next step instead of being repeated inside the disclosure.
-The component and two browser checks verify the shorter instructions.
+The component and two browser checks verify the clearer checklist.
+
+The Docker checklist now tells operators to run `docker ps` on the computer
+running the service, then check the container's `PORTS` column. Port
+interpretation, publishing, host networking, and Compose-file checks each have
+their own numbered step.
 
 ## Work activity detail cleanup — 2026-10-29
 

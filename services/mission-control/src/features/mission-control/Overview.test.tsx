@@ -212,14 +212,18 @@ describe("MC overview evidence", () => {
         const steps = within(disclosure as HTMLDetailsElement).getByRole("list", {
             name: "Docker and Compose checks",
         });
-        expect(within(steps).getAllByRole("listitem")).toHaveLength(2);
+        expect(within(steps).getAllByRole("listitem")).toHaveLength(5);
         expect(steps).toHaveClass("text-sm");
         expect(steps).not.toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
-        expect(steps).toHaveTextContent("On another computer running Docker, use docker ps and check PORTS.");
-        expect(steps).toHaveTextContent(/For containers using port mappings, a blank field means no host port is published;/);
-        expect(steps).toHaveTextContent("With Docker host networking, the app listens directly on the service computer's port, so a published-port mapping is not expected.");
-        expect(steps).toHaveTextContent("a mapping starting with 127.0.0.1: is reachable only from that computer.");
-        expect(steps).toHaveTextContent("publish the app's listening port with Compose's ports: or docker run -p");
+        expect(steps).toHaveTextContent("If this service runs in Docker, run docker ps on the computer running it and find its container.");
+        expect(steps).toHaveTextContent("Check the container's PORTS column.");
+        expect(steps).toHaveTextContent("With port mappings, a blank field means no host port is published");
+        expect(steps).toHaveTextContent("To publish a port, use Compose's ports: or docker run -p.");
+        expect(steps).toHaveTextContent("the number before the colon must match the port in Atlas's configured address.");
+        expect(steps).toHaveTextContent("The number after it must match the app's listening port.");
+        expect(steps).toHaveTextContent("Recreate the container after changing its ports.");
+        expect(steps).toHaveTextContent("With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer's port.");
+        expect(steps).toHaveTextContent("A mapping starting with 127.0.0.1: is reachable only from that computer.");
         expect(steps).toHaveTextContent("HOST_PORT:CONTAINER_PORT");
         expect(steps).toHaveTextContent("If Compose says the file is missing, the command ran outside the Atlas folder or on another computer. That error doesn't show whether the service is running.");
         expect(steps).toHaveTextContent("Run Compose from the folder containing the file, or pass its full path with --file.");

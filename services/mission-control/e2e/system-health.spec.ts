@@ -37,7 +37,7 @@ for (const width of [390, 1440]) {
             .nth(1);
         await down.locator("summary", { hasText: "More connection checks" }).click();
         await expect(down.getByRole("list", { name: "Docker and Compose checks" })).toContainText(
-            "a mapping starting with 127.0.0.1: is reachable only from that computer",
+            "A mapping starting with 127.0.0.1: is reachable only from that computer",
         );
         await expect(summary.getByText("Last known report (out of date): Healthy.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
