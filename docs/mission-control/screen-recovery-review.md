@@ -2395,8 +2395,15 @@ cover the instruction at component and phone/desktop browser level.
 
 The same disclosure explains how to check a bridged service container's
 published host port with `docker ps`. This makes an empty `PORTS` column
-actionable when Atlas Core checks a service on another machine. The guidance
-does not assume host networking or change the configured probe.
+actionable when Atlas Core checks a service on another machine. It now says to
+run `docker ps` on the machine running the app and find its container. If the
+`PORTS` column is blank, add a `ports:` mapping to the service's Compose file or
+use `docker run -p`, then recreate the container. The guidance does not assume
+host networking or change the configured probe. The focused Overview component
+tests pass (73 tests), and all 26 built Overview browser checks pass across
+phone and desktop layouts. Mission Control lint and production build pass.
+Browser fixtures remain isolated and issue no service configuration or
+mutation requests.
 
 ## Service attention wording — 2026-10-29
 

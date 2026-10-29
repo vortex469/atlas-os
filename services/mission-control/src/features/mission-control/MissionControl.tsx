@@ -80,7 +80,12 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         <div className="mt-2 space-y-1">
             <ol aria-label="How to check from Atlas Core" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                 <li>Confirm the app listens on its configured port. Test from Atlas Core's machine or inside the <code>atlas-core</code> container; a browser or service host may use a different network path.</li>
-                <li>For a bridged container on another machine, <code>docker ps</code> should show the host port under <code>PORTS</code>. If <code>PORTS</code> is blank, Docker has not published a port on that host.</li>
+                <li>
+                    For an app in a bridged Docker container on another machine, run <code>docker ps</code> on the machine running that app
+                    and find its container. Its host port should appear under <code>PORTS</code>.
+                    If <code>PORTS</code> is blank, add a <code>ports:</code> mapping to the service's Compose file
+                    or use <code>docker run -p</code>, then recreate the container so Atlas Core can reach it.
+                </li>
                 <li>If using Compose, run commands from the folder containing Atlas’s Compose file.</li>
             </ol>
             <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
