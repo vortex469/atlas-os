@@ -267,7 +267,7 @@ describe("OperationsPage", () => {
         expect(screen.queryByRole("navigation", { name: "Action history pagination" })).not.toBeInTheDocument();
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         const historyAlert = await screen.findByRole("alert");
-        expect(historyAlert).toHaveTextContent("Action history could not be loaded. Refresh history to try again. This read did not run an action.");
+        expect(historyAlert).toHaveTextContent("Atlas couldn’t load action history. Refresh history to try again; this won’t run any actions.");
         const technicalDetails = within(historyAlert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(historyAlert).queryByText("Filtered history unavailable")).not.toBeVisible();

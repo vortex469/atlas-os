@@ -546,7 +546,7 @@ export function OperationsPage() {
                         Action history unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        Action history could not be loaded. Refresh history to try again. This read did not run an action.
+                        Atlas couldn’t load action history. Refresh history to try again; this won’t run any actions.
                     </p>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
