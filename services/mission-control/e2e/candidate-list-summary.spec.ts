@@ -1,4 +1,4 @@
-import { expect, test } from "./mission-control-fixtures";
+import { executionCandidates, expect, test } from "./mission-control-fixtures";
 
 for (const width of [320, 390, 1280]) {
     test(`proposal list leads with readable change summaries at ${width}px`, async ({ page, rejectedMutationRequests }) => {
@@ -23,6 +23,34 @@ for (const width of [320, 390, 1280]) {
         await expect(proposalCard.getByText("candidate-browser-baseline", { exact: true })).toBeVisible();
         await expect(proposalCard.getByText("Created (local time)", { exact: true })).toBeVisible();
         expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`proposal pagination announces the visible range at ${width}px`, async ({ page }) => {
+        const requestedOffsets: number[] = [];
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/execution-candidates**", (route) => {
+            const offset = Number(new URL(route.request().url()).searchParams.get("offset") ?? "0");
+            requestedOffsets.push(offset);
+            return route.fulfill({
+                json: {
+                    candidates: [{ ...executionCandidates[0], id: `candidate-range-${offset}` }],
+                    total: 26,
+                    limit: 25,
+                    offset,
+                    has_more: offset === 0,
+                },
+            });
+        });
+        await page.goto("/execution-candidates");
+
+        const range = page.getByRole("status", { name: "Proposal result range" });
+        await expect(range).toHaveText("Showing 1–1 of 26 proposals");
+        await page.getByRole("button", { name: "Next change proposals page" }).click();
+        await expect(range).toHaveText("Showing 26–26 of 26 proposals");
+        expect(requestedOffsets).toEqual([0, 25]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 }
 
