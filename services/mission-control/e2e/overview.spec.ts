@@ -499,7 +499,7 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toBeHidden();
     await expect(worker.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.", { exact: true })).toBeVisible();
-    await expect(worker.getByText('No running workflows are listed.', { exact: true })).toBeVisible();
+    await expect(worker.getByText('No running or blocked workflows are listed.', { exact: true })).toBeVisible();
     await expect(worker.getByText('No running workflows are listed. Worker availability is unknown.', { exact: true })).toHaveCount(0);
     const workerToggle = worker.locator('summary', { hasText: 'More workflow details' });
     await workerToggle.focus();

@@ -58,7 +58,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             </p>
             {loading && items && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Checking for a newer workflow report. The statuses shown may have changed.</p>}
             {!loading && evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Atlas couldn't load the latest workflow report. The statuses shown may have changed.</p>}
-            {items && knownStates && (
+            {items && knownStates && (active.length > 0 || blocked.length > 0) && (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <Metric label="Running workflows" value={String(active.length)} />
                     <Metric label="Blocked workflows" value={String(blocked.length)} />
@@ -66,7 +66,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             )}
             {loading && !items && <p role="status" className="mt-3 text-sm text-mc-text-secondary">Checking workflow status…</p>}
             {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized. Running and blocked counts are hidden.</p>}
-            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running workflows are listed.</p>}
+            {items && knownStates && active.length === 0 && blocked.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No running or blocked workflows are listed.</p>}
             <div className="mt-4 grid gap-4">
                 {active.length > 0 && <EvidenceList key="running" title="Running workflows" items={active} available={!!items} empty="Unknown" />}
                 {blocked.length > 0 && <EvidenceList key="blocked" title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}

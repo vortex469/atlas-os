@@ -40,9 +40,9 @@ describe("Work activity summary", () => {
     it("shows an idle observation without inventing worker health or queue depth", () => {
         view(page([]));
         const section = screen.getByRole("region", { name: "Work activity" });
-        expect(within(section).getByText("Running workflows").nextElementSibling).toHaveTextContent("0");
-        expect(within(section).getByText("Blocked workflows").nextElementSibling).toHaveTextContent("0");
-        expect(within(section).getByText("No running workflows are listed.")).toBeInTheDocument();
+        expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).getByText("No running or blocked workflows are listed.")).toBeInTheDocument();
         expect(within(section).getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
         expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
         expect(within(section).getByText("Queue size").closest("details")?.open).toBe(false);
@@ -140,7 +140,9 @@ describe("Work activity summary", () => {
         expect(screen.queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
         rerender(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([]) }} loading={false} /></MemoryRouter>);
-        expect(screen.getByRole("region", { name: "Work activity" }).querySelector("dd")).toHaveTextContent("0");
+        const section = screen.getByRole("region", { name: "Work activity" });
+        expect(within(section).getByText("No running or blocked workflows are listed.")).toBeInTheDocument();
+        expect(section.querySelector(":scope > dl")).toBeNull();
     });
     it("explains that retained observations may have changed during refresh", () => {
         view(page([workflow("active")]), false, true);

@@ -3134,3 +3134,10 @@ release timestamps, image checks, installation plans, and saved confirmation
 records. The specs now use the current labels and verify the existing read-only
 and collapsed-detail behavior. No runtime or approval behavior changed; all
 228 development browser checks pass against synthetic API fixtures.
+
+## Work activity idle summary — 2026-10-29
+
+When no workflows are running or blocked, the dashboard now shows one plain
+empty-state sentence instead of two zero counters plus a repeated no-running
+message. Running and blocked counts remain visible whenever either state has
+items. The focused component and overview browser checks cover both states.
