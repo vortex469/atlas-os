@@ -160,6 +160,7 @@ describe("MaintenanceRequestPage", () => {
 
         const resources = screen.getByRole("region", { name: "Available virtual machines" });
         expect(within(resources).getByText("Loading available VMs…")).toBeVisible();
+        expect(within(resources).getByRole("button", { name: "Loading VMs…" })).toBeDisabled();
         expect(within(resources).queryByText("No VMs are available to select right now. Use Refresh to check again.")).not.toBeInTheDocument();
         expect(await within(resources).findByText("No VMs are available to select right now. Use Refresh to check again.")).toBeVisible();
         expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();
