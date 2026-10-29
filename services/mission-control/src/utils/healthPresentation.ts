@@ -42,7 +42,7 @@ export function healthNextCheck(value: unknown): string | null {
     const { message } = parseHealthError(text);
     switch (message.toLowerCase()) {
         case "connection refused":
-            return "On the service computer, confirm the app is listening on this port. If it runs in Docker, run docker ps there and check PORTS. For a container using Docker port mappings, a blank PORTS field means there is no host port for Atlas Core to reach. Publish the listening port, then test again from Atlas Core.";
+            return "On the service computer, confirm the app is listening on this port. If it runs in Docker, check PORTS with docker ps; if blank, publish the port unless the container uses host networking. Then test from Atlas Core.";
         case "no route to host":
             return "Check the target address and the network or firewall route from Atlas Core to the service host.";
         case "network is unreachable":

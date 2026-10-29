@@ -94,7 +94,7 @@ describe("ServiceHealthSection", () => {
 
         expect(
             screen.getByText(
-                "Shows whether Atlas Core can reach each configured address. An “Unavailable” result means Core could not reach the address; the service may still be running on its own computer. Select a service to see the address Atlas checked.",
+                "Shows whether Atlas Core can reach each service address. A service can be running on its computer and still be unreachable from Core. Select one to see the address Atlas checked.",
             ),
         ).toBeInTheDocument();
 
@@ -113,7 +113,14 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
         expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
-        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run a network test from the machine running Atlas Core. If Atlas Core runs in Docker Compose, run it inside the atlas-core container. Run Compose commands from the folder containing Atlas's Compose file, or pass its full path with --file. A test from the service's machine or your browser only checks that machine's connection.");
+        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run the test on the computer where Atlas Core runs. If Core runs in Docker Compose, run it inside the atlas-core container. Your browser or the service computer may use a different network path.");
+        const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
+        const composeHelpText = composeHelp!.querySelector("p");
+        expect(composeHelp).not.toHaveAttribute("open");
+        expect(composeHelpText).toHaveTextContent("Run the command from the directory that contains Atlas's Compose file, or pass its full path with --file.");
+        expect(composeHelpText).not.toBeVisible();
+        await user.click(screen.getByText("If Compose says the file is missing"));
+        expect(composeHelpText).toBeVisible();
         expect(screen.getByText(/"version"/)).not.toBeVisible();
         await user.click(screen.getByText("Technical details"));
         expect(screen.getByText(/"version"/)).toBeVisible();
@@ -194,7 +201,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                "On the service computer, confirm the app is listening on this port. If it runs in Docker, run docker ps there and check PORTS. For a container using Docker port mappings, a blank PORTS field means there is no host port for Atlas Core to reach. Publish the listening port, then test again from Atlas Core.",
+                "On the service computer, confirm the app is listening on this port. If it runs in Docker, check PORTS with docker ps; if blank, publish the port unless the container uses host networking. Then test from Atlas Core.",
             ),
         ).toBeInTheDocument();
     });

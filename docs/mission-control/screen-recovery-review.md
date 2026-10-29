@@ -2958,3 +2958,11 @@ stale health conditions retain their “Last known report (out of date)” statu
 Work activity explains when its latest report could not be loaded and shows one
 plain refresh message while a newer report is being checked. Workflow decisions
 and action controls remain unchanged.
+
+## Service reachability guidance — 2026-10-29
+
+The service drawer now leads with where to test: on the Atlas Core computer, or
+inside `atlas-core` when Core runs in Compose. Compose file-location help is
+collapsed unless the operator needs it. The connection-refused guidance keeps
+the Docker port check and host-networking exception in a shorter instruction.
+Service probes and settings are unchanged.
