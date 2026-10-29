@@ -2408,3 +2408,11 @@ offline. Component and phone/desktop browser checks cover the shared label.
 The collapsed “About service checks” note now explains in plain language that
 the result is reachability from Atlas Core, separate from Atlas Core's own
 health.
+
+## Recent action time-zone label — 2026-10-29
+
+Recent provider actions now label completion times as local time in the visible
+text. The exact UTC time remains available in the time element's title and
+machine-readable value. Component and responsive browser checks verify the
+visible label and the UTC source value; action records and time conversion are
+unchanged.

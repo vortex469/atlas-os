@@ -53,7 +53,7 @@ describe("integrated attention and activity", () => {
         expect(entries).toHaveLength(2);
         expect(entries[0]).toHaveTextContent("Failed · Restart");
         expect(entries[1]).toHaveTextContent("Succeeded · Restart");
-        const completedAt = within(entries[1]).getByText(/^Completed /);
+        const completedAt = within(entries[1]).getByText(/^Completed \(local time\) /);
         expect(completedAt.tagName).toBe("TIME");
         const canonicalTime = new Date(event.completed_at).toISOString();
         expect(completedAt).toHaveAttribute("datetime", canonicalTime);
