@@ -189,7 +189,7 @@ for (const width of [320, 390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflows unavailable");
-        await expect(alert).toContainText("Mission Control could not load the workflow list.");
+        await expect(alert).toContainText("Atlas couldn't load your workflows. Try again to get the latest list.");
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {
             await page.getByRole("button", { name: "Open navigation" }).click();

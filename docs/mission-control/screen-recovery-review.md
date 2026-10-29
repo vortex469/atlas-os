@@ -3519,3 +3519,9 @@ The catalog error now says Atlas could not load the results and identifies
 that the selected filters remain in place. Its retry control is labeled
 “Retry search,” describing the operator action. The retry still only reads
 catalog results.
+
+## Workflow list recovery — 2026-10-29
+
+The workflow-list error now names Atlas and tells the operator that retry
+fetches the latest list. The existing retry remains a read of the workflow
+list; workflow actions and approvals are unchanged.

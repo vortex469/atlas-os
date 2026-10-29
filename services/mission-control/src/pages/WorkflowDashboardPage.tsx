@@ -201,7 +201,7 @@ export function WorkflowDashboardPage() {
             <main className="mx-auto max-w-7xl p-4 sm:p-8">
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflows unavailable</h1>
-                    <p className="mt-2 text-sm text-red-100">Mission Control could not load the workflow list. Try again to request the latest workflows.</p>
+                    <p className="mt-2 text-sm text-red-100">Atlas couldn&apos;t load your workflows. Try again to get the latest list.</p>
                     <button type="button" onClick={() => void loadDashboard()} className="mt-4 rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Try again
                     </button>

@@ -433,7 +433,7 @@ describe("WorkflowDashboardPage", () => {
         renderDashboard();
         const unavailableAlert = await screen.findByRole("alert");
         expect(unavailableAlert).toHaveTextContent("Workflows unavailable");
-        expect(unavailableAlert).toHaveTextContent("Mission Control could not load the workflow list.");
+        expect(unavailableAlert).toHaveTextContent("Atlas couldn't load your workflows. Try again to get the latest list.");
         expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
         const initialErrorDetails = within(unavailableAlert).getByText("Technical details").closest("details");
         expect(initialErrorDetails).not.toHaveAttribute("open");
@@ -446,7 +446,7 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockImplementationOnce(() => new Promise((resolve) => { resolveRetry = resolve; }));
         renderDashboard();
         const initialAlert = await screen.findByRole("alert");
-        expect(initialAlert).toHaveTextContent("Mission Control could not load the workflow list.");
+        expect(initialAlert).toHaveTextContent("Atlas couldn't load your workflows. Try again to get the latest list.");
         expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Try again" }));
         expect(screen.getByRole("status")).toHaveTextContent("Loading workflows");
@@ -464,7 +464,7 @@ describe("WorkflowDashboardPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Workflows unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not load the workflow list.");
+        expect(alert).toHaveTextContent("Atlas couldn't load your workflows. Try again to get the latest list.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(screen.queryByRole("heading", { name: "This page could not load" })).not.toBeInTheDocument();
