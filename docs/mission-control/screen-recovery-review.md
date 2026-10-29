@@ -3049,3 +3049,8 @@ timestamps. Technical lineage and authority fields remain collapsed. A failed
 receipt-list read can be retried safely; an uncertain save is not resent. The
 two-step confirmation, exact statement, permissions, and Core request contract
 remain unchanged.
+
+The nested worker binding now uses a short saved/expired status, readable UTC
+times, and one sentence that says the worker is not enabled or contacted.
+Technical lineage stays collapsed, and a failed read can be retried safely.
+The panel remains read-only and creates no binding or activation action.
