@@ -107,6 +107,19 @@ describe("DiscoveryEvidencePanel", () => {
         expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
     });
 
+    it("does not describe future retrieval timestamps as recent", () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-08-18T11:00:00Z"));
+        const claim = evidence().dynamic_claims[0];
+        render(<DiscoveryEvidencePanel evidence={evidence({ dynamic_claims: [{
+            ...claim,
+            provenance: { ...claim.provenance, retrieved_at: "2026-08-19T09:00:00Z" },
+        }] })} isLoading={false} error={null} />);
+        expect(screen.getByText("Retrieved (local time)").parentElement).toHaveTextContent("reported time is in the future");
+        expect(screen.queryByText("less than 1 hour ago")).not.toBeInTheDocument();
+        vi.useRealTimers();
+    });
+
     it("renders stale, degraded, unavailable, and unknown health explicitly", () => {
         render(<DiscoveryEvidencePanel evidence={evidence({
             dynamic_claims: [{ ...evidence().dynamic_claims[0], freshness: "stale" }],

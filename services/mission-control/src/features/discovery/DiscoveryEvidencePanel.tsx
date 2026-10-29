@@ -308,7 +308,9 @@ function label(value: string): string {
 function formatAge(value: string): string {
     const time = evidenceTimestamp(value);
     if (time === null) return "age unknown";
-    const elapsed = Math.max(0, Date.now() - time);
+    const now = Date.now();
+    if (time > now) return "reported time is in the future";
+    const elapsed = now - time;
     const hours = Math.floor(elapsed / 3_600_000);
     if (hours < 1) return "less than 1 hour ago";
     if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;

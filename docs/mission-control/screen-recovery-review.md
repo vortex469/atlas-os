@@ -2433,4 +2433,5 @@ responsive browser checks verify the labels at phone and desktop widths.
 Discovery release evidence also labels published, retrieved, and freshness
 expiry times as local time. Invalid timestamps show as unavailable, and the
 retrieval age remains alongside its timestamp. Source trust and freshness
-decisions are unchanged.
+decisions are unchanged. A future retrieval timestamp is identified as such
+instead of being reported as “less than 1 hour ago.”
