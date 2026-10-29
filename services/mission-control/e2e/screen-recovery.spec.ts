@@ -675,7 +675,7 @@ for (const width of [320, 390, 1280]) {
         const alert = page.getByRole("alert");
         await expect(page.getByRole("heading", { name: "Workflow unavailable" })).toBeVisible();
         await expectResponsiveMainPadding(alert, width);
-        await expect(alert).toContainText("Mission Control could not load this workflow, so its current status is unknown.");
+        await expect(alert).toContainText("Atlas couldn’t load this workflow, so its status is unknown.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open");
         await expect(alert.getByText("Unavailable", { exact: true })).toBeHidden();
@@ -1382,7 +1382,7 @@ for (const width of [320, 390, 1280]) {
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow unavailable");
         await expectResponsiveMainPadding(alert, width);
-        await expect(alert).toContainText("Mission Control could not read this workflow response. Refresh to try again.");
+        await expect(alert).toContainText("Atlas couldn’t read this workflow’s details. Try again to reload them.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open");
         await expect(technicalDetails).toContainText("Malformed workflow detail payload.");

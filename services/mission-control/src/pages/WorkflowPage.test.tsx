@@ -110,7 +110,7 @@ describe("WorkflowPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Workflow unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not read this workflow response. Refresh to try again.");
+        expect(alert).toHaveTextContent("Atlas couldn’t read this workflow’s details. Try again to reload them.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Malformed workflow detail payload.")).not.toBeVisible();
@@ -125,7 +125,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not load this workflow, so its current status is unknown.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this workflow, so its status is unknown.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Network Error")).not.toBeVisible();

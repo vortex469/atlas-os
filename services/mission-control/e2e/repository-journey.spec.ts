@@ -252,6 +252,32 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`an unreadable workflow shows a clear retry and recovers at ${width}px`, async ({ page, baseURL }) => {
+        const fixture = await installRepositoryJourney(page, true, { baseURL });
+        await page.setViewportSize({ width, height: 844 });
+        let detailReads = 0;
+        await page.route(`**/agent-api/api/v1/agent/workflows/${journey.workflow}/implementation-request`, async (route) => {
+            if (route.request().method() !== "GET") return route.fallback();
+            detailReads += 1;
+            if (detailReads === 1) return route.fulfill({ json: { workflow_id: journey.workflow } });
+            return route.fallback();
+        });
+
+        await page.goto(`/workflows/${journey.workflow}`);
+        const alert = page.getByRole("alert");
+        await expect(alert).toContainText("Atlas couldn’t read this workflow’s details. Try again to reload them.");
+        await expect(alert.locator("details")).not.toHaveAttribute("open");
+        await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        await page.getByRole("button", { name: "Try again" }).click();
+        await expect(page.getByRole("region", { name: "Workflow summary" })).toBeVisible();
+        expect(detailReads).toBe(2);
+        expect(fixture.writes).toEqual([]);
+        expect(fixture.unexpected).toEqual([]);
+        await fitsViewport(page);
+    });
+}
+
 test("rejecting implementation leaves execution and later approvals unavailable after reload", async ({ page, baseURL }) => {
     const fixture = await installRepositoryJourney(page, true, { baseURL });
     await page.goto(`/workflows/${journey.workflow}`);

@@ -147,8 +147,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             if (sequence === readSequence.current) {
                 const malformed = error instanceof Error && error.message === "Malformed workflow detail payload.";
                 setLoadError(malformed
-                    ? "Mission Control could not read this workflow response. Refresh to try again."
-                    : "Mission Control could not load this workflow, so its current status is unknown.");
+                    ? "Atlas couldn’t read this workflow’s details. Try again to reload them."
+                    : "Atlas couldn’t load this workflow, so its status is unknown.");
                 setLoadErrorDetails(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
             }
         } finally {
