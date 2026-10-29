@@ -75,6 +75,6 @@ describe("v0.53 runtime prerequisite presentation", () => {
         responses();
         render(<ControlledWorkerQueueReceipt candidateId={receipt.candidateId} admissionId={receipt.admissionId} operatorId={receipt.operatorId} />);
         expect(await screen.findByText(/Core recorded prerequisite evidence/)).toBeVisible();
-        expect(screen.getByRole("region", { name: "Controlled queue receipt state" })).toContainElement(screen.getByRole("region", { name: "Worker runtime prerequisite state" }));
+        expect(screen.getByRole("region", { name: "Queue review state" })).toContainElement(screen.getByRole("region", { name: "Worker runtime prerequisite state" }));
     });
 });

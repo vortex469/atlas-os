@@ -3072,3 +3072,8 @@ The nested queue and worker status panel now uses plain language and keeps
 version-specific admission details collapsed. A failed read retries only the
 saved review request; the panel still has no claim, lease, acknowledgement, or
 worker-start action.
+
+The nested queue receipt now calls the saved item a review record, not a
+completed queue claim, lease, or acknowledgement. It shows whether the review
+is current or expired, keeps fingerprints collapsed, and safely retries its
+Core read after a load failure.
