@@ -218,9 +218,9 @@ export function DiscoveryPage() {
                     <p className="font-semibold text-red-300">
                         Catalog could not be loaded
                     </p>
-                    <p className="mt-1 text-sm text-red-200/80">Mission Control could not load these catalog results. Your search filters are still selected.</p>
+                    <p className="mt-1 text-sm text-red-200/80">Atlas couldn&apos;t load these results. Your search filters are still selected.</p>
                     <button type="button" onClick={retryLastSearch} disabled={isLoading} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
-                        Retry catalog load
+                        Retry search
                     </button>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
@@ -365,7 +365,7 @@ export function DiscoveryPage() {
                 ) : catalogError ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">Results unavailable</p>
-                        <p className="mt-2 text-sm text-slate-500">Retry catalog load above to try this search again.</p>
+                        <p className="mt-2 text-sm text-slate-500">Select Retry search above to try again.</p>
                     </div>
                 ) : result.entries.length === 0 ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">

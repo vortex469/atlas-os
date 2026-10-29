@@ -3512,3 +3512,10 @@ The change proposal detail screen now says Atlas could not load the proposal
 and that its current details are unknown, instead of using Mission Control's
 internal product name in the recovery message. The existing retry still reads
 the proposal only; it does not submit or approve a change.
+
+## Discovery catalog read recovery — 2026-10-29
+
+The catalog error now says Atlas could not load the results and identifies
+that the selected filters remain in place. Its retry control is labeled
+“Retry search,” describing the operator action. The retry still only reads
+catalog results.

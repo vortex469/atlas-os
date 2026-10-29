@@ -404,7 +404,7 @@ describe("DiscoveryPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Catalog could not be loaded");
-        expect(alert).toHaveTextContent("Mission Control could not load these catalog results. Your search filters are still selected.");
+        expect(alert).toHaveTextContent("Atlas couldn't load these results. Your search filters are still selected.");
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
@@ -412,7 +412,7 @@ describe("DiscoveryPage", () => {
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).not.toBeVisible();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).toBeVisible();
-        await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
         expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(1);
@@ -434,7 +434,7 @@ describe("DiscoveryPage", () => {
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
 
-        await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
 
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -483,7 +483,7 @@ describe("DiscoveryPage", () => {
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole("button", { name: "Retry catalog load" }));
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
         expect(await screen.findByText("Ollama")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith(expect.objectContaining({ q: "ollama", offset: 0 }));

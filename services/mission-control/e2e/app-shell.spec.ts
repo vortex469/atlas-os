@@ -72,6 +72,34 @@ test("provider initial load is described as data loading", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
 });
 
+test("catalog retry keeps the selected search filters", async ({ page, rejectedMutationRequests }) => {
+    let searchAttempts = 0;
+    await page.route("**/api/v1/discovery/search**", (route) => {
+        searchAttempts += 1;
+        return searchAttempts === 1
+            ? route.fulfill({ status: 503, json: { detail: "PRIVATE_BACKEND_DETAIL" } })
+            : route.fulfill({ json: { results: [], total: 0, offset: 0, has_more: false } });
+    });
+    await page.goto("/discovery");
+    const search = page.getByRole("searchbox", { name: "Keyword search" });
+    await search.fill("frigate");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+
+    const alert = page.getByRole("alert");
+    await expect(alert).toContainText("Atlas couldn't load these results. Your search filters are still selected.");
+    await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
+    await expect(alert.getByRole("button", { name: "Retry search" })).toBeVisible();
+    await expect(page.getByText("Select Retry search above to try again.", { exact: true })).toBeVisible();
+    await alert.getByRole("button", { name: "Retry search" }).click();
+
+    await expect(alert).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Search results", exact: true })).toBeVisible();
+    await expect(search).toHaveValue("frigate");
+    await expect(page.getByText("No items matched these filters.", { exact: true })).toBeVisible();
+    expect(searchAttempts).toBe(2);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 test.describe("Mobile navigation", () => {
     test.use({
         viewport: { width: 320, height: 844 },

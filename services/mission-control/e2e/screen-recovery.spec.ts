@@ -908,7 +908,8 @@ for (const width of [390, 1280]) {
         if (width < 1024) await page.getByRole("button", { name: "Close navigation" }).click();
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         await expect(page.getByText(/TypeError:|Cannot read properties/)).toHaveCount(0);
-        await page.getByRole("button", { name: "Retry catalog load" }).click();
+        await expect(alert).toContainText("Atlas couldn't load these results. Your search filters are still selected.");
+        await page.getByRole("button", { name: "Retry search" }).click();
 
         await expect(page.getByRole("link", { name: "Fixture Application" })).toBeVisible();
         expect(reads).toBe(2);
