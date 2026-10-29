@@ -80,7 +80,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         {unavailable && <div role="group" aria-label="Next connection check" className="rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
             <p className="font-medium text-mc-text-primary">Try this address from the Atlas Core machine or container:</p>
             <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
-            <p className="mt-2">If the app runs in Docker on another computer, check <code>PORTS</code> in <code>docker ps</code> there. For a container using Docker port mappings, a blank <code>PORTS</code> field means no host port is published for Atlas Core to reach.</p>
+        <p className="mt-2">If the app runs in Docker on another computer, check <code>PORTS</code> in <code>docker ps</code> there. With port mappings, a blank field means no port is published for Atlas Core. With host networking, a blank field is normal; check that the app listens on the address above.</p>
         </div>}
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>

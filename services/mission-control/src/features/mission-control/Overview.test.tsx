@@ -193,7 +193,8 @@ describe("MC overview evidence", () => {
 
         expect(nextStep).toHaveTextContent("Try this address from the Atlas Core machine or container:");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(nextStep).toHaveTextContent("For a container using Docker port mappings, a blank PORTS field means no host port is published for Atlas Core to reach.");
+        expect(nextStep).toHaveTextContent("With port mappings, a blank field means no port is published for Atlas Core.");
+        expect(nextStep).toHaveTextContent("With host networking, a blank field is normal; check that the app listens on the address above.");
         expect(nextStep).not.toHaveTextContent(/password|private/);
         expect(disclosure).not.toHaveAttribute("open");
         fireEvent.click(summary);

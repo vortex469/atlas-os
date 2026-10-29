@@ -3116,3 +3116,7 @@ computer or container. It also explains that a missing Compose file points to
 the command's location, not the service's health, and tells the operator to
 use the Atlas folder or the file's full path. The dashboard regression test
 covers both explanations; service checks remain read-only.
+
+The short Docker hint also states the host-networking exception next to the
+blank-port explanation, so a blank `PORTS` column isn't treated as proof that
+the service is stopped. The focused overview test checks both cases.
