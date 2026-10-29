@@ -293,7 +293,9 @@ for (const width of [320, 1280]) {
         await expect(location).toBeVisible();
         await location.click();
         await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
-        await expect(checks.getByText(/Atlas Core checks from its own machine/)).toBeVisible();
+        await expect(checks.getByText(/Atlas sends this check from wherever Atlas Core runs/)).toBeVisible();
+        await expect(checks.getByText(/If Core runs in Docker, repeat the request inside the Atlas Core container/)).toBeVisible();
+        await expect(checks.getByText(/a successful check from your browser or the service's own server does not prove Core can reach it/i)).toBeVisible();
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

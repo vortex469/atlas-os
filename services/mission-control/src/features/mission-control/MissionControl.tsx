@@ -72,7 +72,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
     return <details className="mt-2 text-xs text-mc-text-muted">
         <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Where Atlas checked</summary>
         <div className="mt-2 space-y-1">
-            <p>Atlas Core checks from its own machine. A service can open in your browser and still be unreachable from Atlas Core.</p>
+            <p>Atlas sends this check from wherever Atlas Core runs. If Core runs in Docker, repeat the request inside the Atlas Core container. A successful check from your browser or the service's own server does not prove Core can reach it.</p>
             <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
             <p>HTTP response: {response}</p>
             {responseTime !== null && <p>Response time: {responseTime}</p>}
