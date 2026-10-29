@@ -94,7 +94,7 @@ export function AtlasAgentPanel() {
                         <p>
                             Commit:{" "}
                             <span className="text-slate-300">
-                                {repository.head_commit ?? "Unknown"}
+                                {repository.head_commit ?? "Not reported"}
                             </span>
                         </p>
                         <p

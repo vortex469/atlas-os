@@ -1199,7 +1199,9 @@ while a rerun is pending or unavailable.
 
 The dashboard's Atlas Agent status panel now offers an in-place retry after a
 failed read. Retry repeats only the status and pending-approval reads; it does
-not submit or change approval state.
+not submit or change approval state. A missing repository commit is labeled
+“Not reported” so the screen describes the received evidence without implying
+that the service knows why it is absent.
 
 ## Operational lifecycle read recovery — 2026-10-28
 

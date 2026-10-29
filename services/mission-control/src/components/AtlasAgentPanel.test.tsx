@@ -123,7 +123,7 @@ describe("AtlasAgentPanel", () => {
 
         expect(screen.getByText("/opt/atlas")).toBeInTheDocument();
         expect(screen.getByText("Detached")).toBeInTheDocument();
-        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("Not reported")).toBeInTheDocument();
         expect(
             screen.getByText("Working tree has changes"),
         ).toBeInTheDocument();
