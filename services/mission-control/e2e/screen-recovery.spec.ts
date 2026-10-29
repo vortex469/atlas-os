@@ -1013,8 +1013,8 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/operations/history");
 
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("Could not load maintenance history.");
-        await expect(alert).toContainText("The maintenance outcome is unknown.");
+        await expect(alert).toContainText("Atlas couldn’t load maintenance history.");
+        await expect(alert).toContainText("The latest maintenance status could not be confirmed.");
         await expectResponsiveMainPadding(alert, width);
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {
@@ -1077,7 +1077,7 @@ for (const width of [390, 1280]) {
             releaseRefresh();
 
             const alert = page.getByRole("alert");
-            await expect(alert).toContainText("Could not refresh maintenance history.");
+            await expect(alert).toContainText("Atlas couldn’t refresh maintenance history.");
             await expect(alert).toContainText("last successful load");
             await expect(item).toBeVisible();
             await expect(page.getByRole("heading", { name: "Healthy", exact: true })).toBeVisible();

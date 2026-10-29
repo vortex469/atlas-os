@@ -355,14 +355,14 @@ describe("OperationalHistoryPage", () => {
 });
 
 describe("maintenance history recovery", () => {
-    it("keeps recovery to one refresh control and separates load failure from maintenance outcome", async () => {
+    it("keeps one refresh control and explains when the latest status could not be confirmed", async () => {
         mockedList.mockRejectedValue(new Error("private diagnostic"));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Could not load maintenance history.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load maintenance history.");
         expect(alert).not.toHaveTextContent("Refresh to try again.");
-        expect(alert).toHaveTextContent("The maintenance outcome is unknown. Use Refresh history to check again.");
+        expect(alert).toHaveTextContent("The latest maintenance status could not be confirmed. Use Refresh history to check again.");
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         expect(document.body.textContent).not.toContain("private diagnostic");
     });
@@ -384,7 +384,7 @@ describe("maintenance history recovery", () => {
 
         rejectRefresh(new Error("private history error"));
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Could not refresh maintenance history.");
+        expect(alert).toHaveTextContent("Atlas couldn’t refresh maintenance history.");
         expect(alert).toHaveTextContent("last successful load");
         expect(alert).toHaveTextContent("status may have changed");
         expect(screen.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
@@ -401,7 +401,7 @@ describe("maintenance history recovery", () => {
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         fireEvent.click(screen.getByRole("button", { name: "Next" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Could not load maintenance history.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas couldn’t load maintenance history.");
         expect(screen.queryByRole("heading", { name: "Virtual machine 110" })).not.toBeInTheDocument();
         fireEvent.click(within(screen.getByRole("navigation", { name: "Maintenance history pagination" })).getByRole("button", { name: "Previous" }));
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();

@@ -103,8 +103,8 @@ export function OperationalHistoryPage() {
         } catch {
             if (generation === requestGeneration.current) {
                 setError(loadedOffsetRef.current === offset
-                    ? "Could not refresh maintenance history."
-                    : "Could not load maintenance history.");
+                    ? "Atlas couldn’t refresh maintenance history."
+                    : "Atlas couldn’t load maintenance history.");
             }
         } finally {
             if (generation === requestGeneration.current) setIsLoading(false);
@@ -149,7 +149,7 @@ export function OperationalHistoryPage() {
             </header>
             {isLoading && !hasCurrentPage && <p role="status" className="text-slate-300">Loading operational history...</p>}
             {isLoading && hasCurrentPage && <p role="status" className="text-slate-300">Refreshing maintenance history. The last loaded requests remain visible until this finishes.</p>}
-            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} {hasCurrentPage ? "The requests below are from the last successful load; their status may have changed." : "The maintenance outcome is unknown. Use Refresh history to check again."}</p>}
+            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} {hasCurrentPage ? "The requests below are from the last successful load; their status may have changed." : "The latest maintenance status could not be confirmed. Use Refresh history to check again."}</p>}
             {hasCurrentPage && !isLoading && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{error ? "No maintenance requests were listed in the last successful load." : offset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
             {hasCurrentPage && items.length > 0 && <section aria-label="Operational history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <p className="text-sm text-slate-400">Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.</p>
