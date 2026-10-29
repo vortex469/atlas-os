@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -10,12 +10,12 @@ import type {
     ProviderActionAuditEntry,
 } from "../types/actionHistory";
 
-function formatTimestamp(timestamp: string): string {
+function formatTimestamp(timestamp: string): ReactNode {
     const date = new Date(timestamp);
 
     return Number.isNaN(date.getTime())
         ? "Unknown time"
-        : date.toLocaleString();
+        : <time dateTime={timestamp}>{date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function statusClasses(status: ActionHistoryStatus): string {
@@ -196,12 +196,9 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                                 {entry.message}
                             </p>
                         </div>
-                        <time
-                            dateTime={entry.completed_at}
-                            className="text-xs text-slate-500"
-                        >
+                        <div className="text-xs text-slate-500">
                             Completed {formatTimestamp(entry.completed_at)}
-                        </time>
+                        </div>
                     </div>
 
                     <dl className="mt-6 grid gap-5 border-t border-slate-800 pt-6 text-sm sm:grid-cols-2">

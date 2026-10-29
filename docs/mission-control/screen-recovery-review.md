@@ -2679,3 +2679,10 @@ The request and result times in maintenance history remain labeled as local
 time and now expose their source UTC instants through semantic `<time>`
 elements. The history page suite verifies both timestamps (28 tests); lint and
 production build pass.
+
+## Action detail timestamp semantics — 2026-10-29
+
+The action detail page now exposes both start and completion times as semantic
+`<time>` elements carrying their exact UTC instants. Its existing note explains
+that displayed times use the browser's local time. All six focused action detail
+tests pass, along with Mission Control lint and production build.

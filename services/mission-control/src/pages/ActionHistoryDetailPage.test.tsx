@@ -131,8 +131,14 @@ describe("ActionHistoryDetailPage", () => {
         expect(screen.getByText("Model unloaded.")).toBeInTheDocument();
         expect(screen.getByText("Times below use your browser’s local time.")).toBeInTheDocument();
         expect(screen.getByText("Ollama")).toBeInTheDocument();
-        expect(screen.getByText(/^Completed /)).toBeInTheDocument();
-        expect(screen.getByText("Started")).toBeInTheDocument();
+        const completedTime = screen.getByText((_, element) =>
+            element?.tagName === "TIME" && element.getAttribute("datetime") === "2026-07-25T17:00:01Z",
+        );
+        expect(completedTime).toHaveTextContent(new Date("2026-07-25T17:00:01Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        const startedTime = screen.getByText((_, element) =>
+            element?.tagName === "TIME" && element.getAttribute("datetime") === "2026-07-25T17:00:00Z",
+        );
+        expect(startedTime).toHaveTextContent(new Date("2026-07-25T17:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         await user.click(screen.getByText("Technical details"));
