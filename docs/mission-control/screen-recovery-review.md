@@ -2635,3 +2635,13 @@ and service cards no longer repeat the stack-wide risk; the overall reported
 risk remains in the Deployment Brief. Analysis data and deployment behavior are
 unchanged. The Forge component suite passes (12 tests), as do Mission Control
 lint/build and both built Forge browser checks at phone and desktop widths.
+
+## Workflow audit stage summaries — 2026-10-29
+
+Each audit stage now starts as one compact row with its status, and opening a
+row reveals its recorded evidence. This removes the separate duplicate status
+grid and closing explanation; the overview remains at the top and the audit
+remains read-only. Audit fields, validation, and workflow controls are
+unchanged. The WorkflowAuditPage suite passes (26 tests), as do Mission Control
+lint/build and all 11 built repository journey browser checks at phone and
+desktop widths.

@@ -279,49 +279,31 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                 </details>
             </section>
 
-            <section aria-labelledby="audit-stage-list-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 id="audit-stage-list-heading" className="text-lg font-semibold text-white">Stage status</h2>
-                <p className="mt-2 text-sm text-slate-400">Open a stage below to inspect its recorded details.</p>
-                <ol className="mt-4 grid gap-2 text-sm md:grid-cols-3 lg:grid-cols-4">
-                    {AUDIT_STAGE_ORDER.map(({ title, stage }) => (
-                        <TimelineStage
-                            key={title}
-                            label={title}
-                            status={normalizeStageStatus(findStageStatus(timeline, stage))}
-                        />
-                    ))}
-                </ol>
-            </section>
-
             {AUDIT_STAGE_ORDER.map(({ stage, title, details }) => {
                 const status = normalizeStageStatus(findStageStatus(timeline, stage));
                 const isIssue = status === "missing" || status === "inconsistent";
                 const headingId = `audit-stage-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
                 return (
-                    <section key={title} aria-labelledby={headingId} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                        <h2 id={headingId} className="text-lg font-semibold text-white">{title}</h2>
+                    <details key={title} role="region" aria-labelledby={headingId} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <summary id={headingId} aria-label={`${title}, ${formatStatusLabel(status)}`} className="mc-focusable flex cursor-pointer list-none items-center justify-between gap-3 rounded text-lg font-semibold text-white">
+                            <span>{title}</span>
+                            <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium ${timelineClass(status)}`}>
+                                {formatStatusLabel(status)}
+                            </span>
+                        </summary>
                         {isIssue && (
                             <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
                                 {status === "missing" ? "Required artifact is missing." : "This stage is inconsistent with audit-chain validation."}
                             </p>
                         )}
-                        <details className="mt-4 border-t border-slate-800 pt-4">
-                            <summary className="mc-focusable cursor-pointer text-sm font-medium text-blue-200">Recorded details</summary>
-                            <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                                {details(audit).map((detail) => (
-                                    <Detail key={detail.label} label={detail.label} value={detail.value} />
-                                ))}
-                            </dl>
-                        </details>
-                    </section>
+                        <dl className="mt-4 grid gap-4 border-t border-slate-800 pt-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                            {details(audit).map((detail) => (
+                                <Detail key={detail.label} label={detail.label} value={detail.value} />
+                            ))}
+                        </dl>
+                    </details>
                 );
             })}
-
-            <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 className="text-lg font-semibold text-white">How to read this audit</h2>
-                <p className="mt-2 text-sm text-slate-300">Stage statuses come from the recorded workflow timeline and audit validation. Open a stage to see the evidence Atlas received.</p>
-                <p className="mt-3 text-sm text-slate-400">This page is read-only.</p>
-            </section>
 
             <Link
                 to={`/workflows/${audit.workflow_id}`}
@@ -412,16 +394,6 @@ function findStageStatus(
 function normalizeStageNameStatus(status: WorkflowAuditStageStatus): WorkflowAuditStageStatus {
     if (status === "invalid") return "inconsistent";
     return status;
-}
-
-function TimelineStage({ label, status }: { label: string; status: WorkflowAuditStageStatus }) {
-    const displayStatus = normalizeStageStatus(status);
-    return (
-        <li className={"rounded-lg border px-3 py-2 " + timelineClass(displayStatus)}>
-            <span className="block font-medium">{label}</span>
-            <span className="text-xs">{formatStatusLabel(displayStatus)}</span>
-        </li>
-    );
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

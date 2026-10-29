@@ -168,21 +168,18 @@ for (const width of [320, 390, 1280]) {
         await fitsViewport(page);
         await page.getByRole("link", { name: "Open Audit", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit$`));
-        await expect(page.getByRole("heading", { name: "Stage status", exact: true })).toBeVisible();
         await expectResponsiveMainPadding(page, "Workflow audit", width);
         await expect(page.getByText("Workflow status", { exact: true })).toBeVisible();
         await expect(page.getByText("Audit validation", { exact: true })).toBeVisible();
         await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);
-        await expect(page.getByRole("heading", { name: "How to read this audit", exact: true })).toBeVisible();
-        await expect(page.getByText("This page is read-only.", { exact: true })).toBeVisible();
-        const auditStages = page.getByRole("region", { name: "Stage status" });
+        await expect(page.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.", { exact: true })).toBeVisible();
         for (const label of ["Change proposal", "Planning", "Change plan", "Workflow setup", "Change request", "Change approval", "Apply change", "Checks to run", "Verification approval", "Check results", "Review results", "Commit details", "Commit approval", "Commit result"]) {
-            await expect(auditStages.getByText(label, { exact: true })).toBeVisible();
+            await expect(page.getByRole("region", { name: new RegExp(`^${label},`) })).toBeVisible();
         }
-        await expect(auditStages.getByText("Candidate Plan", { exact: true })).toHaveCount(0);
-        const commitResult = page.getByRole("region", { name: "Commit result" });
+        await expect(page.getByRole("region", { name: /Candidate Plan/ })).toHaveCount(0);
+        const commitResult = page.getByRole("region", { name: /Commit result, Completed/ });
         await expect(commitResult.getByText(journey.commit, { exact: true })).toBeHidden();
-        await commitResult.getByText("Recorded details", { exact: true }).click();
+        await commitResult.getByText("Commit result", { exact: true }).click();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await fitsViewport(page);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
