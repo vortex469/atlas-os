@@ -8,6 +8,7 @@ import {
 } from "../api/atlas-agent";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { recoveryPresentation } from "../utils/recoveryDiagnostic";
+import { formatResourceTypeLabel } from "../utils/resourceLabels";
 import { formatWorkflowLabel } from "../utils/workflowState";
 import type {
     WorkflowOperationalLifecycle,
@@ -38,12 +39,7 @@ function historyTargetName(workflow: WorkflowSummary, lifecycle: WorkflowOperati
         && targetParts[1] === lifecycle?.resource_type
         && targetParts[2] === lifecycle?.resource_id;
     if (isStructuredTarget && lifecycle?.resource_id) {
-        const resourceType = lifecycle.resource_type === "qemu"
-            ? "Virtual machine"
-            : lifecycle.resource_type === "lxc"
-                ? "Container"
-                : "Resource";
-        return resourceType + " " + lifecycle.resource_id;
+        return `${formatResourceTypeLabel(lifecycle.resource_type)} ${lifecycle.resource_id}`;
     }
     if (lifecycle?.target_label) return lifecycle.target_label;
     if (!workflow.target_id) return "Maintenance target";

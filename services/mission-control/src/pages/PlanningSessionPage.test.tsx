@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -106,6 +106,10 @@ describe("PlanningSessionPage", () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan() }));
         renderPage();
         await screen.findByRole("heading", { name: "Maintenance plan" });
+        expect(screen.getByText("Proxmox virtual machine 110")).toBeVisible();
+        const references = screen.getByText("Plan references", { exact: true });
+        expect(references.closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(references);
         expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();

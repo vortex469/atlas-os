@@ -28,6 +28,7 @@ import type {
     WorkflowOperationalActionRequestSummary,
 } from "../types/atlasAgent";
 import { operationalRequest } from "../utils/operationalRequest";
+import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 import { workflowRailStages } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
@@ -594,7 +595,7 @@ function OperationalActionRequestSection({ request }: { request: WorkflowOperati
         <p className="text-sm text-slate-300">Review the selected service and target, expected interruption, and how Atlas will verify the result. Approval and running the maintenance are separate steps.</p>
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <Detail label="Action" value={formatLabel(request.intended_action)} />
-            <Detail label="Target" value={`${request.provider_id}/${request.resource_type}/${request.resource_id}`} />
+            <Detail label="Target" value={formatResourceTargetLabel(request.provider_id, request.resource_type, request.resource_id)} />
             <Detail label="Expected starting state" value={request.expected_pre_state} />
             <Detail label="Expected disruption" value={request.disruption_scope} />
             <Detail label="Request expires" value={request.expires_at} />
@@ -607,6 +608,7 @@ function OperationalActionRequestSection({ request }: { request: WorkflowOperati
             <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
                 <Detail label="Request ID" value={request.request_id} />
                 <Detail label="Request digest" value={request.request_digest} />
+                <Detail label="Target reference" value={formatResourceReference(request.provider_id, request.resource_type, request.resource_id)} />
                 <Detail label="Target fingerprint" value={request.target_fingerprint} />
                 <Detail label="Target version" value={request.target_version ?? "Not supplied"} />
                 <Detail label="Generated time" value={request.generated_at} />

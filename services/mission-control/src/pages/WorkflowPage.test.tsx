@@ -137,6 +137,11 @@ describe("WorkflowPage", () => {
         renderPage();
         await screen.findByRole("heading", { name: "Maintenance request" });
         expect(screen.getByText("Maintenance request needs approval.", { exact: true })).toBeVisible();
+        expect(screen.getByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
+        const references = screen.getByText("Request references", { exact: true });
+        expect(references.closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(references);
+        expect(within(references.closest("details") as HTMLElement).getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText("2999-01-01T12:00:00Z")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
@@ -995,7 +1000,7 @@ describe("WorkflowPage", () => {
         expect(alert).toHaveTextContent("Checking status again does not repeat the maintenance action.");
         fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
 
-        expect(await screen.findByText("proxmox/qemu/110")).toBeInTheDocument();
+        expect(await screen.findByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
         expect(mockedGetWorkflowOperationalLifecycle).toHaveBeenCalledTimes(2);
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();

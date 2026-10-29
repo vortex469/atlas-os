@@ -80,6 +80,11 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("link", { name: "Continue planning", exact: true }).click();
         await page.getByRole("button", { name: "Generate Plan", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Maintenance plan", exact: true })).toBeVisible();
+        await expect(page.getByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
+        const planReferences = page.getByText("Plan references", { exact: true });
+        await planReferences.click();
+        await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
+        await planReferences.click();
         await expect(progress.locator('[aria-current="step"]')).toHaveText("PlanCurrent step");
         await expect(progress).not.toContainText("Commit");
         expect(fixture.repositoryPlanReads).toBe(0);
@@ -91,6 +96,13 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Maintenance request", exact: true })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Review maintenance request", exact: true })).toBeVisible();
         await expect(page.getByText("Maintenance request needs approval.", { exact: true })).toBeVisible();
+        await expect(page.getByText("Proxmox virtual machine 110", { exact: true })).toBeVisible();
+        const requestReferences = page.getByText("Request references", { exact: true });
+        await requestReferences.click();
+        await expect(
+            requestReferences.locator("xpath=ancestor::details").getByText("proxmox/qemu/110", { exact: true }),
+        ).toBeVisible();
+        await requestReferences.click();
         await expect(page.getByRole("button", { name: "Approve maintenance request", exact: true })).toBeEnabled();
         await expect(page.getByRole("button", { name: "Run approved maintenance", exact: true })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(5);

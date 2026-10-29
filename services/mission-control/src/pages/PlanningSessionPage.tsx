@@ -9,6 +9,7 @@ import {
     getCandidatePlan,
     getCandidatePlanningSession,
 } from "../api/atlas-agent";
+import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
@@ -381,7 +382,7 @@ function MaintenancePlanViewer({ plan }: { plan: OperationalCandidatePlanApiResp
         <p className="text-sm text-slate-300">Review this plan before creating a workflow. This does not restart anything; the action still needs a separate exact approval.</p>
         <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <Detail label="Action" value={formatLabel(plan.intended_action)} />
-            <Detail label="Target" value={`${plan.provider_id}/${plan.resource_type}/${plan.resource_id}`} />
+            <Detail label="Target" value={formatResourceTargetLabel(plan.provider_id, plan.resource_type, plan.resource_id)} />
             <Detail label="Expected starting state" value={plan.expected_pre_state} />
             <Detail label="Expected disruption" value={plan.disruption_scope} />
         </dl>
@@ -399,6 +400,7 @@ function MaintenancePlanViewer({ plan }: { plan: OperationalCandidatePlanApiResp
             <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2">
                 <Detail label="Plan ID" value={plan.identifier} />
                 <Detail label="Execution intent" value={plan.execution_intent} />
+                <Detail label="Target reference" value={formatResourceReference(plan.provider_id, plan.resource_type, plan.resource_id)} />
                 <Detail label="Target fingerprint" value={plan.target_fingerprint} />
                 <Detail label="Target version" value={plan.target_version ?? "Not supplied"} />
                 <Detail label="Candidate fingerprint" value={plan.candidate_fingerprint} />

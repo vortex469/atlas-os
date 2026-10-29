@@ -6,6 +6,7 @@ import { getAuthenticatedProviderManagement, getProviderManagement, putProviderM
 import { getProviderMonitoringIntentSuggestions } from "../api/providerIntentSuggestions";
 import { getProviderResources, refreshProviderResources } from "../api/resources";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
+import { formatResourceTypeLabel } from "../utils/resourceLabels";
 import type { Provider } from "../types/provider";
 import type { ManagedProviderResourceV2, ManagedProviderResourceV3, ProviderManagementV2, ProviderManagementV3, ProviderMonitoringExpectation, ProviderMonitoringIntentSuggestionV1 } from "../types/providerManagement";
 import type { ProviderResource, ProviderResourceCollection } from "../types/resources";
@@ -291,14 +292,6 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
 
 function FactSection({ title, value, detail }: { title: string; value: string; detail: string }) {
     return <section><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</p><p className="mt-2 font-semibold text-slate-100">{value}</p><p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p></section>;
-}
-
-function formatResourceTypeLabel(value: string): string {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "qemu") return "Virtual machine";
-    if (normalized === "lxc") return "Container";
-    if (!normalized || normalized === "unknown") return "Resource";
-    return normalized.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatMetadata(value: unknown): string { return typeof value === "string" || typeof value === "number" ? String(value) : "—"; }
