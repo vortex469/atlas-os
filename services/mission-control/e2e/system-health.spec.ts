@@ -32,6 +32,11 @@ for (const width of [390, 1440]) {
             await expect(checks.getByText(state, { exact: true })).toBeVisible();
         }
         await expect(checks.getByText("Atlas Core's connection to this address was refused.", { exact: true })).toBeVisible();
+        const down = checks.getByRole("list", { name: "Configured service checks" })
+            .getByRole("listitem")
+            .nth(1);
+        await down.getByText("Where Atlas checked").click();
+        await expect(down).toContainText("If the mapping starts with 127.0.0.1:, only that computer can connect; Atlas Core on another machine cannot.");
         await expect(summary.getByText("Last report: Healthy.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();

@@ -84,6 +84,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                     For an app in a bridged Docker container on another machine, run <code>docker ps</code> on the machine running that app
                     and find its container. An <code>Up</code> status means Docker started it, but does not confirm a host port is published.
                     Look for its host port under <code>PORTS</code>.
+                    If the mapping starts with <code>127.0.0.1:</code>, only that computer can connect; Atlas Core on another machine cannot.
                     If <code>PORTS</code> is blank, add a <code>ports:</code> mapping to the service's Compose file
                     or use <code>docker run -p</code>. Map <code>HOST_PORT:CONTAINER_PORT</code>: set the host port to
                     the port in Atlas's reported address. Check the app's Compose file or documentation for its

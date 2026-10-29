@@ -2412,6 +2412,11 @@ the two may differ. It also clarifies that Docker's `Up` status does not mean
 the container's host port is published. Overview component and phone/desktop
 browser checks cover the instruction.
 
+It also explains that a Docker port mapping beginning with `127.0.0.1:` is
+reachable only from the service host. Atlas Core on another machine needs a
+published address it can reach. The Overview fixture and phone/desktop browser
+checks cover this distinction.
+
 ## Service attention wording — 2026-10-29
 
 The top-level Operator Attention item now uses “Atlas Core could not connect”

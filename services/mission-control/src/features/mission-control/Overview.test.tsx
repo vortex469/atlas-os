@@ -202,6 +202,7 @@ describe("MC overview evidence", () => {
         expect(steps).toHaveTextContent("run docker ps on the machine running that app and find its container.");
         expect(steps).toHaveTextContent("An Up status means Docker started it, but does not confirm a host port is published.");
         expect(steps).toHaveTextContent("Look for its host port under PORTS.");
+        expect(steps).toHaveTextContent("If the mapping starts with 127.0.0.1:, only that computer can connect; Atlas Core on another machine cannot.");
         expect(steps).toHaveTextContent("If PORTS is blank, add a ports: mapping to the service's Compose file");
         expect(steps).toHaveTextContent("Map HOST_PORT:CONTAINER_PORT: set the host port to the port in Atlas's reported address.");
         expect(steps).toHaveTextContent("Check the app's Compose file or documentation for its internal listening port and use that as the container port; the two ports may differ.");
