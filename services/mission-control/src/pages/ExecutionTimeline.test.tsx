@@ -199,15 +199,19 @@ describe("ExecutionTimeline", () => {
 
         expect(screen.getByRole("status")).toHaveTextContent("Execution complete.");
         expect(screen.getAllByText("Execution complete.")).toHaveLength(1);
-        expect(screen.getAllByText("Succeeded").length).toBeGreaterThan(0);
-        expect(screen.getByText("2")).toBeInTheDocument();
-        expect(screen.getByText("docker-compose")).toBeInTheDocument();
-        expect(screen.getByText("exec-123")).toBeInTheDocument();
-        expect(screen.getByText("compose.yaml, services/demo/Dockerfile")).toBeInTheDocument();
-        const startedTime = screen.getByText("Started (local time)").parentElement?.querySelector("time");
+        expect(screen.getByText("Files changed: 2")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("docker-compose")).not.toBeVisible();
+        fireEvent.click(screen.getByText("Technical details", { selector: "summary" }));
+        expect(within(technicalDetails as HTMLElement).getAllByText("Succeeded", { selector: "dd" })).toHaveLength(2);
+        expect(within(technicalDetails as HTMLElement).getByText("docker-compose")).toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("exec-123")).toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("compose.yaml, services/demo/Dockerfile")).toBeVisible();
+        const startedTime = within(technicalDetails as HTMLElement).getByText("Started (local time)").parentElement?.querySelector("time");
         expect(startedTime).toHaveAttribute("datetime", "2026-07-25T17:00:00Z");
         expect(startedTime).toHaveTextContent(new Date("2026-07-25T17:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
-        const completedTime = screen.getByText("Completed (local time)").parentElement?.querySelector("time");
+        const completedTime = within(technicalDetails as HTMLElement).getByText("Completed (local time)").parentElement?.querySelector("time");
         expect(completedTime).toHaveAttribute("datetime", "2026-07-25T17:00:01Z");
     });
 

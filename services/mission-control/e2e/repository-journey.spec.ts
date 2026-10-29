@@ -122,6 +122,15 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Run approved change", exact: true }).click();
 
         await expect(page.getByRole("button", { name: "Approve Verification", exact: true })).toBeVisible();
+        const executionSummary = changeProgress.getByRole("region", { name: "Execution" });
+        await expect(executionSummary.getByText("Files changed: 1", { exact: true })).toBeVisible();
+        const executionDetails = executionSummary.locator("details");
+        await expect(executionDetails).not.toHaveAttribute("open");
+        await expect(executionDetails.getByText("execution-browser-journey", { exact: true })).toBeHidden();
+        await executionDetails.getByText("Technical details", { exact: true }).click();
+        await expect(executionDetails.getByText("execution-browser-journey", { exact: true })).toBeVisible();
+        await executionDetails.getByText("Technical details", { exact: true }).click();
+        await expect(executionDetails.getByText("execution-browser-journey", { exact: true })).toBeHidden();
         const outputNotice = page.getByRole("region", { name: "Worker output was shortened" });
         await expect(outputNotice.getByText("Only part of the worker's output is shown. Verification and commit each need separate approval.", { exact: true })).toBeVisible();
         const outputDetails = outputNotice.getByText("Output details", { exact: true });

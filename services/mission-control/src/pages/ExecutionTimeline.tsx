@@ -85,18 +85,23 @@ function ExecutionSection({ execution }: { execution: WorkflowExecutionSummary }
         <section aria-labelledby="execution-section-heading" className="mt-5 rounded-lg border border-slate-800 bg-slate-950/50 p-4">
             <h3 id="execution-section-heading" className="text-base font-semibold text-white">Execution</h3>
             {hasResult && (
-                <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
-                    <Detail label="Execution status" value={formatLabel(execution.execution_status ?? "not_available")} />
-                    <Detail label="Started (local time)" value={formatExecutionTime(execution.started_at)} />
-                    <Detail label="Completed (local time)" value={formatExecutionTime(execution.completed_at)} />
-                    <Detail label="Execution result" value={formatLabel(execution.result ?? "not_available")} />
-                    <Detail label="Changed files count" value={String(execution.changed_files_count)} />
-                    <Detail label="Tool" value={execution.tool ?? "Not exposed"} />
-                    <Detail label="Working directory" value={execution.working_directory ?? "Not exposed"} />
-                    <Detail label="Repository" value={execution.repository ?? "Not exposed"} />
-                    <Detail label="Changed files" value={execution.changed_files.length > 0 ? execution.changed_files.join(", ") : "None reported"} />
-                    <Detail label="Execution request ID" value={execution.execution_request_id ?? "Not exposed"} />
-                </dl>
+                <>
+                    <p className="mt-3 text-sm text-slate-300">Files changed: {execution.changed_files_count}</p>
+                    <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                            <Detail label="Execution status" value={formatLabel(execution.execution_status ?? "not_available")} />
+                            <Detail label="Started (local time)" value={formatExecutionTime(execution.started_at)} />
+                            <Detail label="Completed (local time)" value={formatExecutionTime(execution.completed_at)} />
+                            <Detail label="Execution result" value={formatLabel(execution.result ?? "not_available")} />
+                            <Detail label="Tool" value={execution.tool ?? "Not exposed"} />
+                            <Detail label="Working directory" value={execution.working_directory ?? "Not exposed"} />
+                            <Detail label="Repository" value={execution.repository ?? "Not exposed"} />
+                            <Detail label="Changed files" value={execution.changed_files.length > 0 ? execution.changed_files.join(", ") : "None reported"} />
+                            <Detail label="Execution request ID" value={execution.execution_request_id ?? "Not exposed"} />
+                        </dl>
+                    </details>
+                </>
             )}
         </section>
     );

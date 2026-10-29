@@ -2971,7 +2971,9 @@ Service probes and settings are unchanged.
 
 The change-progress summary is now the single status message for execution.
 Running, failed and unconfirmed results no longer get a contradictory second
-status line in the detail panel. When approval is present but Atlas Agent
-reports no execution result, Mission Control says the run status was not
-reported and offers a refresh. Unrecognized execution states also remain
-unconfirmed. Approval, execution and retry behavior are unchanged.
+status line in the detail panel. A file-change count stays visible; paths,
+timestamps, tool, repository and request ID are under collapsed technical
+details. When approval is present but Atlas Agent reports no execution result,
+Mission Control says the run status was not reported and offers a refresh.
+Unrecognized execution states also remain unconfirmed. Approval, execution and
+retry behavior are unchanged.
