@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
 import { HealthEvidence } from "../../components/HealthEvidence";
+import { healthNextCheck } from "../../utils/healthPresentation";
 import { SystemHealthSummary } from "./SystemHealthSummary";
 import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
 import { conditionKey, detailPath, healthPriority, record, rows, safeText, status } from "./overviewEvidence";
@@ -62,6 +63,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
     const evidence = record(service);
     const url = record(evidence.details).url;
     const address = formatHealthCheckAddress(url);
+    const nextCheck = healthNextCheck(evidence.message);
     const httpStatus = formatHttpStatus(evidence.http_status);
     const response = httpStatus ?? (status(evidence.status) === "unavailable" ? "No response received" : "Not reported");
     const responseTime = typeof evidence.latency_ms === "number"
@@ -74,6 +76,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             <p>Address Atlas checked: <span className="break-all font-mono">{address ?? "Not reported"}</span></p>
             <p>HTTP response: {response}</p>
             {responseTime !== null && <p>Response time: {responseTime}</p>}
+            {nextCheck !== null && <p>Next check: {nextCheck}</p>}
         </div>
     </details>;
 }

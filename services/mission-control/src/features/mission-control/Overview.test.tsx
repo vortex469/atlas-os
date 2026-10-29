@@ -177,7 +177,26 @@ describe("MC overview evidence", () => {
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
         expect(disclosure).toHaveTextContent("Atlas Core checks from its own machine.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
+        expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);
+    });
+
+    it.each([
+        ["[Errno 111] Connection refused", "Check that the service is listening on this port and that Atlas Core can reach it."],
+        ["[Errno 113] No route to host", "Check the target address and the network or firewall route from Atlas Core to the service host."],
+        ["[Errno 110] Connection timed out", "Check that the service is responding and that network or firewall rules allow access from Atlas Core."],
+    ])("suggests a Core-side next check for %s", (message, nextCheck) => {
+        show({ health: { data: { services: { iFileshare: {
+            status: "offline",
+            message,
+            details: { url: "http://10.10.60.30:8080/" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        const location = checks.getByText("Where Atlas checked");
+        const disclosure = location.closest("details");
+        fireEvent.click(location);
+
+        expect(disclosure).toHaveTextContent(`Next check: ${nextCheck}`);
     });
 
     it("shows the reported HTTP response and response time in service check details", () => {

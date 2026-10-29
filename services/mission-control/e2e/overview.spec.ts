@@ -256,13 +256,13 @@ test('service check preview puts blocked and offline services first', async ({ p
 });
 
 for (const width of [320, 1280]) {
-    test(`service check explains where Atlas tested iFileshare at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+    test(`service check explains where Atlas tested iFileshare and what to check next at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 800 });
         await page.route('**/api/v1/health', route => route.fulfill({ json: {
             atlas: 'degraded',
             services: { iFileshare: {
                 status: 'offline',
-                message: 'The service could not be reached over the network.',
+                message: '[Errno 113] No route to host',
                 details: { url: 'http://10.10.60.30:8080/', critical: false },
             } },
         } }));
@@ -276,6 +276,7 @@ for (const width of [320, 1280]) {
         await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         await expect(checks.getByText(/Atlas Core checks from its own machine/)).toBeVisible();
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
+        await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

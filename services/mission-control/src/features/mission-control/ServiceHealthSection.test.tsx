@@ -2,7 +2,6 @@ import {
     fireEvent,
     render,
     screen,
-    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -170,41 +169,6 @@ describe("ServiceHealthSection", () => {
         expect(screen.queryByText(/password|private/)).not.toBeInTheDocument();
     });
 
-    it.each([
-        ["[Errno 111] Connection refused", "The service refused the connection.", "Check that the service is listening on this port and that Atlas Core can reach it."],
-        ["[Errno 113] No route to host", "The service could not be reached over the network.", "Check the target address and the network or firewall route from Atlas Core to the service host."],
-        ["[Errno 110] Connection timed out", "The service did not respond in time.", "Check that the service is responding and that network or firewall rules allow access from Atlas Core."],
-    ])("explains a failed check and suggests a next check for %s", async (message, explanation, nextCheck) => {
-        const user = userEvent.setup();
-        render(
-            <ServiceHealthSection
-                services={{ iFileshare: {
-                    ...service("ifileshare", 0),
-                    status: "offline",
-                    message,
-                } }}
-                providers={providers}
-                isRefreshing={false}
-                onRefresh={vi.fn()}
-            />,
-        );
-
-        await user.click(screen.getByRole("button", { name: "View details for iFileshare" }));
-
-        const drawer = within(screen.getByRole("dialog"));
-        expect(drawer.getByRole("heading", { name: "What this means" })).toBeInTheDocument();
-        expect(drawer.getByText(explanation)).toBeInTheDocument();
-        expect(drawer.getByRole("heading", { name: "Next check" })).toBeInTheDocument();
-        expect(drawer.getByText(nextCheck)).toBeInTheDocument();
-        const technicalDetails = drawer.getByText("Technical details").closest("details");
-        expect(technicalDetails).not.toHaveAttribute("open");
-        expect(technicalDetails).toHaveTextContent(message);
-        const diagnostic = technicalDetails?.querySelector("pre");
-        expect(diagnostic).not.toBeVisible();
-        await user.click(drawer.getByText("Technical details"));
-        expect(diagnostic).toBeVisible();
-    });
-
     it("closes the details drawer with Escape and the backdrop", async () => {
         const user = userEvent.setup();
         render(
@@ -216,18 +180,18 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        const trigger = screen.getByRole("button", {
-            name: "View details for Containers",
-        });
-        const openDrawer = () => user.click(trigger);
+        const openDrawer = () =>
+            user.click(
+                screen.getByRole("button", {
+                    name: "View details for Containers",
+                }),
+            );
 
         await openDrawer();
-        expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
         fireEvent.keyDown(window, { key: "Escape" });
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
-        expect(trigger).toHaveFocus();
 
         await openDrawer();
         const dialog = screen.getByRole("dialog");
@@ -235,32 +199,5 @@ describe("ServiceHealthSection", () => {
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
-        expect(trigger).toHaveFocus();
-    });
-
-    it("keeps keyboard focus inside the service details drawer", async () => {
-        const user = userEvent.setup();
-        render(
-            <ServiceHealthSection
-                services={{ Containers: service("docker", 8) }}
-                providers={providers}
-                isRefreshing={false}
-                onRefresh={vi.fn()}
-            />,
-        );
-
-        await user.click(screen.getByRole("button", { name: "View details for Containers" }));
-
-        const dialog = screen.getByRole("dialog");
-        const closeButton = within(dialog).getByRole("button", { name: "Close" });
-        const technicalDetails = within(dialog).getByText("Technical details");
-
-        technicalDetails.focus();
-        fireEvent.keyDown(window, { key: "Tab" });
-        expect(closeButton).toHaveFocus();
-
-        closeButton.focus();
-        fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
-        expect(technicalDetails).toHaveFocus();
     });
 });

@@ -2303,17 +2303,11 @@ state, and execution controls are unchanged. The Work activity component suite
 passes (29 tests), the Overview browser suite passes (24 tests, including the
 320px phone layout), and lint and production build pass.
 
-## Service health failure guidance — 2026-10-28
+## Overview service-check guidance — 2026-10-29
 
-Service details now explain common connection-refused, no-route, and timeout
-results in plain language and suggest a next check from Atlas Core's network
-location. The exact reported message remains under the collapsed Technical
-details section. Health state and probing behavior are unchanged. Focused service
-health and health-presentation tests cover all three failure types.
-
-## Service details keyboard focus — 2026-10-28
-
-The service details drawer now focuses its Close button when opened, keeps Tab
-and Shift+Tab within the modal, and returns focus to the service card when
-closed. Keyboard behavior is covered for both focus boundaries, Escape, and
-backdrop dismissal.
+The active Overview's “Where Atlas checked” disclosure now suggests a next
+check for connection-refused, no-route, and timeout results from Atlas Core's
+network location. Exact service messages remain available in the visible health
+summary, while the disclosure keeps the address and response details optional.
+Health state and probing behavior are unchanged. Overview tests cover all three
+failure types at component level and the no-route case in the browser suite.

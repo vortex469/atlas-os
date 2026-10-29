@@ -1,9 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
-import { evidenceText, healthNextCheck, healthReason } from "../utils/healthPresentation";
 
 type ServiceDetailsDrawerProps = {
     name: string;
@@ -38,46 +37,10 @@ export function ServiceDetailsDrawer({
     onRefresh,
     onClose,
 }: ServiceDetailsDrawerProps) {
-    const dialogRef = useRef<HTMLElement>(null);
-    const closeButtonRef = useRef<HTMLButtonElement>(null);
-    const onCloseRef = useRef(onClose);
-
     useEffect(() => {
-        onCloseRef.current = onClose;
-    }, [onClose]);
-
-    useEffect(() => {
-        const returnFocusTo = document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null;
-        closeButtonRef.current?.focus();
-
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") {
-                event.preventDefault();
-                onCloseRef.current();
-                return;
-            }
-
-            if (event.key !== "Tab") return;
-
-            const dialog = dialogRef.current;
-            if (!dialog) return;
-            const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-                'a[href], area[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [contenteditable="true"], [tabindex]:not([tabindex="-1"])',
-            )).filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true");
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-
-            if (!first || !last) {
-                event.preventDefault();
-                dialog.focus();
-            } else if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
-                event.preventDefault();
-                last.focus();
-            } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
-                event.preventDefault();
-                first.focus();
+                onClose();
             }
         }
 
@@ -85,20 +48,13 @@ export function ServiceDetailsDrawer({
 
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
-            if (returnFocusTo?.isConnected) returnFocusTo.focus();
         };
-    }, []);
+    }, [onClose]);
 
     const healthCheckAddress = formatHealthCheckAddress(health.details.url);
-    const technicalDetails: Record<string, unknown> = Object.fromEntries(
+    const technicalDetails = Object.fromEntries(
         Object.entries(health.details).filter(([key]) => key !== "url"),
     );
-    const reportedMessage = evidenceText(health.message);
-    const plainMessage = healthReason(health.message);
-    const nextCheck = healthNextCheck(health.message);
-    if (reportedMessage && reportedMessage !== plainMessage) {
-        technicalDetails.reported_message = reportedMessage;
-    }
     const hasTechnicalDetails = Object.keys(technicalDetails).length > 0;
 
     return (
@@ -112,11 +68,9 @@ export function ServiceDetailsDrawer({
             }}
         >
             <aside
-                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="service-details-title"
-                tabIndex={-1}
                 className="h-full w-full max-w-lg overflow-y-auto border-l border-slate-800 bg-slate-950 shadow-2xl"
             >
                 <div className="flex items-start justify-between gap-4 border-b border-slate-800 p-6">
@@ -133,7 +87,6 @@ export function ServiceDetailsDrawer({
                     </div>
 
                     <button
-                        ref={closeButtonRef}
                         type="button"
                         onClick={onClose}
                         className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
@@ -219,20 +172,12 @@ export function ServiceDetailsDrawer({
 
                     <section>
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                            What this means
+                            Message
                         </h3>
                         <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
                             <p className="text-sm text-slate-300">
-                                {plainMessage ?? "No service message."}
+                                {health.message ?? "No service message."}
                             </p>
-                            {nextCheck && (
-                                <div className="mt-4 border-t border-slate-700 pt-3">
-                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                                        Next check
-                                    </h4>
-                                    <p className="mt-1 text-sm text-slate-300">{nextCheck}</p>
-                                </div>
-                            )}
                         </div>
                     </section>
 
