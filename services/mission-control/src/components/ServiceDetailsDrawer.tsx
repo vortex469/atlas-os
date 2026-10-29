@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { healthNextCheck } from "../utils/healthPresentation";
@@ -38,9 +38,34 @@ export function ServiceDetailsDrawer({
     onRefresh,
     onClose,
 }: ServiceDetailsDrawerProps) {
+    const dialogRef = useRef<HTMLElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+
     useEffect(() => {
+        closeButtonRef.current?.focus();
+
         function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Tab") {
+                const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
+                );
+                const focusableControls = Array.from(controls ?? []).filter(
+                    (control) => control.tabIndex >= 0 && !control.matches(":disabled"),
+                );
+                const first = focusableControls[0];
+                const last = focusableControls[focusableControls.length - 1];
+                const focusIsOutsideDialog = !dialogRef.current?.contains(document.activeElement);
+
+                if (event.shiftKey && (document.activeElement === first || focusIsOutsideDialog)) {
+                    event.preventDefault();
+                    last?.focus();
+                } else if (!event.shiftKey && (document.activeElement === last || focusIsOutsideDialog)) {
+                    event.preventDefault();
+                    first?.focus();
+                }
+            }
             if (event.key === "Escape") {
+                event.preventDefault();
                 onClose();
             }
         }
@@ -51,6 +76,14 @@ export function ServiceDetailsDrawer({
             window.removeEventListener("keydown", handleKeyDown);
         };
     }, [onClose]);
+
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
 
     const healthCheckAddress = formatHealthCheckAddress(health.details.url);
     const technicalDetails = Object.fromEntries(
@@ -70,6 +103,7 @@ export function ServiceDetailsDrawer({
             }}
         >
             <aside
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="service-details-title"
@@ -89,9 +123,10 @@ export function ServiceDetailsDrawer({
                     </div>
 
                     <button
+                        ref={closeButtonRef}
                         type="button"
                         onClick={onClose}
-                        className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+                        className="mc-focusable rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
                     >
                         Close
                     </button>

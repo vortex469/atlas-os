@@ -1,5 +1,5 @@
 import { healthState, normalizeServiceHealth } from "../../utils/healthPresentation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
 import { ServiceDetailsDrawer } from "../../components/ServiceDetailsDrawer";
 import { ServiceHealthCard } from "../../components/ServiceHealthCard";
@@ -28,6 +28,22 @@ export function ServiceHealthSection({
 }: ServiceHealthSectionProps) {
     const [selectedService, setSelectedService] =
         useState<SelectedService | null>(null);
+    const returnFocusRef = useRef<HTMLButtonElement | null>(null);
+    const dialogWasOpen = useRef(false);
+    const closeDrawer = useCallback(() => setSelectedService(null), []);
+
+    useEffect(() => {
+        if (selectedService) {
+            dialogWasOpen.current = true;
+            return;
+        }
+        if (dialogWasOpen.current) {
+            dialogWasOpen.current = false;
+            const trigger = returnFocusRef.current;
+            returnFocusRef.current = null;
+            if (trigger?.isConnected) trigger.focus();
+        }
+    }, [selectedService]);
 
     const entries = Object.entries(services).sort(
         ([nameA, healthA], [nameB, healthB]) => {
@@ -66,12 +82,13 @@ export function ServiceHealthSection({
                             key={name}
                             name={name}
                             health={serviceHealth}
-                            onSelect={() =>
+                            onSelect={(trigger) => {
+                                returnFocusRef.current = trigger;
                                 setSelectedService({
                                     name,
                                     health: serviceHealth,
-                                })
-                            }
+                                });
+                            }}
                         />
                     ))}
                 </div>
@@ -90,7 +107,7 @@ export function ServiceHealthSection({
                     }
                     isRefreshing={isRefreshing}
                     onRefresh={onRefresh}
-                    onClose={() => setSelectedService(null)}
+                    onClose={closeDrawer}
                 />
             )}
         </>

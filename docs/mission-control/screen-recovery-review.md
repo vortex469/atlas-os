@@ -2844,3 +2844,11 @@ provider view separately. Further direct actions pause until the operator
 refreshes provider information; a failed action request still uses the
 existing uncertain-result recovery path. The ProviderActions suite passes (12
 tests), along with Mission Control lint and production build.
+
+## Service details keyboard flow — 2026-10-29
+
+Opening service details now moves keyboard focus to Close, keeps Tab and
+Shift+Tab inside the dialog, and locks background scrolling. Escape and the
+backdrop close the panel and return focus to the service card. Reachability
+checks and provider actions are unchanged. The service-health section suite
+passes (6 tests), along with Mission Control lint and production build.

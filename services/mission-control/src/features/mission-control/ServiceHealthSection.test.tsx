@@ -220,7 +220,7 @@ describe("ServiceHealthSection", () => {
         expect(screen.queryByText(/password|private/)).not.toBeInTheDocument();
     });
 
-    it("closes the details drawer with Escape and the backdrop", async () => {
+    it("keeps keyboard focus in the details drawer and restores it when closed", async () => {
         const user = userEvent.setup();
         render(
             <ServiceHealthSection
@@ -231,24 +231,35 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        const openDrawer = () =>
-            user.click(
-                screen.getByRole("button", {
-                    name: "View details for Containers",
-                }),
-            );
+        const trigger = screen.getByRole("button", { name: "View details for Containers" });
+        const openDrawer = () => user.click(trigger);
 
         await openDrawer();
-        fireEvent.keyDown(window, { key: "Escape" });
+        const dialog = screen.getByRole("dialog", { name: "Containers" });
+        const close = within(dialog).getByRole("button", { name: "Close" });
+        const lastControl = within(dialog).getByText("Technical details");
+        expect(close).toHaveFocus();
+        expect(document.body.style.overflow).toBe("hidden");
+
+        await user.tab({ shift: true });
+        expect(lastControl).toHaveFocus();
+        await user.tab();
+        expect(close).toHaveFocus();
+
+        await user.keyboard("{Escape}");
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
+        expect(document.body.style.overflow).toBe("");
 
         await openDrawer();
-        const dialog = screen.getByRole("dialog");
-        fireEvent.mouseDown(dialog.parentElement!);
+        const reopenedDialog = screen.getByRole("dialog", { name: "Containers" });
+        fireEvent.mouseDown(reopenedDialog.parentElement!);
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
+        expect(document.body.style.overflow).toBe("");
     });
 });

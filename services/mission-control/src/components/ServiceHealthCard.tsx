@@ -4,7 +4,7 @@ import { HealthEvidence } from "./HealthEvidence";
 type ServiceHealthCardProps = {
     name: string;
     health: ServiceHealth;
-    onSelect: () => void;
+    onSelect: (trigger: HTMLButtonElement) => void;
 };
 
 function formatLatency(latency: number | null): string {
@@ -31,7 +31,8 @@ export function ServiceHealthCard({
     return (
         <button
             type="button"
-            onClick={onSelect}
+            onClick={(event) => onSelect(event.currentTarget)}
+            aria-haspopup="dialog"
             className="mc-panel-interactive mc-focusable w-full p-5 text-left"
             aria-label={`View details for ${name}`}
         >
