@@ -3020,3 +3020,8 @@ references, sandbox limits, fingerprints, and authority flags are collapsed
 under technical details. Failed list reads offer a safe retry. No machine,
 worker, or queue is discovered, contacted, or started, and record contracts
 are unchanged.
+
+Worker intake review uses the same plain-language status and blocker style.
+Worker references, blocker codes, fingerprints, sandbox limits, and authority
+flags stay under collapsed technical details. A failed list read offers a safe
+retry. The review does not contact a worker, enqueue work, or start execution.
