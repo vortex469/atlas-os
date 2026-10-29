@@ -69,6 +69,7 @@ describe("WorkflowDashboardPage", () => {
     it("loads workflow summaries, summary counts, rails, and detail links", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([
             workflow(),
+            workflow({ workflow_id: "workflow-approval", workflow_state: "awaiting_approval" }),
             workflow({ workflow_id: "workflow-running", workflow_state: "executing", last_result_summary: "Execution running" }),
             workflow({ workflow_id: "workflow-verification", workflow_state: "awaiting_verification_approval" }),
             workflow({ workflow_id: "workflow-commit", workflow_state: "awaiting_commit_approval" }),
@@ -78,12 +79,13 @@ describe("WorkflowDashboardPage", () => {
 
         renderDashboard();
 
-        expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(6);
+        expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(7);
         expect(screen.getByText("Execution running")).toBeInTheDocument();
         expect(screen.getByText("Blocked: stale candidate")).toBeInTheDocument();
         expect(screen.getByText("Commit completed")).toBeInTheDocument();
         expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
+        expect(screen.getByText("Waiting for workflow approval")).toBeInTheDocument();
         expect(screen.getByText("Waiting for implementation approval")).toBeInTheDocument();
         expect(screen.getByText("Waiting for verification approval")).toBeInTheDocument();
         expect(screen.getByText("Waiting for commit approval")).toBeInTheDocument();

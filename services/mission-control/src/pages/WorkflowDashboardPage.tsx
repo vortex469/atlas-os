@@ -40,6 +40,7 @@ const EMPTY_FILTERS: DashboardFilters = {
 
 const SUMMARY_GROUPS = [
     { key: "running", label: "Running" },
+    { key: "waiting_approval", label: "Waiting for workflow approval" },
     { key: "waiting_implementation_approval", label: "Waiting for implementation approval" },
     { key: "waiting_verification_approval", label: "Waiting for verification approval" },
     { key: "waiting_commit_approval", label: "Waiting for commit approval" },
