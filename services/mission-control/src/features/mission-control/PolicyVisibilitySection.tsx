@@ -39,7 +39,7 @@ export function PolicyVisibilitySection({
             <section>
                 <SectionHeader
                     title="Provider Policies"
-                    description="Live validated operational expectations currently enforced by ACE."
+                    description="This page shows the rules Atlas uses to check connected providers and their resources."
                 />
 
                 <PolicyReloadStatus health={health} />
@@ -147,7 +147,7 @@ export function PolicyVisibilitySection({
         <section>
             <SectionHeader
                 title="Provider Policies"
-                description="Live validated operational expectations currently enforced by ACE."
+                description="This page shows the rules Atlas uses to check connected providers and their resources."
             />
 
             <PolicyReloadStatus health={health} />
@@ -218,7 +218,7 @@ function PolicyReloadStatus({
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <p className="text-sm font-semibold text-mc-text-primary">
-                        {`Policy reload ${state.toLowerCase()}`}
+                        Policy file check
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
                         {duration === null ? "Validation duration unknown" : `Validated in ${duration} ms`}
@@ -229,39 +229,54 @@ function PolicyReloadStatus({
                     </p>
                 </div>
 
-                <HealthEvidence status={health.status} reason={health.error} checkedAt={health.checked_at} />
+                <HealthEvidence
+                    status={health.status}
+                    reason={diagnostics.length > 0 ? null : health.error}
+                    checkedAt={health.checked_at}
+                />
             </div>
 
+            {state === "Degraded" && diagnostics.length > 0 && (
+                <p className="mt-3 text-sm text-red-200/80">
+                    The policy file has {diagnostics.length} issue{diagnostics.length === 1 ? "" : "s"} to fix. Open Technical details to review {diagnostics.length === 1 ? "it" : "them"}.
+                </p>
+            )}
+
             {diagnostics.length > 0 && (
-                <ul className="mt-3 space-y-2">
-                    {diagnostics.map(
-                        (diagnostic, index) => (
-                            <li
-                                key={index}
-                                className="rounded border border-red-500/20 bg-slate-950/30 p-3"
-                            >
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <code className="text-xs font-semibold text-red-200">
-                                        {evidenceText(diagnostic.path) ?? "Unknown path"}
-                                    </code>
-                                    <span className="text-xs text-slate-500">
-                                        {evidenceText(diagnostic.error_type) ?? "Unknown diagnostic type"}
-                                    </span>
-                                    {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
+                <details className="mt-3 rounded-lg border border-slate-700 bg-slate-950/30 p-3">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">
+                        Technical details ({diagnostics.length})
+                    </summary>
+                    <ul className="mt-3 space-y-2">
+                        {diagnostics.map(
+                            (diagnostic, index) => (
+                                <li
+                                    key={index}
+                                    className="rounded border border-red-500/20 bg-slate-950/30 p-3"
+                                >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <code className="text-xs font-semibold text-red-200">
+                                            {evidenceText(diagnostic.path) ?? "Unknown path"}
+                                        </code>
                                         <span className="text-xs text-slate-500">
-                                            Line {diagnostic.line}
-                                            {typeof diagnostic.column === "number" && Number.isInteger(diagnostic.column) && diagnostic.column > 0 &&
-                                                `, column ${diagnostic.column}`}
+                                            {evidenceText(diagnostic.error_type) ?? "Unknown diagnostic type"}
                                         </span>
-                                    )}
-                                </div>
-                                <p className="mt-1 text-sm text-red-200/80">
-                                    {evidenceText(diagnostic.message) ?? "No diagnostic message provided."}
-                                </p>
-                            </li>
-                        ),
-                    )}
-                </ul>
+                                        {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
+                                            <span className="text-xs text-slate-500">
+                                                Line {diagnostic.line}
+                                                {typeof diagnostic.column === "number" && Number.isInteger(diagnostic.column) && diagnostic.column > 0 &&
+                                                    `, column ${diagnostic.column}`}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-1 text-sm text-red-200/80">
+                                        {evidenceText(diagnostic.message) ?? "No diagnostic message provided."}
+                                    </p>
+                                </li>
+                            ),
+                        )}
+                    </ul>
+                </details>
             )}
 
             {state === "Degraded" && policiesUnavailableMessage}

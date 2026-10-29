@@ -2497,6 +2497,12 @@ The policy and workflow-directory component suites pass (28 tests); Mission
 Control lint and production build pass. These wording changes do not alter
 policy loading, workflow polling, or approval behavior.
 
+Provider Policies now explains that the page lists rules Atlas uses to check
+connected providers and their resources, without relying on the “ACE” acronym.
+The degraded state leads with a plain issue count; raw paths, error types and
+messages stay under collapsed technical details. Its focused component suite
+passes (11 tests), with lint and build passing.
+
 ## Health connection wording — 2026-10-29
 
 The connection-refused summary now says Atlas Core's connection to the
