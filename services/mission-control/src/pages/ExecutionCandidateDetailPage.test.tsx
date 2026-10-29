@@ -414,14 +414,14 @@ describe("ExecutionCandidateDetailPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Change proposal unavailable");
-        expect(alert).toHaveTextContent("Atlas couldn't load this proposal. Its current details are unknown.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this change proposal. Try again to check its details.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         const readError = within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable");
         expect(readError).not.toBeVisible();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(readError).toBeVisible();
-        await user.click(screen.getByRole("button", { name: "Retry loading proposal" }));
+        await user.click(screen.getByRole("button", { name: "Try again" }));
 
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
@@ -434,7 +434,7 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage();
 
         await screen.findByRole("alert");
-        await user.click(screen.getByRole("button", { name: "Retry loading proposal" }));
+        await user.click(screen.getByRole("button", { name: "Try again" }));
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("The returned proposal does not match this page.");

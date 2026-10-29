@@ -1153,10 +1153,10 @@ for (const width of [390, 1280]) {
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Change proposal unavailable");
-        await expect(alert).toContainText("Atlas couldn't load this proposal. Its current details are unknown.");
-        await expect(alert).toContainText("Mission Control could not load this execution candidate.");
+        await expect(alert).toContainText("Atlas couldn’t load this change proposal. Try again to check its details.");
+        await expect(alert).toContainText("Atlas couldn’t load this change proposal.");
         await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
-        await alert.getByRole("button", { name: "Retry loading proposal" }).click();
+        await alert.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
         expect(reads).toBe(3);
         expect(rejectedMutationRequests).toEqual([]);

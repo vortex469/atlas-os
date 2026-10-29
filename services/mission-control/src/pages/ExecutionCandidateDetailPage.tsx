@@ -54,12 +54,12 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                 console.error(`Unable to load execution candidate ${candidateId}:`, requestError);
                 const message = getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load this execution candidate.",
+                    "Atlas couldn’t load this change proposal.",
                 );
                 if (isAxiosError(requestError) && requestError.response?.status === 404) {
                     setNotFound(true);
                 }
-                setError("Atlas couldn't load this proposal. Its current details are unknown.");
+                setError("Atlas couldn’t load this change proposal. Try again to check its details.");
                 setErrorDetails(message);
             })
             .finally(() => {
@@ -132,7 +132,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     if (error || candidate === null) {
-        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Mission Control could not load this proposal."}</p>{errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}<button type="button" onClick={retryCandidateRead} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200">Retry loading proposal</button></div></PageFrame>;
+        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Atlas couldn’t load this change proposal. Try again to check its details."}</p>{errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}<button type="button" onClick={retryCandidateRead} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200">Try again</button></div></PageFrame>;
     }
 
     return (
