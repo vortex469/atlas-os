@@ -102,7 +102,8 @@ describe("OperationalHistoryPage", () => {
         });
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
-        expect(await screen.findByText("Requested action: Start Service · Current status: Healthy")).toBeInTheDocument();
+        expect(await screen.findByText("Requested action: Start Service", { exact: true })).toBeInTheDocument();
+        expect(screen.queryByText(/Current status: Healthy/)).not.toBeInTheDocument();
     });
 
     it("shows diagnostic failure as unavailable rather than operational failure", async () => {
@@ -119,7 +120,8 @@ describe("OperationalHistoryPage", () => {
 
         expect(await screen.findByRole("heading", { name: "Maintenance target 110" })).toBeVisible();
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
-        expect(screen.getByText("Requested action: Restart Service · Current status: Healthy")).toBeInTheDocument();
+        expect(screen.getByText("Requested action: Restart Service", { exact: true })).toBeInTheDocument();
+        expect(screen.queryByText(/Current status: Healthy/)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
         expect(document.body.textContent).not.toContain("private lifecycle exception");
     });
@@ -148,7 +150,8 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByRole("link", { name: "Open workflow" });
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
-        expect(screen.getByText("Requested action: Restart Service · Current status: Healthy")).toBeInTheDocument();
+        expect(screen.getByText("Requested action: Restart Service", { exact: true })).toBeInTheDocument();
+        expect(screen.queryByText(/Current status: Healthy/)).not.toBeInTheDocument();
         expect(screen.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
     });
 

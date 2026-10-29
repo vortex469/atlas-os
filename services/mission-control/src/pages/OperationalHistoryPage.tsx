@@ -177,7 +177,7 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h2 className="break-all text-lg font-semibold text-white">{historyTargetName(workflow, lifecycle)}</h2>
-                    <p className="mt-1 text-sm text-slate-400">Requested action: {action} · Current status: {outcome?.title ?? "Unavailable"}</p>
+                    <p className="mt-1 text-sm text-slate-400">Requested action: {action}{!outcome && " · Current status: Unavailable"}</p>
                     <p className="mt-1 text-sm text-slate-400">Requested (local time): {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
                 </div>
                 <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Open workflow</Link>

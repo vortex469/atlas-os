@@ -3194,3 +3194,9 @@ reported.
 An unavailable maintenance status now has one retry button in its status panel.
 The duplicate page-level refresh button is removed; retrying still performs a
 read-only status check.
+
+## Maintenance history status summary — 2026-10-29
+
+Maintenance history cards now show the requested action in the subtitle and
+the current status once in the recovery summary. An unavailable status remains
+explicit in the subtitle when no matching status summary can be shown.

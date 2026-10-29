@@ -1223,7 +1223,8 @@ for (const width of [320, 390, 1280]) {
         await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
         await expect(page.getByText("42", { exact: true })).toHaveCount(0);
-        await expect(page.getByText("Requested action: Restart Service · Current status: Healthy", { exact: true })).toBeVisible();
+        await expect(page.getByText("Requested action: Restart Service", { exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Healthy", exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
