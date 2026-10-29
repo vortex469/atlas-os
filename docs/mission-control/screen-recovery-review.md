@@ -2879,3 +2879,12 @@ means Atlas Core could not reach the configured address; it does not prove the
 service is stopped. The checked address remains available in the service
 details drawer; health probes and status mapping are unchanged. The focused
 service-health suite, Mission Control lint and production build pass.
+
+## Deployment analysis errors — 2026-10-29
+
+Deployment analysis failures now show a plain recovery message. The original
+error stays under collapsed technical details, so parser and network errors
+remain available without taking over the screen. A later retry clears the old
+error and result state. Analysis remains read-only and does not grant workflow
+approval. The focused Forge suite, Mission Control lint and production build
+pass.

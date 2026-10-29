@@ -4,7 +4,10 @@ import { analyzeCompose } from "../../api/atlas";
 import { Forge } from "./Forge";
 import type { DeploymentAnalysisResponse } from "./types";
 
-vi.mock("../../api/atlas", () => ({ analyzeCompose: vi.fn() }));
+vi.mock("../../api/atlas", () => ({
+    analyzeCompose: vi.fn(),
+    getAtlasErrorMessage: (_error: unknown, fallback: string) => fallback,
+}));
 const analyze = vi.mocked(analyzeCompose);
 function analysis(name: string): DeploymentAnalysisResponse {
     return { result: {
@@ -68,7 +71,14 @@ describe("Forge analysis freshness", () => {
         await screen.findAllByText("Original result");
         analyze.mockRejectedValueOnce(new Error("Analysis unavailable"));
         submit();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Analysis unavailable");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control couldn't complete the analysis. Check the Compose file and Atlas connection, then try again.");
+        const technicalDetails = alert.querySelector("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(screen.getByText("Analysis unavailable")).not.toBeVisible();
+        fireEvent.click(screen.getByText("Technical details"));
+        expect(technicalDetails).toHaveAttribute("open");
+        expect(screen.getByText("Analysis unavailable")).toBeVisible();
         expect(screen.queryByRole("heading", { name: "Deployment Brief" })).not.toBeInTheDocument();
         submit();
         await screen.findAllByText("Original result");

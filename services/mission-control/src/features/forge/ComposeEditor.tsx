@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { analyzeCompose } from "../../api/atlas";
+import { analyzeCompose, getAtlasErrorMessage } from "../../api/atlas";
 import type { DeploymentAnalysisResponse } from "./types";
 
 const defaultCompose = `services:
@@ -23,6 +23,7 @@ export function ComposeEditor({
     const [reference, setReference] = useState("nginx-demo");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
     const requestGeneration = useRef(0);
     useEffect(() => () => { requestGeneration.current += 1; }, []);
@@ -31,6 +32,7 @@ export function ComposeEditor({
         requestGeneration.current += 1;
         setLoading(false);
         setError(null);
+        setErrorDetails(null);
         onAnalysis(null);
     }
 
@@ -38,6 +40,7 @@ export function ComposeEditor({
         if (loading) return;
         const generation = ++requestGeneration.current;
         setError(null);
+        setErrorDetails(null);
         onAnalysis(null);
 
         const normalizedReference = reference.trim();
@@ -63,12 +66,13 @@ export function ComposeEditor({
             if (generation === requestGeneration.current) onAnalysis(result);
         } catch (caughtError) {
             if (generation !== requestGeneration.current) return;
-            const message =
-                caughtError instanceof Error
-                    ? caughtError.message
-                    : "Deployment analysis failed.";
-
+            const message = getAtlasErrorMessage(
+                caughtError,
+                "Mission Control couldn't complete the analysis. Check the Compose file and Atlas connection, then try again.",
+            );
+            const details = caughtError instanceof Error ? caughtError.message : null;
             setError(message);
+            setErrorDetails(details && details !== message ? details : null);
         } finally {
             if (generation === requestGeneration.current) setLoading(false);
         }
@@ -115,9 +119,13 @@ export function ComposeEditor({
             />
 
             {error && (
-                <p role="alert" className="mt-3 text-sm text-red-300">
-                    {error}
-                </p>
+                <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+                    <p>{error}</p>
+                    {errorDetails && <details className="mt-2">
+                        <summary className="mc-focusable cursor-pointer text-xs font-medium text-red-100">Technical details</summary>
+                        <p className="mt-1 break-words text-xs text-red-100/80">{errorDetails}</p>
+                    </details>}
+                </div>
             )}
 
             {loading && <p role="status" className="mt-3 text-sm text-blue-200">Analyzing the current document…</p>}
