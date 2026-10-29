@@ -237,7 +237,25 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage("/execution-candidates/candidate-expired");
 
         expect(await screen.findByText("Candidate has expired.")).toBeInTheDocument();
+        expect(screen.getByText("Expired", { exact: true })).toBeVisible();
+        expect(screen.queryByText("Eligible for planning", { exact: true })).not.toBeInTheDocument();
         expect(screen.getAllByRole("button", { name: "Start planning" }).at(-1)).toBeDisabled();
+    });
+
+    it("fails closed on unknown eligibility and offers a read-only refresh", async () => {
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ status: "future_state", expires_at: null }))
+            .mockResolvedValueOnce(candidate({ expires_at: null }));
+        renderPage();
+
+        expect(await screen.findByText("Eligibility unavailable", { exact: true })).toBeVisible();
+        expect(screen.getByText("Planning eligibility could not be confirmed. Refresh the proposal before continuing.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+        await userEvent.click(screen.getByRole("button", { name: "Refresh proposal" }));
+
+        expect(await screen.findByText("Eligible for planning", { exact: true })).toBeVisible();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
     });
 
     it("handles unsupported, rejected, stale, Core unavailable, Agent unavailable, and persistence failures", async () => {

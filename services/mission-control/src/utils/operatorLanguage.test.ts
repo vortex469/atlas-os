@@ -1,8 +1,20 @@
 import { describe, expect, it } from "vitest";
 
-import { compatibilityStatusLabel, executionConstraintLabel } from "./operatorLanguage";
+import { compatibilityStatusLabel, executionCandidateStatusLabel, executionConstraintLabel } from "./operatorLanguage";
 
 describe("operator language labels", () => {
+    it.each([
+        ["eligible", null, "Eligible for planning"],
+        ["not_eligible", null, "Not eligible for planning"],
+        ["eligible", "2000-01-01T00:00:00Z", "Expired"],
+        ["not_eligible", "2000-01-01T00:00:00Z", "Expired"],
+        ["eligible", "invalid", "Eligibility unavailable"],
+        ["expired", null, "Expired"],
+        ["future_state", null, "Eligibility unavailable"],
+    ])("describes proposal eligibility %s without presenting unknown or expired status as eligible", (status, expiresAt, expected) => {
+        expect(executionCandidateStatusLabel(status, expiresAt, Date.parse("2026-01-01T00:00:00Z"))).toBe(expected);
+    });
+
     it.each([
         ["compatible", "Compatible"],
         ["compatible_with_warnings", "Compatible with warnings"],

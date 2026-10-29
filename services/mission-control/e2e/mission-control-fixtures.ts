@@ -169,7 +169,7 @@ export const executionCandidates: ExecutionCandidate[] = [
         compatibility_status: "compatible",
         relationship_ids: [],
         created_at: isoNow,
-        expires_at: "2026-09-07T12:00:00.000Z",
+        expires_at: "2099-09-07T12:00:00.000Z",
     },
     {
         id: "candidate-not-eligible",
@@ -201,7 +201,7 @@ export const executionCandidates: ExecutionCandidate[] = [
         target_type: "service",
         execution_category: "update",
         execution_intent: "update-container-image",
-        status: "expired",
+        status: "not_eligible",
         required_approval_level: "standard",
         rationale: "Expired browser fixture candidate.",
         constraints: [],
@@ -209,7 +209,7 @@ export const executionCandidates: ExecutionCandidate[] = [
         compatibility_status: "unsupported",
         relationship_ids: [],
         created_at: isoNow,
-        expires_at: isoNow,
+        expires_at: "2026-09-07T12:00:00.000Z",
     },
 ];
 

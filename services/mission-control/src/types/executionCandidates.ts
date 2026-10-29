@@ -1,4 +1,5 @@
-export type ExecutionCandidateStatus = "eligible" | "not_eligible" | "expired" | "rejected" | string;
+export type ExecutionCandidateStatus = "eligible" | "not_eligible" | (string & {});
+export type ExecutionCandidateStatusFilter = "eligible" | "not_eligible" | "expired";
 
 export type ExecutionCategory = "update" | "restart" | string;
 
@@ -44,7 +45,7 @@ export type ExecutionCandidatePage = {
 };
 
 export type ExecutionCandidateListQuery = {
-    status?: ExecutionCandidateStatus;
+    status?: ExecutionCandidateStatusFilter;
     category?: ExecutionCategory;
     intent?: ExecutionIntent;
     sourceSubsystem?: string;

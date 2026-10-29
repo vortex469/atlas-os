@@ -12,7 +12,7 @@ import { getExecutionCandidate } from "../api/executionCandidates";
 import type { CandidatePlanningResponse } from "../types/atlasAgent";
 import type { ExecutionCandidate } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
-import { compatibilityStatusLabel, executionConstraintLabel } from "../utils/operatorLanguage";
+import { compatibilityStatusLabel, executionCandidateStatusLabel, executionConstraintLabel } from "../utils/operatorLanguage";
 import { PlanningProgress } from "../components/PlanningProgress";
 
 type PlanningError = {
@@ -148,7 +148,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                             <h1 className="text-3xl font-bold text-white">{formatLabel(candidate.execution_intent)}</h1>
                             <p className="mt-2 text-sm text-slate-300">Target ID: {candidate.target_id} · Type: {formatLabel(candidate.target_type)}</p>
                         </div>
-                        <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{statusText(candidate.status)}</span>
+                        <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{executionCandidateStatusLabel(candidate.status, candidate.expires_at)}</span>
                     </div>
                     <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
                         Review the proposed change and its limits before planning. Planning does not approve or apply a change.
@@ -187,6 +187,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                         {isPlanningPending ? "Requesting planning session…" : "Start planning"}
                     </button>
                     {(!actionState.enabled || isPlanningPending) && <p className="text-sm text-slate-400">{isPlanningPending ? "Planning request is already pending." : actionState.reason}</p>}
+                    {actionState.refreshRequired && !isPlanningPending && <button type="button" onClick={retryCandidateRead} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300">Refresh proposal</button>}
                 </div>
                 {planningResponse && <PlanningResult response={planningResponse} onRefreshCandidate={retryCandidateRead} />}
                 {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">{planningError.title}</p><p className="mt-1 text-sm text-red-200/80">{planningError.message}</p><details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{planningError.details}</p></details></div>}
@@ -227,13 +228,6 @@ function formatTimestamp(value: string): ReactNode {
     return timestamp === null
         ? "Time unavailable"
         : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
-}
-
-function statusText(status: string): string {
-    if (status === "eligible") return "Eligible for planning";
-    if (status === "not_eligible") return "Not eligible for planning";
-    if (status === "expired") return "Expired";
-    return formatLabel(status);
 }
 
 function PageFrame({ children }: { children: React.ReactNode }) {
@@ -300,17 +294,17 @@ function formatExpiry(value: string | null | undefined): ReactNode {
         : <time dateTime={value}>{new Date(parsed).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
-function getPlanningActionState(candidate: ExecutionCandidate | null): { enabled: boolean; reason: string } {
-    if (!candidate) return { enabled: false, reason: "Candidate is not loaded." };
+function getPlanningActionState(candidate: ExecutionCandidate | null): { enabled: boolean; reason: string; refreshRequired: boolean } {
+    if (!candidate) return { enabled: false, reason: "Candidate is not loaded.", refreshRequired: false };
+    if (candidate.status === "expired") return { enabled: false, reason: "Candidate has expired.", refreshRequired: false };
     if (candidate.expires_at !== null && candidate.expires_at !== undefined) {
         const expiresAt = evidenceTimestamp(candidate.expires_at);
-        if (expiresAt === null) return { enabled: false, reason: "The expiry time could not be confirmed. Open a current proposal to continue." };
-        if (expiresAt <= Date.now()) return { enabled: false, reason: "Candidate has expired." };
+        if (expiresAt === null) return { enabled: false, reason: "The expiry time could not be confirmed. Refresh the proposal before continuing.", refreshRequired: true };
+        if (expiresAt <= Date.now()) return { enabled: false, reason: "Candidate has expired.", refreshRequired: false };
     }
-    if (candidate.status !== "eligible") {
-        return { enabled: false, reason: "Candidate is not eligible for planning." };
-    }
-    return { enabled: true, reason: "" };
+    if (candidate.status === "not_eligible") return { enabled: false, reason: "Candidate is not eligible for planning.", refreshRequired: false };
+    if (candidate.status !== "eligible") return { enabled: false, reason: "Planning eligibility could not be confirmed. Refresh the proposal before continuing.", refreshRequired: true };
+    return { enabled: true, reason: "", refreshRequired: false };
 }
 
 function InfoPanel({ title, children }: { title: string; children: React.ReactNode }) {

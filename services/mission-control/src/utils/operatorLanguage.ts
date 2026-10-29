@@ -1,3 +1,5 @@
+import { evidenceTimestamp } from "./healthPresentation";
+
 const compatibilityLabels: Record<string, string> = {
     compatible: "Compatible",
     compatible_with_warnings: "Compatible with warnings",
@@ -34,4 +36,22 @@ export function executionConstraintLabel(constraint: string): string {
     return Object.hasOwn(executionConstraintLabels, normalized)
         ? executionConstraintLabels[normalized]
         : humanizeCode(constraint);
+}
+export function executionCandidateStatusLabel(
+    status: string,
+    expiresAt?: string | null,
+    now = Date.now(),
+): string {
+    if (status === "expired") return "Expired";
+    let expiry: number | null = null;
+    if (expiresAt !== null && expiresAt !== undefined) {
+        expiry = evidenceTimestamp(expiresAt);
+        if (expiry !== null && expiry <= now) return "Expired";
+    }
+    if (status === "not_eligible") return "Not eligible for planning";
+    if (status !== "eligible") return "Eligibility unavailable";
+    if (expiresAt !== null && expiresAt !== undefined) {
+        if (expiry === null) return "Eligibility unavailable";
+    }
+    return "Eligible for planning";
 }

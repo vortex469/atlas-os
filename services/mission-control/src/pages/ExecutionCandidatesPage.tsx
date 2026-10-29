@@ -9,9 +9,10 @@ import type {
     ExecutionCandidate,
     ExecutionCandidateListQuery,
     ExecutionCandidatePage,
+    ExecutionCandidateStatusFilter,
 } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
-import { compatibilityStatusLabel } from "../utils/operatorLanguage";
+import { compatibilityStatusLabel, executionCandidateStatusLabel } from "../utils/operatorLanguage";
 
 const PAGE_SIZE = 25;
 
@@ -19,7 +20,7 @@ const statusOptions = [
     { label: "Eligible", value: "eligible" },
     { label: "Not eligible", value: "not_eligible" },
     { label: "Expired", value: "expired" },
-];
+] satisfies { label: string; value: ExecutionCandidateStatusFilter }[];
 
 const categoryOptions = [
     { label: "Update", value: "update" },
@@ -33,7 +34,7 @@ const intentOptions = [
 ];
 
 type FilterState = {
-    status: string;
+    status: "" | ExecutionCandidateStatusFilter;
     category: string;
     intent: string;
     sourceSubsystem: string;
@@ -176,7 +177,7 @@ export function ExecutionCandidatesPage() {
                     onSubmit={submitFilters}
                 >
                     <div className="grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
-                        <SelectFilter label="Eligibility" value={filters.status} options={statusOptions} onChange={(value) => setFilters((current) => ({ ...current, status: value }))} />
+                        <SelectFilter label="Eligibility" value={filters.status} options={statusOptions} onChange={(value) => setFilters((current) => ({ ...current, status: toStatusFilter(value) }))} />
                         <SelectFilter label="Change" value={filters.intent} options={intentOptions} onChange={(value) => setFilters((current) => ({ ...current, intent: value }))} />
                         <TextFilter label="Target ID" value={filters.targetId} onChange={(value) => setFilters((current) => ({ ...current, targetId: value }))} />
                         <div className="flex items-end gap-2">
@@ -254,7 +255,7 @@ function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
                         Target ID: <span className="text-slate-200">{candidate.target_id}</span> · Type: {formatLabel(candidate.target_type)}
                     </p>
                 </div>
-                <StatusBadge status={candidate.status} />
+                <StatusBadge status={candidate.status} expiresAt={candidate.expires_at} />
             </div>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                 <Field label="Compatibility" value={candidate.compatibility_status ? compatibilityStatusLabel(candidate.compatibility_status) : "Not reported"} />
@@ -298,8 +299,8 @@ function TextFilter({ label, value, onChange }: { label: string; value: string; 
     );
 }
 
-function StatusBadge({ status }: { status: string }) {
-    return <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{statusText(status)}</span>;
+function StatusBadge({ status, expiresAt }: { status: string; expiresAt?: string | null }) {
+    return <span className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-200">{executionCandidateStatusLabel(status, expiresAt)}</span>;
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -354,18 +355,15 @@ function filtersEqual(left: FilterState, right: FilterState): boolean {
         && left.targetId === right.targetId;
 }
 
-function statusText(status: string): string {
-    if (status === "eligible") return "Eligible for planning";
-    if (status === "not_eligible") return "Not eligible for planning";
-    if (status === "expired") return "Expired";
-    return formatLabel(status);
-}
-
 function proposalResultSummary(result: CandidateResult): string {
     const first = result.offset + 1;
     const last = result.offset + result.candidates.length;
     const noun = result.total === 1 ? "proposal" : "proposals";
     return `Showing ${first}–${last} of ${result.total} ${noun}`;
+}
+
+function toStatusFilter(value: string): FilterState["status"] {
+    return value === "eligible" || value === "not_eligible" || value === "expired" ? value : "";
 }
 
 function formatLabel(value: string): string {

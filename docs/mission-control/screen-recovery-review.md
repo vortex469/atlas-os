@@ -3425,3 +3425,17 @@ pending, or rejected, the detail summary and progress panel no longer describe
 it as ready to run. They ask the operator to refresh when approval is
 unconfirmed. Focused workflow-detail and progress tests pass (117 tests), along
 with lint and build. Approval and execution remain separate operator actions.
+
+## Proposal expiration filter and eligibility clarity — 2026-10-29
+
+The proposal directory's Expired filter now uses Core's explicit `expired`
+query parameter, which checks the candidate expiry timestamp. Expiration stays
+separate from the two planning eligibility statuses, so the list API does not
+accept `expired` as a response status. Proposal cards and details use the same
+expiry-aware label; unknown or malformed eligibility evidence appears as
+unavailable, and the detail page offers a read-only refresh when eligibility
+cannot be confirmed. Planning remains disabled until eligibility is confirmed.
+The Core candidate-route suite passes 19 tests and Ruff. The Mission Control
+suite passes 2,994 tests across 188 files, with lint and build passing. The
+candidate-list browser suite passes 14 cases, including the expiry query at
+390px and 1280px. Browser data is synthetic; this is not production acceptance.

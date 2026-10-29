@@ -71,7 +71,7 @@ describe("ExecutionCandidatesPage", () => {
 
     it("leads candidate cards with the change and keeps technical details collapsed", async () => {
         const user = userEvent.setup();
-        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ expires_at: "2026-01-02T00:00:00Z" })]));
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate({ expires_at: "2999-01-02T00:00:00Z" })]));
         renderPage();
 
         expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe("ExecutionCandidatesPage", () => {
         expect(screen.getByText("stack-home-assistant")).toBeVisible();
         expect(screen.getByRole("article")).toHaveTextContent("Target ID: stack-home-assistant · Type: Compose Stack");
         expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
-        expect(screen.getByText("Expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2026-01-02T00:00:00Z");
+        expect(screen.getByText("Expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2999-01-02T00:00:00Z");
         expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
             "href",
             "/execution-candidates/candidate-1",
@@ -102,6 +102,29 @@ describe("ExecutionCandidatesPage", () => {
         await userEvent.click(screen.getByText("More proposal details"));
         expect(screen.getByText("Created (local time)").parentElement).toHaveTextContent("Time unavailable");
         expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    });
+
+    it("offers supported eligibility and expiry filters", () => {
+        renderPage();
+
+        const eligibility = screen.getByLabelText("Eligibility");
+        expect(within(eligibility).getByRole("option", { name: "Eligible" })).toHaveValue("eligible");
+        expect(within(eligibility).getByRole("option", { name: "Not eligible" })).toHaveValue("not_eligible");
+        expect(within(eligibility).getByRole("option", { name: "Expired" })).toHaveValue("expired");
+    });
+
+    it("shows expired candidates by expiry and keeps unknown eligibility unavailable", async () => {
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([
+            candidate({ id: "expired-candidate", expires_at: "2000-01-01T00:00:00Z" }),
+            candidate({ id: "unknown-candidate", status: "future_state", expires_at: null }),
+        ]));
+        renderPage();
+
+        const cards = await screen.findAllByRole("article");
+        expect(cards).toHaveLength(2);
+        expect(cards[0]).toHaveTextContent("Expired");
+        expect(cards[1]).toHaveTextContent("Eligibility unavailable");
+        expect(screen.queryByText("Future State")).not.toBeInTheDocument();
     });
 
     it("keeps newer search results when an older search completes later", async () => {
@@ -267,7 +290,7 @@ describe("ExecutionCandidatesPage", () => {
 
         renderPage();
         await screen.findByText("candidate-1");
-        await user.selectOptions(screen.getByLabelText("Eligibility"), "expired");
+        await user.selectOptions(screen.getByLabelText("Eligibility"), "not_eligible");
 
         expect(screen.getByText(
             "These filter changes haven't been searched yet. Select Search proposals to update the results.",
@@ -278,7 +301,7 @@ describe("ExecutionCandidatesPage", () => {
         await user.click(screen.getByRole("button", { name: "Search proposals" }));
 
         await waitFor(() => expect(mockedListExecutionCandidates).toHaveBeenLastCalledWith({
-            status: "expired",
+            status: "not_eligible",
             category: undefined,
             intent: undefined,
             sourceSubsystem: undefined,

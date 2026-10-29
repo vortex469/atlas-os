@@ -54,6 +54,30 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`expired proposal filter uses the explicit Core expiry query at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/execution-candidates");
+
+        await page.getByLabel("Eligibility").selectOption("expired");
+        const expiredRequest = page.waitForRequest(request => {
+            const url = new URL(request.url());
+            return url.pathname.endsWith("/api/v1/execution-candidates")
+                && url.searchParams.get("expired") === "true";
+        });
+        await page.getByRole("button", { name: "Search proposals" }).click();
+        const request = await expiredRequest;
+        await expect(page.getByText("These filter changes haven't been searched yet.")).toHaveCount(0);
+        const expiredCard = page.getByRole("article").filter({ hasText: "home-assistant" });
+        await expect(expiredCard.getByText("Expired", { exact: true })).toBeVisible();
+
+        const query = new URL(request.url()).searchParams;
+        expect(query.get("expired")).toBe("true");
+        expect(query.get("status")).toBeNull();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
+
 for (const width of [320, 390, 1280]) {
     test(`proposal search failure offers a clear retry at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
