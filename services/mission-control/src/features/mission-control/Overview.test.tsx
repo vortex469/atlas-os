@@ -210,12 +210,11 @@ describe("MC overview evidence", () => {
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
         const steps = within(disclosure as HTMLDetailsElement).getByRole("list", {
-            name: "How to check from Atlas Core",
+            name: "Docker and Compose checks",
         });
-        expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
+        expect(within(steps).getAllByRole("listitem")).toHaveLength(2);
         expect(steps).toHaveClass("text-sm");
-        expect(steps).toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
-        expect(steps).toHaveTextContent("Running it on the service computer or in your browser checks a different network path.");
+        expect(steps).not.toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
         expect(steps).toHaveTextContent("On another computer running Docker, use docker ps and check PORTS.");
         expect(steps).toHaveTextContent(/For containers using port mappings, a blank field means no host port is published;/);
         expect(steps).toHaveTextContent("With Docker host networking, the app listens directly on the service computer's port, so a published-port mapping is not expected.");

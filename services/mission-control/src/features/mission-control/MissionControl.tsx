@@ -94,8 +94,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>
             <div className="mt-2 space-y-1">
-                <ol aria-label="How to check from Atlas Core" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
-                    <li>Run the test on the computer running Atlas Core or inside its <code>atlas-core</code> container. Running it on the service computer or in your browser checks a different network path.</li>
+                <ol aria-label="Docker and Compose checks" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                     <li>
                         On another computer running Docker, use <code>docker ps</code> and check <code>PORTS</code>. For containers using port mappings, a blank field means no host port is published; a mapping starting with <code>127.0.0.1:</code> is reachable only from that computer. With Docker host networking, the app listens directly on the service computer&apos;s port, so a published-port mapping is not expected.
                         If the container uses port mappings, publish the app's listening port with Compose's <code>ports:</code> or <code>docker run -p</code>, then recreate the container. In <code>HOST_PORT:CONTAINER_PORT</code>, the host port must match Atlas's address and the container port must match the app's listening port.

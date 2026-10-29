@@ -357,11 +357,10 @@ for (const width of [320, 1280]) {
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'More connection checks' });
         await moreChecks.click();
-        const steps = checks.getByRole('list', { name: 'How to check from Atlas Core' });
-        await expect(steps.getByRole('listitem')).toHaveCount(3);
+        const steps = checks.getByRole('list', { name: 'Docker and Compose checks' });
+        await expect(steps.getByRole('listitem')).toHaveCount(2);
         await expect(steps).toHaveCSS('font-size', '14px');
-        await expect(steps).toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
-        await expect(steps).toContainText('Running it on the service computer or in your browser checks a different network path');
+        await expect(steps).not.toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
         await expect(steps).toContainText('On another computer running Docker, use docker ps and check PORTS');
         await expect(steps).toContainText('For containers using port mappings, a blank field means no host port is published');
         await expect(steps).toContainText("With Docker host networking, the app listens directly on the service computer's port, so a published-port mapping is not expected");

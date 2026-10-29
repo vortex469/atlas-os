@@ -3297,6 +3297,11 @@ response differs from a timeout or connection failure. The 320px and
 computer/browser distinction visible; helper tests cover URL redaction, shell
 quoting, and invalid addresses. The command performs no service mutation.
 
+Expanded connection details now focus on Docker port mappings and Compose file
+location. The Atlas Core versus service-computer/browser distinction appears
+once in the visible next step instead of being repeated inside the disclosure.
+The component and two browser checks verify the shorter instructions.
+
 ## Work activity detail cleanup — 2026-10-29
 
 Removed the “Queue size — Not reported” placeholder from optional workflow
