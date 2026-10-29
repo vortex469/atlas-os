@@ -88,11 +88,12 @@ describe("AgentProviderOverviewSection", () => {
             },
         ];
         renderWithRouter(<AgentProviderOverviewSection providers={providers} />);
-        expect(screen.getByText("Available")).toBeInTheDocument();
-        expect(screen.getByText("Unavailable")).toBeInTheDocument();
+        const counts = screen.getByRole("group", { name: "Provider health counts" });
+        expect(within(counts).getByText("Available")).toBeInTheDocument();
+        expect(within(counts).getByText("Unavailable")).toBeInTheDocument();
     });
 
-    it("counts every provider health state using the same labels as provider cards", () => {
+    it("shows every provider health state in both the summary counts and provider cards", () => {
         const providers: Provider[] = ["healthy", "critical", "warning", "offline", "blocked", "future-status"].map((status, index) => ({
             id: `provider-${index}`,
             name: `Provider ${index}`,
@@ -115,7 +116,15 @@ describe("AgentProviderOverviewSection", () => {
         expectCount("Degraded", 2);
         expectCount("Unavailable", 1);
         expectCount("Blocked", 1);
-        expectCount("Status not confirmed", 1);
+        expectCount("Status unknown", 1);
+
+        const expectedStates = ["Healthy", "Degraded", "Degraded", "Unavailable", "Blocked", "Status unknown"];
+        const statuses = screen.getByRole("group", { name: "Provider health statuses" });
+        expectedStates.forEach((state, index) => {
+            const card = within(statuses).getByRole("heading", { name: `Provider ${index}` }).closest("article");
+            expect(card).not.toBeNull();
+            expect(within(card as HTMLElement).getByText(state, { exact: true })).toBeInTheDocument();
+        });
     });
 
     it("warns about unavailable critical providers", () => {
@@ -174,7 +183,7 @@ describe("AgentProviderOverviewSection", () => {
         expect(container).toBeInTheDocument();
     });
 
-    it("marks critical providers with star", () => {
+    it("labels critical providers clearly", () => {
         const providers: Provider[] = [
             {
                 id: "docker",
@@ -195,6 +204,8 @@ describe("AgentProviderOverviewSection", () => {
             },
         ];
         renderWithRouter(<AgentProviderOverviewSection providers={providers} />);
-        expect(screen.getByText(/Docker ⭐/)).toBeInTheDocument();
+        const heading = screen.getByRole("heading", { name: "Docker" });
+        expect(heading).toBeInTheDocument();
+        expect(heading.parentElement).toHaveTextContent("Critical");
     });
 });

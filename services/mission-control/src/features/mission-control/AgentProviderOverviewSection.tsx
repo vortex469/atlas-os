@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { SectionHeader } from "../../components/SectionHeader";
-import { HealthStatusCard } from "../../components/health/HealthStatusPrimitive";
+import { HealthStatusBadge } from "../../components/health/HealthStatusPrimitive";
 import {
     mapServiceStatusToHealthState,
 } from "../../components/health/healthPresentation";
@@ -100,14 +100,14 @@ export function AgentProviderOverviewSection({
                             <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
                                 Blocked
                             </p>
-                            <p className="mt-2 text-2xl font-bold text-amber-400">
+                            <p className="mt-2 text-2xl font-bold text-red-400">
                                 {blocked.length}
                             </p>
                         </div>
 
                         <div className="mc-surface rounded-mc-lg p-4">
                             <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Status not confirmed
+                                Status unknown
                             </p>
                             <p className="mt-2 text-2xl font-bold text-slate-300">
                                 {unconfirmed.length}
@@ -138,7 +138,7 @@ export function AgentProviderOverviewSection({
                     )}
 
                     {/* Provider health grid */}
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div role="group" aria-label="Provider health statuses" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {providers.map((provider) => {
                             const healthState = mapServiceStatusToHealthState(
                                 provider.health?.status,
@@ -146,19 +146,24 @@ export function AgentProviderOverviewSection({
                             const isPriorityCritical = provider.priority === "critical";
 
                             return (
-                                <HealthStatusCard
-                                    key={provider.id}
-                                    state={healthState}
-                                    title={`${provider.name}${isPriorityCritical ? " ⭐" : ""}`}
-                                    reason={
-                                        provider.health?.message ||
-                                        (provider.health?.http_status &&
-                                        provider.health.http_status >= 400
-                                            ? `HTTP ${provider.health.http_status}`
-                                            : undefined)
-                                    }
-                                    compact={true}
-                                />
+                                <article key={provider.id} className="mc-surface rounded-mc-lg p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <h3 className="text-sm font-semibold text-mc-text-primary">{provider.name}</h3>
+                                        {isPriorityCritical && <span className="text-xs font-medium text-amber-300">Critical</span>}
+                                    </div>
+                                    <div className="mt-2">
+                                        <HealthStatusBadge
+                                            state={healthState}
+                                            reason={
+                                                provider.health?.message ||
+                                                (provider.health?.http_status &&
+                                                provider.health.http_status >= 400
+                                                    ? `HTTP ${provider.health.http_status}`
+                                                    : undefined)
+                                            }
+                                        />
+                                    </div>
+                                </article>
                             );
                         })}
                     </div>
