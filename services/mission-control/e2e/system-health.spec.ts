@@ -26,7 +26,7 @@ for (const width of [390, 1440]) {
         } }));
         await page.goto("/");
         const summary = page.getByRole("region", { name: "System health", exact: true });
-        await expect(summary.getByRole("article", { name: "Overall service status" }).getByText("Status unknown", { exact: true })).toBeVisible();
+        await expect(summary.getByRole("article", { name: "Atlas Core health" }).getByText("Status unknown", { exact: true })).toBeVisible();
         const checks = page.getByRole("region", { name: "Service checks", exact: true });
         for (const state of ["Degraded", "Atlas Core could not connect", "Blocked", "Status unknown"]) {
             await expect(checks.getByText(state, { exact: true })).toBeVisible();
@@ -48,7 +48,7 @@ for (const width of [390, 1440]) {
         await expect(summary.getByRole("article", { name: "System findings" }).getByText("Healthy", { exact: true })).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ json: { atlas: "healthy", services: {} } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
-        await expect(summary.getByRole("article", { name: "Overall service status" }).getByText("Healthy", { exact: true })).toBeVisible();
+        await expect(summary.getByRole("article", { name: "Atlas Core health" }).getByText("Healthy", { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     });
 }

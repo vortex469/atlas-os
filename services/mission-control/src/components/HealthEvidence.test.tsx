@@ -116,7 +116,7 @@ describe("authoritative health presentation", () => {
 
     it("shows checking only for health reports that have not returned yet", () => {
         render(<SystemHealthSummary evidence={{ health: { data: { atlas: "healthy" } } }} loading />);
-        const overall = within(screen.getByRole("article", { name: "Overall service status" }));
+        const overall = within(screen.getByRole("article", { name: "Atlas Core health" }));
         const findings = within(screen.getByRole("article", { name: "System findings" }));
         const policy = within(screen.getByRole("article", { name: "Policy settings check" }));
         expect(overall.getByText("Healthy")).toBeInTheDocument();

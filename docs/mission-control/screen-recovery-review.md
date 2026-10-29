@@ -2606,3 +2606,12 @@ Overview and system-health browser suites pass all 30 cases across phone,
 tablet, and desktop widths. Mission Control lint and build pass. The browser
 check for service reachability now follows the current “More connection
 checks” disclosure and its visible guidance.
+
+## Atlas Core health label — 2026-10-29
+
+The `/health` report sourced from `health.atlas` is now labeled “Atlas Core
+health,” so it is not mistaken for an aggregate of configured service checks.
+Service reachability remains a separate report. The health source, status
+mapping, and freshness behavior are unchanged. The focused health and Overview
+suite passes (130 tests); all 30 built Overview and system-health browser cases,
+lint, and build pass.

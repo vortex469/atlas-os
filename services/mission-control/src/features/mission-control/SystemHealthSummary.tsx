@@ -9,7 +9,7 @@ export function SystemHealthSummary({ evidence, loading = false }: { evidence: O
     const ace = record(evidence.summary?.data);
     const policy = record(evidence.policyHealth?.data);
     const sources = [
-        { title: "Overall service status", evidence: evidence.health, status: core.atlas },
+        { title: "Atlas Core health", evidence: evidence.health, status: core.atlas },
         { title: "System findings", evidence: evidence.summary, status: ace.status, reason: ace.summary },
         { title: "Policy settings check", evidence: evidence.policyHealth, status: policy.status, reason: policy.error, checkedAt: policy.checked_at },
     ];

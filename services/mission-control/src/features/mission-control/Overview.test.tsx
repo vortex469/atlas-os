@@ -301,7 +301,7 @@ describe("MC overview evidence", () => {
     it('keeps health source limitations available without crowding the dashboard scan', () => {
         show({ health: { data: { atlas: 'healthy', services: { api: { status: 'healthy' } } } } });
         const health = within(screen.getByRole('region', { name: 'System health' }));
-        const report = health.getByRole('article', { name: 'Overall service status' });
+        const report = health.getByRole('article', { name: 'Atlas Core health' });
         const guidance = health.getByText('How to read health');
         expect(report).toBeVisible();
         expect(report.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -585,7 +585,7 @@ it('integrates one health summary with independent source freshness and safe rea
     });
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
-    const core = within(screen.getByRole('article', { name: 'Overall service status' }));
+    const core = within(screen.getByRole('article', { name: 'Atlas Core health' }));
     expect(core.getByText('Healthy')).toBeInTheDocument();
     const ace = within(screen.getByRole('article', { name: 'System findings' }));
     expect(ace.queryByText('Healthy', { exact: true })).not.toBeInTheDocument();

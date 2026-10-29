@@ -39,7 +39,7 @@ test('overview separates initial loading from unavailable data across dashboard 
         await expect(agent.getByText('Loading Agent details…')).toBeVisible();
         await expect(providers.getByText('Loading providers…')).toBeVisible();
         await expect(providers.getByText('Provider configuration unknown.')).toHaveCount(0);
-        for (const name of ['Overall service status', 'System findings', 'Policy settings check']) {
+        for (const name of ['Atlas Core health', 'System findings', 'Policy settings check']) {
             const report = healthReports.getByRole('article', { name });
             await expect(report.getByRole('status')).toHaveText('Checking…');
             await expect(report.getByText('Unknown', { exact: true })).toHaveCount(0);
@@ -60,7 +60,7 @@ test('overview separates initial loading from unavailable data across dashboard 
     await expect(agent.getByText('Version', { exact: true })).toBeVisible();
     await expect(agent.getByText('browser-fixture', { exact: true })).toBeVisible();
     await expect(providers.getByText('Saved providers and the status Atlas reports for each one.')).toBeVisible();
-    await expect(healthReports.getByRole('article', { name: 'Overall service status' }).getByText('Healthy', { exact: true })).toBeVisible();
+    await expect(healthReports.getByRole('article', { name: 'Atlas Core health' }).getByText('Healthy', { exact: true })).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'System findings' }).getByText('Healthy', { exact: true })).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'Policy settings check' }).getByText('Last known report (out of date): Healthy.')).toBeVisible();
 });
@@ -411,7 +411,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await expect(attention.getByText('Reported status: offline', { exact: true })).toHaveCount(0);
     await expect(attention.getByText('Check time unavailable.', { exact: true })).toHaveCount(0);
     await expect(attention.getByText('Capacity limited')).toBeVisible();
-    await expect(page.getByRole('article', { name: 'Overall service status' }).getByText('Status unknown', { exact: true })).toBeVisible();
+    await expect(page.getByRole('article', { name: 'Atlas Core health' }).getByText('Status unknown', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await attention.getByRole('link', { name: 'API', exact: true }).click();
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
@@ -489,7 +489,7 @@ for (const width of [390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto('/');
         const health = page.getByRole('region', { name: 'System health', exact: true });
-        const coreReport = health.getByRole('article', { name: 'Overall service status' });
+        const coreReport = health.getByRole('article', { name: 'Atlas Core health' });
         await expect(coreReport).toBeVisible();
         const reportBox = await coreReport.boundingBox();
         const guidanceBox = await health.getByText('How to read health').boundingBox();
