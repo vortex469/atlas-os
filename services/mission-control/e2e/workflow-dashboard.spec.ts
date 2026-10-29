@@ -124,6 +124,7 @@ for (const width of [320, 390, 1280]) {
         } }));
         await page.goto("/workflows");
         await expect(page.getByText("No workflows yet.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Workflow summary counts" })).toHaveCount(0);
         await expect(page.getByText("0 workflows", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });

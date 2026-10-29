@@ -336,6 +336,7 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([]));
         renderDashboard();
         expect(await screen.findByText("No workflows yet.")).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Workflow summary counts" })).not.toBeInTheDocument();
         expect(screen.queryByText("0 workflows", { exact: true })).not.toBeInTheDocument();
 
         vi.mocked(listWorkflows).mockReset();

@@ -2645,3 +2645,10 @@ remains read-only. Audit fields, validation, and workflow controls are
 unchanged. The WorkflowAuditPage suite passes (26 tests), as do Mission Control
 lint/build and all 11 built repository journey browser checks at phone and
 desktop widths.
+
+## Workflow dashboard empty state — 2026-10-29
+
+When no workflows are loaded, the dashboard now shows the empty-state message
+without six redundant zero-count cards above it. Counts remain visible when
+there are workflows to summarize. The focused dashboard suite passes (17
+tests), and Mission Control lint and production build pass.
