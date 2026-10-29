@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import {
@@ -8,11 +9,12 @@ import {
 import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageStatus, WorkflowOperationalLifecycle } from "../types/atlasAgent";
 import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 interface AuditStageDefinition {
     stage: WorkflowAuditStageName;
     title: string;
-    details: (audit: WorkflowAuditResponse) => { label: string; value: string }[];
+    details: (audit: WorkflowAuditResponse) => { label: string; value: ReactNode }[];
 }
 
 const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
@@ -34,8 +36,8 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
             { label: "Planning session ID", value: audit.planning.planning_session_id ?? "Not started" },
             { label: "Planning state", value: audit.planning.planning_state ?? "Not exposed" },
             { label: "Planning status", value: audit.planning.planning_status ?? "Not exposed" },
-            { label: "Created at", value: audit.planning.created_at ?? "Not available" },
-            { label: "Planning completed at", value: audit.planning.planning_completed_at ?? "Not available" },
+            { label: "Created (local time)", value: formatAuditTimestamp(audit.planning.created_at) },
+            { label: "Planning completed (local time)", value: formatAuditTimestamp(audit.planning.planning_completed_at) },
         ],
     },
     {
@@ -101,8 +103,8 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not exposed" },
             { label: "Verification check IDs", value: audit.verification.verification_check_ids.length > 0 ? audit.verification.verification_check_ids.join(", ") : "None reported" },
             { label: "Repository head", value: audit.verification.repository_head ?? "Not exposed" },
-            { label: "Verification started at", value: audit.verification.verification_started_at ?? "Not available" },
-            { label: "Verification completed at", value: audit.verification.verification_completed_at ?? "Not available" },
+            { label: "Verification started (local time)", value: formatAuditTimestamp(audit.verification.verification_started_at) },
+            { label: "Verification completed (local time)", value: formatAuditTimestamp(audit.verification.verification_completed_at) },
         ],
     },
     {
@@ -121,8 +123,8 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not available" },
             { label: "Repository head", value: audit.verification.repository_head ?? "Not available" },
-            { label: "Verification started at", value: audit.verification.verification_started_at ?? "Not available" },
-            { label: "Verification completed at", value: audit.verification.verification_completed_at ?? "Not available" },
+            { label: "Verification started (local time)", value: formatAuditTimestamp(audit.verification.verification_started_at) },
+            { label: "Verification completed (local time)", value: formatAuditTimestamp(audit.verification.verification_completed_at) },
         ],
     },
     {
@@ -396,7 +398,15 @@ function normalizeStageNameStatus(status: WorkflowAuditStageStatus): WorkflowAud
     return status;
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function formatAuditTimestamp(value: string | null): ReactNode {
+    if (value === null) return "Not available";
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+}
+
+function Detail({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div>
             <dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt>

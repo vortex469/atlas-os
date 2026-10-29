@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
@@ -10,6 +11,7 @@ import {
     getCandidatePlanningSession,
 } from "../api/atlas-agent";
 import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
@@ -405,7 +407,7 @@ function MaintenancePlanViewer({ plan }: { plan: OperationalCandidatePlanApiResp
                 <Detail label="Target fingerprint" value={plan.target_fingerprint} />
                 <Detail label="Target version" value={plan.target_version ?? "Not supplied"} />
                 <Detail label="Candidate fingerprint" value={plan.candidate_fingerprint} />
-                <Detail label="Created time" value={plan.created_at} />
+                <Detail label="Created (local time)" value={formatPlanTimestamp(plan.created_at)} />
             </dl>
             <ListPanel title="Evidence IDs" values={plan.evidence_ids} empty="No evidence IDs listed." />
         </details>
@@ -441,7 +443,14 @@ function PlanViewer({ plan }: { plan: CandidatePlanApiResponse }) {
     );
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function formatPlanTimestamp(value: string): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+}
+
+function Detail({ label, value }: { label: string; value: ReactNode }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value}</dd></div>;
 }
 

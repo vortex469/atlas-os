@@ -429,6 +429,9 @@ describe("DiscoveryItemPage", () => {
         expect(within(summary as HTMLElement).getByText("Compatible")).toBeInTheDocument();
         expect(screen.getByText("Catalog item status is active.")).toBeInTheDocument();
         expect(screen.getByText("Checked (local time)")).toBeInTheDocument();
+        const checkTime = screen.getByText("Checked (local time)").parentElement?.querySelector("time");
+        expect(checkTime).toHaveAttribute("datetime", "2026-08-05T18:00:00.000Z");
+        expect(checkTime).toHaveTextContent(new Date("2026-08-05T18:00:00.000Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(screen.queryByText("2026-08-05T18:00:00.000Z")).not.toBeVisible();
         const finding = screen.getByText("Catalog item status is active.").closest("article");
         const technicalDetails = within(finding as HTMLElement).getByText("Evidence and technical details").closest("details");
@@ -440,6 +443,18 @@ describe("DiscoveryItemPage", () => {
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
         expect(await screen.findByRole("heading", { name: "Image grounding" })).toBeInTheDocument();
         expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledWith("frigate");
+    });
+
+    it("does not present malformed compatibility check time as verified local time", async () => {
+        mockedGetDiscoveryCompatibility.mockResolvedValue(
+            compatibilityAssessment({ checked_at: "2026-02-30T12:00:00Z" }),
+        );
+        renderPage();
+
+        expect(await screen.findByText("Checked (local time)")).toBeInTheDocument();
+        const checkTime = screen.getByText("Checked (local time)").parentElement;
+        expect(checkTime).toHaveTextContent("Time unavailable");
+        expect(checkTime?.querySelector("time")).toBeNull();
     });
 
     it("shows loading and failure without plan details", async () => {

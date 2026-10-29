@@ -179,6 +179,42 @@ describe("WorkflowAuditPage", () => {
         expect(within(commitStage).getByText("Commit SHA")).toBeInTheDocument();
     });
 
+    it("shows audit timestamps as local times with their exact source instants", async () => {
+        renderAuditPage();
+        await screen.findByRole("heading", { name: "Workflow audit" });
+
+        const planningStage = screen.getByRole("region", { name: "Planning, Completed" });
+        fireEvent.click(within(planningStage).getByText("Planning", { exact: true }));
+        for (const [label, timestamp] of [
+            ["Created (local time)", "2026-08-01T10:00:00Z"],
+            ["Planning completed (local time)", "2026-08-01T10:00:30Z"],
+        ]) {
+            const time = within(planningStage).getByText(label).parentElement?.querySelector("time");
+            expect(time).toHaveAttribute("datetime", timestamp);
+            expect(time).toHaveTextContent(new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        }
+
+        const verificationStage = screen.getByRole("region", { name: "Checks to run, Completed" });
+        fireEvent.click(within(verificationStage).getByText("Checks to run", { exact: true }));
+        const started = within(verificationStage).getByText("Verification started (local time)").parentElement?.querySelector("time");
+        const completed = within(verificationStage).getByText("Verification completed (local time)").parentElement?.querySelector("time");
+        expect(started).toHaveAttribute("datetime", "2026-08-01T10:01:00Z");
+        expect(completed).toHaveAttribute("datetime", "2026-08-01T10:02:00Z");
+    });
+
+    it("marks malformed audit timestamps unavailable instead of exposing raw values", async () => {
+        const response = audit();
+        response.planning.created_at = "2026-02-30T10:00:00Z";
+        mockedGetWorkflowAudit.mockResolvedValue(response);
+        renderAuditPage();
+        await screen.findByRole("heading", { name: "Workflow audit" });
+
+        const planningStage = screen.getByRole("region", { name: "Planning, Completed" });
+        fireEvent.click(within(planningStage).getByText("Planning", { exact: true }));
+        expect(within(planningStage).getByText("Created (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(within(planningStage).queryByText("2026-02-30T10:00:00Z")).not.toBeInTheDocument();
+    });
+
     it("shows in-progress stages as Not started", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(audit({
             workflow_state: "awaiting_verification_approval",

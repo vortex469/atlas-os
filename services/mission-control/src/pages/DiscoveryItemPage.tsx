@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
+import type { ReactNode } from "react";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -23,6 +24,7 @@ import type {
 } from "../types/discovery";
 import type { InstallationPlan } from "../types/installationPlan";
 import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { DiscoveryEvidencePanel } from "../features/discovery/DiscoveryEvidencePanel";
 import {
     DiscoveryImageGroundingPanel,
@@ -637,7 +639,7 @@ function CompatibilityPanel({
                         <KeyValue label="Catalog item ID" value={compatibility.item_id} />
                         <KeyValue label="Target ID" value={compatibility.target_id} />
                         <KeyValue label="Evidence records" value={String(compatibility.evidence.length)} />
-                        <KeyValue label="Recorded check time" value={compatibility.checked_at} />
+                    <KeyValue label="Recorded check time (UTC)" value={compatibility.checked_at} />
                     </dl>
                 </details>
             </InfoPanel>
@@ -931,7 +933,7 @@ function Badge({ children }: { children: string }) {
     );
 }
 
-function KeyValue({ label, value }: { label: string; value: string }) {
+function KeyValue({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div className="grid gap-1 sm:grid-cols-[8rem_1fr]">
             <dt className="text-slate-500">{label}</dt>
@@ -977,7 +979,9 @@ function formatUnknownFact(value: string): string {
     return separator < 0 ? label : `${label}: ${formatLabel(value.slice(separator + 1))}`;
 }
 
-function formatLocalTimestamp(value: string): string {
-    const timestamp = new Date(value);
-    return Number.isNaN(timestamp.getTime()) ? "Time unavailable" : timestamp.toLocaleString();
+function formatLocalTimestamp(value: string): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }

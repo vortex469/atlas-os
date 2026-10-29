@@ -117,6 +117,9 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
         expect(screen.getByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/candidate-1");
+        const createdTime = screen.getByText("Created (local time)").parentElement?.querySelector("time");
+        expect(createdTime).toHaveAttribute("datetime", "2026-01-01T12:00:00Z");
+        expect(createdTime).toHaveTextContent(new Date("2026-01-01T12:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(screen.queryByText("Supported intent")).not.toBeInTheDocument();
         expect(screen.queryByText("update-compose-stack")).not.toBeInTheDocument();
         expect(screen.queryByText("Affected repository")).not.toBeInTheDocument();
@@ -136,6 +139,19 @@ describe("PlanningSessionPage", () => {
         await user.click(screen.getByRole("button", { name: "Create Workflow" }));
         await screen.findByRole("link", { name: "Open Workflow" });
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledExactlyOnceWith("candidate-plan-1");
+    });
+
+    it("does not expose a malformed plan creation time as verified evidence", async () => {
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({
+            status: "plan_ready",
+            operational_plan: operationalPlan({ created_at: "2026-02-30T12:00:00Z" }),
+        }));
+        renderPage();
+
+        await screen.findByRole("heading", { name: /^Maintenance plan$/ });
+        fireEvent.click(screen.getByText("Plan references", { exact: true }));
+        expect(screen.getByText("Created (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.queryByText("2026-02-30T12:00:00Z")).not.toBeInTheDocument();
     });
 
     it("keeps maintenance review read-only when planning is unavailable", async () => {
