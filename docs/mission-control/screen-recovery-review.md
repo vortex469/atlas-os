@@ -247,6 +247,14 @@ The two-step confirmation, exact statement, operator checks, and saved record
 behavior are unchanged. Loading, missing-record, and error messages use the
 same review-record language as the preceding screen.
 
+## Installation run review — 2026-10-29
+
+The next installation review step now explains that its saved record does not
+choose a machine or start work. Blockers and confirmation actions use plain
+language, and record times use a readable UTC format. A failed record read now
+offers a safe retry; a failed save does not offer another save attempt. Request
+contracts and operator checks are unchanged.
+
 ## Provider detail status simplification — 2026-10-28
 
 Provider health appears once as a readable badge; the duplicate status metric
