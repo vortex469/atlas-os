@@ -2799,3 +2799,21 @@ The maintenance form now says directly that Atlas will not select a VM from a
 suggestion and asks the operator to choose a running VM. Request and approval
 behavior are unchanged. The focused MaintenanceRequestPage suite passes
 (32 tests), along with Mission Control lint and production build.
+
+## Discovery suggestion summary — 2026-10-29
+
+Discovery proposal cards now lead with the catalog item, current status and
+compatibility. Suggestion IDs, source, reference counts, timestamps and target
+hints are available under a closed “More about this suggestion” disclosure.
+The permission and review-only messages use plain language. Navigation and
+maintenance authority remain unchanged. The focused DiscoveryProposalCard,
+DiscoveryItemPage and MaintenanceRequestPage suites pass (78 tests); the built
+sign-in journey passes at 320, 390 and 1280 pixels (5 tests), as do lint and
+production build.
+
+## Planning workflow pending state — 2026-10-29
+
+While a workflow is being created, the planning button now carries the pending
+label without repeating the same message beside it. The disabled state and
+separate implementation approval remain unchanged. The focused planning page
+suite passes (36 tests), along with Mission Control lint and production build.

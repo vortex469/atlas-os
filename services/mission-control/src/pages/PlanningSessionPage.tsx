@@ -303,7 +303,6 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                             <button type="button" onClick={createWorkflow} disabled={isCreatingWorkflow} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                                 {isCreatingWorkflow ? "Creating workflow..." : "Create Workflow"}
                             </button>
-                            {isCreatingWorkflow && <p className="text-sm text-slate-400">Creating workflow...</p>}
                         </div>
                     )}
                     {workflowError && (

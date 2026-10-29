@@ -32,13 +32,18 @@ function renderCard(value: DiscoveryProposalNavigation) {
 }
 
 describe("DiscoveryProposalCard", () => {
-    it("renders sanitized current proposal context and advisory authority warning", () => {
+    it("keeps the suggestion summary visible and optional details collapsed", () => {
         renderCard(proposal());
+        expect(screen.getByText("Suggestion")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeVisible();
         expect(screen.getByText("Status: Current")).toBeInTheDocument();
-        expect(screen.getByText("1")).toBeInTheDocument();
-        expect(screen.getByText("2")).toBeInTheDocument();
-        expect(screen.getByText("atlas / proxmox / qemu")).toBeInTheDocument();
-        expect(screen.getByText(/re-check your permission/i)).toBeInTheDocument();
+        expect(screen.getByText("Compatibility").parentElement).toHaveTextContent("Compatible");
+        expect(screen.getByText("Compatibility").parentElement).toBeVisible();
+        expect(screen.getByText(/Atlas checks your permission and the current VM details/i)).toBeVisible();
+        const details = screen.getByText("More about this suggestion").closest("details");
+        expect(details).not.toHaveAttribute("open");
+        expect(screen.getByText(/atlas \/ proxmox \/ qemu/)).not.toBeVisible();
+        expect(screen.getByText(/Suggestion ID:/)).not.toBeVisible();
         expect(screen.getByRole("link", { name: /Continue to maintenance selection/i })).toHaveAttribute("href", "/operations/request");
         expect(screen.queryByText(/vmgenid|provider action|target fingerprint/i)).not.toBeInTheDocument();
     });
@@ -66,7 +71,7 @@ describe("DiscoveryProposalCard", () => {
         ["not_actionable", "evidence_missing"],
     ] as const)("renders %s/%s as review only", (status, reason) => {
         renderCard(proposal({ status, reason, actionable_navigation: false }));
-        expect(screen.getByText(/Review only: operational navigation is disabled/i)).toBeInTheDocument();
+        expect(screen.getByText(/This suggestion can’t be used to request maintenance/i)).toBeVisible();
         expect(screen.getByRole("link", { name: /View catalog item/i })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: /maintenance selection/i })).not.toBeInTheDocument();
     });

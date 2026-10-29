@@ -415,7 +415,7 @@ describe("PlanningSessionPage", () => {
         await user.dblClick(button);
 
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
-        expect(screen.getAllByText("Creating workflow...").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Creating workflow...")).toHaveLength(1);
         resolveRequest(workflow());
         expect(await screen.findByText("Workflow created. Implementation has not run and still needs separate approval.")).toBeInTheDocument();
     });

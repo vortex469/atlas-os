@@ -12,7 +12,7 @@ const destinationLabels = {
 } as const;
 
 function label(value: string): string {
-    return value.replaceAll("_", " ").replace(/\b\w/g, (part) => part.toUpperCase());
+    return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (part) => part.toUpperCase());
 }
 
 function isReviewOnly(proposal: DiscoveryProposalNavigation): boolean {
@@ -53,47 +53,54 @@ export function DiscoveryProposalCard({
         <article className="space-y-4 rounded-xl border border-slate-700 bg-slate-950/60 p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <p className="text-xs uppercase tracking-wider text-slate-500">Advisory proposal</p>
-                    <h3 className="mt-1 font-semibold text-slate-100">{proposal.catalog_item_id}</h3>
-                    <p className="mt-1 break-all text-xs text-slate-500">{proposal.proposal_id}</p>
+                    <p className="text-xs uppercase tracking-wider text-slate-500">Suggestion</p>
+                    <h3 className="mt-1 font-semibold text-slate-100">{label(proposal.catalog_item_id)}</h3>
                 </div>
                 <span className="rounded-full border border-slate-600 px-2.5 py-1 text-xs text-slate-200">
                     Status: {label(proposal.status)}
                 </span>
             </div>
 
-            <dl className="grid gap-2 text-sm sm:grid-cols-2">
-                <Fact name="Reason" value={label(proposal.reason)} />
+            <dl className="text-sm">
                 <Fact name="Compatibility" value={compatibilityStatusLabel(proposal.compatibility_status)} />
-                <Fact name="Destination" value={label(proposal.destination_kind)} />
-                <Fact name="Catalog source" value={label(proposal.catalog_source_type)} />
-                <Fact name="Finding references" value={String(proposal.finding_reference_count)} />
-                <Fact name="Evidence references" value={String(proposal.evidence_reference_count)} />
-                <TimeFact name="Generated" value={proposal.generated_at} />
-                <TimeFact name="Expires" value={proposal.expires_at} />
-                {proposal.intent_hint && <Fact name="Intent hint" value={proposal.intent_hint} />}
             </dl>
 
-            {proposal.target_hints.length > 0 && (
-                <div>
-                    <p className="text-xs uppercase tracking-wider text-slate-500">Non-authoritative target hints</p>
-                    <ul className="mt-2 space-y-1 text-xs text-slate-400">
-                        {proposal.target_hints.map((hint, index) => (
-                            <li key={`${hint.catalog_target_id ?? ""}-${hint.provider_hint ?? ""}-${hint.resource_type_hint ?? ""}-${index}`}>
-                                {[hint.catalog_target_id, hint.provider_hint, hint.resource_type_hint].filter(Boolean).join(" / ")}
-                            </li>
-                        ))}
-                    </ul>
+            <details className="text-sm text-slate-300">
+                <summary className="cursor-pointer text-xs text-slate-400">More about this suggestion</summary>
+                <div className="mt-3 space-y-3">
+                    <p className="break-all text-xs text-slate-500">Suggestion ID: {proposal.proposal_id}</p>
+                    <dl className="grid gap-2 sm:grid-cols-2">
+                        <Fact name="Reason" value={label(proposal.reason)} />
+                        <Fact name="Destination" value={label(proposal.destination_kind)} />
+                        <Fact name="Catalog source" value={label(proposal.catalog_source_type)} />
+                        <Fact name="Finding references" value={String(proposal.finding_reference_count)} />
+                        <Fact name="Evidence references" value={String(proposal.evidence_reference_count)} />
+                        <TimeFact name="Generated" value={proposal.generated_at} />
+                        <TimeFact name="Expires" value={proposal.expires_at} />
+                        {proposal.intent_hint && <Fact name="Intent hint" value={label(proposal.intent_hint)} />}
+                    </dl>
+                    {proposal.target_hints.length > 0 && (
+                        <div>
+                            <p className="text-xs uppercase tracking-wider text-slate-500">Suggested target hints</p>
+                            <ul className="mt-2 space-y-1 text-xs text-slate-400">
+                                {proposal.target_hints.map((hint, index) => (
+                                    <li key={`${hint.catalog_target_id ?? ""}-${hint.provider_hint ?? ""}-${hint.resource_type_hint ?? ""}-${index}`}>
+                                        {[hint.catalog_target_id, hint.provider_hint, hint.resource_type_hint].filter(Boolean).join(" / ")}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
-            )}
+            </details>
 
             {reviewOnly ? (
                 <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-                    Review only: operational navigation is disabled because this proposal is {label(proposal.status).toLowerCase()} ({label(proposal.reason).toLowerCase()}).
+                    This suggestion can’t be used to request maintenance. You can still review the catalog item.
                 </p>
             ) : (
                 <p className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-200">
-                    This proposal is advisory. Atlas will re-check your permission and reload current capability descriptors, the authoritative selector, and its fingerprint. Proposal hints do not authorize an action.
+                    This is only a suggestion. Atlas checks your permission and the current VM details before creating a maintenance request.
                 </p>
             )}
 

@@ -104,6 +104,11 @@ for (const width of [320, 390, 1280]) {
         await expect(sourceDetails.getByText("fixture-owner/fixture-app", { exact: true })).toBeVisible();
         await expect(releaseEvidence.getByText("Freshness expires (local time)", { exact: true })).toBeVisible();
         const proposalCard = page.locator("article").filter({ hasText: proposal.proposal_id });
+        const suggestionDetails = proposalCard.getByText("More about this suggestion", { exact: true }).locator("xpath=ancestor::details");
+        await expect(suggestionDetails).not.toHaveAttribute("open");
+        await expect(proposalCard.getByText("Generated (local time)")).toBeHidden();
+        await expect(proposalCard.getByText("Expires (local time)")).toBeHidden();
+        await suggestionDetails.getByText("More about this suggestion", { exact: true }).click();
         await expect(proposalCard.getByText("Generated (local time)")).toBeVisible();
         await expect(proposalCard.getByText("Expires (local time)")).toBeVisible();
         await page.getByRole("link", { name: "Continue to maintenance selection for fixture-app" }).click();
@@ -115,7 +120,7 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
         await expect(page.getByRole("heading", { name: "Request a restart proposal" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Suggestion details" })).toBeVisible();
-        await expect(page.getByText("This suggestion cannot select a VM for you. Choose one from the VM list below.")).toBeVisible();
+        await expect(page.getByText("Atlas will not choose a VM from this suggestion. Select a running VM below.")).toBeVisible();
         await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).not.toBeChecked();
         await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
         expect(logins).toBe(1);

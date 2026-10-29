@@ -510,7 +510,7 @@ describe("DiscoveryItemPage", () => {
         });
         renderPage();
         expect(await screen.findByRole("heading", { name: "Operator proposals" })).toBeInTheDocument();
-        expect(await screen.findByText("Advisory proposal")).toBeInTheDocument();
+        expect(await screen.findByText("Suggestion")).toBeInTheDocument();
         expect(mockedListDiscoveryProposals).toHaveBeenCalledWith(25);
         expect(screen.queryByText("other")).not.toBeInTheDocument();
     });
