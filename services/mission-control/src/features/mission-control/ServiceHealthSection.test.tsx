@@ -107,7 +107,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
         expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
-        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run a network test from the machine running Atlas Core. If Atlas Core runs in Docker Compose, run it inside the atlas-core container. A test from the service's machine or your browser only checks that machine's connection.");
+        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run a network test from the machine running Atlas Core. If Atlas Core runs in Docker Compose, run it inside the atlas-core container. Run Compose commands from the folder containing Atlas's Compose file, or pass its full path with --file. A test from the service's machine or your browser only checks that machine's connection.");
         expect(screen.getByText(/"version"/)).not.toBeVisible();
         await user.click(screen.getByText("Technical details"));
         expect(screen.getByText(/"version"/)).toBeVisible();

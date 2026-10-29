@@ -2750,6 +2750,9 @@ valid and malformed values.
 The health drawer now says where to test connectivity: from the machine running
 Atlas Core, inside its `atlas-core` Compose service when applicable. A
 connection-refused result points operators to the service host, its listening
-port, Docker port publication when used, then a repeat test from Core. Health
-probe behavior and service state are unchanged. The focused service-health
-suite covers the location and recovery guidance.
+port, Docker port publication when used, then a repeat test from Core. Compose
+instructions clarify that commands belong in the folder containing Atlas's
+Compose file, or can name that file with `--file`. This addresses the common
+case where a shell opens in a different directory. Health probe behavior and
+service state are unchanged. The focused service-health suite covers the
+location and recovery guidance.

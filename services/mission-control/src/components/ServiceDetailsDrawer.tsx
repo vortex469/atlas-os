@@ -144,7 +144,7 @@ export function ServiceDetailsDrawer({
                             </dd>
                         </dl>
                         <p className="mt-2 text-sm text-slate-400">
-                            Run a network test from the machine running Atlas Core. If Atlas Core runs in Docker Compose, run it inside the <code>atlas-core</code> container. A test from the service's machine or your browser only checks that machine's connection.
+                            Run a network test from the machine running Atlas Core. If Atlas Core runs in Docker Compose, run it inside the <code>atlas-core</code> container. Run Compose commands from the folder containing Atlas&apos;s Compose file, or pass its full path with <code>--file</code>. A test from the service&apos;s machine or your browser only checks that machine&apos;s connection.
                         </p>
                         {nextCheck && (
                             <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
