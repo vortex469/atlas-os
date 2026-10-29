@@ -143,7 +143,8 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage();
         expect(await screen.findByText("Matching maintenance evidence is unavailable. Refresh to check again.")).toBeInTheDocument();
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Refresh maintenance evidence" }));
+        expect(screen.queryByRole("button", { name: "Refresh maintenance evidence" })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
         expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
     });
 

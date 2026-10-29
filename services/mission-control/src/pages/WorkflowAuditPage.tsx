@@ -365,7 +365,6 @@ function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
             </details>
         </section>
         <OperationalLifecyclePanel lifecycle={lifecycle} isLoading={loading && !lifecycle} isRefreshing={loading} error={error} onRefresh={() => void load()} />
-        {error && <button type="button" disabled={loading} onClick={() => void load()} className="mc-control mc-focusable px-4 py-2 text-sm">Refresh maintenance evidence</button>}
     </main>;
 }
 

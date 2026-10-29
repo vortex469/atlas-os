@@ -3188,3 +3188,9 @@ reported.
 Compatibility summaries now show a findings count only when there are findings.
 The “What Atlas found” panel remains the single clear empty state when none are
 reported.
+
+## Maintenance audit retry — 2026-10-29
+
+An unavailable maintenance status now has one retry button in its status panel.
+The duplicate page-level refresh button is removed; retrying still performs a
+read-only status check.
