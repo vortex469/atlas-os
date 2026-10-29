@@ -3312,3 +3312,7 @@ When a read-only installation-plan request fails, Discovery now offers
 retry returns it to a loading state before showing the result. The page test
 covers failure followed by successful recovery; the retry repeats only the GET
 request and adds no installation authority.
+
+The panel also distinguishes Core's not-found response from a temporary read
+failure. A missing plan item now explains that its catalog details remain
+available and does not suggest retrying a request that returned 404.

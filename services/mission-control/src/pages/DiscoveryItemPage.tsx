@@ -79,7 +79,8 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         plan: InstallationPlan | null;
         loading: boolean;
         unavailable: boolean;
-    }>({ itemId, plan: null, loading: true, unavailable: false });
+        notFound: boolean;
+    }>({ itemId, plan: null, loading: true, unavailable: false, notFound: false });
     const [installationPlanLoadAttempt, setInstallationPlanLoadAttempt] = useState(0);
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
@@ -137,19 +138,20 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
-                setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false });
+                setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false, notFound: false });
             }
         });
         getDiscoveryInstallationPlan(itemId)
             .then((plan) => {
                 if (!cancelled) {
                     if (plan.application.item_id !== itemId) throw new Error("The installation plan does not match this catalog item.");
-                    setInstallationPlanState({ itemId, plan, loading: false, unavailable: false });
+                    setInstallationPlanState({ itemId, plan, loading: false, unavailable: false, notFound: false });
                 }
             })
-            .catch(() => {
+            .catch((requestError: unknown) => {
                 if (!cancelled) {
-                    setInstallationPlanState({ itemId, plan: null, loading: false, unavailable: true });
+                    const notFound = isAxiosError(requestError) && requestError.response?.status === 404;
+                    setInstallationPlanState({ itemId, plan: null, loading: false, unavailable: !notFound, notFound });
                 }
             });
         return () => { cancelled = true; };
@@ -157,7 +159,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
 
     const currentInstallationPlan = installationPlanState.itemId === itemId
         ? installationPlanState
-        : { itemId, plan: null, loading: true, unavailable: false };
+        : { itemId, plan: null, loading: true, unavailable: false, notFound: false };
 
     useEffect(() => {
         if (!hasCatalogItem) return;
@@ -375,7 +377,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
     }
 
     function retryInstallationPlan() {
-        setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false });
+        setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false, notFound: false });
         setInstallationPlanLoadAttempt((attempt) => attempt + 1);
     }
 
@@ -513,6 +515,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 plan={currentInstallationPlan.plan}
                 isLoading={currentInstallationPlan.loading}
                 unavailable={currentInstallationPlan.unavailable}
+                notFound={currentInstallationPlan.notFound}
                 onRetry={retryInstallationPlan}
                 csrfToken={operatorSession?.csrfToken ?? null}
             />

@@ -132,6 +132,14 @@ describe("InstallationPlanReview", () => {
         expect(onRetry).toHaveBeenCalledOnce();
     });
 
+    it("does not offer a retry when the plan service says the item was not found", () => {
+        render(<InstallationPlanReview plan={null} isLoading={false} unavailable={false} notFound />);
+
+        expect(screen.getByRole("status")).toHaveTextContent("No installation plan is available for this item.");
+        expect(screen.getByRole("status")).toHaveTextContent("Its catalog details remain available.");
+        expect(screen.queryByRole("button", { name: "Retry installation plan" })).not.toBeInTheDocument();
+    });
+
     it.each<[InstallationPlanStatus, string]>([
         ["conflicted", "Plan has conflicting information"],
         ["missing_deployment_artifact", "Installation file missing"],

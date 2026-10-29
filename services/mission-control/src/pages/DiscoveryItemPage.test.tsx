@@ -492,6 +492,17 @@ describe("DiscoveryItemPage", () => {
         expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledTimes(2);
     });
 
+    it("explains a missing plan item without suggesting a retry", async () => {
+        mockedGetDiscoveryInstallationPlan.mockRejectedValueOnce(httpError(404, "Installation plan item was not found."));
+        renderPage();
+
+        const status = await screen.findByText(/No installation plan is available for this item/);
+        expect(status).toHaveAttribute("role", "status");
+        expect(status).toHaveTextContent("Its catalog details remain available.");
+        expect(screen.queryByRole("button", { name: "Retry installation plan" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+    });
+
     it.each(["success", "failure"])(
         "never presents item A's plan as item B's plan when B ends in %s",
         async (outcome) => {
