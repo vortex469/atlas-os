@@ -13,25 +13,25 @@ function PlanReader({ admission }: { admission: WorkerActivationRuntimeAdmission
     // not trigger background reads while the previous Core status stays visible.
     const [scope] = useState(admission);
     const [state, setState] = useState<Evidence | "loading" | "missing" | "unavailable">("loading");
+    const [readAttempt, setReadAttempt] = useState(0);
     useEffect(() => {
         let current = true;
         getWorkerActivationRuntimePlan(scope)
             .then((value) => { if (current) setState(value ?? "missing"); })
             .catch(() => { if (current) setState("unavailable"); });
         return () => { current = false; };
-    }, [scope]);
+    }, [scope, readAttempt]);
     return <section aria-label="Worker runtime plan state" className="mt-3 rounded border border-slate-800 p-3 text-sm">
-        <h6 className="font-semibold">Worker runtime plan evidence</h6>
-        <p>Runtime plan is evidence; runtime prerequisites remain incomplete. Worker start and execution remain blocked.</p>
-        <p>Mission Control only displays Core evidence.</p>
-        {state === "loading" && <p role="status">Loading runtime plan state...</p>}
-        {state === "missing" && <p role="status">Core has no recorded runtime plan evidence for this admission.</p>}
-        {state === "unavailable" && <p role="status">Runtime plan evidence is unavailable. No runtime outcome can be confirmed.</p>}
+        <h6 className="font-semibold">Runtime plan review</h6>
+        <p>A saved plan is reference-only. It does not set up or start a runtime; worker start and execution are unavailable.</p>
+        {state === "loading" && <p role="status">Checking the runtime plan…</p>}
+        {state === "missing" && <p role="status">No runtime plan has been saved for this admission.</p>}
+        {state === "unavailable" && <div role="alert"><p>Atlas could not load the runtime plan. Retry to check its status.</p><button type="button" onClick={() => { setState("loading"); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
         {typeof state === "object" && <>
-            <p>Core recorded a reference-only runtime plan for this admission.</p>
-            <p>{state.lifecycle === "expired" ? "Core reports this plan evidence has expired." : "Core reports this plan evidence is active."}</p>
+            <p>Reference-only runtime plan saved.</p>
+            <p>{state.lifecycle === "expired" ? "This plan has expired." : "This plan is current."}</p>
             <details className="mt-3">
-                <summary>Advanced v0.55 evidence</summary>
+                <summary>Technical details</summary>
                 <dl>{Object.entries({ "Runtime plan ID": state.runtimePlanId, "Runtime admission ID": state.runtimeAdmissionId, "Prerequisite ID": state.prerequisiteId, "Admission ID": state.admissionId, "Candidate ID": state.candidateId, "Operator ID": state.operatorId, "Recorded at": state.recordedAt, "Valid until": state.validUntil, "Core evaluated at": state.evaluatedAt, "Exact duplicate": String(state.exactDuplicate), ...Object.fromEntries(Object.entries(state.fingerprints).map(([key, value]) => [`${key} fingerprint`, value.value])) }).map(([key, value]) => <div key={key}><dt>{key}</dt><dd className="break-all">{value}</dd></div>)}</dl>
                 <pre aria-label="Reference-only design">{JSON.stringify(state.design, null, 2)}</pre>
                 <pre aria-label="Exact admission lineage">{JSON.stringify(state.lineage, null, 2)}</pre>

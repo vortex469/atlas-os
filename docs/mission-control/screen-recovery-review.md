@@ -3086,3 +3086,8 @@ introduced.
 The nested runtime admission panel now separates a saved review from actual
 runtime readiness. It says worker start remains unavailable, keeps lineage
 collapsed, and retries only failed Core reads.
+
+The nested runtime plan panel now shows a concise saved, missing, or unavailable
+state. It clarifies that the plan is reference-only and does not set up or start
+a runtime; technical evidence remains collapsed. A failed Core read can be
+retried safely, while runtime start and execution remain unavailable.

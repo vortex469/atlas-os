@@ -10,9 +10,11 @@ describe("v0.55 read-only Mission Control isolation", () => {
         expect(api.match(/atlas\.get/g)).toHaveLength(2);
         expect(api.match(/withCredentials: true/g)).toHaveLength(2);
         expect(api + component).not.toMatch(/atlas\.(post|put|patch|delete)|setInterval|setTimeout|WebSocket|EventSource|Worker\(|localStorage|sessionStorage|document\.cookie|Authorization|Bearer|Date\.now|crypto\./);
-        expect(component).not.toMatch(/<(button|form|input|select|textarea)\b|dangerouslySetInnerHTML/i);
+        expect(component.match(/<(button|form|input|select|textarea)\b/gi) ?? []).toHaveLength(1);
+        expect(component).toMatch(/state === "unavailable" && .*Retry/s);
+        expect(component).not.toMatch(/dangerouslySetInnerHTML/i);
         expect(component).not.toMatch(/<details[^>]*\bopen/);
-        expect(component).toContain("Runtime plan is evidence; runtime prerequisites remain incomplete");
+        expect(component).toContain("A saved plan is reference-only. It does not set up or start a runtime");
     });
     it("has only exact evidence consumers nested beneath the prerequisite, with no navigation", () => {
         expect(parent).toContain("<WorkerActivationRuntimePlan admission={state} />");
