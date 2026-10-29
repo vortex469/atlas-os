@@ -154,3 +154,17 @@ for (const width of [390, 1280]) {
         expect(await page.evaluate(() => Boolean(document.activeElement?.closest("#mc-page-content")))).toBe(true);
     });
 }
+
+test("links without page-specific focus classes remain clearly visible to keyboard users", async ({ page }) => {
+    await page.goto("/operator/login");
+
+    const homeLink = page.getByRole("link", { name: "← Mission Control" });
+    await page.keyboard.press("Tab");
+    for (let tab = 0; tab < 30 && !(await homeLink.evaluate((element) => element === document.activeElement)); tab += 1) {
+        await page.keyboard.press("Tab");
+    }
+    await expect(homeLink).toBeFocused();
+    await expect(homeLink).toHaveCSS("outline-style", "solid");
+    await expect(homeLink).toHaveCSS("outline-width", "2px");
+    await expect(homeLink).toHaveCSS("outline-color", "rgb(34, 211, 238)");
+});
