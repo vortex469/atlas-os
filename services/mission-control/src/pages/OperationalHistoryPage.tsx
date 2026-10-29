@@ -55,6 +55,7 @@ export function OperationalHistoryPage() {
     const [items, setItems] = useState<HistoryItem[]>([]);
     const [offset, setOffset] = useState(0);
     const [total, setTotal] = useState(0);
+    const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [diagnosticFilter, setDiagnosticFilter] = useState("all");
@@ -64,6 +65,7 @@ export function OperationalHistoryPage() {
     const [resourceTypeFilter, setResourceTypeFilter] = useState("all");
 
     const requestGeneration = useRef(0);
+    const loadedOffsetRef = useRef<number | null>(null);
     const load = useCallback(async () => {
         const generation = ++requestGeneration.current;
         setIsLoading(true);
@@ -96,8 +98,14 @@ export function OperationalHistoryPage() {
             if (generation !== requestGeneration.current) return;
             setItems(page.items.map((workflow, index) => ({ workflow, ...evidence[index] })));
             setTotal(page.total);
+            loadedOffsetRef.current = offset;
+            setLoadedOffset(offset);
         } catch {
-            if (generation === requestGeneration.current) setError("Could not load maintenance history.");
+            if (generation === requestGeneration.current) {
+                setError(loadedOffsetRef.current === offset
+                    ? "Could not refresh maintenance history."
+                    : "Could not load maintenance history.");
+            }
         } finally {
             if (generation === requestGeneration.current) setIsLoading(false);
         }
@@ -119,6 +127,7 @@ export function OperationalHistoryPage() {
     const hasActiveMoreFilters = terminalFilter !== "all" || intentFilter !== "all"
         || providerFilter !== "all" || resourceTypeFilter !== "all";
     const hasActiveFilters = diagnosticFilter !== "all" || hasActiveMoreFilters;
+    const hasCurrentPage = loadedOffset === offset;
     const intentOptions = distinctFilterOptions(items.map(({ workflow }) => workflow.execution_intent), intentFilter);
     const providerOptions = distinctFilterOptions(items.map(({ lifecycle }) => lifecycle?.provider_id ?? null), providerFilter);
     const resourceTypeOptions = distinctFilterOptions(items.map(({ lifecycle }) => lifecycle?.resource_type ?? null), resourceTypeFilter);
@@ -137,10 +146,11 @@ export function OperationalHistoryPage() {
                 <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Maintenance</p><h1 className="mt-2 text-3xl font-semibold text-white">Maintenance history</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">Review past requests and the latest service status Atlas reported.</p></div>
                 <div className="flex gap-3"><Link to="/operations/request" className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100">Request maintenance</Link><button type="button" onClick={() => void load()} disabled={isLoading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50">Refresh history</button></div>
             </header>
-            {isLoading && <p role="status" className="text-slate-300">Loading operational history...</p>}
-            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} The maintenance outcome is unknown. Use Refresh history to check again.</p>}
-            {!isLoading && !error && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{offset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
-            {!isLoading && !error && items.length > 0 && <section aria-label="Operational history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+            {isLoading && !hasCurrentPage && <p role="status" className="text-slate-300">Loading operational history...</p>}
+            {isLoading && hasCurrentPage && <p role="status" className="text-slate-300">Refreshing maintenance history. The last loaded requests remain visible until this finishes.</p>}
+            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} {hasCurrentPage ? "The requests below are from the last successful load; their status may have changed." : "The maintenance outcome is unknown. Use Refresh history to check again."}</p>}
+            {hasCurrentPage && !isLoading && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{error ? "No maintenance requests were listed in the last successful load." : offset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
+            {hasCurrentPage && items.length > 0 && <section aria-label="Operational history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <p className="text-sm text-slate-400">Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <Filter label="Current status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
@@ -159,9 +169,10 @@ export function OperationalHistoryPage() {
                 </details>
                 {hasActiveFilters && <div className="flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100">Clear filters</button></div>}
             </section>}
-            {!isLoading && !error && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>No requests on this page match your filters.</p></section>}
-            {!isLoading && !error && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} />)}</section>}
-            {!isLoading && !error && (offset > 0 || total > PAGE_SIZE) && <nav aria-label="Operational history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} disabled={offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">{items.length > 0 ? `Showing ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}` : `${total} request${total === 1 ? "" : "s"} total`}</span><button type="button" onClick={() => setOffset((current) => current + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
+            {hasCurrentPage && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>No requests on this page match your filters.</p></section>}
+            {hasCurrentPage && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} />)}</section>}
+            {!hasCurrentPage && offset > 0 && <nav aria-label="Maintenance history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100">Previous</button></nav>}
+            {hasCurrentPage && (offset > 0 || total > PAGE_SIZE) && <nav aria-label="Operational history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} disabled={offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">{items.length > 0 ? `Showing ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}` : `${total} request${total === 1 ? "" : "s"} total`}</span><button type="button" onClick={() => setOffset((current) => current + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
         </main>
     );
 }

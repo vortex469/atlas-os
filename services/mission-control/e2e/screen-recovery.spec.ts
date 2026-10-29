@@ -1002,6 +1002,65 @@ for (const width of [320, 390, 1280]) {
 }
 
 for (const width of [390, 1280]) {
+    test(`maintenance history keeps the last loaded requests visible after refresh fails at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        let reads = 0;
+        let releaseRefresh!: () => void;
+        const refreshGate = new Promise<void>((resolve) => { releaseRefresh = resolve; });
+        await page.setViewportSize({ width, height: 844 });
+        await page.route("**/agent-api/**", async (route) => {
+            const path = new URL(route.request().url()).pathname;
+            if (path.endsWith("/workflows")) {
+                reads += 1;
+                if (reads > 1) {
+                    await refreshGate;
+                    return route.fulfill({ status: 503, json: { detail: "Unavailable" } });
+                }
+                return route.fulfill({ json: {
+                    items: [{ workflow_id: "stale-maintenance", workflow_source: "candidate",
+                        workflow_state: "completed", effect_kind: "operational_action",
+                        execution_intent: "restart-service", candidate_id: null,
+                        planning_session_id: null, repository: null, target_id: "VM 110",
+                        last_result_summary: "", timeline: [] }],
+                    total: 1, limit: 10, offset: 0,
+                } });
+            }
+            if (path.endsWith("/workflows/stale-maintenance/operational-lifecycle")) {
+                return route.fulfill({ json: operationalLifecycle({ workflow_id: "stale-maintenance" }) });
+            }
+            if (path.endsWith("/workflows/stale-maintenance/recovery-diagnostic")) {
+                return route.fulfill({ json: operationalDiagnostic({
+                    correlation: { workflow_id: "stale-maintenance", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true },
+                }) });
+            }
+            return route.fallback();
+        });
+
+        try {
+            await page.goto("/operations/history");
+
+            const item = page.getByRole("heading", { name: "Virtual machine 110" });
+            await expect(item).toBeVisible();
+            await page.getByRole("button", { name: "Refresh history" }).click();
+            const refreshing = page.getByRole("status").filter({ hasText: "The last loaded requests remain visible" });
+            await expect(refreshing).toBeVisible();
+            await expect(item).toBeVisible();
+            releaseRefresh();
+
+            const alert = page.getByRole("alert");
+            await expect(alert).toContainText("Could not refresh maintenance history.");
+            await expect(alert).toContainText("last successful load");
+            await expect(item).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Healthy", exact: true })).toBeVisible();
+            expect(reads).toBe(2);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+            expect(rejectedMutationRequests).toEqual([]);
+        } finally {
+            releaseRefresh();
+        }
+    });
+}
+
+for (const width of [390, 1280]) {
     test(`provider registry is reachable and links back from details at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/");

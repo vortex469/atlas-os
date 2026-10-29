@@ -155,6 +155,16 @@ summary remains the primary status. All 17 focused history component tests, the
 history browser recovery journey at 320, 390, and 1280 pixels, lint, and build
 pass.
 
+## Maintenance history refresh recovery — 2026-10-29
+
+Refreshing the current history page keeps the last loaded requests visible and
+labels them as the last successful results if the refresh fails. The warning
+states that their status may have changed. When moving to another page, results
+from the previous page stay hidden until the requested page loads. The focused
+history component suite passes (31 tests), and two responsive browser checks
+cover refresh-in-progress and refresh-failure states at 390px and 1280px. Lint
+and build pass. Refresh remains a read-only request.
+
 ## Workflow directory simplification follow-up — 2026-10-28
 
 Workflow cards now lead with the stage, latest result and approval status.

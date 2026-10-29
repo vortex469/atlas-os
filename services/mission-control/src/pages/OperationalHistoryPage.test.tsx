@@ -322,6 +322,46 @@ describe("maintenance history recovery", () => {
         expect(document.body.textContent).not.toContain("private diagnostic");
     });
 
+    it("keeps the last loaded requests visible and marks them as stale after refresh fails", async () => {
+        let rejectRefresh!: (reason: Error) => void;
+        const refresh = new Promise<Awaited<ReturnType<typeof listWorkflows>>>((_, reject) => {
+            rejectRefresh = reject;
+        });
+        mockedList.mockReset()
+            .mockResolvedValueOnce({ items: [historyWorkflow("restart-service")], total: 1, limit: 10, offset: 0 })
+            .mockReturnValueOnce(refresh);
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
+        expect(screen.getByRole("status")).toHaveTextContent("The last loaded requests remain visible");
+        expect(screen.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+
+        rejectRefresh(new Error("private history error"));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Could not refresh maintenance history.");
+        expect(alert).toHaveTextContent("last successful load");
+        expect(alert).toHaveTextContent("status may have changed");
+        expect(screen.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        expect(document.body.textContent).not.toContain("private history error");
+    });
+
+    it("does not show the previous page when loading another page fails", async () => {
+        const item = historyWorkflow("restart-service");
+        mockedList.mockReset()
+            .mockResolvedValueOnce({ items: [item], total: 11, limit: 10, offset: 0 })
+            .mockRejectedValueOnce(new Error("private history error"))
+            .mockResolvedValue({ items: [item], total: 11, limit: 10, offset: 0 });
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Next" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Could not load maintenance history.");
+        expect(screen.queryByRole("heading", { name: "Virtual machine 110" })).not.toBeInTheDocument();
+        fireEvent.click(within(screen.getByRole("navigation", { name: "Maintenance history pagination" })).getByRole("button", { name: "Previous" }));
+        expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+    });
+
     it("loads once during Strict Mode initialization", async () => {
         vi.clearAllMocks();
         mockedList.mockResolvedValue({ items: [], total: 0, limit: 10, offset: 0 });
