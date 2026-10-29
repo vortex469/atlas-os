@@ -194,7 +194,7 @@ test('Atlas Doctor stays collapsed under System health until an operator runs it
     await page.goto('/');
     const health = page.getByRole('region', { name: 'System health' });
     const disclosure = health.locator('details').filter({ hasText: 'Use Atlas Doctor' });
-    const doctorButton = disclosure.locator('button', { hasText: 'Run Doctor' });
+    const doctorButton = disclosure.locator('button', { hasText: 'Run health checks' });
     await expect(disclosure.locator('summary')).toBeVisible();
     await expect(disclosure).not.toHaveAttribute('open', '');
     await expect(doctorButton).toBeHidden();
@@ -205,7 +205,9 @@ test('Atlas Doctor stays collapsed under System health until an operator runs it
     expect(doctorReads).toBe(0);
     await doctorButton.click();
     await expect.poll(() => doctorReads).toBe(1);
-    await expect(disclosure.getByText('100/100')).toBeVisible();
+    await expect(disclosure.getByText('Health score: 100/100')).toBeVisible();
+    await expect(disclosure.getByText('Healthy', { exact: true })).toBeVisible();
+    await expect(disclosure.getByText('1 of 1 checks passed')).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
 });
 

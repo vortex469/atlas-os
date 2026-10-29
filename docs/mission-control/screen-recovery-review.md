@@ -2615,3 +2615,12 @@ Service reachability remains a separate report. The health source, status
 mapping, and freshness behavior are unchanged. The focused health and Overview
 suite passes (130 tests); all 30 built Overview and system-health browser cases,
 lint, and build pass.
+
+## Atlas Doctor results — 2026-10-29
+
+The Atlas Doctor action now says “Run health checks,” with the in-progress
+state and report count described in plain language. The result labels its
+health score and check count, and a failed request explains that no new report
+is available. The diagnostic request, report data, and health rules are
+unchanged. The focused Atlas Doctor and Overview suites pass (76 tests), as do
+Mission Control lint/build and the built Overview browser suite.

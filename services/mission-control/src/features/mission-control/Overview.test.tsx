@@ -323,7 +323,7 @@ describe("MC overview evidence", () => {
         const summary = health.getByText('Use Atlas Doctor');
         const disclosure = summary.closest('details') as HTMLDetailsElement;
         expect(disclosure.open).toBe(false);
-        const runButton = within(disclosure).getByText('Run Doctor').closest('button') as HTMLButtonElement;
+        const runButton = within(disclosure).getByText('Run health checks').closest('button') as HTMLButtonElement;
         expect(runButton).not.toBeVisible();
         fireEvent.click(summary);
         expect(disclosure.open).toBe(true);

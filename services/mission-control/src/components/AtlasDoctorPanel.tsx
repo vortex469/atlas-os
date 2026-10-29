@@ -53,6 +53,7 @@ export function AtlasDoctorPanel() {
               })),
           ]
         : [];
+    const passedCheckCount = report?.checks.filter((check) => check.passed).length ?? 0;
 
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
@@ -62,8 +63,7 @@ export function AtlasDoctorPanel() {
                         Atlas Doctor
                     </h2>
                     <p className="mt-1 text-sm text-slate-400">
-                        Validate configuration, infrastructure
-                        connectivity, and service health.
+                        Check Atlas configuration, connected services, and current health.
                     </p>
                 </div>
                 <button
@@ -72,16 +72,16 @@ export function AtlasDoctorPanel() {
                     disabled={isRunning}
                     className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    {isRunning ? "Running Doctor..." : "Run Doctor"}
+                    {isRunning ? "Checking health…" : "Run health checks"}
                 </button>
             </div>
 
-            {isRunning && <p role="status" className="mt-4 text-sm text-slate-300">Checking the latest health...</p>}
+            {isRunning && <p role="status" className="mt-4 text-sm text-slate-300">Checking current health…</p>}
 
             {error && (
                 <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                    <p className="font-semibold text-red-300">Atlas Doctor could not complete the check</p>
-                    <p className="mt-1 text-sm text-red-200/80">No new health report is available. Run Doctor again to check current health.</p>
+                    <p className="font-semibold text-red-300">Atlas Doctor could not finish its checks</p>
+                    <p className="mt-1 text-sm text-red-200/80">No new health report is available. Run the checks again to get current results.</p>
                     <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
                         <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
@@ -93,18 +93,17 @@ export function AtlasDoctorPanel() {
                 <div className="mt-5 space-y-4 border-t border-slate-800 pt-5">
                     <div className="flex flex-wrap items-center gap-3">
                         <span
-                            className={`rounded-full border px-2.5 py-1 text-xs font-medium uppercase ${statusClasses[report.status]}`}
+                            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${statusClasses[report.status]}`}
                         >
-                            {report.status}
+                            {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
                         </span>
                         <strong className="text-lg text-slate-100">
-                            {report.score}/100
+                            Health score: {report.score}/100
                         </strong>
                         <span className="text-xs text-slate-500">
-                            {report.checks.filter(
-                                (check) => check.passed,
-                            ).length}
-                            /{report.checks.length} checks passed
+                            {report.checks.length === 0
+                                ? "No checks were reported."
+                                : `${passedCheckCount} of ${report.checks.length} checks passed`}
                         </span>
                     </div>
 

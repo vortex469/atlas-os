@@ -22,7 +22,7 @@ describe("AtlasDoctorPanel", () => {
         vi.clearAllMocks();
     });
 
-    it("runs Doctor and displays its structured report", async () => {
+    it("runs health checks and displays their report in plain language", async () => {
         const user = userEvent.setup();
         mockedGetAtlasDoctorReport.mockResolvedValue({
             status: "degraded",
@@ -48,13 +48,14 @@ describe("AtlasDoctorPanel", () => {
         render(<AtlasDoctorPanel />);
 
         await user.click(
-            screen.getByRole("button", { name: "Run Doctor" }),
+            screen.getByRole("button", { name: "Run health checks" }),
         );
 
         expect(
-            await screen.findByText("95/100"),
+            await screen.findByText("Health score: 95/100"),
         ).toBeInTheDocument();
-        expect(screen.getByText("degraded")).toBeInTheDocument();
+        expect(screen.getByText("Degraded")).toBeInTheDocument();
+        expect(screen.getByText("1 of 2 checks passed")).toBeInTheDocument();
         expect(
             screen.getByText("Optional service offline."),
         ).toBeInTheDocument();
@@ -71,12 +72,12 @@ describe("AtlasDoctorPanel", () => {
         render(<AtlasDoctorPanel />);
 
         await user.click(
-            screen.getByRole("button", { name: "Run Doctor" }),
+            screen.getByRole("button", { name: "Run health checks" }),
         );
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Atlas Doctor could not complete the check");
-        expect(alert).toHaveTextContent("No new health report is available. Run Doctor again to check current health.");
+        expect(alert).toHaveTextContent("Atlas Doctor could not finish its checks");
+        expect(alert).toHaveTextContent("No new health report is available. Run the checks again to get current results.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Doctor unavailable.")).not.toBeVisible();
@@ -91,20 +92,20 @@ describe("AtlasDoctorPanel", () => {
             configuration_ok: true, checks: [], critical: [], warnings: [], information: [],
         });
         render(<AtlasDoctorPanel />);
-        await user.click(screen.getByRole("button", { name: "Run Doctor" }));
-        await screen.findByText("100/100");
+        await user.click(screen.getByRole("button", { name: "Run health checks" }));
+        await screen.findByText("Health score: 100/100");
         let rejectRead!: (reason: Error) => void;
         mockedGetAtlasDoctorReport.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
-        await user.click(screen.getByRole("button", { name: "Run Doctor" }));
-        expect(screen.getByRole("status")).toHaveTextContent("Checking the latest health");
-        expect(screen.queryByText("100/100")).not.toBeInTheDocument();
-        expect(screen.queryByText("healthy")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Running Doctor..." })).toBeDisabled();
+        await user.click(screen.getByRole("button", { name: "Run health checks" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Checking current health");
+        expect(screen.queryByText("Health score: 100/100")).not.toBeInTheDocument();
+        expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Checking health…" })).toBeDisabled();
         await act(async () => { rejectRead(new Error("Doctor unavailable.")); });
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Atlas Doctor could not complete the check");
+        expect(alert).toHaveTextContent("Atlas Doctor could not finish its checks");
         expect(alert).toHaveTextContent("No new health report is available.");
         expect(screen.queryByText("No critical issues or warnings detected.")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Run Doctor" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Run health checks" })).toBeEnabled();
     });
 });
