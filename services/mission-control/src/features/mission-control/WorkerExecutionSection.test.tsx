@@ -33,6 +33,9 @@ describe("Work activity summary", () => {
         expect(within(section).getByText("Workflow status could not be loaded.")).toBeVisible();
         expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
+        fireEvent.click(within(section).getByText("More workflow details"));
+        expect(within(section).getByText("Workflow outcomes aren't available.")).toBeVisible();
+        expect(within(section).queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
     it("shows an idle observation without inventing worker health or queue depth", () => {
         view(page([]));

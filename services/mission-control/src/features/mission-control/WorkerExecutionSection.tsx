@@ -106,7 +106,7 @@ function EvidenceList({ title, items, available, empty, outcomes = false }: {
     const displayed = showAll ? ordered : ordered.slice(0, 3);
     return <div>
         <h3 className="text-sm font-semibold text-mc-text-primary">{title}</h3>
-        {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Unknown"}</p> :
+        {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Workflow outcomes aren't available."}</p> :
             <ul aria-label={title} className="mt-2 space-y-2 text-sm">
                 {displayed.map((item) => <li key={item.workflow_id}>
                     <Link to={detailPath("/workflows", item.workflow_id)!} className="text-mc-primary focus-visible:outline-2">{workflowActionLabel(item.execution_intent)} · {workflowStatusLabel(item, outcomes)}</Link>

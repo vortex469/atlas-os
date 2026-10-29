@@ -3101,3 +3101,10 @@ The runtime interface inventory now shows a short saved, missing, or unavailable
 status and readable UTC times. It states that the inventory does not make a
 runtime ready, contact a worker, or allow start; technical lineage remains
 collapsed and failed Core reads can be retried safely.
+
+## Work activity unavailable outcomes — 2026-10-29
+
+When workflow status cannot be loaded, opening “More workflow details” now
+states that workflow outcomes are unavailable instead of showing the vague
+placeholder “Unknown.” The focused Work activity suite covers the unavailable
+state. Workflow reads, controls, and approval behavior are unchanged.
