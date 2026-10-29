@@ -481,7 +481,7 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await attention.getByText('Technical details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
     const runtime = page.getByRole('region', { name: 'AI provider' });
-    await expect(runtime.getByText('Provider details are unavailable.')).toBeVisible();
+    await expect(runtime.getByText("Atlas couldn't load AI provider status.")).toBeVisible();
     await expect(runtime.getByText('Use Refresh to try again.')).toHaveCount(0);
     await expect(runtime.getByText('Current information could not be loaded.', { exact: true })).toHaveCount(0);
     await expect(runtime.getByText('Unknown', { exact: true })).toHaveCount(0);

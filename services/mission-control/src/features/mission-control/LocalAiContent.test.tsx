@@ -37,7 +37,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("shows a clear empty state when no provider report is available", () => {
         const card = show({ data: undefined });
-        expect(card.getByText("AI provider information is not available.")).toBeInTheDocument();
+        expect(card.getByText("AI provider status is not available.")).toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
     it.each([null, [], {}, { provider: { online: true } }, { health: [], models: { installed: [null], running: {} } }])("keeps malformed provider evidence unknown: %j", value => {
@@ -73,7 +73,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("distinguishes observation failure from runtime offline", () => {
         const card = show({ unavailable: true });
-        expect(card.getByText("Provider details are unavailable.")).toBeInTheDocument();
+        expect(card.getByText("Atlas couldn't load AI provider status.")).toBeInTheDocument();
         expect(card.queryByText("Use Refresh to try again.")).not.toBeInTheDocument();
         expect(card.queryByText("Current information could not be loaded.")).not.toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();

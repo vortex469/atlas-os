@@ -3155,3 +3155,9 @@ The workflow directory now shows summary tiles only for categories that have
 workflows. A filter that leaves one completed workflow, for example, shows its
 count without four zero tiles above the list. The zero categories remain
 implicit; every workflow still appears in the list with its stage.
+
+## AI provider unavailable wording — 2026-10-29
+
+The AI provider card now names the missing data as provider status and says
+directly when Atlas could not load it, so the message is distinct from the
+separate provider registry card.

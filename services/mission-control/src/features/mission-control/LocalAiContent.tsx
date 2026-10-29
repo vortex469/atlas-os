@@ -41,10 +41,10 @@ function ModelInventory({ data, kind, lastKnown }: { data: Record<string, unknow
 export function LocalAiContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
     if (evidence?.data === undefined) {
         const message = evidence?.unavailable
-            ? "Provider details are unavailable."
+            ? "Atlas couldn't load AI provider status."
             : loading
                 ? "Loading AI provider information…"
-                : "AI provider information is not available.";
+                : "AI provider status is not available.";
         return <p role="status">{message}</p>;
     }
 
