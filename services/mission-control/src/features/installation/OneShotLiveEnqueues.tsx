@@ -12,7 +12,7 @@ const BLOCKERS: Record<string, string> = {
     execution_start_boundary_not_defined: "Execution start boundary is not defined",
 };
 
-export function OneShotLiveEnqueues({ candidateId, liveEnqueueAdmissionId, homeAssistantBlocked }: { candidateId: string; liveEnqueueAdmissionId: string; homeAssistantBlocked: boolean }) {
+export function OneShotLiveEnqueues({ candidateId, liveEnqueueAdmissionId }: { candidateId: string; liveEnqueueAdmissionId: string }) {
     const [items, setItems] = useState<OneShotLiveEnqueueV1[] | null>(null);
     const [error, setError] = useState(false);
 
@@ -28,7 +28,6 @@ export function OneShotLiveEnqueues({ candidateId, liveEnqueueAdmissionId, homeA
         <h6 className="font-semibold">One-shot live enqueue</h6>
         <p className="mt-2 text-sm">Mission Control presents Core-owned one-shot live enqueue evidence under the v0.41 admission. The item is inert and reference-only.</p>
         <p className="mt-2 text-sm">This is not dequeue, queue polling, worker contact, worker start, Agent invocation, workflow start, process execution, installation, provider mutation, repository mutation, in-guest mutation, deployment, rollback, retry, or resend.</p>
-        {homeAssistantBlocked && <p className="mt-2 text-sm text-amber-200">For Home Assistant, one-shot live enqueue remains blocked; it stays non-installable and non-executable.</p>}
         {items === null && !error && <p role="status" className="mt-3">Loading one-shot live enqueue evidence...</p>}
         {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>One-shot live enqueue evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, broker, or internal path is shown.</p></div>}
         {items?.length === 0 && <p role="status" className="mt-3">No one-shot live enqueue evidence has been recorded. Dequeue, queue polling, worker start, Agent invocation, workflow start, retry, resend, and execution remain blocked.</p>}

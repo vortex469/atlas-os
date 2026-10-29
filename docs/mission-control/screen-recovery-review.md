@@ -3025,3 +3025,8 @@ Worker intake review uses the same plain-language status and blocker style.
 Worker references, blocker codes, fingerprints, sandbox limits, and authority
 flags stay under collapsed technical details. A failed list read offers a safe
 retry. The review does not contact a worker, enqueue work, or start execution.
+
+The nested queue handoff review now uses a short read-only summary, plain
+blockers, readable UTC times, and collapsed technical records. Failed reads
+offer a safe retry. Home Assistant remains visibly blocked once at the parent
+review instead of repeating the same notice on its nested queue item.

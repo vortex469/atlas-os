@@ -13,7 +13,6 @@ const empty: OneShotLiveEnqueueCollectionV1 = { ...oneShotLiveEnqueueCollectionF
 const props = {
     candidateId: oneShotLiveEnqueueCollectionFixture.candidate_record_id,
     liveEnqueueAdmissionId: oneShotLiveEnqueueCollectionFixture.items[0].lineage.live_enqueue_admission_id,
-    homeAssistantBlocked: false,
 };
 
 describe("OneShotLiveEnqueues", () => {
@@ -36,7 +35,7 @@ describe("OneShotLiveEnqueues", () => {
 
     it("renders only inert reference evidence with fixed-false authority", async () => {
         vi.mocked(listOneShotLiveEnqueues).mockResolvedValue(oneShotLiveEnqueueCollectionFixture);
-        render(<OneShotLiveEnqueues {...props} homeAssistantBlocked />);
+        render(<OneShotLiveEnqueues {...props} />);
         expect(await screen.findByText(/recorded one-shot live enqueue evidence/i)).toBeInTheDocument();
         expect(screen.getByText(/inert reference-only item: true; payload constructed: false; payload serialized: false; dequeue defined: false; queue polling allowed: false/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/ordered one-shot live enqueue blockers/i)).toHaveTextContent(/dequeue_not_defined.*queue_polling_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);
@@ -44,7 +43,7 @@ describe("OneShotLiveEnqueues", () => {
         expect(screen.getByLabelText(/queue observation and enqueue receipt evidence/i)).toHaveTextContent(/nested queue observation evidence/i);
         expect(screen.getByText(/Permanent one-shot subject reservation: true/i)).toHaveTextContent(/replay bypass allowed: false/i);
         expect(screen.getByLabelText(/one-shot live enqueue fixed-false authority fields/i)).toHaveTextContent(/dequeue allowedfalse.*agent invocation allowedfalse.*process execution allowedfalse/i);
-        expect(screen.getByText(/For Home Assistant, one-shot live enqueue remains blocked/i)).toHaveTextContent(/non-installable and non-executable/i);
+        expect(screen.queryByText(/Home Assistant installation/i)).not.toBeInTheDocument();
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 });
