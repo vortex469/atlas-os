@@ -6,6 +6,9 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/workflows");
 
         await expect(page.getByLabel("Workflow status")).toBeVisible();
+        await expect(page.getByRole("option", { name: "Prepare change for review" })).toBeAttached();
+        await expect(page.getByRole("option", { name: "Review checks or resume if approved" })).toBeAttached();
+        await expect(page.getByRole("option", { name: "Review commit or resume if approved" })).toBeAttached();
         await expect(page.getByLabel("Next step")).toBeVisible();
         await expect(page.getByLabel("Workflow ID contains")).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();

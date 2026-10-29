@@ -12,6 +12,7 @@ import {
     isActiveWorkflowState,
     workflowRailStages,
     workflowStageLabel,
+    workflowStateFilterLabel,
     workflowStatusGroup,
     formatWorkflowResultSummary,
     workflowNextStepLabel,
@@ -263,7 +264,7 @@ export function WorkflowDashboardPage() {
                             Workflow status
                             <select value={draftFilters.state} onChange={(event) => updateDraftFilter("state", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
                                 <option value="">Any status</option>
-                                {WORKFLOW_STATES.map((state) => <option key={state} value={state}>{formatWorkflowLabel(state)}</option>)}
+                                {WORKFLOW_STATES.map((state) => <option key={state} value={state}>{workflowStateFilterLabel(state)}</option>)}
                             </select>
                         </label>
                         <label className="text-sm text-slate-300">

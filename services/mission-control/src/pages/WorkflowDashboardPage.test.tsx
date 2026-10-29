@@ -80,13 +80,26 @@ describe("WorkflowDashboardPage", () => {
         renderDashboard();
 
         expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(7);
+        expect(Array.from((screen.getByLabelText("Workflow status") as HTMLSelectElement).options).map((option) => option.textContent)).toEqual([
+            "Any status",
+            "Prepare change for review",
+            "Review change or resume if approved",
+            "Applying change",
+            "Review checks or resume if approved",
+            "Running checks",
+            "Review commit or resume if approved",
+            "Recording commit",
+            "Blocked",
+            "Completed",
+        ]);
         expect(screen.getByText("Execution running")).toBeInTheDocument();
         expect(screen.getByText("Blocked: stale candidate")).toBeInTheDocument();
         expect(screen.getByText("Commit completed")).toBeInTheDocument();
         expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
-        expect(screen.getByText("Prepare change for review")).toBeInTheDocument();
-        expect(screen.getByText("Approval or resume")).toBeInTheDocument();
+        const counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
+        expect(counts.getByText("Prepare change for review")).toBeInTheDocument();
+        expect(counts.getByText("Approval or resume")).toBeInTheDocument();
         expect(screen.getByText("Review the checks; resume to run them if approved.")).toBeVisible();
         expect(screen.getByText("Review the commit; resume to record it if approved.")).toBeVisible();
         expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
@@ -163,6 +176,9 @@ describe("WorkflowDashboardPage", () => {
 
         expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(1);
         expect(screen.getByLabelText("Workflow status")).toBeVisible();
+        expect(screen.getByRole("option", { name: "Prepare change for review" })).toBeInTheDocument();
+        expect(screen.getByRole("option", { name: "Review checks or resume if approved" })).toBeInTheDocument();
+        expect(screen.getByRole("option", { name: "Review commit or resume if approved" })).toBeInTheDocument();
         expect(screen.getByLabelText("Next step")).toBeVisible();
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");

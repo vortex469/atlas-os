@@ -123,6 +123,21 @@ export function workflowStageLabel(state: string, effectKind?: string): string {
     }
 }
 
+export function workflowStateFilterLabel(state: string): string {
+    switch (state) {
+        case "awaiting_approval": return "Prepare change for review";
+        case "awaiting_implementation_approval": return "Review change or resume if approved";
+        case "executing": return "Applying change";
+        case "awaiting_verification_approval": return "Review checks or resume if approved";
+        case "verifying": return "Running checks";
+        case "awaiting_commit_approval": return "Review commit or resume if approved";
+        case "committing": return "Recording commit";
+        case "blocked": return "Blocked";
+        case "completed": return "Completed";
+        default: return "Status unavailable";
+    }
+}
+
 export function workflowNextStepLabel(state: string, effectKind?: string): string | null {
     switch (state) {
         case "awaiting_approval":

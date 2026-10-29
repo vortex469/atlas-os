@@ -2480,6 +2480,8 @@ and resume verification or commit only after their separate approval. The
 dashboard uses “Next step” instead of claiming that the operator's approval is
 needed; its workflow summary contract does not say whether approval has already
 been recorded. Counts group preparation separately from approval or resume.
+The status filter names preparation, review/resume, running, blocked and
+completed states in plain language instead of exposing backend state codes.
 Approval, resume, execution, verification and commit controls are unchanged.
 
 Five focused component suites pass (204 tests), and the matching responsive
