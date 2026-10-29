@@ -205,6 +205,7 @@ describe("MC overview evidence", () => {
         expect(steps).toHaveTextContent("A browser or the service computer may use a different network path.");
         expect(steps).toHaveTextContent("On another computer running Docker, use docker ps and check PORTS.");
         expect(steps).toHaveTextContent(/For containers using port mappings, a blank field means no host port is published;/);
+        expect(steps).toHaveTextContent("With Docker host networking, the app listens directly on the service computer's port, so a published-port mapping is not expected.");
         expect(steps).toHaveTextContent("a mapping starting with 127.0.0.1: is reachable only from that computer.");
         expect(steps).toHaveTextContent("publish the app's listening port with Compose's ports: or docker run -p");
         expect(steps).toHaveTextContent("HOST_PORT:CONTAINER_PORT");

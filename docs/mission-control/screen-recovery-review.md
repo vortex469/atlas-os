@@ -2747,14 +2747,15 @@ valid and malformed values.
 
 ## Service reachability guidance — 2026-10-29
 
-The health drawer now says where to test connectivity: from the machine running
-Atlas Core, inside its `atlas-core` Compose service when applicable. A
-connection-refused result points operators to the service host, its listening
-port, Docker port publication when used, then a repeat test from Core. It now
-explains that an empty Docker `PORTS` field means there is no host mapping for
-Core to reach when the container uses port mappings. Compose instructions
-clarify that commands belong in the folder containing Atlas's
-Compose file, or can name that file with `--file`. This addresses the common
-case where a shell opens in a different directory. Health probe behavior and
-service state are unchanged. The focused service-health suite covers the
-location and recovery guidance.
+The Overview's service-check panel tells operators to test from the machine
+running Atlas Core, inside its `atlas-core` Compose service when applicable. It
+shows the sanitized address Atlas checked and distinguishes reachability from
+Core from the service's own state. A connection-refused result points to the
+service computer's listening port, Docker port publication when used, then a
+repeat test from Core. Expanded guidance explains that a blank Docker `PORTS`
+field means no host mapping when the container uses port mappings; Docker host
+networking uses the service computer's port directly. It also explains
+loopback-only mappings and that Compose commands belong in the folder
+containing Atlas's Compose file, or can name that file with `--file`. These
+instructions do not change probe behavior or service configuration. Component
+and responsive browser tests cover the guidance.

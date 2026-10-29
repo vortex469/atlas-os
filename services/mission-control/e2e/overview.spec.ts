@@ -334,6 +334,7 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('A browser or the service computer may use a different network path');
         await expect(steps).toContainText('On another computer running Docker, use docker ps and check PORTS');
         await expect(steps).toContainText('For containers using port mappings, a blank field means no host port is published');
+        await expect(steps).toContainText("With Docker host networking, the app listens directly on the service computer's port, so a published-port mapping is not expected");
         await expect(steps).toContainText('a mapping starting with 127.0.0.1: is reachable only from that computer');
         await expect(steps).toContainText("publish the app's listening port with Compose's ports: or docker run -p");
         await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');
