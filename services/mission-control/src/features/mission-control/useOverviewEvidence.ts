@@ -21,6 +21,7 @@ export type OverviewEvidence = Partial<Record<Source, Evidence>>;
 export function useOverviewEvidence() {
     const [evidence, setEvidence] = useState<OverviewEvidence>({});
     const [loading, setLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
     const pending = useRef(false);
     const mounted = useRef(false);
     const refresh = useCallback(async () => {
@@ -39,7 +40,10 @@ export function useOverviewEvidence() {
             }
         }));
         pending.current = false;
-        if (mounted.current) setLoading(false);
+        if (mounted.current) {
+            setLoading(false);
+            setHasLoaded(true);
+        }
     }, []);
     useEffect(() => {
         mounted.current = true;
@@ -47,5 +51,5 @@ export function useOverviewEvidence() {
         const interval = window.setInterval(() => void refresh(), 30_000);
         return () => { mounted.current = false; window.clearTimeout(initial); window.clearInterval(interval); };
     }, [refresh]);
-    return { evidence, loading, refresh };
+    return { evidence, loading, hasLoaded, refresh };
 }

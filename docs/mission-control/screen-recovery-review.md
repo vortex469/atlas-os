@@ -3238,3 +3238,9 @@ generic action history.
 The disabled registry control now says “Loading…” on the first request and
 “Refreshing…” only when a previously loaded list is being updated. Its focused
 page suite covers both initial completion and refresh recovery.
+
+## Overview initial loading label — 2026-10-29
+
+The Overview refresh control now says “Loading…” until its first dashboard
+read completes, then says “Refreshing…” on later reads. Hook and rendered
+button tests cover first load, refresh, and idle states.
