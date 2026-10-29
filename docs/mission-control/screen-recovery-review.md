@@ -3439,3 +3439,13 @@ The Core candidate-route suite passes 19 tests and Ruff. The Mission Control
 suite passes 2,994 tests across 188 files, with lint and build passing. The
 candidate-list browser suite passes 14 cases, including the expiry query at
 390px and 1280px. Browser data is synthetic; this is not production acceptance.
+
+## Fileshare Docker port guidance — 2026-10-29
+
+The Overview's visible Fileshare connection check now explains that an empty
+Docker `PORTS` column means no host port is published, and tells operators to
+check network mode before changing ports because host networking is an
+exception. The longer Compose and port troubleshooting steps remain available
+in the existing disclosure. The focused Overview suite passes 75 tests; its
+development and built-preview browser suites each pass 29 tests. Lint and build
+pass. Browser data is synthetic; no live service was queried.

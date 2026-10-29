@@ -354,7 +354,7 @@ for (const width of [320, 1280]) {
         await expect(connectionCommand).toContainText('http://10.10.60.30:8080/');
         await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
         await expect(nextStep).toContainText("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
-        await expect(nextStep).toContainText('Docker port and Compose steps are in the details below.');
+        await expect(nextStep).toContainText('Docker: a blank PORTS column means no host port is published. Host networking is the exception; check the network mode before changing ports.');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'More connection checks' });
         await moreChecks.click();

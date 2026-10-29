@@ -203,7 +203,7 @@ describe("MC overview evidence", () => {
         expect(command).not.toHaveTextContent(/password|private|token=/);
         expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
         expect(nextStep).toHaveTextContent("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
-        expect(nextStep).toHaveTextContent("Docker port and Compose steps are in the details below.");
+        expect(nextStep).toHaveTextContent("Docker: a blank PORTS column means no host port is published. Host networking is the exception; check the network mode before changing ports.");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);
         expect(disclosure).not.toHaveAttribute("open");

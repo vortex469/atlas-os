@@ -90,7 +90,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                 <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
                 <p className="mt-2 text-sm"><strong>File not found?</strong> Compose did not run the check. Run it from Atlas&apos;s Compose folder or pass the full file path with <code>--file</code>.</p>
             </>}
-        <p className="mt-2">Docker port and Compose steps are in the details below.</p>
+        <p className="mt-2"><strong>Docker:</strong> a blank <code>PORTS</code> column means no host port is published. Host networking is the exception; check the network mode before changing ports.</p>
         </div>}
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">More connection checks</summary>
