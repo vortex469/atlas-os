@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
@@ -221,9 +222,11 @@ function formatLabel(value: string): string {
     return value.replaceAll("_", " ").replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function formatTimestamp(value: string): string {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+function formatTimestamp(value: string): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function statusText(status: string): string {
@@ -289,10 +292,12 @@ function planningMessage(response: CandidatePlanningResponse): string {
     return "Planning could not start. Review the response details for the recorded reason.";
 }
 
-function formatExpiry(value: string | null | undefined): string {
+function formatExpiry(value: string | null | undefined): ReactNode {
     if (value === null || value === undefined) return "No expiry";
     const parsed = evidenceTimestamp(value);
-    return parsed === null ? "Unverified expiry" : new Date(parsed).toLocaleString();
+    return parsed === null
+        ? "Unverified expiry"
+        : <time dateTime={value}>{new Date(parsed).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function getPlanningActionState(candidate: ExecutionCandidate | null): { enabled: boolean; reason: string } {
@@ -312,11 +317,11 @@ function InfoPanel({ title, children }: { title: string; children: React.ReactNo
     return <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5"><h2 className="text-lg font-semibold text-white">{title}</h2><div className="mt-4 space-y-3">{children}</div></section>;
 }
 
-function DetailField({ label, value }: { label: string; value: string }) {
+function DetailField({ label, value }: { label: string; value: ReactNode }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-all text-sm text-slate-200">{value}</dd></div>;
 }
 
-function OverviewField({ label, value }: { label: string; value: string }) {
+function OverviewField({ label, value }: { label: string; value: ReactNode }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm text-slate-200">{value}</dd></div>;
 }
 

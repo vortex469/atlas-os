@@ -95,6 +95,10 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(screen.getAllByText("Eligible for planning").length).toBeGreaterThan(0);
         expect(screen.getByText("Standard")).toBeInTheDocument();
         expect(screen.getByText("Expires (local time)")).toBeInTheDocument();
+        const expiryTime = screen.getByText("Expires (local time)").parentElement?.querySelector("time");
+        const expiresAt = candidate().expires_at!;
+        expect(expiryTime).toHaveAttribute("datetime", expiresAt);
+        expect(expiryTime).toHaveTextContent(new Date(expiresAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(screen.getByText("Update the compose stack after review.")).toBeInTheDocument();
         expect(screen.getByText("May interrupt service")).toBeInTheDocument();
         expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
@@ -112,12 +116,29 @@ describe("ExecutionCandidateDetailPage", () => {
         await user.click(screen.getByText("Technical references"));
         expect(screen.getByText("candidate-1")).toBeVisible();
         expect(screen.getByText("Created (local time)")).toBeVisible();
+        const createdTime = screen.getByText("Created (local time)").parentElement?.querySelector("time");
+        expect(createdTime).toHaveAttribute("datetime", candidate().created_at);
+        expect(createdTime).toHaveTextContent(new Date(candidate().created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(screen.getByText("finding-1")).toBeVisible();
         expect(screen.getByText("orion")).toBeVisible();
         expect(screen.getByText("catalog-home-assistant")).toBeVisible();
         expect(screen.getByText("compat-1")).toBeVisible();
         expect(screen.getByText("evidence-1")).toBeVisible();
         expect(screen.getByText("relationship-1")).toBeVisible();
+    });
+
+    it("does not present invalid candidate timestamps as verified times", async () => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({
+            created_at: "2026-02-30T12:00:00Z",
+            expires_at: "2026-02-30T12:00:00Z",
+        }));
+        renderPage();
+
+        expect(await screen.findByText("Unverified expiry")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+
+        await userEvent.setup().click(screen.getByText("Technical references"));
+        expect(screen.getByText("Time unavailable")).toBeVisible();
     });
 
     it("submits only candidate_id and keeps planning response details optional", async () => {
