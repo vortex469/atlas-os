@@ -101,6 +101,7 @@ describe("ServiceHealthSection", () => {
             screen.getByRole("dialog", { name: "Containers" }),
         ).toBeInTheDocument();
         expect(within(screen.getByRole("dialog", { name: "Containers" })).getByText("Reachability from Atlas Core")).toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(
             screen.getByText("Operations for Docker"),
         ).toBeInTheDocument();
@@ -151,6 +152,7 @@ describe("ServiceHealthSection", () => {
 
         expect(screen.getByText("Unreachable from Atlas Core")).toBeInTheDocument();
         expect(screen.queryByText("Offline")).not.toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
     });
 
     it("shows a plain next step for a refused service connection", async () => {

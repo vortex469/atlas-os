@@ -49,6 +49,7 @@ export function ServiceHealthCard({
                     status={health.status}
                     reason={health.message}
                     unavailableLabel="Unreachable from Atlas Core"
+                    compact
                 />
             </div>
 

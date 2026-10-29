@@ -106,6 +106,7 @@ export function ServiceDetailsDrawer({
                             <HealthEvidence
                                 status={health.status}
                                 unavailableLabel="Unreachable from Atlas Core"
+                                compact
                             />
                         </div>
                     </div>
