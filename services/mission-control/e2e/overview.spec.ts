@@ -298,6 +298,7 @@ for (const width of [320, 1280]) {
         await expect(checks.getByText(/If Core runs in Docker, repeat the request inside the atlas-core container/)).toBeVisible();
         await expect(checks.getByText(/If you use Compose, run it from the folder containing Atlas’s Compose file/)).toBeVisible();
         await expect(checks.getByText(/Browser or service-machine tests use a different network path/)).toBeVisible();
+        await expect(checks.getByText(/For a bridged container on a separate machine, docker ps should show the host port under PORTS/)).toBeVisible();
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

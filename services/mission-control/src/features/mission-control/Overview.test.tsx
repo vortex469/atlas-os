@@ -180,7 +180,8 @@ describe("MC overview evidence", () => {
         expect(disclosure).toHaveTextContent("If you use Compose, run it from the folder containing Atlas’s Compose file.");
         expect(disclosure).toHaveTextContent("Browser or service-machine tests use a different network path.");
         expect(disclosure).toHaveTextContent("A container marked “Up” can still be unreachable.");
-        expect(disclosure).toHaveTextContent("Check that the app listens on its configured port and that Atlas Core can reach it through the Docker network or published port.");
+        expect(disclosure).toHaveTextContent("Check that the app listens on its configured port and that Atlas Core can reach it through the Docker network or a published port.");
+        expect(disclosure).toHaveTextContent("For a bridged container on a separate machine, docker ps should show the host port under PORTS; if it is empty, Docker has not published that port on the host.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);

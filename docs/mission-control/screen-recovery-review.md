@@ -2392,3 +2392,8 @@ Compose file on the Atlas Core machine. This clarifies why the file may be
 missing when the command is run from a service host or another directory. The
 guidance remains read-only and does not change service probes. Overview tests
 cover the instruction at component and phone/desktop browser level.
+
+The same disclosure explains how to check a bridged service container's
+published host port with `docker ps`. This makes an empty `PORTS` column
+actionable when Atlas Core checks a service on another machine. The guidance
+does not assume host networking or change the configured probe.
