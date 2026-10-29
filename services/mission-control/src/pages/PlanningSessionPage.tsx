@@ -25,6 +25,11 @@ type WorkflowRequestError = {
     details: string;
 };
 
+type SavedPlanReadFailure = {
+    kind: "not_found" | "unavailable" | "mismatch";
+    details: string | null;
+};
+
 export function PlanningSessionPage() {
     const { sessionId = "" } = useParams<{ sessionId: string }>();
     return <PlanningSession key={sessionId} sessionId={sessionId} />;
@@ -35,9 +40,11 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
     const [operationalPlan, setOperationalPlan] = useState<OperationalCandidatePlanApiResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingSavedPlan, setIsLoadingSavedPlan] = useState(false);
     const [readAttempt, setReadAttempt] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [savedPlanReadFailure, setSavedPlanReadFailure] = useState<SavedPlanReadFailure | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generateError, setGenerateError] = useState<string | null>(null);
     const [workflow, setWorkflow] = useState<CandidateWorkflowResponse | null>(null);
@@ -49,7 +56,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         let cancelled = false;
 
         getCandidatePlanningSession(sessionId)
-            .then(async (nextSession) => {
+            .then((nextSession) => {
                 if (cancelled) {
                     return;
                 }
@@ -57,8 +64,11 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     setError("The returned planning session does not match this page.");
                     return;
                 }
-                let loadedPlan = nextSession?.plan ?? null;
+                const loadedPlan = nextSession?.plan ?? null;
                 const loadedOperationalPlan = nextSession?.operational_plan ?? null;
+                const needsSavedPlanRead = nextSession?.status === "plan_ready"
+                    && loadedPlan === null
+                    && loadedOperationalPlan === null;
                 if (loadedPlan && loadedOperationalPlan) {
                     setError("The planning response contains conflicting plan types.");
                     return;
@@ -67,19 +77,46 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     setError("The maintenance plan does not match this planning session or target.");
                     return;
                 }
-                if (!loadedPlan && !loadedOperationalPlan && nextSession?.status === "plan_ready") loadedPlan = await getCandidatePlan(sessionId);
-                if (cancelled) return;
                 if (loadedPlan && (!nextSession || loadedPlan.session_id !== sessionId || loadedPlan.candidate_id !== nextSession.candidate_id)) {
                     setError("The returned plan does not match this planning session.");
-                    return;
-                }
-                if (nextSession?.status === "plan_ready" && loadedPlan === null && loadedOperationalPlan === null) {
-                    setError("The saved plan could not be loaded.");
                     return;
                 }
                 setSession(nextSession);
                 setPlan(loadedPlan);
                 setOperationalPlan(loadedOperationalPlan);
+                if (needsSavedPlanRead) {
+                    setIsLoadingSavedPlan(true);
+                    void getCandidatePlan(sessionId)
+                        .then((savedPlan) => {
+                            if (cancelled) return;
+                            if (savedPlan === null) {
+                                setSavedPlanReadFailure({ kind: "not_found", details: null });
+                                return;
+                            }
+                            if (savedPlan.session_id !== sessionId || savedPlan.candidate_id !== nextSession?.candidate_id) {
+                                setSavedPlanReadFailure({
+                                    kind: "mismatch",
+                                    details: "The returned plan does not match this planning session.",
+                                });
+                                return;
+                            }
+                            setPlan(savedPlan);
+                        })
+                        .catch((requestError: unknown) => {
+                            if (!cancelled) {
+                                setSavedPlanReadFailure({
+                                    kind: "unavailable",
+                                    details: getAtlasAgentErrorMessage(
+                                        requestError,
+                                        "Saved plan read failed without additional details.",
+                                    ),
+                                });
+                            }
+                        })
+                        .finally(() => {
+                            if (!cancelled) setIsLoadingSavedPlan(false);
+                        });
+                }
             })
             .catch((requestError: unknown) => {
                 if (cancelled) {
@@ -106,6 +143,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     function checkPlanningStatus() {
         setError(null);
         setErrorDetails(null);
+        setSavedPlanReadFailure(null);
         setGenerateError(null);
         setIsLoading(true);
         setReadAttempt((attempt) => attempt + 1);
@@ -222,10 +260,12 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Change plan</p>
-                    <h1 className="mt-3 text-3xl font-bold text-white">{hasPlan ? "Review the plan" : "Plan this change"}</h1>
+                    <h1 className="mt-3 text-3xl font-bold text-white">{hasPlan ? "Review the plan" : session.status === "plan_ready" ? "Saved plan" : "Plan this change"}</h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         {hasPlan
                             ? "Review the proposed steps before creating a workflow. No implementation is run here; it still needs separate approval."
+                            : session.status === "plan_ready"
+                                ? "This session reports a saved plan. Reviewing it does not approve or apply any changes."
                             : "Generate a plan to review before creating a workflow. Planning does not apply changes or grant approval."}
                     </p>
                 </div>
@@ -265,6 +305,15 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     {operationalPlan ? "Maintenance plan" : "Candidate plan"}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">{planSectionDescription(session, hasPlan)}</p>
+                {isLoadingSavedPlan && <p role="status" aria-live="polite" className="mt-4 text-sm text-slate-300">Loading saved plan…</p>}
+                {savedPlanReadFailure && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+                    <p className="font-semibold text-red-200">{savedPlanReadFailureMessage(savedPlanReadFailure.kind)}</p>
+                    {savedPlanReadFailure.kind !== "not_found" && <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check for saved plan</button>}
+                    {savedPlanReadFailure.details && <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{savedPlanReadFailure.details}</p>
+                    </details>}
+                </div>}
                 {session.status === "planning" && (
                     <button type="button" onClick={checkPlanningStatus} className="mt-4 rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Check plan status
@@ -469,6 +518,7 @@ function ListPanel({ title, values, empty, ordered = false }: { title: string; v
 
 function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boolean): string {
     if (hasPlan) return "Review this read-only plan. No approval or change has been made.";
+    if (session.status === "plan_ready") return "Mission Control verifies the saved plan belongs to this session before showing workflow creation.";
     if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas could not check whether this proposal is current because Core is unavailable.";
     if (session.planning_failure?.code === "persistence_failed") return "Atlas could not save the planning session. No plan is ready to review.";
     if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Return to the proposal and refresh before trying again.";
@@ -477,6 +527,12 @@ function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boo
     if (session.status === "planning") return "Atlas is still creating the plan. Check the status again to see whether it is ready.";
     if (session.status === "ready_for_planning" && session.planning_allowed === true) return "Generate a plan for review. It will not apply changes or grant approval.";
     return "Planning is unavailable for this session.";
+}
+
+function savedPlanReadFailureMessage(kind: SavedPlanReadFailure["kind"]): string {
+    if (kind === "not_found") return "This session says a plan is ready, but the saved plan was not found. Return to the proposal to refresh its planning status.";
+    if (kind === "mismatch") return "The saved plan does not match this session. Mission Control did not open or use it.";
+    return "The session loaded, but Mission Control could not load its saved plan. Check again to retry this read.";
 }
 
 function formatLabel(value: string): string {

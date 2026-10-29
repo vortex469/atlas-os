@@ -3334,3 +3334,13 @@ unavailable” instead of placing them under “No action needed.” Running and
 completed workflows are listed under “No action needed right now”; approval
 and blocked workflows remain under “Needs an operator step.” The focused page
 test checks each group so a future backend state is not presented as resolved.
+
+## Planning session saved-plan recovery — 2026-10-29
+
+When a planning session loads but its saved plan cannot be read, Mission
+Control now keeps the known session and proposal link visible. A temporary read
+failure offers a read-only check; a not-found response explains that the plan
+is missing and does not offer a retry. The plan must load and match its session
+before Mission Control shows workflow creation. The focused page suite covers
+temporary failure and recovery, missing-plan behavior, and the existing
+approval boundary.

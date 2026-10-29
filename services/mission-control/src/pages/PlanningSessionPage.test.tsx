@@ -318,12 +318,35 @@ describe("PlanningSessionPage", () => {
 
     it("loads an existing plan when session is already plan_ready", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
+        mockedGetCandidatePlan.mockResolvedValue(plan());
         renderPage();
 
         expect(await screen.findByText("Plan details")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: /^Candidate plan$/ })).toBeVisible();
         expect(screen.queryByRole("heading", { name: /^Maintenance plan$/ })).not.toBeInTheDocument();
         expect(mockedGetCandidatePlan).toHaveBeenCalledWith("candidate-plan-1");
+    });
+
+    it("keeps session context and retries only reads after a saved-plan request fails", async () => {
+        const user = userEvent.setup();
+        mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
+        mockedGetCandidatePlan.mockRejectedValueOnce(new Error("Agent unavailable"));
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The session loaded, but Mission Control could not load its saved plan.");
+        expect(screen.getByRole("heading", { name: "Saved plan" })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Planning context" })).toBeVisible();
+        expect(screen.getByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/candidate-1");
+        expect(within(alert).getByText("Agent unavailable")).not.toBeVisible();
+        expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+
+        await user.click(within(alert).getByRole("button", { name: "Check for saved plan" }));
+
+        expect(await screen.findByText("Plan details")).toBeInTheDocument();
+        expect(mockedGetCandidatePlanningSession).toHaveBeenCalledTimes(2);
+        expect(mockedGetCandidatePlan).toHaveBeenCalledTimes(2);
+        expect(mockedGenerateCandidatePlan).not.toHaveBeenCalled();
     });
 
     it("renders planning failure, unsupported, stale, Core unavailable, persistence, and Agent unavailable states", async () => {
@@ -605,15 +628,17 @@ describe("PlanningSessionPage", () => {
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });
 
-    it("shows recovery instead of an empty ready screen when a saved plan is missing", async () => {
+    it("keeps the session and avoids retrying when a ready plan is not found", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready" }));
         mockedGetCandidatePlan.mockResolvedValue(null);
         renderPage();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("The saved plan could not be loaded.");
-        expect(alert).not.toHaveTextContent("Reload to check again");
-        expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+        expect(alert).toHaveTextContent("This session says a plan is ready, but the saved plan was not found.");
+        expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Saved plan" })).toBeVisible();
+        expect(screen.getByRole("link", { name: "Review original proposal" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
+        expect(mockedGetCandidatePlan).toHaveBeenCalledTimes(1);
     });
 
     it("does not repeat generation when the server reports ready but its plan is missing", async () => {
