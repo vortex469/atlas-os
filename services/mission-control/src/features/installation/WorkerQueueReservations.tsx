@@ -11,7 +11,6 @@ export function WorkerQueueReservations({ candidateId, stubId, homeAssistantBloc
         <p className="mt-2 text-sm">This preserves an evidence-only worker queue reservation record. It is default-disabled and does not create or contact a live queue.</p>
         <p className="mt-2 text-sm">This is not live enqueue, dequeue, worker start, dispatch, execution, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, installation, deployment, rollback, retry, resend, or permission to mutate anything.</p>
         <p className="mt-2 text-sm">Creation is unavailable here because Core supplies no eligible server-owned queue reference context. Mission Control does not invent references, edit inherited ceilings, poll, or integrate with a queue.</p>
-        {homeAssistantBlocked && <p className="mt-2 text-sm text-amber-200">For Home Assistant, queue reservation remains blocked; it stays non-installable and non-executable.</p>}
         {items === null && !error && <p role="status">Loading worker queue reservation evidence…</p>}
         {error && <div role="alert"><p>Worker queue reservation evidence is unavailable.</p><p className="text-xs">The error is redacted; no credential, payload, command, log, address, endpoint, or internal path is shown.</p></div>}
         {items?.length === 0 && <p role="status">No worker queue reservation evidence has been recorded. Enqueue, dequeue, worker start, dispatch, and execution remain blocked.</p>}

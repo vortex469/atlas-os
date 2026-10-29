@@ -239,22 +239,6 @@ focused component tests, six overview browser checks, lint and build pass. The
 browser fixture rejects mutations; provider actions and permission checks are
 unchanged.
 
-## Installation readiness review — 2026-10-29
-
-The readiness page now calls its second section an operator confirmation record
-and explains in plain language that saving it does not approve or start work.
-The two-step confirmation, exact statement, operator checks, and saved record
-behavior are unchanged. Loading, missing-record, and error messages use the
-same review-record language as the preceding screen.
-
-## Installation run review — 2026-10-29
-
-The next installation review step now explains that its saved record does not
-choose a machine or start work. Blockers and confirmation actions use plain
-language, and record times use a readable UTC format. A failed record read now
-offers a safe retry; a failed save does not offer another save attempt. Request
-contracts and operator checks are unchanged.
-
 ## Provider detail status simplification — 2026-10-28
 
 Provider health appears once as a readable badge; the duplicate status metric
@@ -3011,3 +2995,28 @@ as up-to-date or outdated inputs; record IDs and fingerprints stay under
 technical details. Saving or deleting a review record does not approve or run
 an installation. API requests, persistence rules, and approval boundaries are
 unchanged.
+
+## Installation readiness review — 2026-10-29
+
+The readiness page now calls its second section an operator confirmation record
+and explains in plain language that saving it does not approve or start work.
+The two-step confirmation, exact statement, operator checks, and saved record
+behavior are unchanged. Loading, missing-record, and error messages use the
+same review-record language as the preceding screen.
+
+## Installation run review — 2026-10-29
+
+The next installation review step now explains that its saved record does not
+choose a machine or start work. Blockers and confirmation actions use plain
+language, and record times use a readable UTC format. A failed record read now
+offers a safe retry; a failed save does not offer another save attempt. Request
+contracts and operator checks are unchanged.
+
+## Machine and worker setup records — 2026-10-29
+
+The installation review now describes machine and worker setup records as
+review-only. Statuses, blockers, and timestamps use operator language; machine
+references, sandbox limits, fingerprints, and authority flags are collapsed
+under technical details. Failed list reads offer a safe retry. No machine or
+worker is discovered, contacted, or started, and the stored record contracts
+are unchanged.

@@ -42,8 +42,8 @@ describe("WorkerIntakeAdmissions", () => {
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
-    it("preserves Home Assistant blocked copy", async () => {
+    it("leaves Home Assistant guidance to the parent review", async () => {
         render(<WorkerIntakeAdmissions candidateId={reservation.candidate_record_id} reservationId={reservation.reservation_id} homeAssistantBlocked />);
-        expect(await screen.findByText(/For Home Assistant, worker intake admission remains blocked/i)).toHaveTextContent(/non-installable and non-executable/i);
+        expect(screen.queryByText(/For Home Assistant, worker intake admission remains blocked/i)).not.toBeInTheDocument();
     });
 });

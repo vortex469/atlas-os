@@ -28,7 +28,6 @@ export function WorkerIntakeAdmissions({ candidateId, reservationId, homeAssista
         <h6 className="font-semibold">Worker intake admission</h6>
         <p className="mt-2 text-sm">Mission Control shows the worker intake admission status here in the existing worker flow. It is evidence only and does not send work to a queue or start a worker.</p>
         <p className="mt-2 text-sm">No execution controls are available here. This is not live enqueue, dequeue, worker contact, worker start, dispatch, execution, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, installation, deployment, rollback, retry, resend, or permission to mutate anything.</p>
-        {homeAssistantBlocked && <p className="mt-2 text-sm text-amber-200">For Home Assistant, worker intake admission remains blocked; it stays non-installable and non-executable.</p>}
         {items === null && !error && <p role="status" className="mt-3">Loading worker intake admission status…</p>}
         {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Worker intake admission status is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, or internal path is shown.</p></div>}
         {items?.length === 0 && <p role="status" className="mt-3">No worker intake admission evidence has been recorded. Queue handoff, worker start, and execution remain blocked.</p>}
