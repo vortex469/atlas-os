@@ -222,16 +222,16 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             {compact ? (
                 <div className="mb-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                        Provider actions
+                        Direct provider actions
                     </h3>
                     <p className="mt-1 text-xs text-slate-500">
-                        Monitoring policy does not run these actions. Service maintenance uses a separate approval workflow.
+                        These buttons run actions directly on this provider. Monitoring settings never run them. For planned maintenance, submit a request for review and approval.
                     </p>
                 </div>
             ) : (
                 <SectionHeader
-                    title="Provider actions"
-                    description="Monitoring policy does not run these actions. Service maintenance uses a separate approval workflow."
+                    title="Direct provider actions"
+                    description="These buttons run actions directly on this provider. Monitoring settings never run them. For planned maintenance, submit a request for review and approval."
                 />
             )}
 
@@ -249,7 +249,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <h3 className="font-semibold text-red-300">
-                        Provider actions are unavailable
+                        Direct provider actions are unavailable
                     </h3>
                     <p className="mt-1 text-sm text-red-200/80">
                         {catalogError}
@@ -484,7 +484,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
             {executionError && (
                 <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-5">
                     <h3 className="font-semibold text-red-300">Action result unavailable</h3>
-                    <p className="mt-1 text-sm text-red-200/80">The action may have completed, but Mission Control did not receive a final result. Provider actions are paused here to prevent a duplicate.</p>
+                    <p className="mt-1 text-sm text-red-200/80">The action may have completed, but Mission Control did not receive a final result. Direct provider actions are paused here to prevent a duplicate.</p>
                     <p className="mt-2 text-sm text-slate-300">Check Action history, then reload this provider page before deciding whether to try again.</p>
                     <Link to="/operations" className="mt-3 inline-flex text-sm font-semibold text-blue-300 underline underline-offset-4">Open Action history →</Link>
                     <details className="mt-3">

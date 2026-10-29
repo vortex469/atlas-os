@@ -18,7 +18,7 @@ vi.mock("../api/providerManagement", () => ({
 }));
 vi.mock("../api/resources", () => ({ getProviderResources: vi.fn(), refreshProviderResources: vi.fn() }));
 vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: () => <section><h2>Provider overview</h2></section> }));
-vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Provider actions</h2></section> }));
+vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Direct provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => null }));
 vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: () => null }));
 
@@ -146,8 +146,8 @@ describe("ProviderPage monitoring and legacy authority", () => {
         expect(within(monitoring!).queryByText("Expected stopped")).not.toBeInTheDocument();
         expect(screen.getByText(/Advisory finding · Proxmox/)).toBeInTheDocument();
         expect(screen.getByText("Atlas suggestion")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Provider actions" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");
+        expect(screen.getByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Request maintenance" })).toHaveAttribute("href", "/operations/request");
         expect(within(legacy!).getByText("110: stopped")).toBeInTheDocument();
         expect(within(legacy!).getByText(/kept for reference/i)).toBeInTheDocument();
         expect(within(legacy!).queryByText(/currently enforced|current monitoring intent/i)).not.toBeInTheDocument();

@@ -8,7 +8,7 @@ import { ProviderPage } from "./ProviderPage";
 vi.mock("../hooks/useMissionControl", () => ({ useMissionControl: vi.fn() }));
 vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: () => <section><h2>Provider overview</h2></section> }));
 vi.mock("../components/ProviderResources", () => ({ ProviderResources: () => <section><h2>Resources and monitoring</h2></section> }));
-vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Provider actions</h2></section> }));
+vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Direct provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => <section><h2>Connection</h2></section> }));
 vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: () => <section><h2>Telemetry</h2></section> }));
 vi.mock("../components/ProviderPolicyDetails", () => ({ ProviderPolicyDetails: () => <section><h2>Older VM settings</h2></section> }));
@@ -107,7 +107,7 @@ describe("ProviderPage authority layout", () => {
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
     });
 
-    it("orders monitoring, diagnostics, compatibility, maintenance, and retained evidence distinctly", () => {
+    it("puts reviewed maintenance before direct actions, connection details, and retained evidence", () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
         const ordered = [
@@ -115,8 +115,8 @@ describe("ProviderPage authority layout", () => {
             position("Resources and monitoring"),
             position("Diagnostics"),
             position("Recommendations"),
-            position("Provider actions"),
-            position("Operational maintenance"),
+            position("Planned maintenance"),
+            position("Direct provider actions"),
             position("Connection"),
             position("Telemetry"),
             position("Older VM settings"),
@@ -131,9 +131,9 @@ describe("ProviderPage authority layout", () => {
         expect(screen.getByText("Health and monitoring messages for this provider.")).toBeInTheDocument();
         expect(screen.getByText("No messages about this provider right now.")).toBeInTheDocument();
         expect(screen.getByText(/Monitoring expectations describe monitoring policy/)).toHaveTextContent("do not start, stop, restart, or remediate resources");
-        expect(screen.getByText(/Request maintenance, review the proposal and plan, then approve it before starting/)).toBeInTheDocument();
+        expect(screen.getByText("Submit a request, review the plan, and approve it before Atlas starts maintenance.")).toBeInTheDocument();
         expect(screen.queryByText(/exact action/i)).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");
+        expect(screen.getByRole("link", { name: "Request maintenance" })).toHaveAttribute("href", "/operations/request");
     });
 
     it("explains recommendations are suggestions and shows a plain empty state", () => {

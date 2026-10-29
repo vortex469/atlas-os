@@ -163,9 +163,9 @@ describe("ProviderActions", () => {
 
     it("keeps provider actions separate from monitoring policy and maintenance", async () => {
         renderActions();
-        expect(await screen.findByRole("heading", { name: "Provider actions" })).toBeInTheDocument();
-        expect(screen.getByText(/Monitoring policy does not run these actions/i)).toBeInTheDocument();
-        expect(screen.getByText(/Service maintenance uses a separate approval workflow/i)).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();
+        expect(screen.getByText(/These buttons run actions directly on this provider/i)).toBeInTheDocument();
+        expect(screen.getByText(/planned maintenance, submit a request for review and approval/i)).toBeInTheDocument();
     });
 
     it("describes an empty action list in plain language", async () => {
@@ -179,7 +179,7 @@ describe("ProviderActions", () => {
         mockedGetProviderActions.mockRejectedValueOnce(new Error("Action list unavailable."));
         renderActions();
 
-        expect(await screen.findByRole("heading", { name: "Provider actions are unavailable" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Direct provider actions are unavailable" })).toBeInTheDocument();
         const alert = screen.getByRole("alert");
         expect(alert).toHaveTextContent("Mission Control could not load the available actions. No action was run.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
@@ -295,7 +295,7 @@ describe("ProviderActions", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Action result unavailable");
-        expect(alert).toHaveTextContent("Provider actions are paused here to prevent a duplicate.");
+        expect(alert).toHaveTextContent("Direct provider actions are paused here to prevent a duplicate.");
         expect(alert).toHaveTextContent("Check Action history, then reload this provider page before deciding whether to try again.");
         expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Run Healthcheck" })).toBeDisabled();
