@@ -3210,3 +3210,11 @@ read-only status check.
 Maintenance history cards now show the requested action in the subtitle and
 the current status once in the recovery summary. An unavailable status remains
 explicit in the subtitle when no matching status summary can be shown.
+
+## Service attention destination — 2026-10-29
+
+When a service warning has no valid provider detail page, selecting it in
+“Needs attention” now jumps to the “Service checks” card instead of opening the
+generic Operations page. Services with a valid provider page keep that direct
+link. The 73-test Overview component suite and two responsive browser checks
+pass at 320px and 1280px; lint and build pass. This is navigation only.

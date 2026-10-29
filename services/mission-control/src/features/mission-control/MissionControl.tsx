@@ -50,8 +50,8 @@ function sourceIssue(evidence: Evidence | undefined, label: string, loading: boo
     if (evidence?.data === undefined) return loading ? null : `${label}: no current information is available.`;
     return incomplete ? `${label}: ${incomplete}` : null;
 }
-function Card({ title, children, evidence, showSourceNote = true, loading = false }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean; loading?: boolean }) {
-    return <section aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
+function Card({ title, children, evidence, showSourceNote = true, loading = false, id }: { title: string; children: ReactNode; evidence?: Evidence; showSourceNote?: boolean; loading?: boolean; id?: string }) {
+    return <section id={id} aria-label={title} className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
         <h2 className="mb-3 text-lg font-semibold text-mc-text-primary">{title}</h2>
         <div className="space-y-3 text-sm text-mc-text-secondary">{showSourceNote && <SourceNote evidence={evidence} loading={loading} />}{children}</div>
     </section>;
@@ -177,7 +177,9 @@ function attentionKey(finding: Record<string, unknown>, providers: Record<string
 
 function AttentionListItem({ item }: { item: AttentionItem }) {
     return <li>
-        <Link to={item.to}>{item.label || "Inspect condition"}</Link>
+        {item.to.startsWith("#")
+            ? <a className="mc-focusable" href={item.to}>{item.label || "Inspect condition"}</a>
+            : <Link to={item.to}>{item.label || "Inspect condition"}</Link>}
         {item.actionRequired === true && <p>{isWorkflowAttention(item)
             ? item.stale
                 ? `Last report: this workflow was waiting for ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}. Atlas could not confirm whether it still needs attention.`
@@ -233,7 +235,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention: AttentionItem[] = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
-            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "/operations", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
+            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "#service-checks", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
         })),
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
             key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "/operations", stale: evidence.providers?.stale,
@@ -300,7 +302,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                     <div className="mt-3"><AtlasDoctorPanel /></div>
                 </details>
             </Card>
-            <Card title="Service checks" evidence={evidence.health} loading={loading}>
+            <Card id="service-checks" title="Service checks" evidence={evidence.health} loading={loading}>
                 <p>These results show whether Atlas Core can reach each service. Unavailable means it got no response; the service may still be running on its own computer.</p>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}

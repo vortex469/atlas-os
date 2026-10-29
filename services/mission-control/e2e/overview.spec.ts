@@ -319,6 +319,10 @@ for (const width of [320, 1280]) {
 
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
         await expect(checks.getByText('iFileshare', { exact: true })).toBeVisible();
+        const attentionLink = page.getByRole('region', { name: 'Needs attention', exact: true }).getByRole('link', { name: 'iFileshare', exact: true });
+        await expect(attentionLink).toHaveAttribute('href', '#service-checks');
+        await attentionLink.click();
+        await expect(checks).toBeInViewport();
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();

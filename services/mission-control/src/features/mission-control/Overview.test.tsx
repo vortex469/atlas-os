@@ -116,7 +116,7 @@ describe("MC overview evidence", () => {
         expect(expand).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expand);
         expect(within(attentionList).getAllByRole('listitem')).toHaveLength(9);
-        expect(attention.getByRole('link', { name: 'service-5' })).toBeVisible();
+        expect(attention.getByRole('link', { name: 'service-5' })).toHaveAttribute('href', '/providers/provider-5');
         const collapse = attention.getByRole('button', { name: 'Show fewer items' });
         expect(collapse).toHaveAttribute('aria-expanded', 'true');
         fireEvent.click(collapse);
@@ -178,6 +178,8 @@ describe("MC overview evidence", () => {
 
         expect(condition.getByText("Atlas Core could not connect", { exact: true })).toBeVisible();
         expect(condition.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
+        expect(condition.getByRole("link", { name: "iFileshare" })).toHaveAttribute("href", "#service-checks");
+        expect(screen.getByRole("region", { name: "Service checks" })).toHaveAttribute("id", "service-checks");
     });
 
     it("shows a short next step and keeps extra connection checks collapsed", () => {
