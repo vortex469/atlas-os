@@ -508,10 +508,13 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
                 <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
                     <h2 id="output-capture-heading" className="font-semibold text-white">Worker output was shortened</h2>
-                    <p className="mt-2 text-sm text-slate-300">The worker retained a bounded portion of its output. Verification and commit still require their own approvals.</p>
-                    {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
-                        <p key={item.stream} className="mt-2 text-sm text-slate-400">{item.stream}: {item.retained_bytes} bytes retained; {item.observed_bytes ?? "unknown"} bytes observed.</p>
-                    ))}
+                    <p className="mt-2 text-sm text-slate-300">Only part of the worker's output is shown. Verification and commit each need separate approval.</p>
+                    <details className="mt-3 text-sm text-slate-300">
+                        <summary className="mc-focusable cursor-pointer text-blue-200">Output details</summary>
+                        {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
+                            <p key={item.stream} className="mt-2 text-slate-400">{item.stream}: {item.retained_bytes} bytes retained; {item.observed_bytes ?? "unknown"} bytes observed.</p>
+                        ))}
+                    </details>
                 </section>
             )}
 

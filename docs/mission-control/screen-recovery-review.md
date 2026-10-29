@@ -2771,3 +2771,13 @@ that a workflow may be blocked before it starts. Workflow evidence, ordering,
 availability rules and actions are unchanged. The focused Overview and Work
 activity suites pass (102 tests), all 28 built Overview browser tests pass,
 and Mission Control lint and production build pass.
+
+## Workflow output summary — 2026-10-29
+
+The workflow review now says plainly when only part of the worker's output is
+shown. Stream names and byte counts remain available under a collapsed
+“Output details” disclosure. The visible reminder keeps verification and
+commit as separate approvals. Workflow evidence, approval rules and execution
+behavior are unchanged. The WorkflowPage suite passes (88 tests), all 11 built
+repository journey browser tests pass at 320px, 390px and 1280px, and Mission
+Control lint and production build pass.

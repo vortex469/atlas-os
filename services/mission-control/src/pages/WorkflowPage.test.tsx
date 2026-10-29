@@ -444,7 +444,13 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(detail);
         renderPage();
         expect(await screen.findByRole("heading", { name: "Worker output was shortened" })).toBeInTheDocument();
-        expect(screen.getByText(/1024 bytes retained; 4096 bytes observed/)).toBeInTheDocument();
+        expect(screen.getByText("Only part of the worker's output is shown. Verification and commit each need separate approval.")).toBeVisible();
+        const outputDetails = screen.getByText("Output details").closest("details") as HTMLElement;
+        const byteCounts = within(outputDetails).getByText(/1024 bytes retained; 4096 bytes observed/);
+        expect(outputDetails).not.toHaveAttribute("open");
+        expect(byteCounts).not.toBeVisible();
+        fireEvent.click(screen.getByText("Output details"));
+        expect(byteCounts).toBeVisible();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedSubmitWorkflowVerificationApproval).not.toHaveBeenCalled();

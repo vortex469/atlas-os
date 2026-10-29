@@ -122,6 +122,15 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Run approved change", exact: true }).click();
 
         await expect(page.getByRole("button", { name: "Approve Verification", exact: true })).toBeVisible();
+        const outputNotice = page.getByRole("region", { name: "Worker output was shortened" });
+        await expect(outputNotice.getByText("Only part of the worker's output is shown. Verification and commit each need separate approval.", { exact: true })).toBeVisible();
+        const outputDetails = outputNotice.getByText("Output details", { exact: true });
+        const outputCounts = outputNotice.getByText("stdout: 1024 bytes retained; 4096 bytes observed.", { exact: true });
+        await expect(outputCounts).toBeHidden();
+        await outputDetails.click();
+        await expect(outputCounts).toBeVisible();
+        await outputDetails.click();
+        await expect(outputCounts).toBeHidden();
         await expect(page.getByText("Change approved. Run it when you are ready.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Run approved|Record approved/ })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(7);
