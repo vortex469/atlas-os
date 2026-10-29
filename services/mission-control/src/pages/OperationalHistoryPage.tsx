@@ -232,7 +232,7 @@ function verificationLabel(value: string | null): string {
         pending: "In progress",
         succeeded: "Passed",
     };
-    return labels[value] ?? value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return labels[value] ?? "Result unavailable";
 }
 
 function HistoryDetail({ label, value }: { label: string; value: ReactNode }) {
@@ -246,6 +246,7 @@ function maintenanceStageLabel(value: string): string {
         awaiting_implementation_approval: "Waiting for maintenance approval",
         awaiting_execution: "Approved and ready to run",
         executing: "Running",
+        patch_applied_pending_verification: "Maintenance ran. Result check is next.",
         awaiting_verification_approval: "Waiting for verification approval",
         verifying: "Checking the result",
         awaiting_commit_approval: "Waiting for commit approval",
@@ -254,7 +255,7 @@ function maintenanceStageLabel(value: string): string {
         implementation_rejected: "Request rejected",
         completed: "Completed",
     };
-    return labels[value] ?? value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return labels[value] ?? "Status unavailable";
 }
 
 const FILTER_LABELS: Record<string, string> = {

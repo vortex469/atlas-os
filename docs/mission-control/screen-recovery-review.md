@@ -3363,3 +3363,12 @@ operator can tell which proposals are on the current page. The changing count
 is announced as a status update, and singular wording is covered. An empty
 later page explains that the previous page may contain matching proposals. The
 focused page suite covers first-page, next-page, and empty-result summaries.
+
+## Maintenance history state labels — 2026-10-29
+
+Maintenance history now gives every recognized workflow stage an operator
+label, including the state after a maintenance action runs and before its
+result check. Unknown stages and verification results are shown as unavailable
+instead of converting backend values into labels that look authoritative. The
+focused page suite covers each known stage, unknown values, and verification
+results; the full Mission Control test suite, lint, and build pass.

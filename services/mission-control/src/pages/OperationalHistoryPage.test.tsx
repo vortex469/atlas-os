@@ -248,10 +248,19 @@ describe("OperationalHistoryPage", () => {
     });
 
     it.each([
+        ["planned", "Ready for review"],
+        ["awaiting_approval", "Waiting for review"],
         ["awaiting_implementation_approval", "Waiting for maintenance approval"],
+        ["awaiting_execution", "Approved and ready to run"],
         ["executing", "Running"],
+        ["patch_applied_pending_verification", "Maintenance ran. Result check is next."],
+        ["awaiting_verification_approval", "Waiting for verification approval"],
+        ["verifying", "Checking the result"],
+        ["awaiting_commit_approval", "Waiting for commit approval"],
+        ["committing", "Recording commit"],
         ["completed", "Completed"],
         ["blocked", "Blocked"],
+        ["implementation_rejected", "Request rejected"],
     ])("shows a readable request stage for %s", async (workflow_state, label) => {
         mockedList.mockResolvedValue({
             items: [{ workflow_id: "workflow-operational-1", workflow_source: "candidate", workflow_state,
@@ -268,6 +277,23 @@ describe("OperationalHistoryPage", () => {
         expect(within(disclosure).getByText("Request stage", { exact: true })).toBeVisible();
         expect(within(disclosure).getByText(label, { exact: true })).toBeVisible();
         expect(within(disclosure).queryByText(workflow_state, { exact: true })).not.toBeInTheDocument();
+    });
+
+    it("does not present an unrecognized request stage as a known state", async () => {
+        const unknownState = "future_backend_state";
+        mockedList.mockResolvedValue({
+            items: [{ workflow_id: "workflow-operational-1", workflow_source: "candidate", workflow_state: unknownState,
+                effect_kind: "operational_action", execution_intent: "restart-service", candidate_id: "candidate-1",
+                planning_session_id: "planning-1", repository: null, target_id: "110", last_result_summary: "verified", timeline: [] }],
+            total: 1, limit: 10, offset: 0,
+        });
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        const details = await screen.findByText("Request details", { exact: true });
+        fireEvent.click(details);
+        const disclosure = details.closest("details") as HTMLElement;
+        expect(within(disclosure).getByText("Status unavailable", { exact: true })).toBeVisible();
+        expect(within(disclosure).queryByText(unknownState, { exact: true })).not.toBeInTheDocument();
     });
 
     it.each([
@@ -296,6 +322,7 @@ describe("OperationalHistoryPage", () => {
         ["succeeded", "Passed"],
         ["failed", "Did not pass"],
         ["pending", "In progress"],
+        ["future_verification_state", "Result unavailable"],
         [null, "Not reported"],
     ] as const)("shows the %s verification result in plain language", async (verification_status, label) => {
         mockedLifecycle.mockResolvedValue(operationalLifecycle({ verification_status }));
@@ -306,6 +333,9 @@ describe("OperationalHistoryPage", () => {
         const disclosure = details.closest("details") as HTMLElement;
         expect(within(disclosure).getByText("Verification result", { exact: true })).toBeVisible();
         expect(within(disclosure).getByText(label, { exact: true })).toBeVisible();
+        if (typeof verification_status === "string") {
+            expect(within(disclosure).queryByText(verification_status, { exact: true })).not.toBeInTheDocument();
+        }
     });
 });
 
