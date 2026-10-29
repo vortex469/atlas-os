@@ -142,6 +142,7 @@ for (const width of [320, 1280]) {
         await page.goto("/providers/proxmox");
         const loadingMessage = page.getByText("Loading provider details...");
         await expect(loadingMessage).toBeVisible();
+        await expect(page.getByText("Loading provider data…", { exact: true })).toBeVisible();
         const spacing = await loadingMessage.evaluate((element) => {
             const page = element.closest("main");
             const panel = element.closest("section");
@@ -178,6 +179,7 @@ for (const width of [320, 1280]) {
 
         const loadingMessage = page.getByText("Loading provider details...", { exact: true });
         await expect(loadingMessage).toBeVisible();
+        await expect(page.getByText("Loading provider data…", { exact: true })).toBeVisible();
         const spacing = await loadingMessage.evaluate((element) => {
             const page = element.closest("main");
             const panel = element.closest("section");

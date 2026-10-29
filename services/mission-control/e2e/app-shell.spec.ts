@@ -57,6 +57,21 @@ test("provider check details open from the keyboard and show local time", async 
     await expect(details).toContainText("local time");
 });
 
+test("provider initial load is described as data loading", async ({ page }) => {
+    let releaseProviderRead!: () => void;
+    const providerRead = new Promise<void>((resolve) => { releaseProviderRead = resolve; });
+    await page.route("**/api/v1/providers", async (route) => {
+        await providerRead;
+        await route.fallback();
+    });
+    await page.goto("/providers/proxmox");
+
+    await expect(page.getByText("Loading provider data…", { exact: true })).toBeVisible();
+    await expect(page.getByText("Connecting...", { exact: true })).toHaveCount(0);
+    releaseProviderRead();
+    await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
+});
+
 test.describe("Mobile navigation", () => {
     test.use({
         viewport: { width: 320, height: 844 },

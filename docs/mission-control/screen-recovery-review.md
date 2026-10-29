@@ -3498,3 +3498,10 @@ could not load the review and invites a retry instead of repeating the heading.
 It continues to hide technical error details and keeps the retry limited to
 reading the review; saved confirmation and installation boundaries are
 unchanged.
+
+## Provider data loading label — 2026-10-29
+
+The provider detail timestamp area now says “Loading provider data” during its
+initial read instead of “Connecting,” which could sound like Atlas was testing
+the provider's network connection. No provider check or connection behavior
+changed.

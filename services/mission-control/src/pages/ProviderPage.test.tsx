@@ -47,6 +47,17 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"]));
     });
 
+    it("labels the initial provider-data load without implying a connectivity check", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
+            isLoading: true,
+            lastUpdated: null,
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByText("Loading provider data…", { exact: true })).toBeInTheDocument();
+        expect(screen.queryByText("Connecting...", { exact: true })).not.toBeInTheDocument();
+    });
+
     it.each([
         { isLoading: true, isRefreshing: false, label: "Loading…", disabled: true },
         { isLoading: false, isRefreshing: true, label: "Refreshing…", disabled: true },

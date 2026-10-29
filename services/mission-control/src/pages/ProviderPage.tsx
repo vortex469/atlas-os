@@ -111,7 +111,7 @@ export function ProviderPage() {
                                         })}
                                     </time>
                                 )
-                                : isLoading ? "Connecting..." : "Not updated yet"}
+                                : isLoading ? "Loading provider data…" : "Not updated yet"}
                         </p>
                     </div>
 
