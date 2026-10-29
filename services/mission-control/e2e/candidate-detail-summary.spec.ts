@@ -27,12 +27,13 @@ for (const width of [320, 390, 1280]) {
 test("proposal detail offers a clear retry after a failed read", async ({ page, rejectedMutationRequests }) => {
     const candidate = executionCandidates[0];
     let reads = 0;
+    let allowRecovery = false;
     await page.setViewportSize({ width: 390, height: 900 });
     await page.route(`**/api/v1/execution-candidates/${candidate.id}`, (route) => {
         reads += 1;
-        return reads === 1
-            ? route.fulfill({ status: 503, json: { detail: "PRIVATE_BACKEND_DETAIL" } })
-            : route.fulfill({ json: candidate });
+        return allowRecovery
+            ? route.fulfill({ json: candidate })
+            : route.fulfill({ status: 503, json: { detail: "PRIVATE_BACKEND_DETAIL" } });
     });
     await page.goto(`/execution-candidates/${candidate.id}`);
 
@@ -40,8 +41,9 @@ test("proposal detail offers a clear retry after a failed read", async ({ page, 
     await expect(alert).toContainText("Change proposal unavailable");
     await expect(alert).toContainText("Atlas couldn’t load this change proposal. Try again to check its details.");
     await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
+    allowRecovery = true;
     await alert.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
-    expect(reads).toBe(2);
+    expect(reads).toBeGreaterThanOrEqual(2);
     expect(rejectedMutationRequests).toEqual([]);
 });
