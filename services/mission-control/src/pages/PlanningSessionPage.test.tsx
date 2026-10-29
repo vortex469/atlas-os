@@ -490,9 +490,7 @@ describe("PlanningSessionPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Plan result unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not verify the plan result.");
-        expect(alert).toHaveTextContent("Check whether Atlas saved the plan before trying again.");
-        expect(alert).toHaveTextContent("This only checks for a saved plan. It does not generate another plan or approve or apply the change.");
+        expect(alert).toHaveTextContent("Atlas couldn’t confirm whether your plan was saved. Check for a saved plan before trying again. This check won’t create another plan, approve it, or apply changes.");
         expect(screen.queryByRole("button", { name: "Generate Plan" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Check for saved plan" })).toBeInTheDocument();
         expect(mockedGenerateCandidatePlan).toHaveBeenCalledTimes(1);
@@ -569,7 +567,7 @@ describe("PlanningSessionPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Plan result unavailable");
-        expect(alert).toHaveTextContent("Mission Control could not verify the plan result.");
+        expect(alert).toHaveTextContent("Atlas couldn’t confirm whether your plan was saved.");
         expect(screen.queryByRole("button", { name: "Create Workflow" })).not.toBeInTheDocument();
         expect(mockedCreateCandidateWorkflowShell).not.toHaveBeenCalled();
     });

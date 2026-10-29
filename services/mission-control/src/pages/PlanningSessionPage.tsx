@@ -329,7 +329,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 {generateError && (
                     <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                         <p className="font-semibold text-red-300">Plan result unavailable</p>
-                        <p className="mt-1 text-sm text-red-200/80">Mission Control could not verify the plan result. Check whether Atlas saved the plan before trying again. This only checks for a saved plan. It does not generate another plan or approve or apply the change.</p>
+                        <p className="mt-1 text-sm text-red-200/80">Atlas couldn’t confirm whether your plan was saved. Check for a saved plan before trying again. This check won’t create another plan, approve it, or apply changes.</p>
                         <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check for saved plan</button>
                         <details className="mt-3">
                             <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
@@ -518,7 +518,7 @@ function ListPanel({ title, values, empty, ordered = false }: { title: string; v
 
 function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boolean): string {
     if (hasPlan) return "Review this read-only plan. No approval or change has been made.";
-    if (session.status === "plan_ready") return "Mission Control verifies the saved plan belongs to this session before showing workflow creation.";
+    if (session.status === "plan_ready") return "Atlas checks that the saved plan belongs to this session before showing workflow setup.";
     if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas could not check whether this proposal is current because Core is unavailable.";
     if (session.planning_failure?.code === "persistence_failed") return "Atlas could not save the planning session. No plan is ready to review.";
     if (session.status.includes("stale") || session.planning_failure?.code === "candidate_stale") return "This proposal is out of date. Return to the proposal and refresh before trying again.";
