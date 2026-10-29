@@ -339,7 +339,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         && workflow.commit_approval_status === "pending";
 
     const canResumeImplementation =
-        workflow.workflow_state === "awaiting_implementation_approval"
+        (workflow.workflow_state === "awaiting_implementation_approval" || workflow.workflow_state === "awaiting_execution")
         && workflow.implementation_approval_status === "approved"
         && (!isOperational || actionRequest !== null);
     const canResumeVerification =

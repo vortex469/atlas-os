@@ -192,7 +192,7 @@ describe("WorkflowPage", () => {
     });
 
     it("requires a reviewable exact request before resuming an approved maintenance stage", async () => {
-        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action", operational_action_request: null, implementation_approval_status: "approved" }));
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action", workflow_state: "awaiting_execution", operational_action_request: null, implementation_approval_status: "approved" }));
         renderPage();
         await screen.findByRole("heading", { name: "Maintenance request unavailable" });
         expect(screen.queryByRole("button", { name: "Run approved maintenance" })).not.toBeInTheDocument();
@@ -831,6 +831,22 @@ describe("WorkflowPage", () => {
         expect(await screen.findByText("Implementation approval is recorded.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject implementation" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Run approved change" })).toBeVisible();
+    });
+
+    it("offers approved maintenance run in the ready-to-run state only with the exact request", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({
+            effect_kind: "operational_action",
+            workflow_state: "awaiting_execution",
+            implementation_approval_status: "approved",
+            operational_action_request: operationalActionRequest(),
+        }));
+        renderPage();
+
+        expect(await screen.findByRole("button", { name: "Run approved maintenance" })).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Approve maintenance request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject maintenance request" })).not.toBeInTheDocument();
+        expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
 
     it("hides implementation approval controls after an approve response without state transition", async () => {
