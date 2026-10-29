@@ -3062,3 +3062,13 @@ status, keeps technical evidence collapsed, and retries only its read request.
 The nested activation evidence record now uses a short saved/expired status and
 readable UTC times. Its summary says activation remains unavailable, keeps
 technical lineage collapsed, and offers only a safe retry of the read request.
+
+The nested queue and worker review now shows a short saved/expired status and
+readable UTC times. Version prerequisites and blocker details stay collapsed;
+a failed read retries only the Core list request. The review still grants no
+queue or worker action.
+
+The nested queue and worker status panel now uses plain language and keeps
+version-specific admission details collapsed. A failed read retries only the
+saved review request; the panel still has no claim, lease, acknowledgement, or
+worker-start action.

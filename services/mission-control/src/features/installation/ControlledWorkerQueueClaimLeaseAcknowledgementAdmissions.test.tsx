@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions } from "../../api/controlledWorkerQueueClaimLeaseAcknowledgementAdmission";
@@ -18,24 +18,34 @@ describe("ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions", () => {
         let resolve!: (value: ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionCollectionV1) => void;
         vi.mocked(listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={controlledWorkerQueueClaimAdmissionFixture.candidate_record_id} v049AdmissionId={controlledWorkerQueueClaimAdmissionFixture.admission_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading controlled queue claim lease acknowledgement admission evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/checking the saved review/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no controlled queue claim lease acknowledgement admission evidence/i));
-        expect(screen.getByRole("status")).toHaveTextContent(/queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain blocked/i);
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no review has been saved/i));
         unmount();
 
         vi.mocked(listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={controlledWorkerQueueClaimAdmissionFixture.candidate_record_id} v049AdmissionId={controlledWorkerQueueClaimAdmissionFixture.admission_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/private system details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
+    });
+
+    it("retries only the saved review read", async () => {
+        vi.mocked(listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions).mockRejectedValueOnce(new Error("secret /internal/path"));
+        render(<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={controlledWorkerQueueClaimAdmissionFixture.candidate_record_id} v049AdmissionId={controlledWorkerQueueClaimAdmissionFixture.admission_id} />);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(/retry to check its status/i);
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        expect(await screen.findByText(/no review has been saved/i)).toBeInTheDocument();
+        expect(listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions).toHaveBeenCalledTimes(2);
     });
 
     it("renders simple v0.51 state with technical evidence under Advanced details", async () => {
         vi.mocked(listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions).mockResolvedValue(controlledWorkerQueueClaimLeaseAcknowledgementAdmissionCollectionFixture);
         render(<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={controlledWorkerQueueClaimAdmissionFixture.candidate_record_id} v049AdmissionId={controlledWorkerQueueClaimAdmissionFixture.admission_id} />);
-        expect(await screen.findByText(/recorded v0\.51 admission evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/operator state: claim\/lease\/ack admission evidence recorded/i)).toHaveTextContent(/queue adapter: not defined; queue claim: not defined; queue lease: not defined; queue acknowledgement: not defined; worker-start admission: not defined; blocked: yes/i);
-        const advanced = screen.getByText("Advanced v0.51 evidence").closest("details");
+        expect(await screen.findByText(/queue and worker review saved/i)).toBeInTheDocument();
+        expect(screen.getByText(/queue access and worker start are not available/i)).toHaveTextContent(/this record only saves review evidence/i);
+        const advanced = screen.getByText("Technical details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
         expect(advanced).toHaveTextContent(/v0\.50 prerequisite state/i);

@@ -8,7 +8,7 @@ import type { ControlledWorkerQueueClaimAdmissionCollectionV1 } from "../../type
 import { ControlledWorkerQueueClaimAdmissions } from "./ControlledWorkerQueueClaimAdmissions";
 
 vi.mock("../../api/controlledWorkerQueueClaimAdmission", () => ({ listControlledWorkerQueueClaimAdmissions: vi.fn() }));
-vi.mock("./ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions", () => ({ ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions: () => <section aria-label="Controlled worker queue claim lease acknowledgement admission evidence">Nested v0.51 claim lease acknowledgement evidence</section> }));
+vi.mock("./ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions", () => ({ ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions: () => <section aria-label="Queue and worker review status">Nested v0.51 claim lease acknowledgement evidence</section> }));
 
 const empty: ControlledWorkerQueueClaimAdmissionCollectionV1 = { ...controlledWorkerQueueClaimAdmissionCollectionFixture, items: [], count: 0 };
 
@@ -46,7 +46,7 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
         expect(await screen.findByText(/queue review saved/i)).toBeInTheDocument();
         expect(screen.getByText(/queue access is unavailable/i)).toHaveTextContent(/no work was claimed, and no worker was started/i);
-        expect(screen.getByLabelText(/controlled worker queue claim lease acknowledgement admission evidence/i)).toHaveTextContent(/nested v0\.51/i);
+        expect(screen.getByLabelText(/queue and worker review status/i)).toHaveTextContent(/nested v0\.51/i);
         const advanced = screen.getByText("Technical details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
