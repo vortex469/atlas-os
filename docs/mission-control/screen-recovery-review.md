@@ -2473,15 +2473,16 @@ instead of being reported as “less than 1 hour ago.”
 
 The workflow state that prepares a change now reads “Prepare change” and
 “Prepare the change for review,” rather than implying that it is already
-waiting for approval. Later stages give a safe next step: review before
+waiting for approval. The workflow detail summary uses the same preparation
+wording. Later stages give a safe next step: review before
 resuming an approved repository change, run maintenance only after approval,
-and finish verification or commit only after their separate approval. The
+and resume verification or commit only after their separate approval. The
 dashboard uses “Next step” instead of claiming that the operator's approval is
 needed; its workflow summary contract does not say whether approval has already
 been recorded. Counts group preparation separately from approval or resume.
 Approval, resume, execution, verification and commit controls are unchanged.
 
-Four focused component suites pass (117 tests), and the matching responsive
+Five focused component suites pass (204 tests), and the matching responsive
 browser suites pass (56 tests across 320px, 390px, 768px, 1280px and 1440px).
 Mission Control lint and build pass. Browser requests use synthetic fixtures
 that reject unexpected mutations; no real workflow or provider action runs.

@@ -87,8 +87,8 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
         expect(screen.getByText("Prepare change for review")).toBeInTheDocument();
         expect(screen.getByText("Approval or resume")).toBeInTheDocument();
-        expect(screen.getByText("Review the checks; run them only after approval.")).toBeVisible();
-        expect(screen.getByText("Review the commit; finish it only after approval.")).toBeVisible();
+        expect(screen.getByText("Review the checks; resume to run them if approved.")).toBeVisible();
+        expect(screen.getByText("Review the commit; resume to record it if approved.")).toBeVisible();
         expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Progress")[0]).toBeInTheDocument();

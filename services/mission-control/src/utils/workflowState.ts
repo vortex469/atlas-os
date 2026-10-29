@@ -132,9 +132,9 @@ export function workflowNextStepLabel(state: string, effectKind?: string): strin
                 ? "Review the maintenance request; run it only after approval."
                 : "Review the change; resume it if approved.";
         case "awaiting_verification_approval":
-            return "Review the checks; run them only after approval.";
+            return "Review the checks; resume to run them if approved.";
         case "awaiting_commit_approval":
-            return "Review the commit; finish it only after approval.";
+            return "Review the commit; resume to record it if approved.";
         case "blocked":
             return "Open the workflow to review what is blocked.";
         default:

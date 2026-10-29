@@ -14,8 +14,8 @@ describe("MC overview evidence", () => {
         const expectedStage = workflow_state === 'awaiting_implementation_approval'
             ? 'Review the change; resume it if approved.'
             : workflow_state === 'awaiting_verification_approval'
-                ? 'Review the checks; run them only after approval.'
-                : 'Review the commit; finish it only after approval.';
+                ? 'Review the checks; resume to run them if approved.'
+                : 'Review the commit; resume to record it if approved.';
         expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/review-me');
         expect(attention.getByText(`Action needed: ${expectedStage}`)).toBeVisible();
         const workflowId = attention.getByText('review-me');
@@ -56,7 +56,7 @@ describe("MC overview evidence", () => {
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toHaveAttribute('href', '/workflows/workflow-123');
-        expect(attention.getByText('Action needed: Review the checks; run them only after approval.')).toBeVisible();
+        expect(attention.getByText('Action needed: Review the checks; resume to run them if approved.')).toBeVisible();
         expect(attention.getByText('Review the exact verification')).toBeVisible();
         const workflowId = attention.getByText('workflow-123');
         expect(workflowId).not.toBeVisible();

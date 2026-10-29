@@ -890,7 +890,7 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
         case "planned":
             return "Workflow is ready for review.";
         case "awaiting_approval":
-            return "Workflow is waiting for review.";
+            return "Prepare the change for review.";
         case "awaiting_implementation_approval":
             if (workflow.implementation_approval_status === "approved") return `${action} is approved. ${workflow.effect_kind === "operational_action" ? "Run it when ready." : "Resume to run it."}`;
             if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;

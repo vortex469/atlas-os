@@ -89,6 +89,7 @@ function renderPage(path = "/workflows/workflow-123") {
 
 describe("WorkflowPage", () => {
     it.each([
+        ["preparation", workflow({ workflow_state: "awaiting_approval" }), "Prepare the change for review."],
         ["executing", workflow({ workflow_state: "executing" }), "Implementation is running."],
         ["commit approval", workflow({ workflow_state: "awaiting_commit_approval" }), "Commit needs approval."],
         ["completed", workflow({ workflow_state: "completed" }), "Workflow completed."],
