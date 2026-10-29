@@ -293,6 +293,7 @@ describe("DiscoveryPage", () => {
             item: { ...entry().item, id: "redis", name: "Redis" },
         })])));
         expect(screen.getByText("Loading catalog…")).toBeInTheDocument();
+        expect(screen.queryByText("Loading items…")).not.toBeInTheDocument();
         expect(screen.queryByText("Redis")).not.toBeInTheDocument();
 
         await act(async () => latestSearch.resolve(searchPage([entry({

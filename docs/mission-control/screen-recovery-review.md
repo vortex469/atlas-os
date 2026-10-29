@@ -3172,3 +3172,6 @@ proposal list.
 
 Empty catalog and search results now use their clear empty-state message without
 repeating it as a zero count. Positive result totals remain visible.
+
+The catalog also shows a single loading message while results are being fetched,
+instead of repeating the status above and inside the results panel.
