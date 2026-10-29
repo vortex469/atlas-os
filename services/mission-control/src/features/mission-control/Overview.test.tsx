@@ -621,7 +621,7 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.getByRole('link', { name: 'Workflow · Execution completed' })).toBeVisible();
     expect(worker.queryByText('Commit failed')).not.toBeInTheDocument();
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
-    expect(worker.getByText(/Current status is unknown/)).toBeInTheDocument();
+    expect(worker.getByText("Atlas couldn't load the latest workflow report. The statuses shown may have changed.")).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getAllByRole('link', { name: 'Workflow' })).toHaveLength(1);
     expect(attention.getByText('Last report: this workflow was blocked. Atlas could not confirm its current status.')).toBeVisible();

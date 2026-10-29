@@ -56,8 +56,8 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             <p className="mt-2 text-sm text-mc-text-muted">
                 Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.
             </p>
-            {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Showing last-known workflow information. Current status is unknown.</p>}
-            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing. The information shown may be out of date.</p>}
+            {loading && items && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Checking for a newer workflow report. The statuses shown may have changed.</p>}
+            {!loading && evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Atlas couldn't load the latest workflow report. The statuses shown may have changed.</p>}
             {items && knownStates && (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <Metric label="Running workflows" value={String(active.length)} />

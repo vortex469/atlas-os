@@ -139,9 +139,9 @@ describe("Work activity summary", () => {
         rerender(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([]) }} loading={false} /></MemoryRouter>);
         expect(screen.getByRole("region", { name: "Work activity" }).querySelector("dd")).toHaveTextContent("0");
     });
-    it("marks retained observations during refresh as potentially stale", () => {
+    it("explains that retained observations may have changed during refresh", () => {
         view(page([workflow("active")]), false, true);
-        expect(screen.getByRole("status")).toHaveTextContent(/information shown may be out of date/);
+        expect(screen.getByRole("status")).toHaveTextContent("Checking for a newer workflow report. The statuses shown may have changed.");
     });
     it.each([null, {}, { items: null }, page([null as unknown as WorkflowSummary]),
         { ...page([]), total: -1 }, { ...page([]), total: 1 },
@@ -177,11 +177,18 @@ describe("Work activity summary", () => {
     });
 });
 
-it("retains failed-refresh observations explicitly as stale, without asserting health", () => {
+it("explains that a failed refresh leaves earlier workflow statuses on screen", () => {
     render(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([workflow("old")]), unavailable: true, stale: true }} /></MemoryRouter>);
     expect(screen.getByRole("link", { name: "Workflow · Running" })).toBeInTheDocument();
-    expect(screen.getByText("Showing last-known workflow information. Current status is unknown.")).toBeInTheDocument();
+    expect(screen.getByText("Atlas couldn't load the latest workflow report. The statuses shown may have changed.")).toBeInTheDocument();
     expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
+});
+
+it("shows one refresh message while checking for a newer report", () => {
+    render(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([workflow("old")]), unavailable: true, stale: true }} loading /></MemoryRouter>);
+    expect(screen.getByText("Checking for a newer workflow report. The statuses shown may have changed.")).toBeInTheDocument();
+    expect(screen.queryByText("Atlas couldn't load the latest workflow report. The statuses shown may have changed.")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("status")).toHaveLength(1);
 });
 
 it.each(["..", "\ud800", " "])("rejects unsafe workflow navigation: %j", id => {

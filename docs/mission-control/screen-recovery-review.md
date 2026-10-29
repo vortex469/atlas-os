@@ -2955,4 +2955,6 @@ Stale workflow attention now says what the last report showed and that Atlas
 could not confirm the current status. It removes the technical-sounding
 “Last-known” link prefix and the duplicate stale-condition sentence. Other
 stale health conditions retain their “Last known report (out of date)” status.
-Workflow decisions and action controls remain unchanged.
+Work activity explains when its latest report could not be loaded and shows one
+plain refresh message while a newer report is being checked. Workflow decisions
+and action controls remain unchanged.
