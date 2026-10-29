@@ -28,6 +28,20 @@ describe("ProvidersPage", () => {
         expect(screen.queryByRole("button", { name: /approve|execute|restart/i })).not.toBeInTheDocument();
     });
 
+    it("labels the first registry request as loading, not refreshing", async () => {
+        let resolveLoad!: (value: { data: unknown }) => void;
+        get.mockReturnValueOnce(new Promise((resolve) => { resolveLoad = resolve; }));
+        show();
+
+        const loadButton = screen.getByRole("button", { name: "Loading…" });
+        expect(loadButton).toBeDisabled();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading providers…");
+
+        await act(async () => resolveLoad({ data: [provider()] }));
+        expect(await screen.findByRole("heading", { name: "Proxmox" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();
+    });
+
     it("keeps registry navigation links visible in keyboard focus", async () => {
         const user = userEvent.setup();
         get.mockResolvedValue({ data: [provider()] });

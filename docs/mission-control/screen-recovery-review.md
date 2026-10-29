@@ -3232,3 +3232,9 @@ Unmatched system findings now point to System health. Findings that replace a
 duplicate provider or service warning retain that condition's safe detail or
 summary destination, so their higher priority does not send operators to
 generic action history.
+
+## Provider registry first-load label — 2026-10-29
+
+The disabled registry control now says “Loading…” on the first request and
+“Refreshing…” only when a previously loaded list is being updated. Its focused
+page suite covers both initial completion and refresh recovery.

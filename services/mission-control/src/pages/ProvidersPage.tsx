@@ -48,7 +48,7 @@ export function ProvidersPage() {
                     <h1 className="mt-3 text-3xl font-semibold text-white">Providers</h1>
                     <p className="mt-2 text-sm text-slate-400">See the providers Atlas knows about. Open a provider for details.</p>
                 </div>
-                <button type="button" onClick={() => void load()} disabled={loading} className="mc-control mc-focusable px-4 py-2 text-sm font-semibold disabled:opacity-50">{loading ? "Refreshing…" : error && providers === null ? "Try again" : "Refresh"}</button>
+                <button type="button" onClick={() => void load()} disabled={loading} className="mc-control mc-focusable px-4 py-2 text-sm font-semibold disabled:opacity-50">{loading ? providers === null ? "Loading…" : "Refreshing…" : error && providers === null ? "Try again" : "Refresh"}</button>
             </header>
             {loading && providers === null && <p role="status" className="text-slate-300">Loading providers…</p>}
             {loading && providers !== null && <p role="status" className="text-slate-300">Refreshing providers. Showing the last loaded information.</p>}
