@@ -133,6 +133,15 @@ describe("ExecutionTimeline", () => {
         expect(screen.getByRole("status")).toHaveTextContent("Approval is recorded. Run the change when you are ready.");
     });
 
+    it("does not claim an awaiting change is approved when approval is still pending", () => {
+        renderTimeline(workflow({
+            workflow_state: "awaiting_execution",
+            implementation_approval_status: "pending",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Implementation approval is not confirmed. Refresh before running the change.");
+    });
+
     it("keeps the approved-to-run message when the workflow state has not advanced", () => {
         renderTimeline(workflow({
             workflow_state: "awaiting_implementation_approval",
@@ -205,6 +214,16 @@ describe("ExecutionTimeline", () => {
         }));
 
         expect(screen.getByRole("status")).toHaveTextContent("Maintenance is approved. Run it when you are ready.");
+    });
+
+    it("does not tell the operator to run maintenance while approval is unconfirmed", () => {
+        renderTimeline(workflow({
+            effect_kind: "operational_action",
+            workflow_state: "awaiting_execution",
+            implementation_approval_status: "pending",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Maintenance approval is not confirmed. Refresh before running it.");
     });
 
     it("keeps approved maintenance distinct from a missing run result before the run starts", () => {

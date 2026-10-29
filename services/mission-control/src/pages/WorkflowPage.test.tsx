@@ -91,6 +91,8 @@ describe("WorkflowPage", () => {
     it.each([
         ["preparation", workflow({ workflow_state: "awaiting_approval" }), "Prepare the change for review."],
         ["executing", workflow({ workflow_state: "executing" }), "Implementation is running."],
+        ["approved and ready", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" }), "Implementation is approved and ready to run."],
+        ["unconfirmed approval", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "pending" }), "Implementation approval is not confirmed. Refresh before running it."],
         ["commit approval", workflow({ workflow_state: "awaiting_commit_approval" }), "Commit needs approval."],
         ["completed", workflow({ workflow_state: "completed" }), "Workflow completed."],
         ["unknown", workflow({ workflow_state: "unexpected_state" }), "Current workflow status is unavailable. Review Workflow details."],

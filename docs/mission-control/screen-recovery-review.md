@@ -3419,3 +3419,9 @@ shows the approved run as the next operator step.
 The approved-to-run state now shows the existing explicit run control when
 approval is recorded. Maintenance additionally requires its exact request to
 be reviewable. No action starts until the operator selects that control.
+
+If a workflow reports `awaiting_execution` but the approval field is missing,
+pending, or rejected, the detail summary and progress panel no longer describe
+it as ready to run. They ask the operator to refresh when approval is
+unconfirmed. Focused workflow-detail and progress tests pass (117 tests), along
+with lint and build. Approval and execution remain separate operator actions.

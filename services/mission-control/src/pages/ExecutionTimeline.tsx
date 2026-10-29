@@ -114,6 +114,9 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
         if (workflow.workflow_state === "executing") return "Maintenance is running.";
         if (workflow.workflow_state === "implementation_rejected" || workflow.implementation_approval_status === "rejected") return "The maintenance request was rejected; it was not run.";
         if (workflow.workflow_state === "planned") return "Maintenance request is ready for review.";
+        if (workflow.workflow_state === "awaiting_execution" && workflow.implementation_approval_status !== "approved") {
+            return "Maintenance approval is not confirmed. Refresh before running it.";
+        }
         if (workflow.workflow_state === "awaiting_execution"
             || (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status === "approved")) {
             return "Maintenance is approved. Run it when you are ready.";
@@ -131,6 +134,9 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
     if (execution.execution_status !== null) return "Atlas Agent reported an execution status Mission Control does not recognize. Refresh before continuing.";
     if (workflow.workflow_state === "implementation_rejected" || workflow.implementation_approval_status === "rejected") return "The change was not applied because implementation approval was rejected.";
     if (workflow.workflow_state === "planned") return "Review the proposed change before continuing.";
+    if (workflow.workflow_state === "awaiting_execution" && workflow.implementation_approval_status !== "approved") {
+        return "Implementation approval is not confirmed. Refresh before running the change.";
+    }
     if (workflow.workflow_state === "awaiting_execution"
         || (workflow.workflow_state === "awaiting_implementation_approval" && workflow.implementation_approval_status === "approved")) {
         return "Approval is recorded. Run the change when you are ready.";

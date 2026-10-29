@@ -953,7 +953,9 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
             if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;
             return `${action} needs approval.`;
         case "awaiting_execution":
-            return `${action} is approved and ready to run.`;
+            if (workflow.implementation_approval_status === "approved") return `${action} is approved and ready to run.`;
+            if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;
+            return `${action} approval is not confirmed. Refresh before running it.`;
         case "executing":
             return `${action} is running.`;
         case "patch_applied_pending_verification":
