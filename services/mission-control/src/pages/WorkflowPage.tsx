@@ -503,7 +503,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         onVerificationDecision={submitVerificationDecision}
                     />
 
-                    <CommitSection
+                    {shouldShowCommitSection(workflow) && <CommitSection
                         workflow={workflow}
                         canDecideCommit={canDecideCommit}
                         isSubmittingCommit={isSubmittingCommit}
@@ -511,7 +511,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         commitApprovalResult={commitApprovalResult}
                         commitApprovalError={commitApprovalError}
                         onCommitDecision={submitCommitDecision}
-                    />
+                    />}
                 </>
             )}
 
@@ -910,6 +910,18 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
         default:
             return "Current workflow status is unavailable. Review Workflow details.";
     }
+}
+
+function shouldShowCommitSection(workflow: WorkflowDetailResponse): boolean {
+    const result = workflow.commit_result;
+    const commitHasStarted = workflow.workflow_state === "awaiting_commit_approval"
+        || workflow.workflow_state === "committing"
+        || workflow.workflow_state === "completed";
+    const commitResultExists = result.commit_sha !== null
+        || result.commit_message !== null
+        || result.committed_files.length > 0
+        || result.completion_time !== null;
+    return workflow.commit_request !== null || commitHasStarted || commitResultExists;
 }
 
 function formatLabel(value: string): string {

@@ -1154,6 +1154,25 @@ describe("WorkflowPage", () => {
         await screen.findByText("Verification approval rejected.");
     });
 
+    it("does not show an empty commit stage before a commit request exists", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow());
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Implementation approval" });
+
+        expect(screen.queryByRole("heading", { name: "Commit details" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Commit details are unavailable for this workflow.")).not.toBeInTheDocument();
+    });
+
+    it("keeps the commit stage visible when its current request details are missing", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_state: "awaiting_commit_approval" }));
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Commit details" })).toBeInTheDocument();
+        expect(screen.getByText("Commit details are unavailable for this workflow.")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Commit approval" })).toBeVisible();
+    });
+
     it("keeps commit message and files visible with technical references collapsed", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingCommit());
         renderPage();
