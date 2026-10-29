@@ -44,7 +44,7 @@ export function AgentProviderOverviewSection({
         <section>
             <SectionHeader
                 title="Agents & Providers"
-                description="Configured AI providers and external integrations."
+                description="Configured AI providers and external integrations. Connection status reflects Atlas Core’s latest check."
             />
 
             {providers.length === 0 ? (

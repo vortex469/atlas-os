@@ -13,6 +13,7 @@ describe("AgentProviderOverviewSection", () => {
     it("renders agent and provider section", () => {
         renderWithRouter(<AgentProviderOverviewSection providers={[]} />);
         expect(screen.getByText("Agents & Providers")).toBeInTheDocument();
+        expect(screen.getByText("Configured AI providers and external integrations. Connection status reflects Atlas Core’s latest check.")).toBeInTheDocument();
     });
 
     it("shows no providers message when empty", () => {
