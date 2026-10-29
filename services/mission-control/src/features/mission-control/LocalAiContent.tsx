@@ -56,10 +56,10 @@ export function LocalAiContent({ evidence, loading = false }: { evidence?: Evide
     const responseTime = typeof health.latency_ms === "number" && Number.isFinite(health.latency_ms) && health.latency_ms >= 0
         ? `${health.latency_ms} ms` : "Not reported";
     return <>
-        <p>Configured provider: {publicLabel(provider.name) ?? publicLabel(provider.id) ?? "Unknown"}</p>
+        <p>Configured provider: {publicLabel(provider.name) ?? publicLabel(provider.id) ?? "Not reported"}</p>
         <HealthEvidence compact status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
         <p>Atlas does not report where this provider runs or which model is selected or ready to use.</p>
-        {lastKnown && <p>Details below are from the last available report. Current version, response time, and model list are unknown.</p>}
+        {lastKnown && <p>Details below are from the last available report. Atlas could not confirm the current version, response time, or model list.</p>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">Technical details</summary>
             <div className="mt-3 space-y-3">

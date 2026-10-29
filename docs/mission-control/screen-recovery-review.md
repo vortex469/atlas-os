@@ -2890,3 +2890,13 @@ remain available without taking over the screen. A later retry clears the old
 error and result state. Analysis remains read-only and does not grant workflow
 approval. The focused Forge suite, Mission Control lint and production build
 pass.
+
+## AI provider identity fallback — 2026-10-29
+
+When the provider report contains neither a readable name nor ID, the overview
+now says “Not reported” instead of “Unknown.” This describes the returned
+evidence without implying that Atlas resolved the provider's identity. Health
+and model readiness remain separate. When details are stale, the card also says
+that Atlas could not confirm the current version, response time, or model list.
+The focused AI provider and Overview suites cover incomplete identities and
+stale reports; no provider configuration or action behavior changes.

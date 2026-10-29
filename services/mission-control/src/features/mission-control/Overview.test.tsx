@@ -503,7 +503,7 @@ describe('overview fail-closed regressions', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
         const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
         expect(runtime.getByText('Atlas does not report where this provider runs or which model is selected or ready to use.')).toBeVisible();
-        expect(runtime.getByText('Configured provider: Unknown')).toBeInTheDocument();
+        expect(runtime.getByText('Configured provider: Not reported')).toBeInTheDocument();
     });
 });
 

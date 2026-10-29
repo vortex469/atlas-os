@@ -42,6 +42,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it.each([null, [], {}, { provider: { online: true } }, { health: [], models: { installed: [null], running: {} } }])("keeps malformed provider evidence unknown: %j", value => {
         const card = show({ data: value });
+        expect(card.getByText("Configured provider: Not reported")).toBeInTheDocument();
         expect(card.queryByText("Healthy")).not.toBeInTheDocument();
         expect(card.getByText(/^Installed models:/)).toHaveTextContent(/Not available|Model names unavailable/);
         expect(card.getByText(/Running models: Not available/)).toBeInTheDocument();
@@ -68,7 +69,7 @@ describe("integrated Local AI runtime observations", () => {
         expect(card.getByText("Status unknown", { exact: true })).toBeInTheDocument();
         expect(card.getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
         expect(card.getByText("Last known running models: running-model")).toBeInTheDocument();
-        expect(card.getByText(/Current version, response time, and model list are unknown/)).toBeInTheDocument();
+        expect(card.getByText("Details below are from the last available report. Atlas could not confirm the current version, response time, or model list.")).toBeInTheDocument();
     });
     it("distinguishes observation failure from runtime offline", () => {
         const card = show({ unavailable: true });
@@ -76,14 +77,14 @@ describe("integrated Local AI runtime observations", () => {
         expect(card.queryByText("Use Refresh to try again.")).not.toBeInTheDocument();
         expect(card.queryByText("Current information could not be loaded.")).not.toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
-        expect(card.queryByText("Configured provider: Unknown")).not.toBeInTheDocument();
+        expect(card.queryByText("Configured provider: Not reported")).not.toBeInTheDocument();
         expect(card.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
     });
     it("shows only a loading message before the first provider report", () => {
         const card = show(undefined, true);
         expect(card.getByText("Loading AI provider information…")).toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
-        expect(card.queryByText("Configured provider: Unknown")).not.toBeInTheDocument();
+        expect(card.queryByText("Configured provider: Not reported")).not.toBeInTheDocument();
     });
     it.each(["..", "https://user:password@host", "runtime/other", "\ud800", "token-abc"])('rejects unsafe provider links and withholds sensitive fields: %s', id => {
         const card = show({ data: { ...data(), provider: { id, name: "https://user:password@host" }, health: { status: "unknown", latency_ms: -1, details: { version: "token=private", endpoint: "private diagnostic" } }, models: { installed: [{ name: "https://user:password@host" }], running: [] } } });
