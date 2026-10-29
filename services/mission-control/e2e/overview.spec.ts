@@ -90,6 +90,25 @@ test('provider preview prioritizes problems and uses a singular extra-provider l
     expect(rejectedMutationRequests).toEqual([]);
 });
 
+test('empty stale provider preview identifies the last Atlas Core report', async ({ page, rejectedMutationRequests }) => {
+    let reads = 0;
+    await page.route('**/api/v1/providers', route => {
+        reads += 1;
+        return reads === 1
+            ? route.fulfill({ json: [] })
+            : route.fulfill({ status: 503, body: '' });
+    });
+    await page.goto('/');
+
+    const providers = page.getByRole('region', { name: 'Providers', exact: true });
+    await expect(providers.getByText('No providers configured.')).toBeVisible();
+    await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+    await expect(providers.getByText('No providers were in the last Atlas Core report; the current list is unknown.')).toBeVisible();
+    await expect(providers.getByText('No providers configured.')).toHaveCount(0);
+    expect(reads).toBe(2);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 for (const width of [320, 768, 1440]) {
     test(`overview fits ${width}px and links to existing detail routes`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });

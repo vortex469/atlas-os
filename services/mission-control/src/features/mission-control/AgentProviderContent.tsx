@@ -49,7 +49,7 @@ export function ProviderOverviewContent({ evidence, loading = false }: { evidenc
     return <>
         {providers && providers.length > 0 && <p>{stale ? "Showing providers from the last Atlas Core report; their current status may have changed." : "Saved providers. Their status below reflects Atlas Core’s latest check."}</p>}
         {providers === null && <p>{unavailableMessage}</p>}
-        {providers?.length === 0 && <p>{stale ? "No providers were in the last available list; the current list is unknown." : "No providers configured."}</p>}
+        {providers?.length === 0 && <p>{stale ? "No providers were in the last Atlas Core report; the current list is unknown." : "No providers configured."}</p>}
         {providers?.slice(0, 4).map(renderProvider)}
         {providers && additionalProviders > 0 && <details>
             <summary>{additionalProviders} more {additionalProviderNoun}</summary>

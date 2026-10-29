@@ -114,7 +114,7 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText("Showing providers from the last Atlas Core report; their current status may have changed.")).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
-        expect(registry().getByText(/current list is unknown/)).toBeInTheDocument();
+        expect(registry().getByText("No providers were in the last Atlas Core report; the current list is unknown.")).toBeInTheDocument();
     });
     it.each([undefined, null, {}, { providers: [] }])("does not present malformed or missing registries as empty: %s", data => {
         show({ providers: { data } });
