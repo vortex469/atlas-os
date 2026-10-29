@@ -2825,3 +2825,13 @@ term in its loading, empty and recovery states. The no-authorization message
 stays visible. The focused DiscoveryItemPage suite passes (37 tests), along
 with the responsive suggestions recovery browser checks (2 tests), Mission
 Control lint and production build.
+
+## Discovery relationship direction — 2026-10-29
+
+Incoming relationship rows now identify and link to the item that points to
+the open catalog item, instead of linking back to the open item. The row shows
+the source, relationship type and current item; only outgoing relationships
+show target resolution. Section headings and empty states describe link
+direction in plain language, and hyphenated identifiers render as separate
+words. The DiscoveryItemPage suite passes (37 tests), along with Mission
+Control lint and production build.

@@ -362,9 +362,9 @@ describe("DiscoveryItemPage", () => {
         expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
         const section = screen.getByRole("region", { name: "Catalog relationships" });
         expect(await within(section).findByRole("alert")).toHaveTextContent("The catalog item is available, but its related items could not be checked.");
-        expect(within(section).queryByText("No outgoing relationships.")).not.toBeInTheDocument();
+        expect(within(section).queryByText("No links from this item.")).not.toBeInTheDocument();
         await userEvent.setup().click(within(section).getByRole("button", { name: "Retry relationships" }));
-        expect(await within(section).findByRole("heading", { name: "Outgoing relationships" })).toBeInTheDocument();
+        expect(await within(section).findByRole("heading", { name: "Links from this item" })).toBeInTheDocument();
         expect(within(section).getByRole("link", { name: "mqtt" })).toBeInTheDocument();
         expect(mockedGetDiscoveryRelationships).toHaveBeenCalledTimes(2);
         expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
@@ -791,7 +791,7 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         const outgoing = await screen.findByRole("heading", {
-            name: "Outgoing relationships",
+            name: "Links from this item",
         });
         const outgoingPanel = outgoing.closest("section");
         expect(outgoingPanel).not.toBeNull();
@@ -803,11 +803,19 @@ describe("DiscoveryItemPage", () => {
         expect(within(outgoingPanel!).getByText("Unresolved")).toBeInTheDocument();
 
         const incoming = screen.getByRole("heading", {
-            name: "Incoming relationships",
+            name: "Items linking to this item",
         });
         const incomingPanel = incoming.closest("section");
         expect(incomingPanel).not.toBeNull();
         expect(within(incomingPanel!).getByText("Displays catalog facts.")).toBeInTheDocument();
+        expect(within(incomingPanel!).getByRole("link", { name: "Mission Control" })).toHaveAttribute(
+            "href",
+            "/discovery/items/mission-control",
+        );
+        expect(within(incomingPanel!).getByText("Frigate")).toBeInTheDocument();
+        expect(within(incomingPanel!).getByText("Integrates With")).toBeInTheDocument();
+        expect(within(incomingPanel!).queryByRole("link", { name: "Frigate" })).not.toBeInTheDocument();
+        expect(within(incomingPanel!).queryByText("Resolved")).not.toBeInTheDocument();
     });
 
     it("renders empty relationship states", async () => {
@@ -819,8 +827,8 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("No outgoing relationships.")).toBeInTheDocument();
-        expect(screen.getByText("No incoming relationships.")).toBeInTheDocument();
+        expect(await screen.findByText("No links from this item.")).toBeInTheDocument();
+        expect(screen.getByText("No items link to this item.")).toBeInTheDocument();
     });
 
     it("renders not found state", async () => {

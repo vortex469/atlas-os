@@ -537,13 +537,17 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 {relationshipsUnavailable && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p className="font-semibold">Relationships unavailable</p><p className="mt-1">The catalog item is available, but its related items could not be checked.</p><button type="button" onClick={retryRelationships} className="mt-3 rounded-lg border border-amber-400/50 px-3 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-200">Retry relationships</button></div>}
                 {!relationshipsLoading && !relationshipsUnavailable && <div className="grid gap-4 lg:grid-cols-2">
                     <RelationshipsPanel
-                        title="Outgoing relationships"
-                        empty="No outgoing relationships."
+                        direction="outgoing"
+                        itemName={item.name}
+                        title="Links from this item"
+                        empty="No links from this item."
                         relationships={state.outgoing}
                     />
                     <RelationshipsPanel
-                        title="Incoming relationships"
-                        empty="No incoming relationships."
+                        direction="incoming"
+                        itemName={item.name}
+                        title="Items linking to this item"
+                        empty="No items link to this item."
                         relationships={state.incoming}
                     />
                 </div>}
@@ -800,10 +804,14 @@ function RequirementGroup({ title, values }: { title: string; values: string[] }
 }
 
 function RelationshipsPanel({
+    direction,
+    itemName,
     title,
     empty,
     relationships,
 }: {
+    direction: "incoming" | "outgoing";
+    itemName: string;
     title: string;
     empty: string;
     relationships: DiscoveryRelationshipReference[];
@@ -820,28 +828,48 @@ function RelationshipsPanel({
                             className="rounded-lg border border-slate-800 bg-slate-950 p-3"
                         >
                             <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <span className="font-medium text-slate-200">
-                                    {formatLabel(reference.relationship.type)}
-                                </span>
-                                <span className="text-slate-600">→</span>
-                                {reference.resolved_target_item_id ? (
-                                    <Link
-                                        to={`/discovery/items/${encodeURIComponent(
-                                            reference.resolved_target_item_id,
-                                        )}`}
-                                        className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                    >
-                                        {reference.target}
-                                    </Link>
+                                {direction === "incoming" ? (
+                                    <>
+                                        <Link
+                                            to={`/discovery/items/${encodeURIComponent(reference.source_item_id)}`}
+                                            className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                        >
+                                            {formatLabel(reference.source_item_id)}
+                                        </Link>
+                                        <span className="font-medium text-slate-200">
+                                            {formatLabel(reference.relationship.type)}
+                                        </span>
+                                        <span className="text-slate-600">→</span>
+                                        <span className="text-slate-300">{itemName}</span>
+                                    </>
                                 ) : (
-                                    <span className="text-slate-300">{reference.target}</span>
+                                    <>
+                                        <span className="font-medium text-slate-200">
+                                            {formatLabel(reference.relationship.type)}
+                                        </span>
+                                        <span className="text-slate-600">→</span>
+                                        {reference.resolved_target_item_id ? (
+                                            <Link
+                                                to={`/discovery/items/${encodeURIComponent(
+                                                    reference.resolved_target_item_id,
+                                                )}`}
+                                                className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                            >
+                                                {reference.target}
+                                            </Link>
+                                        ) : (
+                                            <span className="text-slate-300">{reference.target}</span>
+                                        )}
+                                    </>
                                 )}
                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
                                     {reference.relationship.required ? "Required" : "Optional"}
                                 </span>
-                                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
-                                    {reference.resolved ? "Resolved" : "Unresolved"}
-                                </span>
+                                {direction === "outgoing" && (
+                                    <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
+                                        {reference.resolved ? "Resolved" : "Unresolved"}
+                                    </span>
+                                )}
                             </div>
                             {reference.relationship.description && (
                                 <p className="mt-2 text-sm text-slate-500">
@@ -944,7 +972,7 @@ function KeyValue({ label, value }: { label: string; value: ReactNode }) {
 
 function formatLabel(value: string): string {
     return value
-        .split("_")
+        .split(/[_-]+/)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
 }
