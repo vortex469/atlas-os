@@ -3347,6 +3347,15 @@ before Mission Control shows workflow creation. The focused page suite covers
 temporary failure and recovery, missing-plan behavior, and the existing
 approval boundary.
 
+## Service-check missing Compose file recovery — 2026-10-29
+
+The Overview service check now explains beside the command that a missing-file
+error means Compose did not run the health check, and shows how to use the
+Compose directory or full file path. The same explanation remains available
+in the service details drawer. The duplicate hint was removed from the
+collapsed Docker checklist. Read-only service status and probe behavior are
+unchanged.
+
 ## Change proposal pagination context — 2026-10-29
 
 The proposal list now shows the visible result range and total count, so an

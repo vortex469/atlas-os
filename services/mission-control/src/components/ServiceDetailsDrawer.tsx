@@ -188,7 +188,7 @@ export function ServiceDetailsDrawer({
                         </p>
                         <details className="mt-2">
                             <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
-                            <p className="mt-2 text-sm text-slate-400">Run the command from the directory that contains Atlas&apos;s Compose file, or pass its full path with <code>--file</code>.</p>
+                            <p className="mt-2 text-sm text-slate-400">That error means Compose did not run the health check. Run the command from the directory that contains Atlas&apos;s Compose file, or pass its full path with <code>--file</code>.</p>
                         </details>
                         {nextCheck && (
                             <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">

@@ -117,7 +117,7 @@ describe("ServiceHealthSection", () => {
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
-        expect(composeHelpText).toHaveTextContent("Run the command from the directory that contains Atlas's Compose file, or pass its full path with --file.");
+        expect(composeHelpText).toHaveTextContent("That error means Compose did not run the health check. Run the command from the directory that contains Atlas's Compose file, or pass its full path with --file.");
         expect(composeHelpText).not.toBeVisible();
         await user.click(screen.getByText("If Compose says the file is missing"));
         expect(composeHelpText).toBeVisible();

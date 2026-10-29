@@ -195,13 +195,14 @@ describe("MC overview evidence", () => {
         const summary = checks.getByText("More connection checks");
         const disclosure = summary.closest("details");
 
-        expect(nextStep).toHaveTextContent("Run this from the computer running Atlas Core, in the folder containing compose.production.yaml.");
+        expect(nextStep).toHaveTextContent("From the computer running Atlas Core, open a terminal in the folder containing compose.production.yaml and run this command.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
         expect(command).toHaveTextContent('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toHaveTextContent(/password|private|token=/);
         expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
+        expect(nextStep).toHaveTextContent("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
         expect(nextStep).toHaveTextContent("Docker port and Compose steps are in the details below.");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);
@@ -212,7 +213,7 @@ describe("MC overview evidence", () => {
         const steps = within(disclosure as HTMLDetailsElement).getByRole("list", {
             name: "Docker and Compose checks",
         });
-        expect(within(steps).getAllByRole("listitem")).toHaveLength(5);
+        expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
         expect(steps).toHaveClass("text-sm");
         expect(steps).not.toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
         expect(steps).toHaveTextContent("If this service runs in Docker, run docker ps on the computer running it and find its container.");
@@ -225,8 +226,6 @@ describe("MC overview evidence", () => {
         expect(steps).toHaveTextContent("With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer's port.");
         expect(steps).toHaveTextContent("A mapping starting with 127.0.0.1: is reachable only from that computer.");
         expect(steps).toHaveTextContent("HOST_PORT:CONTAINER_PORT");
-        expect(steps).toHaveTextContent("If Compose says the file is missing, the command ran outside the Atlas folder or on another computer. That error doesn't show whether the service is running.");
-        expect(steps).toHaveTextContent("Run Compose from the folder containing the file, or pass its full path with --file.");
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);

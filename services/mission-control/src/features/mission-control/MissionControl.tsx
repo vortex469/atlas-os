@@ -80,7 +80,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         ? `${Math.round(evidence.latency_ms)} ms` : null;
     return <div className="mt-2">
         {unavailable && <div role="group" aria-label="Next connection check" className="rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
-            <p className="font-medium text-mc-text-primary">Run this from the computer running Atlas Core, in the folder containing <code>compose.production.yaml</code>. It makes a read-only request from inside the <code>atlas-core</code> container. Running it on iFileshare or in your browser checks a different network path.</p>
+            <p className="font-medium text-mc-text-primary">From the computer running Atlas Core, open a terminal in the folder containing <code>compose.production.yaml</code> and run this command. It makes a read-only request inside the <code>atlas-core</code> container; running it on iFileshare or in your browser checks a different network path.</p>
             <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
             {command && <>
                 <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>
@@ -88,6 +88,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                     <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{command}</pre>
                 </div>
                 <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
+                <p className="mt-2 text-sm"><strong>File not found?</strong> Compose did not run the check. Run it from Atlas&apos;s Compose folder or pass the full file path with <code>--file</code>.</p>
             </>}
         <p className="mt-2">Docker port and Compose steps are in the details below.</p>
         </div>}
@@ -107,7 +108,6 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                     <li>
                         With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer&apos;s port.
                     </li>
-                    <li>If Compose says the file is missing, the command ran outside the Atlas folder or on another computer. That error doesn't show whether the service is running. Run Compose from the folder containing the file, or pass its full path with <code>--file</code>.</li>
                 </ol>
                 <p>Address Atlas checked: <span className={address ? "break-all font-mono" : ""}>{address ?? "Not reported"}</span></p>
                 <p>HTTP response: {response}</p>
