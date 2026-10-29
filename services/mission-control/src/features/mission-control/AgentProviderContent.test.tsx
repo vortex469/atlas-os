@@ -39,12 +39,12 @@ describe("integrated agent/provider evidence", () => {
 
         view.rerender(<MemoryRouter><Overview evidence={{ agent: { unavailable: true }, providers: { unavailable: true } }} /></MemoryRouter>);
         expect(agent.getByText("Agent details could not be loaded.")).toBeVisible();
-        expect(registry().getByText("Provider list could not be loaded.")).toBeVisible();
+        expect(registry().getByText("Atlas Core’s provider list could not be loaded.")).toBeVisible();
 
         view.rerender(<MemoryRouter><Overview evidence={{}} /></MemoryRouter>);
         expect(agent.getByText("Agent details are not available.")).toBeVisible();
         expect(agent.queryByText("Loading Agent details…")).not.toBeInTheDocument();
-        expect(registry().getByText("Provider list is not available.")).toBeVisible();
+        expect(registry().getByText("Atlas Core’s provider list is not available.")).toBeVisible();
         expect(registry().queryByText("Loading providers…")).not.toBeInTheDocument();
     });
 
@@ -64,7 +64,7 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.queryByRole("link", { name: "View agent workflows" })).not.toBeInTheDocument();
         expect(agent.queryByRole("link", { name: "Open deployment analysis →" })).not.toBeInTheDocument();
         expect(within(screen.getByRole("region", { name: "Work activity" })).getByRole("link", { name: "Review workflows →" })).toHaveAttribute("href", "/workflows");
-        expect(registry().getByText("Saved providers and the status Atlas reports for each one.")).toBeInTheDocument();
+        expect(registry().getByText("Saved providers. Their status below reflects Atlas Core’s latest check.")).toBeInTheDocument();
         expect(registry().getByText("Healthy")).toBeInTheDocument();
         expect(registry().getByText("Reported status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
@@ -72,10 +72,10 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(registry().getByText("Status unknown")).toBeInTheDocument();
         expect(registry().getByRole("link", { name: "View alpha →", hidden: true })).toHaveAttribute("href", "/providers/alpha");
-        expect(registry().getByText(/actions are allowed/)).not.toBeVisible();
+        expect(registry().getByText(/does not allow provider actions/)).not.toBeVisible();
         expect(registry().queryByText(/which model an Agent uses/)).not.toBeInTheDocument();
         await user.click(registry().getByText("About provider status"));
-        expect(registry().getByText(/actions are allowed/)).toBeVisible();
+        expect(registry().getByText(/does not allow provider actions/)).toBeVisible();
         expect(screen.queryByText(/private-canary/)).not.toBeInTheDocument();
         expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
     });
@@ -111,13 +111,14 @@ describe("integrated agent/provider evidence", () => {
         const view = show({ providers: { data: [provider("alpha", "healthy")], stale: true, unavailable: true }, agent: { unavailable: true } });
         expect(registry().queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
         expect(registry().getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
+        expect(registry().getByText("Showing providers from the last Atlas Core report; their current status may have changed.")).toBeInTheDocument();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
         expect(registry().getByText(/current list is unknown/)).toBeInTheDocument();
     });
     it.each([undefined, null, {}, { providers: [] }])("does not present malformed or missing registries as empty: %s", data => {
         show({ providers: { data } });
-        const expected = data === undefined ? "Provider list is not available." : "Provider list could not be read.";
+        const expected = data === undefined ? "Atlas Core’s provider list is not available." : "Provider list could not be read.";
         expect(registry().getByText(expected)).toBeInTheDocument();
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
     });

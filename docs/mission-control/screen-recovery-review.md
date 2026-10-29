@@ -17,7 +17,7 @@ runtime, tag, or publish a release.
 | Workflow directory | Each card shows its current stage and latest result, then a plain-language next step; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
 | Change proposal directory | Eligibility, change and target filters lead; category/source filters expand on demand and show when active; cards lead with the proposed change and keep references optional | `src/pages/ExecutionCandidatesPage.test.tsx`, `e2e/candidate-list-summary.spec.ts` |
 | Change proposal details | The proposed change, target, rationale, constraints and planning boundary lead; technical IDs remain available under optional details | `src/pages/ExecutionCandidateDetailPage.test.tsx`, `e2e/candidate-detail-summary.spec.ts` |
-| Providers | Registry and detail links work; unavailable data differs from absence; missing feature metadata leaves the provider view usable and does not imply there are no capabilities; resource identity, edit blockers, and monitoring suggestions use plain language; failed inventory is not shown as an empty provider; edit access is checked before controls are enabled; action-catalog read failures differ from uncertain action results; provider counts use the same health mapping as cards, omit zero categories, and show both provider name and health state; status source is explicit; forms and late responses stay with their provider | `src/pages/ProviderPage.test.tsx`, `src/features/mission-control/AgentProviderOverviewSection.test.tsx`, `src/components/ProviderOverview.test.tsx`, `src/components/ProviderIntentEditor.test.tsx`, `src/components/ProviderResources.test.tsx`, `src/components/ProviderActions.test.tsx`, and route cases in `e2e/screen-recovery.spec.ts` and `e2e/overview.spec.ts` |
+| Providers | Registry and detail links work; unavailable data differs from absence; missing feature metadata leaves the provider view usable and does not imply there are no capabilities; resource identity, edit blockers, and monitoring suggestions use plain language; failed inventory is not shown as an empty provider; edit access is checked before controls are enabled; action-catalog read failures differ from uncertain action results; the live dashboard provider preview identifies Atlas Core as the status source, distinguishes stale from current reports, and keeps additional providers optional; forms and late responses stay with their provider | `src/pages/ProviderPage.test.tsx`, `src/features/mission-control/AgentProviderContent.test.tsx`, `src/components/ProviderOverview.test.tsx`, `src/components/ProviderIntentEditor.test.tsx`, `src/components/ProviderResources.test.tsx`, `src/components/ProviderActions.test.tsx`, and route cases in `e2e/screen-recovery.spec.ts` and `e2e/overview.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
 | Proposals and planning | Only current search results and matching proposal/plan identities appear; preparation has four simple steps | Proposal/planning page tests; proposal recovery browser cases; both workflow journey specs |
 | Repository workflow | Preparation and detail summaries show current state and approval status first; reference metadata is optional; exact requests remain reviewable; each approval and its explicitly named follow-up action remain separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
@@ -3276,12 +3276,11 @@ The workflow list refresh control now says “Refreshing…” while the latest 
 pending, matching the status message and disabled state. Its page test verifies
 the pending and ready labels and guards against overlapping requests.
 
-## Provider health summary and cards — 2026-10-29
+## Dashboard provider status source — 2026-10-29
 
-Provider totals use the same normalized health-state mapping as the cards. The
-summary includes blocked and unknown states, hides categories with zero
-providers, and keeps the total visible. Provider cards show the name and state
-separately; the section says statuses come from Atlas Core’s latest check. The
-overview tests cover every state, aliases, zero-count suppression and displayed
-card labels. The full Mission Control suite passes 2,943 tests; lint and build
-pass. These presentation changes add no API or authority behavior.
+The mounted provider preview now names Atlas Core as the source of each status
+and says when it is showing a prior report. Its existing compact cards already
+show each provider name and normalized health state, while extra providers stay
+behind an expandable list. Component and overview-browser tests cover the live
+preview, status labels, stale-report wording, and mobile overflow. No API or
+authority behavior changes.

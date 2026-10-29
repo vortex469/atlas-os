@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { SectionHeader } from "../../components/SectionHeader";
-import { HealthStatusBadge } from "../../components/health/HealthStatusPrimitive";
+import { HealthStatusCard } from "../../components/health/HealthStatusPrimitive";
 import {
     mapServiceStatusToHealthState,
 } from "../../components/health/healthPresentation";
@@ -20,38 +20,33 @@ export function AgentProviderOverviewSection({
     providers,
 }: AgentProviderOverviewProps) {
     const available = providers.filter(
-        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "healthy",
+        (p) =>
+            p.health?.status?.toLowerCase() === "healthy" ||
+            p.health?.status?.toLowerCase() === "online",
     );
     const unavailable = providers.filter(
-        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
+        (p) =>
+            p.health?.status?.toLowerCase() === "offline" ||
+            p.health?.status?.toLowerCase() === "unavailable",
     );
     const degraded = providers.filter(
-        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "degraded",
+        (p) =>
+            p.health?.status?.toLowerCase() === "degraded" ||
+            p.health?.status?.toLowerCase() === "warning",
     );
-    const blocked = providers.filter(
-        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "blocked",
-    );
-    const unconfirmed = providers.filter(
-        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unknown",
-    );
-    const visibleHealthCounts = [
-        { label: "Available", count: available.length, valueClass: "text-emerald-400" },
-        { label: "Degraded", count: degraded.length, valueClass: "text-amber-400" },
-        { label: "Unavailable", count: unavailable.length, valueClass: "text-red-400" },
-        { label: "Blocked", count: blocked.length, valueClass: "text-red-400" },
-        { label: "Status unknown", count: unconfirmed.length, valueClass: "text-slate-300" },
-    ].filter(({ count }) => count > 0);
 
     const criticalProviders = providers.filter((p) => p.priority === "critical");
     const hasUnavailableCritical = criticalProviders.some(
-        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
+        (p) =>
+            p.health?.status?.toLowerCase() === "offline" ||
+            p.health?.status?.toLowerCase() === "unavailable",
     );
 
     return (
         <section>
             <SectionHeader
                 title="Agents & Providers"
-                description="Configured AI providers and external integrations. Connection status reflects Atlas Core’s latest check."
+                description="Configured AI providers and external integrations."
             />
 
             {providers.length === 0 ? (
@@ -66,7 +61,7 @@ export function AgentProviderOverviewSection({
             ) : (
                 <>
                     {/* Summary Cards */}
-                    <div role="group" aria-label="Provider health counts" className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+                    <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
                         <div className="mc-surface rounded-mc-lg p-4">
                             <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
                                 Total Providers
@@ -75,12 +70,33 @@ export function AgentProviderOverviewSection({
                                 {providers.length}
                             </p>
                         </div>
-                        {visibleHealthCounts.map(({ label, count, valueClass }) => (
-                            <div key={label} className="mc-surface rounded-mc-lg p-4">
-                                <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">{label}</p>
-                                <p className={`mt-2 text-2xl font-bold ${valueClass}`}>{count}</p>
-                            </div>
-                        ))}
+
+                        <div className="mc-surface rounded-mc-lg p-4">
+                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
+                                Available
+                            </p>
+                            <p className="mt-2 text-2xl font-bold text-emerald-400">
+                                {available.length}
+                            </p>
+                        </div>
+
+                        <div className="mc-surface rounded-mc-lg p-4">
+                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
+                                Degraded
+                            </p>
+                            <p className="mt-2 text-2xl font-bold text-amber-400">
+                                {degraded.length}
+                            </p>
+                        </div>
+
+                        <div className="mc-surface rounded-mc-lg p-4">
+                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
+                                Unavailable
+                            </p>
+                            <p className="mt-2 text-2xl font-bold text-red-400">
+                                {unavailable.length}
+                            </p>
+                        </div>
                     </div>
 
                     {/* Critical provider warnings */}
@@ -92,7 +108,11 @@ export function AgentProviderOverviewSection({
                             <div className="mt-2 space-y-1 text-xs text-mc-text-secondary">
                                 {criticalProviders
                                     .filter(
-                                        (provider) => mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
+                                        (p) =>
+                                            p.health?.status?.toLowerCase() ===
+                                                "offline" ||
+                                            p.health?.status?.toLowerCase() ===
+                                                "unavailable",
                                     )
                                     .map((p) => (
                                         <p key={p.id}>
@@ -106,7 +126,7 @@ export function AgentProviderOverviewSection({
                     )}
 
                     {/* Provider health grid */}
-                    <div role="group" aria-label="Provider health statuses" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {providers.map((provider) => {
                             const healthState = mapServiceStatusToHealthState(
                                 provider.health?.status,
@@ -114,24 +134,19 @@ export function AgentProviderOverviewSection({
                             const isPriorityCritical = provider.priority === "critical";
 
                             return (
-                                <article key={provider.id} className="mc-surface rounded-mc-lg p-4">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <h3 className="text-sm font-semibold text-mc-text-primary">{provider.name}</h3>
-                                        {isPriorityCritical && <span className="text-xs font-medium text-amber-300">Critical</span>}
-                                    </div>
-                                    <div className="mt-2">
-                                        <HealthStatusBadge
-                                            state={healthState}
-                                            reason={
-                                                provider.health?.message ||
-                                                (provider.health?.http_status &&
-                                                provider.health.http_status >= 400
-                                                    ? `HTTP ${provider.health.http_status}`
-                                                    : undefined)
-                                            }
-                                        />
-                                    </div>
-                                </article>
+                                <HealthStatusCard
+                                    key={provider.id}
+                                    state={healthState}
+                                    title={`${provider.name}${isPriorityCritical ? " ⭐" : ""}`}
+                                    reason={
+                                        provider.health?.message ||
+                                        (provider.health?.http_status &&
+                                        provider.health.http_status >= 400
+                                            ? `HTTP ${provider.health.http_status}`
+                                            : undefined)
+                                    }
+                                    compact={true}
+                                />
                             );
                         })}
                     </div>
