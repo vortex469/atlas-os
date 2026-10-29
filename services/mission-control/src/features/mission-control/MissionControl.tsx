@@ -129,10 +129,10 @@ function attentionPriority(value: unknown, actionRequired = false) {
 
 function workflowAttentionStage(state: string, effectKind?: string): string {
     switch (state) {
-        case "awaiting_approval": return "Prepare change";
-        case "awaiting_implementation_approval": return effectKind === "operational_action" ? "Maintenance request" : "Change approval";
-        case "awaiting_verification_approval": return "Verification";
-        case "awaiting_commit_approval": return "Commit";
+        case "awaiting_approval": return "change preparation";
+        case "awaiting_implementation_approval": return effectKind === "operational_action" ? "maintenance request approval" : "change approval";
+        case "awaiting_verification_approval": return "verification approval";
+        case "awaiting_commit_approval": return "commit approval";
         default: return formatWorkflowLabel(state);
     }
 }
@@ -162,8 +162,8 @@ function workflowAttentionLabel(intent: unknown, state: string, stale: boolean, 
     const action = safeIntent && safeIntent !== "[Sensitive text withheld]"
         ? formatWorkflowLabel(safeIntent)
         : "Workflow";
-    const stage = workflowActionRequired(state) ? "" : ` · ${workflowAttentionStage(state, effectKind)}`;
-    return `${stale ? "Last known · " : ""}${action}${stage}`;
+    const stage = stale || workflowActionRequired(state) ? "" : ` · ${workflowAttentionStage(state, effectKind)}`;
+    return `${action}${stage}`;
 }
 
 function attentionKey(finding: Record<string, unknown>, providers: Record<string, unknown>[], services: [string, unknown][]) {
@@ -180,18 +180,17 @@ function AttentionListItem({ item }: { item: AttentionItem }) {
         <Link to={item.to}>{item.label || "Inspect condition"}</Link>
         {item.actionRequired === true && <p>{isWorkflowAttention(item)
             ? item.stale
-                ? `Last-known step: ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}. Current status unknown.`
+                ? `Last report: this workflow was waiting for ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}. Atlas could not confirm whether it still needs attention.`
                 : `Action needed: ${workflowNextStepLabel(item.workflowState, item.workflowEffectKind) ?? "Open the workflow to review the next step."}`
-            : item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
+            : item.stale ? "The last report said an operator needed to act. Atlas could not confirm whether that is still required." : "Human action required"}</p>}
         {isWorkflowAttention(item) ? <>
-            {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}
+            {item.state === "blocked" && item.stale && <p className="text-red-300">Last report: this workflow was blocked. Atlas could not confirm its current status.</p>}
             {item.reason && !workflowReasonRepeatsStage(item.reason, item.workflowState, item.workflowEffectKind) && <p>{item.reason}</p>}
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Technical details</summary>
                 <p>Workflow ID: <span className="break-all font-mono">{item.workflowId}</span></p>
                 <p className="text-xs text-mc-text-muted">Atlas did not provide a stage update time.</p>
             </details>
         </> : <ObservedStatus value={item.state} reason={item.reason} stale={item.stale} unavailableLabel={item.unavailableLabel} />}
-        {item.stale && !isWorkflowAttention(item) && <p>Last-known condition; current state unknown.</p>}
     </li>;
 }
 

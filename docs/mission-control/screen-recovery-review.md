@@ -2948,3 +2948,11 @@ Recent provider actions now use the shared strict timestamp validator, so
 impossible calendar dates cannot appear as real completion times. The summary
 distinguishes a time the service did not report from a reported time Atlas
 could not parse. Action ordering and the linked history remain unchanged.
+
+## Dashboard stale workflow wording — 2026-10-29
+
+Stale workflow attention now says what the last report showed and that Atlas
+could not confirm the current status. It removes the technical-sounding
+“Last-known” link prefix and the duplicate stale-condition sentence. Other
+stale health conditions retain their “Last known report (out of date)” status.
+Workflow decisions and action controls remain unchanged.

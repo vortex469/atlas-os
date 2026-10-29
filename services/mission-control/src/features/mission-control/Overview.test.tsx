@@ -38,14 +38,15 @@ describe("MC overview evidence", () => {
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
     });
 
-    it("keeps stale maintenance approval wording last-known", () => {
+    it("plainly marks the stale maintenance approval report", () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{
             workflow_id: 'old-maintenance-review', workflow_state: 'awaiting_implementation_approval',
             effect_kind: 'operational_action', execution_intent: 'restart-service',
             last_result_summary: 'Waiting for implementation approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Last-known step: Maintenance request. Current status unknown.')).toBeVisible();
+        expect(attention.getByRole('link', { name: 'Restart Service' })).toBeVisible();
+        expect(attention.getByText('Last report: this workflow was waiting for maintenance request approval. Atlas could not confirm whether it still needs attention.')).toBeVisible();
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
     });
 
@@ -276,11 +277,12 @@ describe("MC overview evidence", () => {
         expect(attention.queryByText('Review each item and use its link to see the details.')).not.toBeInTheDocument();
     });
 
-    it('keeps a stale approval requirement explicitly last-known', () => {
+    it('explains stale approval evidence in plain language', () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-review', workflow_state: 'awaiting_implementation_approval', last_result_summary: 'Previous review request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Last-known step: Change approval. Current status unknown.')).toBeVisible();
-        expect(attention.getByRole('link', { name: 'Last known · Workflow' })).toBeVisible();
+        expect(attention.getByText('Last report: this workflow was waiting for change approval. Atlas could not confirm whether it still needs attention.')).toBeVisible();
+        expect(attention.getByRole('link', { name: 'Workflow' })).toBeVisible();
+        expect(attention.queryByRole('link', { name: /Last known/ })).not.toBeInTheDocument();
         expect(attention.queryByText('Human action required', { exact: true })).not.toBeInTheDocument();
         expect(attention.queryByText('Degraded', { exact: true })).not.toBeInTheDocument();
     });
@@ -288,8 +290,9 @@ describe("MC overview evidence", () => {
     it('does not repeat the stale warning for a blocked workflow', () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-blocked', workflow_state: 'blocked', last_result_summary: 'Previous failure', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();
-        expect(attention.queryByText('Last-known condition; current state unknown.')).not.toBeInTheDocument();
+        expect(attention.getByRole('link', { name: 'Workflow' })).toBeVisible();
+        expect(attention.getByText('Last report: this workflow was blocked. Atlas could not confirm its current status.')).toBeVisible();
+        expect(attention.queryByText(/Last-known|current state unknown/)).not.toBeInTheDocument();
     });
 
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
@@ -548,7 +551,7 @@ it('keeps stale AI conditions explicitly unknown', () => {
     show({ ai: { stale: true, data: { health: { status: 'offline', message: 'Last connection failed' } } } });
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
     expect(attention.getByText('Last known report (out of date): Unavailable.')).toBeInTheDocument();
-    expect(attention.getByText('Last-known condition; current state unknown.')).toBeInTheDocument();
+    expect(attention.queryByText(/Last-known condition|current state unknown/)).not.toBeInTheDocument();
 });
 
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
@@ -620,9 +623,9 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
     expect(worker.getByText(/Current status is unknown/)).toBeInTheDocument();
     const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-    expect(attention.getAllByRole('link', { name: 'Last known · Workflow · Blocked' })).toHaveLength(1);
-    expect(attention.getByText('Last-known workflow blocked; current state unknown.')).toBeVisible();
-    expect(attention.queryByText('Last-known condition; current state unknown.')).not.toBeInTheDocument();
+    expect(attention.getAllByRole('link', { name: 'Workflow' })).toHaveLength(1);
+    expect(attention.getByText('Last report: this workflow was blocked. Atlas could not confirm its current status.')).toBeVisible();
+    expect(attention.queryByText(/Last-known condition|current state unknown/)).not.toBeInTheDocument();
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
     expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
 });

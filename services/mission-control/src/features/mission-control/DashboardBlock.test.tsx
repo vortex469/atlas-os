@@ -34,9 +34,9 @@ describe("integrated attention and activity", () => {
         expect(sourceStatus).not.toHaveAttribute("open");
         expect(sourceStatus).toHaveTextContent(/workflow results are incomplete/i);
     });
-    it("keeps stale approval requirements historical and clears them on recovery", () => {
+    it("marks stale approval requirements as a last report and clears them on recovery", () => {
         const view = render(dashboard({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: "w", workflow_state: "awaiting_approval" }] } } }));
-        expect(attention().getByText("Last-known step: Prepare change. Current status unknown.")).toBeVisible();
+        expect(attention().getByText("Last report: this workflow was waiting for change preparation. Atlas could not confirm whether it still needs attention.")).toBeVisible();
         expect(attention().queryByText("Human action required", { exact: true })).not.toBeInTheDocument();
         view.rerender(dashboard({ workflows: { data: { items: [], total: 0, limit: 200, offset: 0 } } }));
         expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
