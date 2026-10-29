@@ -149,7 +149,7 @@ test.describe("Atlas Core unavailable", () => {
 
         const systemHealth = page.getByRole("region", { name: "System health" });
         await expect(systemHealth).toContainText("Current information could not be loaded.");
-        await expect(systemHealth).toContainText("Atlas shows each source separately; it does not calculate one overall score.");
+        await expect(systemHealth).toContainText("Atlas shows each report separately and doesn't combine them into one score.");
         await expect(systemHealth).not.toContainText("Healthy");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
         await expect(page.getByText("Atlas Core unavailable", { exact: true })).toBeVisible();
