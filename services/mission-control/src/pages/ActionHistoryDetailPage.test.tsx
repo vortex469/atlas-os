@@ -78,7 +78,7 @@ describe("ActionHistoryDetailPage", () => {
         </Routes></MemoryRouter></StrictMode>);
         const user = userEvent.setup();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Action details are unavailable. Try again to reload this record. This read does not run the action again.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load these action details. Try again to reload them; this won’t repeat the action.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Unavailable")).not.toBeVisible();
@@ -195,7 +195,7 @@ describe("ActionHistoryDetailPage", () => {
         renderPage("/operations/actions/missing-entry");
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Action details are unavailable. Try again to reload this record. This read does not run the action again.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load these action details. Try again to reload them; this won’t repeat the action.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Action history entry not found.")).not.toBeVisible();
