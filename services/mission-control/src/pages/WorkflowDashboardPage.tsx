@@ -130,6 +130,7 @@ export function WorkflowDashboardPage() {
         }
         return counts;
     }, [filteredWorkflows]);
+    const visibleSummaryGroups = SUMMARY_GROUPS.filter((group) => (summaryCounts.get(group.key) ?? 0) > 0);
 
     const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / PAGE_SIZE));
     const currentPage = Math.min(pageIndex, totalPages - 1);
@@ -245,10 +246,10 @@ export function WorkflowDashboardPage() {
                 </div>
             )}
 
-            {filteredWorkflows.length > 0 && (
+            {visibleSummaryGroups.length > 0 && (
                 <section aria-labelledby="workflow-counts-heading" className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     <h2 id="workflow-counts-heading" className="sr-only">Workflow summary counts</h2>
-                    {SUMMARY_GROUPS.map((group) => (
+                    {visibleSummaryGroups.map((group) => (
                         <article key={group.key} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                             <p className="text-sm text-slate-400">{group.label}</p>
                             <p className="mt-2 text-2xl font-bold text-white">{summaryCounts.get(group.key) ?? 0}</p>

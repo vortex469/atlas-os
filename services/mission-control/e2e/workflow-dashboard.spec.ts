@@ -5,6 +5,14 @@ for (const width of [320, 390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/workflows");
 
+        const summaryCounts = page.getByRole("region", { name: "Workflow summary counts" });
+        await expect(summaryCounts.getByRole("article")).toHaveCount(1);
+        await expect(summaryCounts).toContainText("Needs your input");
+        await expect(summaryCounts).not.toContainText("Running");
+        await expect(summaryCounts).not.toContainText("Blocked");
+        await expect(summaryCounts).not.toContainText("Completed");
+        await expect(summaryCounts).not.toContainText("Status unavailable");
+
         await expect(page.getByLabel("Workflow status")).toBeVisible();
         await expect(page.getByRole("option", { name: "Prepare change for review" })).toBeAttached();
         await expect(page.getByRole("option", { name: "Review checks, then run if approved" })).toBeAttached();

@@ -3148,3 +3148,10 @@ The visible next step says to run the connection test from the computer or
 container running Atlas Core and explains that the service computer uses a
 different network path. The Docker hint stays short, while port mapping and
 Compose steps remain in the collapsed connection checks.
+
+## Workflow count summary — 2026-10-29
+
+The workflow directory now shows summary tiles only for categories that have
+workflows. A filter that leaves one completed workflow, for example, shows its
+count without four zero tiles above the list. The zero categories remain
+implicit; every workflow still appears in the list with its stage.

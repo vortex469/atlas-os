@@ -98,6 +98,8 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
         const counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
+        expect(counts.getAllByRole("article")).toHaveLength(4);
+        expect(counts.queryByText("Status unavailable", { exact: true })).not.toBeInTheDocument();
         expect(counts.getByText("Needs your input")).toBeInTheDocument();
         const needsInputCard = counts.getByText("Needs your input").closest("article");
         expect(within(needsInputCard as HTMLElement).getByText("4")).toBeInTheDocument();
@@ -223,7 +225,7 @@ describe("WorkflowDashboardPage", () => {
         };
         expect(countFor("Needs your input")).toBe("1");
         expect(countFor("Blocked")).toBe("1");
-        expect(countFor("Completed")).toBe("0");
+        expect(counts.queryByText("Completed", { exact: true })).not.toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "not_needed" } });
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
@@ -231,8 +233,8 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
         counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         expect(countFor("Completed")).toBe("1");
-        expect(countFor("Needs your input")).toBe("0");
-        expect(countFor("Blocked")).toBe("0");
+        expect(counts.queryByText("Needs your input", { exact: true })).not.toBeInTheDocument();
+        expect(counts.queryByText("Blocked", { exact: true })).not.toBeInTheDocument();
     });
 
     it("supports pagination when more returned workflows exist", async () => {
