@@ -4,7 +4,7 @@ import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { healthNextCheck } from "../../utils/healthPresentation";
 import { SystemHealthSummary } from "./SystemHealthSummary";
-import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired } from "../../utils/workflowState";
+import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired, workflowNextStepLabel } from "../../utils/workflowState";
 import { conditionKey, detailPath, healthPriority, record, rows, safeText, status } from "./overviewEvidence";
 import { useOverviewEvidence } from "./useOverviewEvidence";
 import type { Evidence, OverviewEvidence } from "./useOverviewEvidence";
@@ -127,21 +127,32 @@ function attentionPriority(value: unknown, actionRequired = false) {
 
 function workflowAttentionStage(state: string, effectKind?: string): string {
     switch (state) {
-        case "awaiting_approval": return "Waiting for approval";
-        case "awaiting_implementation_approval": return effectKind === "operational_action"
-            ? "Waiting for maintenance request approval"
-            : "Waiting for implementation approval";
-        case "awaiting_verification_approval": return "Waiting for verification approval";
-        case "awaiting_commit_approval": return "Waiting for commit approval";
+        case "awaiting_approval": return "Prepare change";
+        case "awaiting_implementation_approval": return effectKind === "operational_action" ? "Maintenance request" : "Change approval";
+        case "awaiting_verification_approval": return "Verification";
+        case "awaiting_commit_approval": return "Commit";
         default: return formatWorkflowLabel(state);
     }
 }
 
 function workflowReasonRepeatsStage(reason: string, state: string, effectKind?: string): boolean {
     const normalizedReason = reason.trim().replace(/[.!?]+$/, "").toLowerCase();
+    const legacyStatus = legacyWorkflowAttentionStatus(state, effectKind);
     return normalizedReason === workflowAttentionStage(state, effectKind).toLowerCase()
-        || (effectKind === "operational_action" && state === "awaiting_implementation_approval"
-            && normalizedReason === workflowAttentionStage(state).toLowerCase());
+        || normalizedReason === workflowNextStepLabel(state, effectKind)?.replace(/[.!?]+$/, "").toLowerCase()
+        || legacyStatus.some((label) => normalizedReason === label.toLowerCase());
+}
+
+function legacyWorkflowAttentionStatus(state: string, effectKind?: string): string[] {
+    switch (state) {
+        case "awaiting_approval": return ["Waiting for approval"];
+        case "awaiting_implementation_approval": return effectKind === "operational_action"
+            ? ["Waiting for maintenance request approval", "Waiting for implementation approval"]
+            : ["Waiting for implementation approval"];
+        case "awaiting_verification_approval": return ["Waiting for verification approval"];
+        case "awaiting_commit_approval": return ["Waiting for commit approval"];
+        default: return [];
+    }
 }
 
 function workflowAttentionLabel(intent: unknown, state: string, stale: boolean, effectKind?: string): string {
@@ -167,8 +178,8 @@ function AttentionListItem({ item }: { item: AttentionItem }) {
         <Link to={item.to}>{item.label || "Inspect condition"}</Link>
         {item.actionRequired === true && <p>{isWorkflowAttention(item)
             ? item.stale
-                ? `Last-known status: ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}. Current status unknown.`
-                : `Action needed: ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}`
+                ? `Last-known step: ${workflowAttentionStage(item.workflowState, item.workflowEffectKind)}. Current status unknown.`
+                : `Action needed: ${workflowNextStepLabel(item.workflowState, item.workflowEffectKind) ?? "Open the workflow to review the next step."}`
             : item.stale ? "Last-known human action required; current requirement unknown." : "Human action required"}</p>}
         {isWorkflowAttention(item) ? <>
             {item.state === "blocked" && item.stale && <p className="text-red-300">Last-known workflow blocked; current state unknown.</p>}

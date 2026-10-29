@@ -14,7 +14,7 @@ runtime, tag, or publish a release.
 | Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` runs 76 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
-| Workflow directory | Each card shows its current stage, latest result and approval need first; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
+| Workflow directory | Each card shows its current stage and latest result, then a plain-language next step; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
 | Change proposal directory | Eligibility, change and target filters lead; category/source filters expand on demand and show when active; cards lead with the proposed change and keep references optional | `src/pages/ExecutionCandidatesPage.test.tsx`, `e2e/candidate-list-summary.spec.ts` |
 | Change proposal details | The proposed change, target, rationale, constraints and planning boundary lead; technical IDs remain available under optional details | `src/pages/ExecutionCandidateDetailPage.test.tsx`, `e2e/candidate-detail-summary.spec.ts` |
 | Providers | Registry and detail links work; unavailable data differs from absence; missing feature metadata leaves the provider view usable and does not imply there are no capabilities; resource identity, edit blockers, and monitoring suggestions use plain language; failed inventory is not shown as an empty provider; edit access is checked before controls are enabled; action-catalog read failures differ from uncertain action results; forms and late responses stay with their provider | `src/pages/ProviderPage.test.tsx`, `src/components/ProviderOverview.test.tsx`, `src/components/ProviderIntentEditor.test.tsx`, `src/components/ProviderResources.test.tsx`, `src/components/ProviderActions.test.tsx`, and route cases in `e2e/screen-recovery.spec.ts` and `e2e/overview.spec.ts` |
@@ -2468,6 +2468,23 @@ expiry times as local time. Invalid timestamps show as unavailable, and the
 retrieval age remains alongside its timestamp. Source trust and freshness
 decisions are unchanged. A future retrieval timestamp is identified as such
 instead of being reported as “less than 1 hour ago.”
+
+## Workflow next-step wording — 2026-10-29
+
+The workflow state that prepares a change now reads “Prepare change” and
+“Prepare the change for review,” rather than implying that it is already
+waiting for approval. Later stages give a safe next step: review before
+resuming an approved repository change, run maintenance only after approval,
+and finish verification or commit only after their separate approval. The
+dashboard uses “Next step” instead of claiming that the operator's approval is
+needed; its workflow summary contract does not say whether approval has already
+been recorded. Counts group preparation separately from approval or resume.
+Approval, resume, execution, verification and commit controls are unchanged.
+
+Four focused component suites pass (117 tests), and the matching responsive
+browser suites pass (56 tests across 320px, 390px, 768px, 1280px and 1440px).
+Mission Control lint and build pass. Browser requests use synthetic fixtures
+that reject unexpected mutations; no real workflow or provider action runs.
 
 ## Health connection wording — 2026-10-29
 

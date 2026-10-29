@@ -103,7 +103,7 @@ export function workflowStageLabel(state: string, effectKind?: string): string {
     }
     switch (state) {
         case "awaiting_approval":
-            return "Workflow approval";
+            return "Prepare change";
         case "awaiting_implementation_approval":
             return "Change approval";
         case "executing":
@@ -120,6 +120,25 @@ export function workflowStageLabel(state: string, effectKind?: string): string {
             return "Completed";
         default:
             return formatWorkflowLabel(state);
+    }
+}
+
+export function workflowNextStepLabel(state: string, effectKind?: string): string | null {
+    switch (state) {
+        case "awaiting_approval":
+            return "Prepare the change for review.";
+        case "awaiting_implementation_approval":
+            return effectKind === "operational_action"
+                ? "Review the maintenance request; run it only after approval."
+                : "Review the change; resume it if approved.";
+        case "awaiting_verification_approval":
+            return "Review the checks; run them only after approval.";
+        case "awaiting_commit_approval":
+            return "Review the commit; finish it only after approval.";
+        case "blocked":
+            return "Open the workflow to review what is blocked.";
+        default:
+            return null;
     }
 }
 

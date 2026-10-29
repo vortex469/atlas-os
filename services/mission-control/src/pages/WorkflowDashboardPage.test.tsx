@@ -85,10 +85,10 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByText("Commit completed")).toBeInTheDocument();
         expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
-        expect(screen.getByText("Waiting for workflow approval")).toBeInTheDocument();
-        expect(screen.getByText("Waiting for implementation approval")).toBeInTheDocument();
-        expect(screen.getByText("Waiting for verification approval")).toBeInTheDocument();
-        expect(screen.getByText("Waiting for commit approval")).toBeInTheDocument();
+        expect(screen.getByText("Prepare change for review")).toBeInTheDocument();
+        expect(screen.getByText("Approval or resume")).toBeInTheDocument();
+        expect(screen.getByText("Review the checks; run them only after approval.")).toBeVisible();
+        expect(screen.getByText("Review the commit; finish it only after approval.")).toBeVisible();
         expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Progress")[0]).toBeInTheDocument();
@@ -98,7 +98,9 @@ describe("WorkflowDashboardPage", () => {
         const details = within(card as HTMLElement);
         expect(details.getByText("Stage: Change approval")).toBeVisible();
         expect(details.getByText("Latest result")).toBeVisible();
-        expect(details.getByText("Your approval is needed")).toBeVisible();
+        expect(details.getByText("Next step")).toBeVisible();
+        expect(details.getByText("Review the change; resume it if approved.")).toBeVisible();
+        expect(details.queryByText("Your approval is needed")).not.toBeInTheDocument();
         expect(details.queryByText("Current State")).not.toBeInTheDocument();
         const disclosure = details.getByText("Workflow details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
@@ -110,9 +112,16 @@ describe("WorkflowDashboardPage", () => {
         expect(details.getByText("workflow-123", { exact: true })).toBeVisible();
         expect(details.getByText("Candidate ID", { exact: true })).toBeVisible();
         expect(details.getByText("candidate-123", { exact: true })).toBeVisible();
+
+        const prepareCard = screen.getAllByRole("heading", { name: "Update Compose Stack" })[1].closest("article");
+        expect(prepareCard).not.toBeNull();
+        const prepareDetails = within(prepareCard as HTMLElement);
+        expect(prepareDetails.getByText("Stage: Prepare change")).toBeVisible();
+        expect(prepareDetails.getByText("Prepare the change for review.")).toBeVisible();
+        expect(prepareDetails.queryByText("Your approval is needed")).not.toBeInTheDocument();
     });
 
-    it("labels operational approval as maintenance request approval", async () => {
+    it("explains the safe next step for operational maintenance", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([workflow({
             workflow_id: "maintenance-review",
             effect_kind: "operational_action",
@@ -127,7 +136,8 @@ describe("WorkflowDashboardPage", () => {
         expect(card).not.toBeNull();
         const details = within(card as HTMLElement);
         expect(details.getByText("Stage: Maintenance request approval")).toBeVisible();
-        expect(details.getByText("Your approval is needed")).toBeVisible();
+        expect(details.getByText("Review the maintenance request; run it only after approval.")).toBeVisible();
+        expect(details.queryByText("Your approval is needed")).not.toBeInTheDocument();
         expect(details.queryByText("Stage: Change approval")).not.toBeInTheDocument();
     });
 
@@ -153,7 +163,7 @@ describe("WorkflowDashboardPage", () => {
 
         expect((await screen.findAllByRole("heading", { name: "Update Compose Stack" })).length).toBe(1);
         expect(screen.getByLabelText("Workflow status")).toBeVisible();
-        expect(screen.getByLabelText("Approval status")).toBeVisible();
+        expect(screen.getByLabelText("Next step")).toBeVisible();
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
         expect(screen.getByLabelText("Started from")).not.toBeVisible();
@@ -163,7 +173,7 @@ describe("WorkflowDashboardPage", () => {
         fireEvent.change(screen.getByLabelText("Started from"), { target: { value: "candidate" } });
         fireEvent.change(screen.getByLabelText("Candidate ID"), { target: { value: "candidate-123" } });
         fireEvent.change(screen.getByLabelText("Workflow ID contains"), { target: { value: "workflow-123" } });
-        fireEvent.change(screen.getByLabelText("Approval status"), { target: { value: "waiting" } });
+        fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "needed" } });
         expect(screen.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toBeVisible();
         expect(screen.getByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
@@ -172,6 +182,28 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
+    });
+
+    it("filters workflows by whether an operator has a next step", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([
+            workflow(),
+            workflow({ workflow_id: "workflow-blocked", workflow_state: "blocked", execution_intent: "update-container-image" }),
+            workflow({ workflow_id: "workflow-completed", workflow_state: "completed", execution_intent: "restart-service" }),
+        ]));
+
+        renderDashboard();
+
+        await screen.findAllByRole("heading", { name: "Update Compose Stack" });
+        fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "needed" } });
+        fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
+        expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "not_needed" } });
+        fireEvent.click(screen.getByRole("button", { name: /Apply filters/i }));
+        expect(screen.getByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
     });
 
     it("supports pagination when more returned workflows exist", async () => {

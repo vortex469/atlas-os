@@ -22,7 +22,7 @@ describe("integrated attention and activity", () => {
         const conditions = within(attention().getByRole("list", { name: "Reported attention conditions" }));
         expect(conditions.getAllByRole("listitem")).toHaveLength(5);
         expect(conditions.getAllByRole("listitem")[0]).toHaveTextContent("Blocked");
-        expect(attention().getAllByText(/^Action needed: Waiting for/)).toHaveLength(4);
+        expect(attention().getAllByText(/^Action needed:/)).toHaveLength(4);
         expect(attention().queryByRole("link", { name: "mystery" })).not.toBeInTheDocument();
         await userEvent.click(within(conditions.getAllByRole("listitem")[1]).getByRole("link", { name: "Workflow" }));
         expect(screen.getByText("Workflow detail")).toBeVisible();
@@ -36,7 +36,7 @@ describe("integrated attention and activity", () => {
     });
     it("keeps stale approval requirements historical and clears them on recovery", () => {
         const view = render(dashboard({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: "w", workflow_state: "awaiting_approval" }] } } }));
-        expect(attention().getByText("Last-known status: Waiting for approval. Current status unknown.")).toBeVisible();
+        expect(attention().getByText("Last-known step: Prepare change. Current status unknown.")).toBeVisible();
         expect(attention().queryByText("Human action required", { exact: true })).not.toBeInTheDocument();
         view.rerender(dashboard({ workflows: { data: { items: [], total: 0, limit: 200, offset: 0 } } }));
         expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();

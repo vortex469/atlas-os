@@ -5,6 +5,7 @@ import { WorkflowMiniRail } from "./WorkflowMiniRail";
 import {
     WORKFLOW_STATES,
     workflowActionRequired,
+    workflowNextStepLabel,
     workflowRailStages,
     workflowStageLabel,
     workflowStatusGroup,
@@ -52,7 +53,7 @@ describe("WorkflowMiniRail", () => {
         const groups = WORKFLOW_STATES.map((state) => workflowStatusGroup(state));
 
         expect(labels).toEqual([
-            "Workflow approval",
+            "Prepare change",
             "Change approval",
             "Apply change",
             "Verify change",
@@ -81,5 +82,14 @@ describe("WorkflowMiniRail", () => {
         expect(workflowActionRequired("awaiting_commit_approval")).toBe(true);
         expect(workflowActionRequired("executing")).toBe(false);
         expect(workflowActionRequired("completed")).toBe(false);
+    });
+
+    it("gives a safe next step for each operator action state", () => {
+        expect(workflowNextStepLabel("awaiting_approval")).toBe("Prepare the change for review.");
+        expect(workflowNextStepLabel("awaiting_implementation_approval")).toBe("Review the change; resume it if approved.");
+        expect(workflowNextStepLabel("awaiting_implementation_approval", "operational_action")).toBe("Review the maintenance request; run it only after approval.");
+        expect(workflowNextStepLabel("awaiting_verification_approval")).toBe("Review the checks; run them only after approval.");
+        expect(workflowNextStepLabel("awaiting_commit_approval")).toBe("Review the commit; finish it only after approval.");
+        expect(workflowNextStepLabel("executing")).toBeNull();
     });
 });

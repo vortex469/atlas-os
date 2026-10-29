@@ -10,11 +10,11 @@ import {
     formatWorkflowLabel,
     formatWorkflowValue,
     isActiveWorkflowState,
-    workflowActionRequired,
     workflowRailStages,
     workflowStageLabel,
     workflowStatusGroup,
     formatWorkflowResultSummary,
+    workflowNextStepLabel,
 } from "../utils/workflowState";
 
 const PAGE_SIZE = 10;
@@ -27,7 +27,7 @@ interface DashboardFilters {
     source: string;
     candidateId: string;
     workflowId: string;
-    approvalStatus: string;
+    operatorStep: string;
 }
 
 const EMPTY_FILTERS: DashboardFilters = {
@@ -35,17 +35,16 @@ const EMPTY_FILTERS: DashboardFilters = {
     source: "",
     candidateId: "",
     workflowId: "",
-    approvalStatus: "",
+    operatorStep: "",
 };
 
 const SUMMARY_GROUPS = [
     { key: "running", label: "Running" },
-    { key: "waiting_approval", label: "Waiting for workflow approval" },
-    { key: "waiting_implementation_approval", label: "Waiting for implementation approval" },
-    { key: "waiting_verification_approval", label: "Waiting for verification approval" },
-    { key: "waiting_commit_approval", label: "Waiting for commit approval" },
+    { key: "prepare_change", label: "Prepare change for review" },
+    { key: "approval_or_resume", label: "Approval or resume" },
     { key: "blocked", label: "Blocked" },
     { key: "completed", label: "Completed" },
+    { key: "unknown", label: "Status unavailable" },
 ];
 
 export function WorkflowDashboardPage() {
@@ -110,7 +109,7 @@ export function WorkflowDashboardPage() {
     const summaryCounts = useMemo(() => {
         const counts = new Map<string, number>();
         for (const workflow of workflows) {
-            const group = workflowStatusGroup(workflow.workflow_state);
+            const group = workflowDashboardSummaryGroup(workflow.workflow_state);
             counts.set(group, (counts.get(group) ?? 0) + 1);
         }
         return counts;
@@ -125,8 +124,9 @@ export function WorkflowDashboardPage() {
             if (filters.source && workflow.workflow_source !== filters.source) return false;
             if (filters.candidateId && !workflow.candidate_id?.toLowerCase().includes(filters.candidateId.toLowerCase())) return false;
             if (filters.workflowId && !workflow.workflow_id.toLowerCase().includes(filters.workflowId.toLowerCase())) return false;
-            if (filters.approvalStatus === "waiting" && !workflowActionRequired(workflow.workflow_state)) return false;
-            if (filters.approvalStatus === "not_waiting" && workflowActionRequired(workflow.workflow_state)) return false;
+            const hasNextStep = workflowNextStepLabel(workflow.workflow_state, workflow.effect_kind) !== null;
+            if (filters.operatorStep === "needed" && !hasNextStep) return false;
+            if (filters.operatorStep === "not_needed" && hasNextStep) return false;
             return true;
         });
     }, [filters, workflows]);
@@ -267,11 +267,11 @@ export function WorkflowDashboardPage() {
                             </select>
                         </label>
                         <label className="text-sm text-slate-300">
-                            Approval status
-                            <select value={draftFilters.approvalStatus} onChange={(event) => updateDraftFilter("approvalStatus", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                                <option value="">Any approval status</option>
-                                <option value="waiting">Waiting for approval</option>
-                                <option value="not_waiting">No approval waiting</option>
+                            Next step
+                            <select value={draftFilters.operatorStep} onChange={(event) => updateDraftFilter("operatorStep", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
+                                <option value="">Any workflow</option>
+                                <option value="needed">Needs an operator step</option>
+                                <option value="not_needed">No operator step needed</option>
                             </select>
                         </label>
                     </div>
@@ -342,11 +342,24 @@ function dashboardFiltersEqual(left: DashboardFilters, right: DashboardFilters):
         && left.source === right.source
         && left.candidateId === right.candidateId
         && left.workflowId === right.workflowId
-        && left.approvalStatus === right.approvalStatus;
+        && left.operatorStep === right.operatorStep;
+}
+
+function workflowDashboardSummaryGroup(state: string): string {
+    switch (state) {
+        case "awaiting_approval":
+            return "prepare_change";
+        case "awaiting_implementation_approval":
+        case "awaiting_verification_approval":
+        case "awaiting_commit_approval":
+            return "approval_or_resume";
+        default:
+            return workflowStatusGroup(state);
+    }
 }
 
 function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
-    const actionRequired = workflowActionRequired(workflow.workflow_state);
+    const nextStep = workflowNextStepLabel(workflow.workflow_state, workflow.effect_kind);
     const railId = `workflow-rail-${workflow.workflow_id}`;
     const title = workflow.execution_intent
         ? formatWorkflowLabel(workflow.execution_intent)
@@ -366,7 +379,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
             </div>
             <dl className="mt-4 grid gap-3 text-sm md:grid-cols-2">
                 <Detail label="Latest result" value={formatWorkflowResultSummary(workflow.last_result_summary)} />
-                <Detail label="Approval" value={actionRequired ? "Your approval is needed" : "No approval is waiting"} />
+                {nextStep && <Detail label="Next step" value={nextStep} />}
             </dl>
             <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
                 <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>

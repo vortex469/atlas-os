@@ -1,12 +1,12 @@
 import { expect, test } from "./mission-control-fixtures";
 
 for (const width of [320, 390, 1280]) {
-    test(`workflow cards keep approval status visible and reference details optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+    test(`workflow cards show the next step and keep reference details optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/workflows");
 
         await expect(page.getByLabel("Workflow status")).toBeVisible();
-        await expect(page.getByLabel("Approval status")).toBeVisible();
+        await expect(page.getByLabel("Next step")).toBeVisible();
         await expect(page.getByLabel("Workflow ID contains")).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
         await expect(page.getByLabel("Workflow ID contains")).toBeVisible();
@@ -15,7 +15,8 @@ for (const width of [320, 390, 1280]) {
         await expect(heading).toBeVisible();
         const card = heading.locator("xpath=ancestor::article[1]");
         await expect(card.getByText("Stage: Change approval", { exact: true })).toBeVisible();
-        await expect(card.getByText("Your approval is needed", { exact: true })).toBeVisible();
+        await expect(card.getByText("Review the change; resume it if approved.", { exact: true })).toBeVisible();
+        await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Current State", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Workflow ID", { exact: true })).toBeHidden();
         await expect(card.getByText("workflow-browser-baseline", { exact: true })).toBeHidden();
@@ -44,7 +45,7 @@ for (const width of [320, 390, 1280]) {
 }
 
 for (const width of [320, 390, 1280]) {
-    test(`maintenance workflow card names its approval stage at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+    test(`maintenance workflow card shows its safe next step at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
             items: [{
@@ -70,8 +71,43 @@ for (const width of [320, 390, 1280]) {
         await expect(title).toBeVisible();
         const card = title.locator("xpath=ancestor::article[1]");
         await expect(card.getByText("Stage: Maintenance request approval", { exact: true })).toBeVisible();
-        await expect(card.getByText("Your approval is needed", { exact: true })).toBeVisible();
+        await expect(card.getByText("Review the maintenance request; run it only after approval.", { exact: true })).toBeVisible();
+        await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Stage: Change approval", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`workflow preparation state is described as a review step at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+            items: [{
+                workflow_id: "workflow-preparation",
+                workflow_source: "candidate",
+                workflow_state: "awaiting_approval",
+                effect_kind: "repository_change",
+                execution_intent: "update-compose-stack",
+                candidate_id: "candidate-preparation",
+                planning_session_id: "planning-preparation",
+                repository: "/repo",
+                target_id: null,
+                last_result_summary: "No result yet",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 200,
+            offset: 0,
+        } }));
+        await page.goto("/workflows");
+
+        const title = page.getByRole("heading", { name: "Update Compose Stack", exact: true });
+        await expect(title).toBeVisible();
+        const card = title.locator("xpath=ancestor::article[1]");
+        await expect(card.getByText("Stage: Prepare change", { exact: true })).toBeVisible();
+        await expect(card.getByText("Prepare the change for review.", { exact: true })).toBeVisible();
+        await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });

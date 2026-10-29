@@ -30,7 +30,7 @@ test("Mission Control dashboard loads from controlled Core and Agent responses",
 
     await expect(page.getByRole("heading", { name: "Operator Attention" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Update Compose Stack" })).toBeVisible();
-    await expect(page.getByText("Action needed: Waiting for implementation approval")).toBeVisible();
+    await expect(page.getByText("Action needed: Review the change; resume it if approved.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Review workflows →", exact: true })).toHaveAttribute("href", "/workflows");
     await expect(page.getByRole("heading", { name: "Agent details" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Recent provider actions" })).toBeVisible();
