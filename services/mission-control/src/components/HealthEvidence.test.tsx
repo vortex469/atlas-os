@@ -33,6 +33,14 @@ describe("authoritative health presentation", () => {
         expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
     });
 
+    it("retains the specific service check label when the last report is stale", () => {
+        render(<HealthEvidenceContext.Provider value={{ stale: true }}>
+            <HealthEvidence status="offline" unavailableLabel="Atlas Core could not connect" />
+        </HealthEvidenceContext.Provider>);
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
+        expect(screen.getByText("Last report: Atlas Core could not connect.")).toBeInTheDocument();
+    });
+
     it("retains source critical severity and renders reasons as plain text", () => {
         render(<HealthEvidence status="critical" reason="<script>bad()</script>" />);
         expect(screen.getByText("Reported status: critical")).toBeInTheDocument();

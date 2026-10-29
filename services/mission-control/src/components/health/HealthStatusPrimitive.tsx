@@ -106,7 +106,7 @@ export function HealthStatusBadge({
 
             {isStale && (
                 <span className="text-xs text-mc-text-secondary">
-                    Last report: {reportedConfig.label}.
+                    Last report: {title || reportedConfig.label}.
                 </span>
             )}
 

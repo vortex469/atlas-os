@@ -183,6 +183,17 @@ describe("MC overview evidence", () => {
         expect(disclosure).not.toHaveTextContent(/password|private/);
     });
 
+    it("keeps the Core connection wording in stale service-check evidence", () => {
+        show({ health: { stale: true, data: { services: { iFileshare: {
+            status: "offline",
+            message: "Connection refused",
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+
+        expect(checks.getByText("Status unknown")).toBeInTheDocument();
+        expect(checks.getByText("Last report: Atlas Core could not connect.")).toBeInTheDocument();
+    });
+
     it.each([
         ["[Errno 111] Connection refused", "Check that the service is listening on this port and that Atlas Core can reach it."],
         ["[Errno 113] No route to host", "Check the target address and the network or firewall route from Atlas Core to the service host."],
