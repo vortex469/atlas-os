@@ -113,7 +113,7 @@ describe("WorkflowPage", () => {
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Malformed workflow detail payload.")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
@@ -304,7 +304,8 @@ describe("WorkflowPage", () => {
         let resolveRead!: (value: WorkflowDetailResponse) => void;
         mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }));
         renderPage();
-        const name = `Resume Approved ${stage[0].toUpperCase()}${stage.slice(1)}`;
+        const name = stage === "implementation" ? "Run approved change"
+            : stage === "verification" ? "Run approved checks" : "Record approved commit";
         const resume = await screen.findByRole("button", { name });
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
@@ -349,8 +350,8 @@ describe("WorkflowPage", () => {
         renderPage();
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
-        expect(screen.queryByText("Implementation approved. Resume to run this change.")).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Change approved. Run it when you are ready.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
 
@@ -457,7 +458,7 @@ describe("WorkflowPage", () => {
         const record = screen.getByText("Worker request record").closest("details");
         expect(record).not.toHaveAttribute("open");
         expect(record).toHaveTextContent("execution-request-digest-v1:fixture");
-        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
         fireEvent.click(check);
 
         await waitFor(() => expect(mockedResumeWorkflow).toHaveBeenCalledExactlyOnceWith("workflow-123"));
@@ -499,14 +500,14 @@ describe("WorkflowPage", () => {
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
 
-    it("shows Resume Approved Implementation only when implementation is approved", async () => {
+    it("shows Run approved change only when implementation is approved", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({
             workflow_state: "awaiting_implementation_approval",
             implementation_approval_status: "approved",
         }));
         renderPage();
 
-        expect(await screen.findByRole("button", { name: "Resume Approved Implementation" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Run approved change" })).toBeInTheDocument();
         expect(screen.getByText("Implementation approval is recorded.", { exact: true })).toBeVisible();
     });
 
@@ -514,7 +515,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByText("Implementation needs approval.", { exact: true })).toBeVisible();
-        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
     });
 
     it("does not show resume action when implementation is rejected", async () => {
@@ -525,7 +526,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByText("Implementation approval was rejected.", { exact: true })).toBeVisible();
-        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
     });
 
     it("does not call resume automatically after approving implementation", async () => {
@@ -541,7 +542,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
-        await screen.findByText("Implementation approved. Resume to run this change.");
+        await screen.findByText("Change approved. Run it when you are ready.");
 
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
     });
@@ -558,14 +559,14 @@ describe("WorkflowPage", () => {
 
         renderPage();
 
-        const resume = await screen.findByRole("button", { name: "Resume Approved Implementation" });
+        const resume = await screen.findByRole("button", { name: "Run approved change" });
         fireEvent.click(resume);
         fireEvent.click(resume);
 
         await waitFor(() => expect(mockedResumeWorkflow).toHaveBeenCalledTimes(1));
-        expect(screen.queryByRole("button", { name: "Resume Approved Implementation" })).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Resuming..." })).toBeDisabled();
-        expect(screen.getByText("Resuming workflow...")).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Running approved change..." })).toBeDisabled();
+        expect(screen.getByText("Running the approved change...")).toBeVisible();
 
         resolveResume();
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
@@ -588,7 +589,7 @@ describe("WorkflowPage", () => {
 
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Run approved change" }));
 
         expect(await screen.findByText("Verification needs approval.")).toBeInTheDocument();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
@@ -612,28 +613,28 @@ describe("WorkflowPage", () => {
 
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Resume Approved Verification" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Run approved checks" }));
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Mission Control could not confirm the workflow result.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(technicalDetails).toHaveTextContent("Workflow blocked");
-        expect(screen.getByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Run approved checks" })).toBeInTheDocument();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
     });
 
-    it("shows Resume Approved Verification for approved verification state", async () => {
+    it("shows Run approved checks for approved verification state", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflowAwaitingVerification({
             verification_approval_status: "approved",
         }));
         renderPage();
 
-        expect(await screen.findByRole("button", { name: "Resume Approved Verification" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Run approved checks" })).toBeInTheDocument();
         expect(screen.getByText("Verification approval is recorded.", { exact: true })).toBeVisible();
     });
 
-    it("shows Resume Approved Commit for approved commit state", async () => {
+    it("shows Record approved commit for approved commit state", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(
             workflowAwaitingCommit({
                 workflow_state: "awaiting_commit_approval",
@@ -642,7 +643,7 @@ describe("WorkflowPage", () => {
         );
         renderPage();
 
-        expect(await screen.findByRole("button", { name: "Resume Approved Commit" })).toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Record approved commit" })).toBeInTheDocument();
         expect(screen.getByText("Commit approval is recorded.", { exact: true })).toBeVisible();
     });
 
@@ -654,7 +655,7 @@ describe("WorkflowPage", () => {
         );
         renderPage();
 
-        expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Run approved|Record approved/i })).not.toBeInTheDocument();
     });
 
     it("never shows resume action for completed workflow", async () => {
@@ -666,7 +667,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByText("Workflow completed.", { exact: true })).toBeVisible();
-        expect(screen.queryByRole("button", { name: /Resume Approved/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Run approved|Record approved/i })).not.toBeInTheDocument();
     });
 
     it("renders concise change details and keeps request references collapsed", async () => {
@@ -747,7 +748,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
 
-        await screen.findByText("Implementation approved. Resume to run this change.");
+        await screen.findByText("Change approved. Run it when you are ready.");
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowImplementationApproval.mock.calls[0])).not.toMatch(/argv|command|repository|working_directory|implementation_request|candidate_snapshot/);
@@ -789,7 +790,7 @@ describe("WorkflowPage", () => {
             implementation_approval_status: "approved",
             message: null,
         });
-        await screen.findByText("Implementation approved. Resume to run this change.");
+        await screen.findByText("Change approved. Run it when you are ready.");
     });
 
     it("hides approval controls outside awaiting implementation approval", async () => {
@@ -818,7 +819,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
 
-        await screen.findByText("Implementation approved. Resume to run this change.");
+        await screen.findByText("Change approved. Run it when you are ready.");
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject implementation" })).not.toBeInTheDocument();
     });
@@ -1118,7 +1119,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         const checkResults = within(await screen.findByRole("region", { name: "Check results" }));
-        expect(checkResults.getByText("Review these checks, approve verification, then Resume to run them.")).toBeVisible();
+        expect(checkResults.getByText("Review these checks. Approve them before Atlas runs them.")).toBeVisible();
         expect(checkResults.queryByText("Completed", { exact: true })).not.toBeInTheDocument();
         const review = within(screen.getByRole("region", { name: "Review" }));
         expect(review.getByText("Review results will appear after verification runs.")).toBeVisible();
@@ -1138,7 +1139,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
 
-        await screen.findByText("Verification approved. Resume to run the checks.");
+        await screen.findByText("Checks approved. Run them when you are ready.");
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowVerificationApproval.mock.calls[0])).not.toMatch(/command|check|evidence|changed|review|commit/);
@@ -1161,7 +1162,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
 
-        await screen.findByText("Verification approved. Resume to run the checks.");
+        await screen.findByText("Checks approved. Run them when you are ready.");
         expect(screen.queryByRole("button", { name: "Approve Verification" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject Verification" })).not.toBeInTheDocument();
     });
@@ -1248,7 +1249,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
 
-        await screen.findByText("Commit approved. Resume to finish the local commit.");
+        await screen.findByText("Commit approved. Record it when you are ready.");
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledWith("workflow-123", "approve");
         expect(JSON.stringify(mockedSubmitWorkflowCommitApproval.mock.calls[0])).not.toMatch(/message|path|sha|fingerprint|evidence|repository|push|tag/);
@@ -1268,7 +1269,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
 
-        await screen.findByText("Commit approved. Resume to finish the local commit.");
+        await screen.findByText("Commit approved. Record it when you are ready.");
         expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Reject Commit" })).not.toBeInTheDocument();
     });

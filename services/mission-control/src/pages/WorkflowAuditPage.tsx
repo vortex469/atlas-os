@@ -457,7 +457,9 @@ function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
         case "awaiting_approval":
             return isMaintenance ? "Maintenance workflow is waiting for review." : "Workflow is waiting for review.";
         case "awaiting_implementation_approval":
-            return approvalStatusMessage(action, audit.approvals.implementation.status, "Resume to run it.");
+            return approvalStatusMessage(action, audit.approvals.implementation.status, isMaintenance
+                ? "Run approved maintenance when you are ready."
+                : "Run the approved change when you are ready.");
         case "awaiting_execution":
             return action + " is approved and ready to run.";
         case "executing":
@@ -465,11 +467,11 @@ function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
         case "patch_applied_pending_verification":
             return "Implementation is complete. Verification is next.";
         case "awaiting_verification_approval":
-            return approvalStatusMessage("Verification", audit.approvals.verification.status, "Resume to run the checks.");
+            return approvalStatusMessage("Verification", audit.approvals.verification.status, "Run the approved checks when you are ready.");
         case "verifying":
             return "Verification checks are running.";
         case "awaiting_commit_approval":
-            return approvalStatusMessage("Commit", audit.approvals.commit.status, "Resume to finish it.");
+            return approvalStatusMessage("Commit", audit.approvals.commit.status, "Record the approved commit when you are ready.");
         case "committing":
             return "The commit is being recorded.";
         case "blocked":

@@ -69,8 +69,8 @@ running it.
 
 The exact-approval workflow detail resets when its URL changes and rejects
 details bearing another workflow ID. An unavailable read offers a read-only
-retry and a link to the workflow list; retry does not submit approval or resume
-an execution. Its summary keeps the current workflow state and relevant
+retry and a link to the workflow list; retry does not submit approval or run
+work. Its summary keeps the current workflow state and relevant
 approval status visible; fingerprints, paths and reference IDs stay under
 optional workflow details. Exact action requests and approval controls remain
 visible in their own review sections.
@@ -138,8 +138,9 @@ Browser acceptance covers the repository-change journey from a current
 proposal through planning, implementation approval, verification approval,
 local commit approval and the completed audit. A separate synthetic backend
 fixture accepts only the exact ordered request paths and bodies expected by
-that journey. Each approval requires a separate Resume step; rejection remains
-blocked after reload. Current-stage prompts follow the refreshed server state
+that journey. Each approval requires a separate, explicit action to continue
+that stage; the button names what it will do. Rejection remains blocked after
+reload. Current-stage prompts follow the refreshed server state
 and disappear when the workflow advances. These tests run no model, command,
 verification tool, Git operation or provider action and do not establish
 production acceptance.

@@ -52,7 +52,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/");
         const attention = page.getByRole("region", { name: "Operator Attention" });
         const activity = page.getByRole("region", { name: "Recent provider actions" });
-        await expect(attention.getByText("Action needed: Review the change; resume it if approved.", { exact: true })).toBeVisible();
+        await expect(attention.getByText("Action needed: Review the change. If approved, choose Run approved change.", { exact: true })).toBeVisible();
         await expect(activity.getByRole("listitem")).toHaveCount(1);
         await expect(activity.getByText(`Failed · ${label.slice(0, 240)}`)).toBeVisible();
         await expect(activity.getByText(/^Completed \(local time\) /)).toBeVisible();

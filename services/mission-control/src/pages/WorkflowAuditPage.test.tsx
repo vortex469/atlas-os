@@ -96,7 +96,7 @@ describe("WorkflowAuditPage", () => {
 
     it.each([
         ["awaiting_implementation_approval", "pending", "Maintenance request needs approval."],
-        ["awaiting_implementation_approval", "approved", "Maintenance request is approved. Resume to run it."],
+        ["awaiting_implementation_approval", "approved", "Maintenance request is approved. Run approved maintenance when you are ready."],
         ["awaiting_implementation_approval", "rejected", "Maintenance request approval was rejected."],
         ["awaiting_execution", "approved", "Maintenance request is approved and ready to run."],
         ["executing", "approved", "Maintenance is running."],
@@ -264,13 +264,13 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getByRole("heading", { name: "How to read this audit" })).toBeInTheDocument();
     });
 
-    it("shows that an approved stage is ready to resume", async () => {
+    it("shows the next action after verification approval", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({ workflow_state: "awaiting_verification_approval" }),
         );
         renderAuditPage();
 
-        expect(await screen.findByText("Verification is approved. Resume to run the checks.")).toBeInTheDocument();
+        expect(await screen.findByText("Verification is approved. Run the approved checks when you are ready.")).toBeInTheDocument();
     });
 
     it("keeps workflow status separate from audit validation when validation is invalid", async () => {

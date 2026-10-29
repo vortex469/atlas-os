@@ -126,11 +126,11 @@ export function workflowStageLabel(state: string, effectKind?: string): string {
 export function workflowStateFilterLabel(state: string): string {
     switch (state) {
         case "awaiting_approval": return "Prepare change for review";
-        case "awaiting_implementation_approval": return "Review change or resume if approved";
+        case "awaiting_implementation_approval": return "Review change, then run if approved";
         case "executing": return "Applying change";
-        case "awaiting_verification_approval": return "Review checks or resume if approved";
+        case "awaiting_verification_approval": return "Review checks, then run if approved";
         case "verifying": return "Running checks";
-        case "awaiting_commit_approval": return "Review commit or resume if approved";
+        case "awaiting_commit_approval": return "Review commit, then record if approved";
         case "committing": return "Recording commit";
         case "blocked": return "Blocked";
         case "completed": return "Completed";
@@ -144,12 +144,12 @@ export function workflowNextStepLabel(state: string, effectKind?: string): strin
             return "Prepare the change for review.";
         case "awaiting_implementation_approval":
             return effectKind === "operational_action"
-                ? "Review the maintenance request; run it only after approval."
-                : "Review the change; resume it if approved.";
+                ? "Review the maintenance request. If approved, choose Run approved maintenance."
+                : "Review the change. If approved, choose Run approved change.";
         case "awaiting_verification_approval":
-            return "Review the checks; resume to run them if approved.";
+            return "Review the checks. If approved, choose Run approved checks.";
         case "awaiting_commit_approval":
-            return "Review the commit; resume to record it if approved.";
+            return "Review the commit. If approved, choose Record approved commit.";
         case "blocked":
             return "Open the workflow to review what is blocked.";
         default:

@@ -360,12 +360,30 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const resumeButtonLabel = canReconcileWorker
         ? "Check worker result"
         : canResumeImplementation
-        ? isOperational ? "Run approved maintenance" : "Resume Approved Implementation"
+        ? isOperational ? "Run approved maintenance" : "Run approved change"
         : canResumeVerification
-            ? "Resume Approved Verification"
+            ? "Run approved checks"
             : canResumeCommit
-                ? "Resume Approved Commit"
-                : "Resume";
+                ? "Record approved commit"
+                : "Continue workflow";
+    const resumingButtonLabel = canReconcileWorker
+        ? "Checking worker result..."
+        : canResumeImplementation
+            ? isOperational ? "Submitting..." : "Running approved change..."
+            : canResumeVerification
+                ? "Running approved checks..."
+                : canResumeCommit
+                    ? "Recording approved commit..."
+                    : "Working...";
+    const resumingStatusLabel = canReconcileWorker
+        ? "Checking the original worker result..."
+        : canResumeImplementation
+            ? isOperational ? "Submitting the approved maintenance request..." : "Running the approved change..."
+            : canResumeVerification
+                ? "Running the approved checks..."
+                : canResumeCommit
+                    ? "Recording the approved local commit..."
+                    : "Continuing the workflow...";
 
     async function resumeWorkflowTransition() {
         if (!workflow || !canResume || controlsBusy || readPending.current) {
@@ -391,7 +409,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
-            {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and resume controls are unavailable until this check finishes.</p>}
+            {isRefreshing && <p role="status" className="rounded-lg border border-blue-400/30 bg-blue-400/5 p-4 text-sm text-blue-100">Checking current workflow status. Approval and action buttons are unavailable until this check finishes.</p>}
             <header className="space-y-4">
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">{isOperational ? "Maintenance" : "Workflow"}</p>
@@ -399,7 +417,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                         {workflow.effect_kind === "operational_action"
                             ? "Review the exact maintenance request below. Approval and running it are separate steps."
-                            : "Review each stage below. Implementation, verification and commit each need separate approval and a separate Resume step."}
+                            : "Each change, check and commit needs its own approval. After approval, choose the matching action to continue."}
                     </p>
                 </div>
                 {isRepository && <WorkflowRail workflow={workflow} />}
@@ -522,7 +540,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <p className="mt-2 text-sm text-slate-400">
                     {isOperational
                         ? "Approve or reject this exact maintenance request. Approval does not run it; choose Run approved maintenance separately when you are ready."
-                        : "Approve or reject the exact implementation request shown above. Approval does not run the change; choose Resume afterward to run it."}
+                        : "Approve or reject the exact implementation request shown above. Approval does not run the change; choose Run approved change when you are ready."}
                 </p>
                 {canDecide ? (
                     <div className="mt-4 flex flex-wrap gap-3">
@@ -548,7 +566,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 )}
                 {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting maintenance approval..." : "Submitting implementation approval..."}</p>}
                 {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && !controlsBusy && (
-                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Maintenance request approved. Run it when you are ready." : "Implementation approved. Resume to run this change."}</p>
+                    <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Maintenance request approved. Run it when you are ready." : "Change approved. Run it when you are ready."}</p>
                 )}
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
                     <p role="status" className="mt-3 text-sm text-red-100">{isOperational ? "Maintenance request rejected." : "Implementation request rejected."}</p>
@@ -558,8 +576,16 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
             {canResume && (
                 <section aria-labelledby="resume-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">{canReconcileWorker ? "Check original worker result" : isOperational ? "Run approved maintenance" : "Resume approved stage"}</h2>
-                    <p className="mt-2 text-sm text-slate-400">{canReconcileWorker ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals." : isOperational ? "Submit the approved maintenance request. Atlas checks its execution permissions before acting." : "Use this to advance execution after an approval decision."}</p>
+                    <h2 id="resume-controls-heading" className="text-lg font-semibold text-white">Next step</h2>
+                    <p className="mt-2 text-sm text-slate-400">{canReconcileWorker
+                        ? "This checks the original request once. It will not run the change again. A recovered change still requires separate verification and commit approvals."
+                        : isOperational
+                            ? "Submit the approved maintenance request. Atlas checks its execution permissions before acting."
+                            : canResumeImplementation
+                                ? "This runs the approved change."
+                                : canResumeVerification
+                                    ? "This runs the checks you approved."
+                                    : "This records the local commit you approved. It does not push or publish."}</p>
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button
                             type="button"
@@ -567,10 +593,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                             disabled={controlsBusy}
                             className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-blue-950 transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            {isResuming ? isOperational ? "Submitting..." : "Resuming..." : resumeButtonLabel}
+                            {isResuming ? resumingButtonLabel : resumeButtonLabel}
                         </button>
                     </div>
-                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting the approved maintenance request..." : "Resuming workflow..."}</p>}
+                    {isResuming && <p role="status" className="mt-3 text-sm text-blue-200">{resumingStatusLabel}</p>}
                     {resumeError && <WorkflowActionError failure={resumeError} />}
                 </section>
             )}
@@ -694,7 +720,7 @@ function VerificationReviewSection({
         <section aria-labelledby="verification-review-heading" className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div>
                 <h2 id="verification-review-heading" className="text-lg font-semibold text-white">Verification and review</h2>
-                <p className="mt-2 text-sm text-slate-400">Review the proposed checks and their recorded results. Verification needs its own approval and a separate Resume step.</p>
+                <p className="mt-2 text-sm text-slate-400">Review the planned checks and their results. Approve the checks before Atlas runs them.</p>
             </div>
 
             <details className="rounded-lg border border-slate-800 bg-slate-950/50 px-4 py-3">
@@ -734,9 +760,9 @@ function VerificationReviewSection({
                 ) : (
                     <p className="mt-3 text-sm text-slate-300">
                         {awaitingVerificationApproval && workflow.verification_approval_status === "pending"
-                            ? "Review these checks, approve verification, then Resume to run them."
+                            ? "Review these checks. Approve them before Atlas runs them."
                             : awaitingVerificationApproval && workflow.verification_approval_status === "approved"
-                                ? "Verification is approved. Resume to run these checks."
+                                ? "Checks are approved. Run them when you are ready."
                                 : "Check results will appear after implementation and verification finish."}
                     </p>
                 )}
@@ -757,7 +783,7 @@ function VerificationReviewSection({
 
             {shouldShowVerificationApprovalSection(workflow, verificationApprovalResult, verificationApprovalError) && <section aria-labelledby="verification-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
                 <h3 id="verification-approval-heading" className="text-base font-semibold text-white">Verification approval</h3>
-                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and verification approval decision.</p>
+                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and verification approval decision. Approved checks run only after you choose Run approved checks.</p>
                 {canDecideVerification ? (
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button type="button" onClick={() => void onVerificationDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Verification</button>
@@ -771,7 +797,7 @@ function VerificationReviewSection({
                             : "Verification approval is not available at this step."}</p>
                 )}
                 {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
-                {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Verification approved. Resume to run the checks.</p>}
+                {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Checks approved. Run them when you are ready.</p>}
                 {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
                 {verificationApprovalError && <WorkflowActionError failure={verificationApprovalError} />}
             </section>}
@@ -806,7 +832,7 @@ function CommitSection({
             <div>
                 <h2 id="commit-heading" className="text-lg font-semibold text-white">Commit</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Review and approve or reject this exact local commit request. Approval and resuming the commit are separate steps. This does not push or publish a release.
+                    Review and approve or reject this exact local commit request. Approval does not record it; choose Record approved commit when you are ready. This does not push or publish a release.
                 </p>
             </div>
 
@@ -851,7 +877,7 @@ function CommitSection({
                             : "Commit approval is not available at this step."}</p>
                 )}
                 {isSubmittingCommit && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting commit approval...</p>}
-                {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Resume to finish the local commit.</p>}
+                {commitApprovalResult?.commit_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_commit_approval" && workflow.commit_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Commit approved. Record it when you are ready.</p>}
                 {commitApprovalResult?.commit_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Commit approval rejected.</p>}
                 {commitApprovalError && <WorkflowActionError failure={commitApprovalError} />}
             </section>
@@ -892,7 +918,7 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
         case "awaiting_approval":
             return "Prepare the change for review.";
         case "awaiting_implementation_approval":
-            if (workflow.implementation_approval_status === "approved") return `${action} is approved. ${workflow.effect_kind === "operational_action" ? "Run it when ready." : "Resume to run it."}`;
+            if (workflow.implementation_approval_status === "approved") return `${action} is approved. Run it when ready.`;
             if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;
             return `${action} needs approval.`;
         case "awaiting_execution":
@@ -902,13 +928,13 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
         case "patch_applied_pending_verification":
             return "Implementation is complete. Verification is next.";
         case "awaiting_verification_approval":
-            if (workflow.verification_approval_status === "approved") return "Verification is approved. Resume to run the checks.";
+            if (workflow.verification_approval_status === "approved") return "Checks are approved. Run them when you are ready.";
             if (workflow.verification_approval_status === "rejected") return "Verification approval was rejected.";
             return "Verification needs approval.";
         case "verifying":
             return "Verification checks are running.";
         case "awaiting_commit_approval":
-            if (workflow.commit_approval_status === "approved") return "Commit is approved. Resume to finish it.";
+            if (workflow.commit_approval_status === "approved") return "Commit is approved. Record it when you are ready.";
             if (workflow.commit_approval_status === "rejected") return "Commit approval was rejected.";
             return "Commit needs approval.";
         case "committing":

@@ -86,10 +86,10 @@ describe("WorkflowMiniRail", () => {
 
     it("gives a safe next step for each operator action state", () => {
         expect(workflowNextStepLabel("awaiting_approval")).toBe("Prepare the change for review.");
-        expect(workflowNextStepLabel("awaiting_implementation_approval")).toBe("Review the change; resume it if approved.");
-        expect(workflowNextStepLabel("awaiting_implementation_approval", "operational_action")).toBe("Review the maintenance request; run it only after approval.");
-        expect(workflowNextStepLabel("awaiting_verification_approval")).toBe("Review the checks; resume to run them if approved.");
-        expect(workflowNextStepLabel("awaiting_commit_approval")).toBe("Review the commit; resume to record it if approved.");
+        expect(workflowNextStepLabel("awaiting_implementation_approval")).toBe("Review the change. If approved, choose Run approved change.");
+        expect(workflowNextStepLabel("awaiting_implementation_approval", "operational_action")).toBe("Review the maintenance request. If approved, choose Run approved maintenance.");
+        expect(workflowNextStepLabel("awaiting_verification_approval")).toBe("Review the checks. If approved, choose Run approved checks.");
+        expect(workflowNextStepLabel("awaiting_commit_approval")).toBe("Review the commit. If approved, choose Record approved commit.");
         expect(workflowNextStepLabel("executing")).toBeNull();
     });
 });

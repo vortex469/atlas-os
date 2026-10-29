@@ -172,7 +172,7 @@ for (const width of [320, 390, 1280]) {
 
         const attention = page.getByRole("region", { name: "Operator Attention" });
         await expect(attention.getByRole("link", { name: "Restart Service", exact: true })).toHaveAttribute("href", "/workflows/maintenance-review");
-        await expect(attention.getByText("Action needed: Review the maintenance request; run it only after approval.", { exact: true })).toBeVisible();
+        await expect(attention.getByText("Action needed: Review the maintenance request. If approved, choose Run approved maintenance.", { exact: true })).toBeVisible();
         await expect(attention.getByText("Waiting for implementation approval", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
@@ -445,7 +445,7 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     const attentionBox = await attention.boundingBox();
     const gridBox = await grid.boundingBox();
     expect(attentionBox!.y + attentionBox!.height).toBeLessThanOrEqual(gridBox!.y);
-    await expect(attention.getByText('Action needed: Review the change; resume it if approved.', { exact: true })).toBeVisible();
+    await expect(attention.getByText('Action needed: Review the change. If approved, choose Run approved change.', { exact: true })).toBeVisible();
     await expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toBeVisible();
     await expect(attention.getByText('Review each item and use its link to see the details.')).toHaveCount(0);
     const workflowId = attention.getByText('workflow-browser-baseline', { exact: true });

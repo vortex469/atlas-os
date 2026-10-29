@@ -12,10 +12,10 @@ describe("MC overview evidence", () => {
         show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         const expectedStage = workflow_state === 'awaiting_implementation_approval'
-            ? 'Review the change; resume it if approved.'
+            ? 'Review the change. If approved, choose Run approved change.'
             : workflow_state === 'awaiting_verification_approval'
-                ? 'Review the checks; resume to run them if approved.'
-                : 'Review the commit; resume to record it if approved.';
+                ? 'Review the checks. If approved, choose Run approved checks.'
+                : 'Review the commit. If approved, choose Record approved commit.';
         expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/review-me');
         expect(attention.getByText(`Action needed: ${expectedStage}`)).toBeVisible();
         const workflowId = attention.getByText('review-me');
@@ -33,8 +33,8 @@ describe("MC overview evidence", () => {
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Restart Service' })).toHaveAttribute('href', '/workflows/maintenance-review');
-        expect(attention.getByText('Action needed: Review the maintenance request; run it only after approval.')).toBeVisible();
-        expect(attention.queryByText('Action needed: Review the change; resume it if approved.')).not.toBeInTheDocument();
+        expect(attention.getByText('Action needed: Review the maintenance request. If approved, choose Run approved maintenance.')).toBeVisible();
+        expect(attention.queryByText('Action needed: Review the change. If approved, choose Run approved change.')).not.toBeInTheDocument();
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
     });
 
@@ -56,7 +56,7 @@ describe("MC overview evidence", () => {
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toHaveAttribute('href', '/workflows/workflow-123');
-        expect(attention.getByText('Action needed: Review the checks; resume to run them if approved.')).toBeVisible();
+        expect(attention.getByText('Action needed: Review the checks. If approved, choose Run approved checks.')).toBeVisible();
         expect(attention.getByText('Review the exact verification')).toBeVisible();
         const workflowId = attention.getByText('workflow-123');
         expect(workflowId).not.toBeVisible();
@@ -70,7 +70,7 @@ describe("MC overview evidence", () => {
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/review-me');
-        expect(attention.getByText('Action needed: Review the change; resume it if approved.')).toBeVisible();
+        expect(attention.getByText('Action needed: Review the change. If approved, choose Run approved change.')).toBeVisible();
         expect(attention.queryByRole('link', { name: 'Review operational conditions →' })).not.toBeInTheDocument();
         expect(attention.queryByRole('link', { name: 'Review workflow attention →' })).not.toBeInTheDocument();
         expect(within(screen.getByRole('region', { name: 'Work activity' })).getByRole('link', { name: 'Review workflows →' })).toHaveAttribute('href', '/workflows');
@@ -267,7 +267,7 @@ describe("MC overview evidence", () => {
         }], total: 1, limit: 200, offset: 0 } } });
         const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
         expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toBeVisible();
-        expect(attention.getByText('Action needed: Review the change; resume it if approved.')).toBeVisible();
+        expect(attention.getByText('Action needed: Review the change. If approved, choose Run approved change.')).toBeVisible();
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
         expect(attention.queryByText('Human action required', { exact: true })).not.toBeInTheDocument();
         expect(attention.queryByText('Review each item and use its link to see the details.')).not.toBeInTheDocument();

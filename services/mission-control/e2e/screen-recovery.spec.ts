@@ -1310,7 +1310,7 @@ for (const width of [320, 390, 1280]) {
         await expect(technicalDetails).toContainText("Malformed workflow detail payload.");
         await expect(technicalDetails.getByText("Malformed workflow detail payload.", { exact: true })).toBeHidden();
         await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "Resume Approved Implementation" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Run approved change" })).toHaveCount(0);
 
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();

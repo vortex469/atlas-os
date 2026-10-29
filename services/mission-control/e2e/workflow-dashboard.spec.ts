@@ -7,8 +7,8 @@ for (const width of [320, 390, 1280]) {
 
         await expect(page.getByLabel("Workflow status")).toBeVisible();
         await expect(page.getByRole("option", { name: "Prepare change for review" })).toBeAttached();
-        await expect(page.getByRole("option", { name: "Review checks or resume if approved" })).toBeAttached();
-        await expect(page.getByRole("option", { name: "Review commit or resume if approved" })).toBeAttached();
+        await expect(page.getByRole("option", { name: "Review checks, then run if approved" })).toBeAttached();
+        await expect(page.getByRole("option", { name: "Review commit, then record if approved" })).toBeAttached();
         await expect(page.getByLabel("Next step")).toBeVisible();
         await expect(page.getByLabel("Workflow ID contains")).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
@@ -18,7 +18,7 @@ for (const width of [320, 390, 1280]) {
         await expect(heading).toBeVisible();
         const card = heading.locator("xpath=ancestor::article[1]");
         await expect(card.getByText("Stage: Change approval", { exact: true })).toBeVisible();
-        await expect(card.getByText("Review the change; resume it if approved.", { exact: true })).toBeVisible();
+        await expect(card.getByText("Review the change. If approved, choose Run approved change.", { exact: true })).toBeVisible();
         await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Current State", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Workflow ID", { exact: true })).toBeHidden();
@@ -74,7 +74,7 @@ for (const width of [320, 390, 1280]) {
         await expect(title).toBeVisible();
         const card = title.locator("xpath=ancestor::article[1]");
         await expect(card.getByText("Stage: Maintenance request approval", { exact: true })).toBeVisible();
-        await expect(card.getByText("Review the maintenance request; run it only after approval.", { exact: true })).toBeVisible();
+        await expect(card.getByText("Review the maintenance request. If approved, choose Run approved maintenance.", { exact: true })).toBeVisible();
         await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Stage: Change approval", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
