@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { WorkflowOperationalLifecycle } from "../types/atlasAgent";
 import { operationalOutcome } from "../utils/operationalOutcome";
 
@@ -14,10 +15,12 @@ function label(value: string | null): string {
     return value ? value.replaceAll("_", " ") : "Not reported";
 }
 
-function timestamp(value: string | null): string {
+function timestamp(value: string | null): ReactNode {
     if (!value) return "Not reported";
     const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
+    return Number.isNaN(parsed.getTime())
+        ? "Unknown time"
+        : <time dateTime={value}>{parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (local time)</time>;
 }
 
 export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, refreshDisabled = false, error, onRefresh }: OperationalLifecyclePanelProps) {
@@ -71,6 +74,6 @@ export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, 
     );
 }
 
-function LifecycleGroup({ title, values }: { title: string; values: Array<[string, string | null]> }) {
+function LifecycleGroup({ title, values }: { title: string; values: Array<[string, ReactNode]> }) {
     return <section><h3 className="font-semibold text-white">{title}</h3><dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">{values.map(([name, value]) => <div key={name}><dt className="text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-200">{value ?? "Not reported"}</dd></div>)}</dl></section>;
 }

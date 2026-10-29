@@ -2663,3 +2663,12 @@ event time. Each `<time>` value retains the exact UTC instant. The focused
 provider page and resource suites pass (65 tests), as do all three responsive
 provider detail browser checks at 320px, 390px and 1280px, Mission Control lint,
 and production build.
+
+## Maintenance evidence time clarity — 2026-10-29
+
+Maintenance approval, dispatch, verification, and recorded status-change times
+now identify their displayed values as local time. Each value remains a
+semantic `<time>` element with the exact UTC instant. The Maintenance lifecycle
+panel test and the repository-free simulated maintenance journey at 320px,
+390px and 1280px verify the local-time label and timestamp value. The focused
+maintenance component suite, Mission Control lint, and production build pass.

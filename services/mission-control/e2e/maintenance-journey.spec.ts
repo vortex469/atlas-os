@@ -131,6 +131,13 @@ for (const width of [320, 390, 1280]) {
         const technicalEvidence = maintenanceStatus.locator("details").filter({ hasText: "Technical evidence" });
         await expect(technicalEvidence).not.toHaveAttribute("open");
         await expect(technicalEvidence.getByText("Workflow ID", { exact: true })).toBeHidden();
+        const technicalEvidenceSummary = technicalEvidence.getByText("Technical evidence", { exact: true });
+        await technicalEvidenceSummary.click();
+        const dispatchStarted = technicalEvidence.getByText("Dispatch Started", { exact: true });
+        const dispatchTime = dispatchStarted.locator("xpath=..").locator("time");
+        await expect(dispatchTime).toHaveAttribute("datetime", /Z$/);
+        await expect(dispatchTime).toContainText("(local time)");
+        await technicalEvidenceSummary.click();
         const maintenanceStages = page.getByRole("list", { name: "Maintenance workflow stages" });
         await expect(maintenanceStages.getByText("Maintenance request approval", { exact: true })).toBeVisible();
         await expect(maintenanceStages.getByText("Run maintenance", { exact: true })).toBeVisible();

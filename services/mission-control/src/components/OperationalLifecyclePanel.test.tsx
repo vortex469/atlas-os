@@ -21,6 +21,9 @@ describe("OperationalLifecyclePanel", () => {
         expect(within(details).getByText("proxmox/qemu/110")).not.toBeVisible();
         fireEvent.click(within(details).getByText("Technical evidence"));
         expect(within(details).getByText("proxmox/qemu/110")).toBeVisible();
+        const dispatchStarted = within(details).getByText("Dispatch Started").parentElement?.querySelector("time");
+        expect(dispatchStarted).toHaveAttribute("datetime", "2026-08-16T00:02:00Z");
+        expect(dispatchStarted).toHaveTextContent("(local time)");
         expect(screen.getByText("UPID:sanitized")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
