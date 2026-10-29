@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
+import { healthNextCheck } from "../utils/healthPresentation";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
 
@@ -56,6 +57,7 @@ export function ServiceDetailsDrawer({
         Object.entries(health.details).filter(([key]) => key !== "url"),
     );
     const hasTechnicalDetails = Object.keys(technicalDetails).length > 0;
+    const nextCheck = healthNextCheck(health.message);
 
     return (
         <div
@@ -143,6 +145,16 @@ export function ServiceDetailsDrawer({
                         <p className="mt-2 text-sm text-slate-400">
                             Atlas Core checks this address from its own machine. A service can open in your browser and still be unreachable from Atlas Core.
                         </p>
+                        {nextCheck && (
+                            <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+                                <h4 className="text-sm font-semibold text-amber-200">
+                                    What to check next
+                                </h4>
+                                <p className="mt-1 text-sm text-amber-100/80">
+                                    {nextCheck}
+                                </p>
+                            </div>
+                        )}
                     </section>
 
                     {provider ? (

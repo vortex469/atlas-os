@@ -153,6 +153,37 @@ describe("ServiceHealthSection", () => {
         expect(screen.queryByText("Offline")).not.toBeInTheDocument();
     });
 
+    it("shows a plain next step for a refused service connection", async () => {
+        const user = userEvent.setup();
+        render(
+            <ServiceHealthSection
+                services={{
+                    iFileshare: {
+                        ...service("ifileshare", 0),
+                        status: "offline",
+                        message: "[Errno 111] Connection refused",
+                    },
+                }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: "View details for iFileshare" }),
+        );
+
+        expect(
+            screen.getByRole("heading", { name: "What to check next" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "Check that the service is listening on this port and that Atlas Core can reach it.",
+            ),
+        ).toBeInTheDocument();
+    });
+
     it("does not retain successful health or provider operations for a removed service", async () => {
         const user = userEvent.setup();
         const props = { providers, isRefreshing: false, onRefresh: vi.fn() };
