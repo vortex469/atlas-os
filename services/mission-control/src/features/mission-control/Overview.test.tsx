@@ -191,7 +191,7 @@ describe("MC overview evidence", () => {
         const summary = checks.getByText("More connection checks");
         const disclosure = summary.closest("details");
 
-        expect(nextStep).toHaveTextContent("Try this address from the Atlas Core machine or container:");
+        expect(nextStep).toHaveTextContent("Run the test from the computer or container running Atlas Core. The service computer checks a different network path:");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         expect(nextStep).toHaveTextContent("With port mappings, a blank field means no port is published for Atlas Core.");
         expect(nextStep).toHaveTextContent("With host networking, a blank field is normal; check that the app listens on the address above.");

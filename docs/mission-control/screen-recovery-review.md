@@ -3141,3 +3141,10 @@ When no workflows are running or blocked, the dashboard now shows one plain
 empty-state sentence instead of two zero counters plus a repeated no-running
 message. Running and blocked counts remain visible whenever either state has
 items. The focused component and overview browser checks cover both states.
+
+## Service check location — 2026-10-29
+
+The visible next step now says to run the connection test from the computer or
+container running Atlas Core. It also explains that testing from the service
+computer follows a different network path, before the operator opens the
+technical connection checks.
