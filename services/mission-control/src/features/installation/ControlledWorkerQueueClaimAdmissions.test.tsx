@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listControlledWorkerQueueClaimAdmissions } from "../../api/controlledWorkerQueueClaimAdmission";
@@ -19,28 +19,35 @@ describe("ControlledWorkerQueueClaimAdmissions", () => {
         let resolve!: (value: ControlledWorkerQueueClaimAdmissionCollectionV1) => void;
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading controlled worker queue claim admission evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/checking the queue review/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no controlled worker queue claim admission evidence/i));
-        expect(screen.getByRole("status")).toHaveTextContent(/v0\.50 remains documentation-only prerequisite closure/i);
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no queue review has been saved/i));
         unmount();
 
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/private system details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
+    });
+
+    it("retries only the queue review list read", async () => {
+        vi.mocked(listControlledWorkerQueueClaimAdmissions).mockRejectedValueOnce(new Error("secret /internal/path"));
+        render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(/retry to check its status/i);
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        expect(await screen.findByText(/no queue review has been saved/i)).toBeInTheDocument();
+        expect(listControlledWorkerQueueClaimAdmissions).toHaveBeenCalledTimes(2);
     });
 
     it("renders simple readiness and start-admission state with technical evidence under Advanced details", async () => {
         vi.mocked(listControlledWorkerQueueClaimAdmissions).mockResolvedValue(controlledWorkerQueueClaimAdmissionCollectionFixture);
         render(<ControlledWorkerQueueClaimAdmissions candidateId={workerBindingActivationEvidenceFixture.candidate_record_id} activationEvidenceId={workerBindingActivationEvidenceFixture.activation_evidence_id} />);
-        expect(await screen.findByText(/recorded controlled worker queue claim admission evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/worker-start admission: not defined; blocked: yes/i);
-        expect(screen.getByText(/readiness\/start-admission state: queue-claim admission evidence recorded/i)).toHaveTextContent(/queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false/i);
-        expect(screen.getByText(/v0\.50 progress: prerequisite frozen, documentation-only/i)).toHaveTextContent(/queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable/i);
-        expect(screen.getByText(/v0\.51 state is shown below when Core has recorded it/i)).toHaveTextContent(/read-only evidence/i);
+        expect(await screen.findByText(/queue review saved/i)).toBeInTheDocument();
+        expect(screen.getByText(/queue access is unavailable/i)).toHaveTextContent(/no work was claimed, and no worker was started/i);
         expect(screen.getByLabelText(/controlled worker queue claim lease acknowledgement admission evidence/i)).toHaveTextContent(/nested v0\.51/i);
-        const advanced = screen.getByText("Advanced details").closest("details");
+        const advanced = screen.getByText("Technical details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
         expect(advanced).toHaveTextContent(/v0\.50 prerequisite details/i);
