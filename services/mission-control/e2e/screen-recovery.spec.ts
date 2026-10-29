@@ -252,7 +252,7 @@ test("switching provider routes clears action parameters before the next catalog
     releaseNext();
     await expect(page.getByLabel(/model/i)).toHaveValue("");
     await expect(page.getByRole("button", { name: "Review model", exact: true })).toBeDisabled();
-    await expect(page.getByRole("heading", { name: "Provider actions", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Direct provider actions", exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -938,14 +938,14 @@ for (const width of [320, 390, 1280]) {
         await expect(itemHeading).toBeVisible();
         await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeHidden();
-        await expect(page.getByRole("combobox", { name: "Latest result", exact: true })).toBeVisible();
+        await expect(page.getByRole("combobox", { name: "Current status", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
         await expect(page.getByRole("combobox", { name: "Completion", exact: true })).toBeVisible();
         await expect(page.getByRole("combobox", { name: "Requested action", exact: true })).toHaveCount(0);
         await page.getByRole("combobox", { name: "Completion", exact: true }).selectOption("terminal");
         await expect(page.getByText("Additional filters are applied")).toBeVisible();
-        await page.getByRole("combobox", { name: "Latest result", exact: true }).selectOption("unavailable");
+        await page.getByRole("combobox", { name: "Current status", exact: true }).selectOption("unavailable");
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         await expect(page.getByText("A problem checking status does not mean the maintenance request failed.")).toBeVisible();
         await page.getByRole("button", { name: "Clear filters", exact: true }).click();
@@ -1146,7 +1146,7 @@ for (const width of [390, 1280]) {
         await page.goto("/operations");
 
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("History unavailable");
+        await expect(alert).toContainText("Action history unavailable");
         await expect(alert).toContainText("Mission Control could not load action history.");
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {
@@ -1214,7 +1214,7 @@ for (const width of [320, 390, 1280]) {
         await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.")).toBeVisible();
         await expect(page.getByText("42", { exact: true })).toHaveCount(0);
-        await expect(page.getByText("Restart Service · Healthy")).toBeVisible();
+        await expect(page.getByText("Requested action: Restart Service · Current status: Healthy", { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
@@ -1245,7 +1245,7 @@ for (const width of [390, 1280]) {
         await page.goto("/operations/history");
 
         await expect(page.getByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
-        await expect(page.getByText("Status unavailable", { exact: false })).toBeVisible();
+        await expect(page.getByText("Requested action: Restart Service · Current status: Unavailable", { exact: true })).toBeVisible();
         await expect(page.getByText("Maintenance status details unavailable")).toBeVisible();
         await expect(page.getByText("A problem checking status does not mean the maintenance request failed.")).toBeVisible();
         await expect(page.getByText("execution confirmed", { exact: false })).toHaveCount(0);

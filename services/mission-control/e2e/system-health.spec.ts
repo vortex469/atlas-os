@@ -28,14 +28,15 @@ for (const width of [390, 1440]) {
         const summary = page.getByRole("region", { name: "System health", exact: true });
         await expect(summary.getByRole("article", { name: "Overall service status" }).getByText("Status unknown", { exact: true })).toBeVisible();
         const checks = page.getByRole("region", { name: "Service checks", exact: true });
-        for (const state of ["Degraded", "Unavailable", "Blocked", "Status unknown"]) {
+        for (const state of ["Degraded", "Atlas Core could not connect", "Blocked", "Status unknown"]) {
             await expect(checks.getByText(state, { exact: true })).toBeVisible();
         }
-        await expect(checks.getByText("Connection refused", { exact: true })).toBeVisible();
+        await expect(checks.getByText("The service refused the connection.", { exact: true })).toBeVisible();
         await expect(summary.getByText("Last report: Healthy.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));
         await page.getByRole("button", { name: "Refresh", exact: true }).click();
-        await expect(checks.getByText("Last report: Unavailable.")).toBeVisible();
+        await expect(checks.getByText("Refresh failed. Showing the last available information.", { exact: true })).toBeVisible();
+        await expect(checks.getByText("Last report: Atlas Core could not connect.", { exact: true })).toBeVisible();
         await expect(checks.getByText("Unavailable", { exact: true })).toHaveCount(0);
         await expect(summary.getByRole("article", { name: "System findings" }).getByText("Healthy", { exact: true })).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ json: { atlas: "healthy", services: {} } }));

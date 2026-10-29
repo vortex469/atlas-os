@@ -2355,3 +2355,14 @@ Routes, API requests, records, and authority boundaries are unchanged.
 The focused layout and history page suites pass (54 tests); the action-history,
 navigation, and shell browser checks pass (34 tests across phone and desktop
 widths). Mission Control lint and production build pass.
+
+## Overview and history wording — 2026-10-29
+
+The Overview's “Where Atlas checked” guidance now explains the Core network path
+in fewer steps and keeps the Docker-container check clear. Action-history
+retention controls use the shorter “Export or delete history” label. A failed
+health refresh continues to mark earlier service results as last reported, so
+the screen does not present an unavailable response as a new service result.
+The full Mission Control component suite passes (2,869 tests), all 221 local
+browser checks pass, and lint and production build pass. Browser fixtures remain
+isolated and reject unconfigured mutations.

@@ -294,9 +294,9 @@ for (const width of [320, 1280]) {
         await expect(location).toBeVisible();
         await location.click();
         await expect(checks.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
-        await expect(checks.getByText(/Atlas sends this check from wherever Atlas Core runs/)).toBeVisible();
-        await expect(checks.getByText(/If Core runs in Docker, repeat the request inside the Atlas Core container/)).toBeVisible();
-        await expect(checks.getByText(/a successful check from your browser or the service's own server does not prove Core can reach it/i)).toBeVisible();
+        await expect(checks.getByText(/Run this check from the machine running Atlas Core/)).toBeVisible();
+        await expect(checks.getByText(/If Core runs in Docker, repeat the request inside the atlas-core container/)).toBeVisible();
+        await expect(checks.getByText(/Testing from your browser or the service machine uses a different network path/)).toBeVisible();
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
         await expect(checks.getByText('Next check: Check the target address and the network or firewall route from Atlas Core to the service host.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -397,7 +397,7 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await attention.getByRole('link', { name: 'API', exact: true }).click();
     await expect(page).toHaveURL(/\/providers\/proxmox$/);
     await expect(page.getByText('Supported provider features could not be loaded. Some provider sections are hidden.')).toBeVisible();
-    await expect(page.getByText('Capabilities unavailable.')).toBeVisible();
+    await expect(page.getByText('Features unavailable.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
     await expect(page.getByText('No actions are available for this provider.')).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
