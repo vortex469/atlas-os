@@ -176,6 +176,20 @@ describe("PolicyVisibilitySection", () => {
         expect(screen.getByText("Input should be 'info', 'warning' or 'critical'")).toBeVisible();
     });
 
+    it("labels unavailable technical diagnostic fields in plain language", () => {
+        render(<PolicyVisibilitySection policies={null} health={{
+            ...health,
+            status: "degraded",
+            diagnostics: [{ path: {}, error_type: [], message: [] }],
+        }} />);
+
+        fireEvent.click(screen.getByText("Technical details (1)"));
+
+        expect(screen.getByText("Path unavailable")).toBeVisible();
+        expect(screen.getByText("Issue type unavailable")).toBeVisible();
+        expect(screen.getByText("No diagnostic message provided.")).toBeVisible();
+    });
+
     it("explains when last loaded policy settings remain available", () => {
         render(
             <PolicyVisibilitySection

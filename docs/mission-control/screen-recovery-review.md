@@ -2917,3 +2917,11 @@ resource card says “Name not reported” while keeping the known type and ID
 visible. This avoids implying that Atlas cannot identify the resource at all.
 The focused ProviderResources suite covers the missing-name state; provider
 identity checks and monitoring controls are unchanged.
+
+## Policy diagnostic field fallback — 2026-10-29
+
+Expanded policy diagnostics now say “Path unavailable” and “Issue type
+unavailable” when those fields cannot be read, instead of “Unknown path” and
+“Unknown diagnostic type.” The diagnostics remain collapsed by default, and
+policy evaluation is unchanged. The focused PolicyVisibilitySection suite
+covers incomplete diagnostic records.

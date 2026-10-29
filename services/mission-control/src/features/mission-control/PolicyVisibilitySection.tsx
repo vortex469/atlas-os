@@ -258,10 +258,10 @@ function PolicyReloadStatus({
                                 >
                                     <div className="flex flex-wrap items-center gap-2">
                                         <code className="text-xs font-semibold text-red-200">
-                                            {evidenceText(diagnostic.path) ?? "Unknown path"}
+                                            {evidenceText(diagnostic.path) ?? "Path unavailable"}
                                         </code>
                                         <span className="text-xs text-slate-500">
-                                            {evidenceText(diagnostic.error_type) ?? "Unknown diagnostic type"}
+                                            {evidenceText(diagnostic.error_type) ?? "Issue type unavailable"}
                                         </span>
                                         {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
                                             <span className="text-xs text-slate-500">
