@@ -10,7 +10,7 @@ const activity = () => within(screen.getByRole('region', { name: 'Recent provide
 describe("MC overview evidence", () => {
     it.each(['awaiting_implementation_approval', 'awaiting_verification_approval', 'awaiting_commit_approval'])("shows %s as a workflow decision rather than degraded health", workflow_state => {
         show({ workflows: { data: { items: [{ workflow_id: 'review-me', workflow_state, last_result_summary: 'Review the exact request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         const expectedStage = workflow_state === 'awaiting_implementation_approval'
             ? 'Review the change. If approved, choose Run approved change.'
             : workflow_state === 'awaiting_verification_approval'
@@ -31,7 +31,7 @@ describe("MC overview evidence", () => {
             effect_kind: 'operational_action', execution_intent: 'restart-service',
             last_result_summary: 'Waiting for implementation approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Restart Service' })).toHaveAttribute('href', '/workflows/maintenance-review');
         expect(attention.getByText('Action needed: Review the maintenance request. If approved, choose Run approved maintenance.')).toBeVisible();
         expect(attention.queryByText('Action needed: Review the change. If approved, choose Run approved change.')).not.toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("MC overview evidence", () => {
             effect_kind: 'operational_action', execution_intent: 'restart-service',
             last_result_summary: 'Waiting for implementation approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Restart Service' })).toBeVisible();
         expect(attention.getByText('Last report: this workflow was waiting for maintenance request approval. Atlas could not confirm whether it still needs attention.')).toBeVisible();
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
@@ -55,7 +55,7 @@ describe("MC overview evidence", () => {
             workflow_id: 'workflow-123', workflow_state: 'awaiting_verification_approval',
             execution_intent: 'update-compose-stack', last_result_summary: 'Review the exact verification', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toHaveAttribute('href', '/workflows/workflow-123');
         expect(attention.getByText('Action needed: Review the checks. If approved, choose Run approved checks.')).toBeVisible();
         expect(attention.getByText('Review the exact verification')).toBeVisible();
@@ -69,7 +69,7 @@ describe("MC overview evidence", () => {
         show({ workflows: { data: { items: [{
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Workflow' })).toHaveAttribute('href', '/workflows/review-me');
         expect(attention.getByText('Action needed: Review the change. If approved, choose Run approved change.')).toBeVisible();
         expect(attention.queryByRole('link', { name: 'Review operational conditions →' })).not.toBeInTheDocument();
@@ -103,8 +103,8 @@ describe("MC overview evidence", () => {
             }], total: 1, limit: 200, offset: 0 } },
         });
 
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        const attentionList = attention.getByRole('list', { name: 'Reported attention conditions' });
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+        const attentionList = attention.getByRole('list', { name: 'Items needing attention' });
         const visibleItems = within(attentionList).getAllByRole('listitem');
         expect(visibleItems).toHaveLength(5);
         expect(within(visibleItems[0]).getByRole('link')).toHaveTextContent('blocked');
@@ -112,12 +112,12 @@ describe("MC overview evidence", () => {
         expect(within(visibleItems[2]).getByRole('link', {
             name: 'Update Compose Stack',
         })).toBeVisible();
-        const expand = attention.getByRole('button', { name: 'Show all 9 attention items' });
+        const expand = attention.getByRole('button', { name: 'Show all 9 items' });
         expect(expand).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expand);
         expect(within(attentionList).getAllByRole('listitem')).toHaveLength(9);
         expect(attention.getByRole('link', { name: 'service-5' })).toBeVisible();
-        const collapse = attention.getByRole('button', { name: 'Show fewer conditions' });
+        const collapse = attention.getByRole('button', { name: 'Show fewer items' });
         expect(collapse).toHaveAttribute('aria-expanded', 'true');
         fireEvent.click(collapse);
         expect(within(attentionList).getAllByRole('listitem')).toHaveLength(5);
@@ -170,8 +170,8 @@ describe("MC overview evidence", () => {
             status: "offline",
             message: "Connection refused",
         } } } } });
-        const attention = within(screen.getByRole("region", { name: "Operator Attention" }));
-        const conditions = within(attention.getByRole("list", { name: "Reported attention conditions" }));
+        const attention = within(screen.getByRole("region", { name: "Needs attention" }));
+        const conditions = within(attention.getByRole("list", { name: "Items needing attention" }));
         const condition = within(conditions.getByRole("listitem"));
 
         expect(condition.getByText("Atlas Core could not connect", { exact: true })).toBeVisible();
@@ -269,7 +269,7 @@ describe("MC overview evidence", () => {
             workflow_id: 'review-me', workflow_state: 'awaiting_implementation_approval',
             execution_intent: 'update-compose-stack', last_result_summary: 'Waiting for implementation approval', timeline: [],
         }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Update Compose Stack' })).toBeVisible();
         expect(attention.getByText('Action needed: Review the change. If approved, choose Run approved change.')).toBeVisible();
         expect(attention.queryByText('Waiting for implementation approval', { exact: true })).not.toBeInTheDocument();
@@ -279,7 +279,7 @@ describe("MC overview evidence", () => {
 
     it('explains stale approval evidence in plain language', () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-review', workflow_state: 'awaiting_implementation_approval', last_result_summary: 'Previous review request', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByText('Last report: this workflow was waiting for change approval. Atlas could not confirm whether it still needs attention.')).toBeVisible();
         expect(attention.getByRole('link', { name: 'Workflow' })).toBeVisible();
         expect(attention.queryByRole('link', { name: /Last known/ })).not.toBeInTheDocument();
@@ -289,7 +289,7 @@ describe("MC overview evidence", () => {
 
     it('does not repeat the stale warning for a blocked workflow', () => {
         show({ workflows: { stale: true, unavailable: true, data: { items: [{ workflow_id: 'old-blocked', workflow_state: 'blocked', last_result_summary: 'Previous failure', timeline: [] }], total: 1, limit: 200, offset: 0 } } });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Workflow' })).toBeVisible();
         expect(attention.getByText('Last report: this workflow was blocked. Atlas could not confirm its current status.')).toBeVisible();
         expect(attention.queryByText(/Last-known|current state unknown/)).not.toBeInTheDocument();
@@ -298,7 +298,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps all six cards and unknown evidence visible", () => {
         show();
-        for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Operator Attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Needs attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
@@ -345,9 +345,9 @@ describe("MC overview evidence", () => {
     });
     it("shows a checking state instead of an empty result during the first load", () => {
         show({}, true);
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByText('Checking current information…')).toBeVisible();
-        expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
+        expect(attention.queryByText('The latest reports show no items needing attention.')).not.toBeInTheDocument();
         expect(attention.queryByText('System findings: Evidence unknown.')).not.toBeInTheDocument();
         expect(within(screen.getByRole('region', { name: 'Service checks' })).getByText('Checking configured services…')).toBeVisible();
         expect(activity().getByText('Checking recent provider actions…')).toBeVisible();
@@ -356,11 +356,11 @@ describe("MC overview evidence", () => {
     it("describes partial first-load evidence as still checking, not missing", () => {
         show({ summary: { data: { findings: [] } } }, true);
 
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByRole('status')).toHaveTextContent("Checking current reports. The attention list may change when the remaining checks finish.");
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+        expect(attention.getByRole('status')).toHaveTextContent("Checking the latest information. This list may update when more checks finish.");
         expect(attention.queryByText("Some checks aren't available. This list may be incomplete.")).not.toBeInTheDocument();
         expect(attention.queryByText('Checking current information…')).not.toBeInTheDocument();
-        expect(attention.queryByText('Which checks are missing?')).not.toBeInTheDocument();
+        expect(attention.queryByText('Which results are missing?')).not.toBeInTheDocument();
     });
     it("reports no attention only after all current sources are checked", () => {
         show({
@@ -370,8 +370,8 @@ describe("MC overview evidence", () => {
             ai: { data: { health: { status: 'healthy' } } },
             workflows: { data: { items: [], total: 0, offset: 0, limit: 200 } },
         });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
-        expect(attention.getByText('The current reports show no items needing attention.')).toBeVisible();
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
+        expect(attention.getByText('The latest reports show no items needing attention.')).toBeVisible();
         expect(attention.queryByText(/cannot confirm whether attention is needed/)).not.toBeInTheDocument();
     });
     it("keeps attention unknown when health details omit configured service checks", () => {
@@ -382,12 +382,12 @@ describe("MC overview evidence", () => {
             providers: { data: [] },
             ai: { data: { health: { status: 'healthy' } } },
         });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
         expect(attention.getByText('System health: health details are incomplete.')).not.toBeVisible();
-        fireEvent.click(attention.getByText('Which checks are missing?'));
+        fireEvent.click(attention.getByText('Which results are missing?'));
         expect(attention.getByText('System health: health details are incomplete.')).toBeVisible();
-        expect(attention.queryByText('The current reports show no items needing attention.')).not.toBeInTheDocument();
+        expect(attention.queryByText('The latest reports show no items needing attention.')).not.toBeInTheDocument();
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
         expect(checks.getByText('Service check details are unavailable.')).toBeVisible();
     });
@@ -405,10 +405,10 @@ describe("MC overview evidence", () => {
             providers: { data: [] },
             ai: { data: { health: { status: 'healthy' } } },
         });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
         expect(attention.getByText('Workflows: current information could not be loaded.')).not.toBeVisible();
-        fireEvent.click(attention.getByText('Which checks are missing?'));
+        fireEvent.click(attention.getByText('Which results are missing?'));
         expect(attention.getByText('Workflows: current information could not be loaded.')).toBeVisible();
         expect(attention.queryByText('Workflow results are incomplete.')).not.toBeInTheDocument();
     });
@@ -417,7 +417,7 @@ describe("MC overview evidence", () => {
             workflows: { data: { items: [{ workflow_id: "known", workflow_state: "blocked", last_result_summary: "Needs review", timeline: [] }], total: 1, limit: 200, offset: 0 } },
             health: { unavailable: true },
         });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByRole('link', { name: 'Workflow · Blocked' })).toBeVisible();
         expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
     });
@@ -430,7 +430,7 @@ describe("MC overview evidence", () => {
         show({ health: { data: { atlas: 'degraded', services: { Beta: { provider_id: 'beta', status: 'offline', message: 'Connection refused' } } } }, providers: { data: [{ id: 'alpha', name: 'Alpha', health: { status: 'healthy' }, secret: 'private-credential' }, { id: 'beta', name: 'Beta', health: { status: 'offline', message: 'Connection refused', details: { token: 'private-credential' } } }] }, workflows: { data: { items: [{ workflow_id: 'w/1', workflow_state: 'blocked', last_result_summary: 'Approval expired' }, { workflow_id: 'w2', workflow_state: 'executing' }] } } });
         expect(screen.getByRole('link', { name: 'View Alpha →' })).toHaveAttribute('href', '/providers/alpha');
         expect(screen.getByRole('link', { name: 'Workflow · Blocked' })).toHaveAttribute('href', '/workflows/w%2F1');
-        expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Beta')).toHaveLength(1);
+        expect(within(screen.getByRole('region', { name: 'Needs attention' })).getAllByText('Beta')).toHaveLength(1);
         expect(screen.getByText("Couldn't load all workflows, so the running and blocked counts aren't shown.")).toBeInTheDocument();
         expect(screen.queryByText(/private-credential/)).not.toBeInTheDocument();
     });
@@ -475,7 +475,7 @@ describe('operational activity and runtime evidence', () => {
     });
     it('deduplicates an identical finding and provider condition', () => {
         show({ providers: { data: [{ id: 'p', name: 'Provider', health: { status: 'offline', message: 'No connection' } }] }, summary: { data: { findings: [{ id: 'f', source: 'p', title: 'Provider offline', message: 'No connection', severity: 'critical' }] } } });
-        expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('No connection')).toHaveLength(1);
+        expect(within(screen.getByRole('region', { name: 'Needs attention' })).getAllByText('No connection')).toHaveLength(1);
     });
 });
 
@@ -491,7 +491,7 @@ describe('overview fail-closed regressions', () => {
             providers: { data: [{ id: 'p', name: 'Provider', health: { status: 'warning', message: 'Capacity limited' } }] },
             workflows: { data: { items: [{ workflow_id: 'w', workflow_state: 'awaiting_approval' }] } },
         });
-        const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+        const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
         expect(attention.getByText('Endpoint offline')).toBeInTheDocument();
         expect(attention.getByText('Capacity limited')).toBeInTheDocument();
         expect(attention.queryByText('Blocked')).not.toBeInTheDocument();
@@ -522,14 +522,14 @@ it('preserves the most urgent duplicate condition at equal freshness', () => {
         health: { data: { services: { API: { provider_id: 'p', status: 'warning', message: 'Pending recovery' } } } },
         providers: { data: [{ id: 'p', name: 'Provider', health: { status: 'blocked', message: 'Pending recovery' } }] },
     });
-    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getAllByText('Pending recovery')).toHaveLength(1);
     expect(attention.getByText('Blocked')).toBeInTheDocument();
 });
 
 it('includes configured AI failures in attention without asserting local availability', () => {
     show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'offline', message: 'Endpoint unavailable' } } } });
-    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getByText('Unavailable')).toBeInTheDocument();
     expect(attention.getByRole('link', { name: 'Runtime' })).toHaveAttribute('href', '/providers/runtime');
     expect(attention.getByText('Endpoint unavailable')).toBeInTheDocument();
@@ -541,7 +541,7 @@ it('deduplicates configured AI and provider evidence and preserves freshness', (
         ai: { stale: true, data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'blocked', message: 'Endpoint unavailable' } } },
         providers: { data: [{ id: 'runtime', name: 'Runtime', health: { status: 'offline', message: 'Endpoint unavailable' } }] },
     });
-    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getAllByText('Endpoint unavailable')).toHaveLength(1);
     expect(attention.getByText('Unavailable')).toBeInTheDocument();
     expect(attention.queryByText('Blocked')).not.toBeInTheDocument();
@@ -549,18 +549,18 @@ it('deduplicates configured AI and provider evidence and preserves freshness', (
 
 it('keeps stale AI conditions explicitly unknown', () => {
     show({ ai: { stale: true, data: { health: { status: 'offline', message: 'Last connection failed' } } } });
-    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getByText('Last known report (out of date): Unavailable.')).toBeInTheDocument();
     expect(attention.queryByText(/Last-known condition|current state unknown/)).not.toBeInTheDocument();
 });
 
 it('surfaces incomplete attention evidence and rejects uninspectable activity', () => {
     show({ summary: { data: { findings: [null] } }, workflows: { data: { items: [null] } }, activity: { data: { items: [{ id: '..', action_label: 'Restart', status: 'succeeded' }] } } });
-    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
     expect(attention.getByText('Workflows: workflow results are incomplete.')).not.toBeVisible();
     expect(attention.getByText('System findings: finding details are incomplete.')).not.toBeVisible();
-    fireEvent.click(attention.getByText('Which checks are missing?'));
+    fireEvent.click(attention.getByText('Which results are missing?'));
     expect(attention.getByText('Workflows: workflow results are incomplete.')).toBeVisible();
     expect(attention.getByText('System findings: finding details are incomplete.')).toBeVisible();
     expect(screen.getByText('Some provider action records could not be read.')).toBeInTheDocument();
@@ -579,7 +579,7 @@ it('deduplicates an AI condition also reported as an operational finding', () =>
         ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: 'offline', message: 'Connection failed' } } },
         summary: { data: { findings: [{ id: 'f', source: 'runtime', title: 'Runtime offline', message: 'Connection failed', severity: 'critical' }] } },
     });
-    expect(within(screen.getByRole('region', { name: 'Operator Attention' })).getAllByText('Connection failed')).toHaveLength(1);
+    expect(within(screen.getByRole('region', { name: 'Needs attention' })).getAllByText('Connection failed')).toHaveLength(1);
 });
 
 it('integrates one health summary with independent source freshness and safe reasons', () => {
@@ -622,7 +622,7 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(worker.queryByText('Commit failed')).not.toBeInTheDocument();
     expect(worker.queryByText('Healthy')).not.toBeInTheDocument();
     expect(worker.getByText("Atlas couldn't load the latest workflow report. The statuses shown may have changed.")).toBeInTheDocument();
-    const attention = within(screen.getByRole('region', { name: 'Operator Attention' }));
+    const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getAllByRole('link', { name: 'Workflow' })).toHaveLength(1);
     expect(attention.getByText('Last report: this workflow was blocked. Atlas could not confirm its current status.')).toBeVisible();
     expect(attention.queryByText(/Last-known condition|current state unknown/)).not.toBeInTheDocument();

@@ -144,7 +144,7 @@ describe("DiscoveryPage", () => {
         expect(screen.getByText("1 item listed")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Browse the catalog" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
-        expect(screen.getByText(/Listings are reference information; compatibility, install support, and permission to make changes are checked separately/i)).toBeInTheDocument();
+        expect(screen.getByText("Browse software, services, models, devices, integrations, and deployment options. This catalog is for reference. Atlas checks compatibility and your permission separately; browsing it doesn’t approve or apply changes.")).toBeInTheDocument();
         const itemCard = screen.getByRole("link", { name: "Home Assistant" }).closest("article");
         expect(within(itemCard as HTMLElement).getByText("Catalog item ID: home-assistant")).not.toBeVisible();
         expect(within(itemCard as HTMLElement).getAllByText("Home automation")).toHaveLength(2);

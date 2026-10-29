@@ -271,26 +271,26 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const displayedAttention = showAllAttention ? uniqueAttention : uniqueAttention.slice(0, 5);
     const displayedServices = showAllServices ? services : services.slice(0, 4);
     return <>
-        <Card title="Operator Attention" showSourceNote={false}>
-            {!initialAttentionLoad && loading && <p role="status">Checking current reports. The attention list may change when the remaining checks finish.</p>}
+        <Card title="Needs attention" showSourceNote={false}>
+            {!initialAttentionLoad && loading && <p role="status">Checking the latest information. This list may update when more checks finish.</p>}
             {!loading && !initialAttentionLoad && !attentionEvidenceComplete && <>
                 <p role="status">Some checks aren't available. This list may be incomplete.</p>
                 {attentionSourceIssues.length > 0 && <details>
-                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Which checks are missing?</summary>
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Which results are missing?</summary>
                     <ul className="mt-2 space-y-1">
                         {attentionSourceIssues.map(issue => <li key={issue}>{issue}</li>)}
                     </ul>
                 </details>}
             </>}
             {uniqueAttention.length === 0 && loading && initialAttentionLoad && <p>Checking current information…</p>}
-            {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>The current reports show no items needing attention.</p>}
-            <ul aria-label="Reported attention conditions" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{displayedAttention.map(item => <AttentionListItem key={item.key} item={item} />)}</ul>
+            {uniqueAttention.length === 0 && !loading && attentionEvidenceComplete && <p>The latest reports show no items needing attention.</p>}
+            <ul aria-label="Items needing attention" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{displayedAttention.map(item => <AttentionListItem key={item.key} item={item} />)}</ul>
             {uniqueAttention.length > 5 && <button
                 type="button"
                 className="mc-control mc-focusable rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"
                 aria-expanded={showAllAttention}
                 onClick={() => setShowAllAttention(current => !current)}
-            >{showAllAttention ? "Show fewer conditions" : `Show all ${uniqueAttention.length} attention items`}</button>}
+            >{showAllAttention ? "Show fewer items" : `Show all ${uniqueAttention.length} items`}</button>}
         </Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="overview-grid">
             <Card title="System health" showSourceNote={false}>

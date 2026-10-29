@@ -200,10 +200,7 @@ export function DiscoveryPage() {
                         Browse the catalog
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Find applications, services, container images, AI models,
-                        integrations, devices, and deployment methods. Listings are
-                        reference information; compatibility, install support, and
-                        permission to make changes are checked separately.
+                        Browse software, services, models, devices, integrations, and deployment options. This catalog is for reference. Atlas checks compatibility and your permission separately; browsing it doesn’t approve or apply changes.
                     </p>
                 </div>
 

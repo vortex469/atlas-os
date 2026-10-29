@@ -12,14 +12,14 @@ function dashboard(evidence: OverviewEvidence) {
         <Route path="/workflows/:id" element={<p>Workflow detail</p>} />
     </Routes></MemoryRouter>;
 }
-const attention = () => within(screen.getByRole("region", { name: "Operator Attention" }));
+const attention = () => within(screen.getByRole("region", { name: "Needs attention" }));
 const activity = () => within(screen.getByRole("region", { name: "Recent provider actions" }));
 
 describe("integrated attention and activity", () => {
     it("shows the required approval stage, deduplicates, and navigates", async () => {
         const items = ["blocked", "awaiting_approval", "awaiting_implementation_approval", "awaiting_verification_approval", "awaiting_commit_approval", "completed", "executing", "mystery"].map(state => ({ workflow_id: state, workflow_state: state }));
         render(dashboard({ workflows: { data: { items: [...items, items[1], null] } } }));
-        const conditions = within(attention().getByRole("list", { name: "Reported attention conditions" }));
+        const conditions = within(attention().getByRole("list", { name: "Items needing attention" }));
         expect(conditions.getAllByRole("listitem")).toHaveLength(5);
         expect(conditions.getAllByRole("listitem")[0]).toHaveTextContent("Blocked");
         expect(attention().getAllByText(/^Action needed:/)).toHaveLength(4);
@@ -29,8 +29,8 @@ describe("integrated attention and activity", () => {
     });
     it.each([" ", "", "..", "\ud800", {}])("rejects malformed workflow identity %j without requiring human action", id => {
         render(dashboard({ workflows: { data: { items: [{ workflow_id: id, workflow_state: "awaiting_approval" }] } } }));
-        expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
-        const sourceStatus = attention().getByText("Which checks are missing?").closest("details");
+        expect(within(attention().getByRole("list", { name: "Items needing attention" })).queryByRole("listitem")).not.toBeInTheDocument();
+        const sourceStatus = attention().getByText("Which results are missing?").closest("details");
         expect(sourceStatus).not.toHaveAttribute("open");
         expect(sourceStatus).toHaveTextContent(/workflow results are incomplete/i);
     });
@@ -39,11 +39,11 @@ describe("integrated attention and activity", () => {
         expect(attention().getByText("Last report: this workflow was waiting for change preparation. Atlas could not confirm whether it still needs attention.")).toBeVisible();
         expect(attention().queryByText("Human action required", { exact: true })).not.toBeInTheDocument();
         view.rerender(dashboard({ workflows: { data: { items: [], total: 0, limit: 200, offset: 0 } } }));
-        expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
+        expect(within(attention().getByRole("list", { name: "Items needing attention" })).queryByRole("listitem")).not.toBeInTheDocument();
     });
     it("never creates action requirements from absent or malformed evidence or historical failures", () => {
         render(dashboard({ summary: { data: { findings: [{ severity: { toString: null } }] } }, health: { unavailable: true }, activity: { data: { items: [{ ...event, status: "failed" }] } } }));
-        expect(within(attention().getByRole("list", { name: "Reported attention conditions" })).queryByRole("listitem")).not.toBeInTheDocument();
+        expect(within(attention().getByRole("list", { name: "Items needing attention" })).queryByRole("listitem")).not.toBeInTheDocument();
         expect(attention().getByText("Some checks aren't available. This list may be incomplete.")).toBeVisible();
         expect(activity().getByText("Failed · Restart")).toBeVisible();
     });
