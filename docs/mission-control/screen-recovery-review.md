@@ -3043,3 +3043,9 @@ not do, with plain blockers, readable times, and collapsed technical evidence.
 Failed reads offer a safe retry; uncertain saves do not resend. The existing
 two-step statement, authenticated permission checks, and evidence-only request
 remain unchanged.
+
+The one-time queue removal panel now shows a short result and readable UTC
+timestamps. Technical lineage and authority fields remain collapsed. A failed
+receipt-list read can be retried safely; an uncertain save is not resent. The
+two-step confirmation, exact statement, permissions, and Core request contract
+remain unchanged.

@@ -52,7 +52,8 @@ const BLOCKERS: Record<string, string> = {
 export function OneShotControlledDequeues({ candidateId, admission }: { candidateId: string; admission: ControlledDequeueAdmissionV1 }) {
     const session = useOperatorSession();
     const [items, setItems] = useState<OneShotControlledDequeueV1[] | null>(null);
-    const [error, setError] = useState(false);
+    const [error, setError] = useState<"load" | "preflight" | "create" | null>(null);
+    const [readAttempt, setReadAttempt] = useState(0);
     const [confirming, setConfirming] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [blockedResult, setBlockedResult] = useState<OneShotControlledDequeueResultV1 | null>(null);
@@ -60,14 +61,14 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
     useEffect(() => {
         let current = true;
         listOneShotControlledDequeues(candidateId)
-            .then((value) => { if (current) setItems(value.items.filter((item) => item.controlled_dequeue_admission.admission_id === admission.admission_id)); })
-            .catch(() => { if (current) setError(true); });
+            .then((value) => { if (current) { setItems(value.items.filter((item) => item.controlled_dequeue_admission.admission_id === admission.admission_id)); setError(null); } })
+            .catch(() => { if (current) setError("load"); });
         return () => { current = false; };
-    }, [candidateId, admission.admission_id]);
+    }, [candidateId, admission.admission_id, readAttempt]);
 
     const permissions = session.principal?.permissions ?? [];
     const mayCreate = admission.lifecycle === "active"
-        && items !== null && items.length === 0 && !error && blockedResult === null
+        && items !== null && items.length === 0 && error === null && blockedResult === null
         && session.authenticated
         && permissions.includes("installation.execution.one_shot_controlled_dequeue.record")
         && permissions.includes("installation.execution.one_shot_controlled_dequeue.read")
@@ -76,10 +77,12 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
 
     const record = async () => {
         if (!session.csrfToken || submitting) return;
-        setSubmitting(true); setError(false); setBlockedResult(null);
+        setSubmitting(true); setError(null); setBlockedResult(null);
+        let requestStarted = false;
         try {
             const source = await getControlledDequeueAdmission(candidateId, admission.admission_id);
             if (!source.record || !source.status) throw new Error("missing v0.44 admission readback");
+            requestStarted = true;
             const result = await createOneShotControlledDequeue(candidateId, oneShotControlledDequeueCreateFromAdmission(source.record, source.status), session.csrfToken, oneShotControlledDequeueIdempotencyKey());
             if (result.record) {
                 setItems((current) => [result.record!, ...(current ?? [])]);
@@ -87,52 +90,53 @@ export function OneShotControlledDequeues({ candidateId, admission }: { candidat
             } else {
                 setBlockedResult(result); setConfirming(false);
             }
-        } catch { setError(true); setConfirming(false); }
+        } catch { setError(requestStarted ? "create" : "preflight"); setConfirming(false); }
         finally { setSubmitting(false); }
     };
 
     const latest = items?.[0] ?? null;
-    const state = latest
-        ? latest.disposition === "exact_inert_item_dequeued"
-            ? "Exact inert item dequeued"
-            : latest.disposition === "exact_inert_item_not_dequeued"
-              ? "Exact inert item not dequeued"
-              : "Completion indeterminate"
-        : "Pending or blocked";
+    const state = error === "load" ? "Unavailable"
+        : error === "preflight" ? "Not requested"
+          : error === "create" ? "Unconfirmed"
+            : latest
+                ? latest.disposition === "exact_inert_item_dequeued"
+                    ? "Removed"
+                    : latest.disposition === "exact_inert_item_not_dequeued"
+                      ? "Not removed"
+                      : "Unconfirmed"
+                : items === null ? "Checking" : "Not recorded";
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="One-shot controlled dequeue evidence">
-        <h6 className="font-semibold">One-shot controlled dequeue</h6>
-        <p className="mt-2 text-sm">State: {state}. This panel is limited to the exact admitted inert item receipt frozen by Core.</p>
-        <p className="mt-1 text-sm">No polling, claim, lease, acknowledgement, worker contact, worker start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading one-shot controlled dequeue evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>One-shot controlled dequeue evidence is unavailable or blocked.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, broker, lease credential, acknowledgement credential, or internal path is shown.</p></div>}
-        {blockedResult?.error && <div role="alert" className="mt-3 rounded border border-amber-400/40 p-3"><p>One-shot controlled dequeue remains blocked.</p><p className="mt-1 text-xs">Disposition: {blockedResult.outcome}; blocker: {BLOCKERS[blockedResult.error.error_code] ?? blockedResult.error.error_code}. Worker execution, retry, resend, installation, and deployment remain unavailable.</p></div>}
-        {items?.length === 0 && !error && <p role="status" className="mt-3">No one-shot controlled dequeue receipt has been recorded for this admission.</p>}
+        <h6 className="font-semibold">One-time queue removal</h6>
+        <p className="mt-2 text-sm">Status: {state}. This records the result for the one approved queue item. It cannot start a worker or run an installation.</p>
+        {items === null && error === null && <p role="status" className="mt-3">Checking the removal record…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Atlas could not load the removal record. Retry to check its status." : error === "preflight" ? "Atlas could not verify the approved item. No removal was requested." : "Atlas could not confirm whether it saved the result. It will not resend the request."}</p><p className="text-xs text-slate-400">Private system details are hidden.</p>{error === "load" && <button type="button" onClick={() => { setItems(null); setError(null); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button>}{error === "preflight" && <button type="button" onClick={() => setError(null)} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Review again</button>}</div>}
+        {blockedResult?.error && <div role="alert" className="mt-3 rounded border border-amber-400/40 p-3"><p>The removal result was not recorded.</p><p className="mt-1 text-sm">{BLOCKERS[blockedResult.error.error_code] ?? "Atlas reported an issue that needs review."}</p><details className="mt-2"><summary>Technical details</summary><p className="mt-2">Result: {blockedResult.outcome}; blocker code: <code>{blockedResult.error.error_code}</code>.</p></details></div>}
+        {items?.length === 0 && error === null && <p role="status" className="mt-3">No removal result has been recorded.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="One-shot controlled dequeue receipts">{items.map((item) => <Receipt key={item.dequeue_id} item={item} />)}</ol>}
-        {mayCreate && !confirming && <button type="button" onClick={() => setConfirming(true)} className="mt-3 rounded border border-blue-400 px-3 py-2 text-sm">Review one-shot controlled dequeue statement</button>}
+        {mayCreate && !confirming && <button type="button" onClick={() => setConfirming(true)} className="mt-3 rounded border border-blue-400 px-3 py-2 text-sm">Review removal</button>}
         {mayCreate && confirming && <div aria-label="One-shot controlled dequeue confirmation" className="mt-3 rounded border border-amber-400/40 p-3">
-            <p className="font-semibold">Step 2 of 2 - explicitly record one-shot controlled dequeue receipt</p>
+            <p className="font-semibold">Step 2 of 2 — record the removal result</p>
             <p className="mt-2 text-sm">{CONFIRMATION}</p>
-            <p className="mt-2 text-xs">Core binds the authenticated operator, exact v0.44 admission, exact v0.43 observation receipt, exact inert v0.42 item, inherited limits, and permanent no-replay reservations.</p>
-            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record exact inert item receipt</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
+            <p className="mt-2 text-xs">Core ties this result to you and the approved item. It cannot be replayed.</p>
+            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record result</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
-        {items?.length === 0 && !error && !blockedResult && !mayCreate && <p className="mt-3 text-sm text-amber-200">Recording remains blocked. An active v0.44 admission, authenticated owner, dedicated one-shot controlled dequeue permissions, controlled dequeue admission read permission, and valid CSRF session are required.</p>}
+        {items?.length === 0 && error === null && !blockedResult && !mayCreate && <p className="mt-3 text-sm text-amber-200">This action is unavailable. The approved review must be current, and you must be signed in with permission.</p>}
     </section>;
 }
 
 function Receipt({ item }: { item: OneShotControlledDequeueV1 }) {
-    const status = isExpired(item.valid_until) ? "Expired receipt evidence" : "Recorded receipt evidence";
+    const status = isExpired(item.valid_until) ? "Expired" : "Recorded";
     const admission = item.controlled_dequeue_admission;
     const observation = admission.queue_observation_receipt;
     const enqueue = observation.v042_enqueue;
     const bounded = item.bounded_receipt;
     const limits = item.inherited_limits;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">{status}</p>
-        <p className="mt-1">Receipt state: {item.dequeue_state}; disposition: {item.disposition}; exact admitted item only: true; adapter receipt redacted: true.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and does not retry, resend, start work, or execute anything.</p>
+        <p className="font-semibold">Removal result: {item.disposition === "exact_inert_item_dequeued" ? "Item removed" : item.disposition === "exact_inert_item_not_dequeued" ? "Item not removed" : "Unconfirmed"}</p>
+        <p className="mt-1">{status} · Recorded {formatUtcTimestamp(item.recorded_at)} · Expires {formatUtcTimestamp(item.valid_until)}</p>
         <details className="mt-3">
-            <summary>Advanced one-shot controlled dequeue details</summary>
+            <summary>Technical details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Dequeue ID" value={item.dequeue_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -180,6 +184,11 @@ function Receipt({ item }: { item: OneShotControlledDequeueV1 }) {
 function isExpired(value: string) {
     const expiry = Date.parse(value);
     return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
 }
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
