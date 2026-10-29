@@ -82,7 +82,8 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                 <li>Confirm the app listens on its configured port. Test from Atlas Core's machine or inside the <code>atlas-core</code> container; a browser or service host may use a different network path.</li>
                 <li>
                     For an app in a bridged Docker container on another machine, run <code>docker ps</code> on the machine running that app
-                    and find its container. Its host port should appear under <code>PORTS</code>.
+                    and find its container. An <code>Up</code> status means Docker started it, but does not confirm a host port is published.
+                    Look for its host port under <code>PORTS</code>.
                     If <code>PORTS</code> is blank, add a <code>ports:</code> mapping to the service's Compose file
                     or use <code>docker run -p</code>. Map <code>HOST_PORT:CONTAINER_PORT</code>: set the host port to
                     the port in Atlas's reported address. Check the app's Compose file or documentation for its

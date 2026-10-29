@@ -307,7 +307,8 @@ for (const width of [320, 1280]) {
         await expect(steps).toHaveCSS('font-size', '14px');
         await expect(steps).toContainText('Test from Atlas Core\'s machine or inside the atlas-core container');
         await expect(steps).toContainText('run docker ps on the machine running that app and find its container');
-        await expect(steps).toContainText('Its host port should appear under PORTS');
+        await expect(steps).toContainText('An Up status means Docker started it, but does not confirm a host port is published');
+        await expect(steps).toContainText('Look for its host port under PORTS');
         await expect(steps).toContainText("If PORTS is blank, add a ports: mapping to the service's Compose file");
         await expect(steps).toContainText("Map HOST_PORT:CONTAINER_PORT: set the host port to the port in Atlas's reported address");
         await expect(steps).toContainText("Check the app's Compose file or documentation for its internal listening port and use that as the container port; the two ports may differ");

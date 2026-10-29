@@ -2408,8 +2408,9 @@ mutation requests.
 The same guidance explains the Compose/Docker port order: `HOST_PORT` is the
 port in Atlas's reported address, and `CONTAINER_PORT` is the application's
 internal listening port, found in its Compose file or documentation. It says
-the two may differ. Overview component and phone/desktop browser checks cover
-the instruction.
+the two may differ. It also clarifies that Docker's `Up` status does not mean
+the container's host port is published. Overview component and phone/desktop
+browser checks cover the instruction.
 
 ## Service attention wording — 2026-10-29
 
