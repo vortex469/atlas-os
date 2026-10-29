@@ -247,7 +247,7 @@ describe("MaintenanceRequestPage", () => {
         renderPage({ proposalId, provider: "attacker", fingerprint: "tampered" });
 
         expect(await screen.findByRole("heading", { name: "Suggestion details" })).toBeInTheDocument();
-        expect(screen.getByText("This suggestion cannot select a VM for you. Choose one from the VM list below.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas will not choose a VM from this suggestion. Select a running VM below.")).toBeInTheDocument();
         expect(await screen.findByText("999 / attacker / lxc")).toBeInTheDocument();
         expect(screen.getByRole("radio", { name: /Frigate/i })).not.toBeChecked();
         expect(requestRestartServiceIntent).not.toHaveBeenCalled();

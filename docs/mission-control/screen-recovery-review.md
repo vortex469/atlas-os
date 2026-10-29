@@ -2792,3 +2792,10 @@ result to show this state instead of incorrectly saying execution is
 unavailable. Checking remains an explicit operator action; approval and
 execution behavior are unchanged. The WorkflowPage and timeline suites pass
 (101 tests), as do Mission Control lint and production build.
+
+## Maintenance suggestion selection — 2026-10-29
+
+The maintenance form now says directly that Atlas will not select a VM from a
+suggestion and asks the operator to choose a running VM. Request and approval
+behavior are unchanged. The focused MaintenanceRequestPage suite passes
+(32 tests), along with Mission Control lint and production build.

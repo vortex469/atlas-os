@@ -214,7 +214,7 @@ export function MaintenanceRequestPage() {
             {(proposalId !== null || proposalLoading || proposalError || proposal) && (
                 <section aria-label="Suggestion details" className="space-y-3">
                     <h2 className="text-xl font-semibold text-white">Suggestion details</h2>
-                    <p className="text-sm text-slate-400">This suggestion cannot select a VM for you. Choose one from the VM list below.</p>
+                    <p className="text-sm text-slate-400">Atlas will not choose a VM from this suggestion. Select a running VM below.</p>
                     {proposalLoading && <p className="text-sm text-slate-400">Loading suggestion details…</p>}
                     {proposalError && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p>{proposalError}</p>{!proposalNotFound && <button type="button" onClick={() => setProposalLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">Retry loading suggestion</button>}</div>}
                     {proposal && <DiscoveryProposalCard proposal={proposal} showNavigation={false} />}
