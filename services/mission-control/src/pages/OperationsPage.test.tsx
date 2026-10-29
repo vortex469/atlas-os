@@ -199,8 +199,8 @@ describe("OperationsPage", () => {
         renderPage();
 
         expect(await screen.findByText("Unload Model")).toBeInTheDocument();
-        const unknownTime = screen.getByText("Unknown time");
-        expect(unknownTime.closest("time")).toBeNull();
+        const unavailableTime = screen.getByText("Time unavailable");
+        expect(unavailableTime.closest("time")).toBeNull();
     });
 
     it("requests failed actions when filtered", async () => {

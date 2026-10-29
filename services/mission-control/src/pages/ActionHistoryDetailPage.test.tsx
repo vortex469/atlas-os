@@ -152,6 +152,20 @@ describe("ActionHistoryDetailPage", () => {
         ).toHaveAttribute("href", "/operations");
     });
 
+    it("does not normalize an impossible action timestamp into a real date", async () => {
+        mockedGetProviderActionHistoryEntry.mockResolvedValue({
+            ...auditEntry(),
+            completed_at: "2026-02-30T17:00:01Z",
+        });
+        renderPage();
+
+        expect(await screen.findByText("Model unloaded.")).toBeInTheDocument();
+        expect(screen.getByText("Completed Time unavailable")).toBeInTheDocument();
+        expect(screen.queryByText((_, element) =>
+            element?.tagName === "TIME" && element.getAttribute("datetime") === "2026-02-30T17:00:01Z",
+        )).not.toBeInTheDocument();
+    });
+
     it("copies the current deep link", async () => {
         const user = userEvent.setup();
         const writeText = vi.fn().mockResolvedValue(undefined);

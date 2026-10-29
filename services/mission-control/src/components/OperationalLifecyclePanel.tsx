@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { WorkflowOperationalLifecycle } from "../types/atlasAgent";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { operationalOutcome } from "../utils/operationalOutcome";
 
 interface OperationalLifecyclePanelProps {
@@ -17,10 +18,10 @@ function label(value: string | null): string {
 
 function timestamp(value: string | null): ReactNode {
     if (!value) return "Not reported";
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime())
-        ? "Unknown time"
-        : <time dateTime={value}>{parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (local time)</time>;
+    const parsed = evidenceTimestamp(value);
+    return parsed === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(parsed).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (local time)</time>;
 }
 
 export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, refreshDisabled = false, error, onRefresh }: OperationalLifecyclePanelProps) {

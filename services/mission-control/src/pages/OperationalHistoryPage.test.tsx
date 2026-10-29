@@ -84,6 +84,15 @@ describe("OperationalHistoryPage", () => {
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
+    it("distinguishes a malformed request time from a time not reported", async () => {
+        mockedLifecycle.mockResolvedValue(operationalLifecycle({ request_created_at: "2026-02-30T17:00:00Z" }));
+        render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
+
+        const requested = await screen.findByText(/^Requested \(local time\):/);
+        expect(requested).toHaveTextContent("Time unavailable");
+        expect(requested.querySelector("time")).toBeNull();
+    });
+
     it("shows a readable action name for maintenance intents beyond restart", async () => {
         mockedList.mockResolvedValueOnce({
             items: [historyWorkflow("start-service")],

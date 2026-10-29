@@ -37,7 +37,7 @@ const PAGE_SIZE = 25;
 function formatTimestamp(value: string): ReactNode {
     const timestamp = evidenceTimestamp(value);
     return timestamp === null
-        ? "Unknown time"
+        ? "Time unavailable"
         : <time dateTime={value} className="text-xs text-slate-500">{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 

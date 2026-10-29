@@ -2900,3 +2900,12 @@ and model readiness remain separate. When details are stale, the card also says
 that Atlas could not confirm the current version, response time, or model list.
 The focused AI provider and Overview suites cover incomplete identities and
 stale reports; no provider configuration or action behavior changes.
+
+## History timestamp availability — 2026-10-29
+
+Action and maintenance history screens now show “Time unavailable” when a
+timestamp is malformed. Maintenance history keeps “Not reported” for a missing
+timestamp. Action detail and maintenance lifecycle evidence use the shared
+strict validator, so impossible calendar dates cannot appear as real dates.
+Focused tests cover malformed timestamps across the affected screens; action
+history and maintenance execution behavior are unchanged.

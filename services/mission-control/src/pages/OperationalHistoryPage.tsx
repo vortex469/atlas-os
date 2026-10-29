@@ -10,6 +10,7 @@ import { OperationalRecoverySummary } from "../components/OperationalRecoverySum
 import { recoveryPresentation } from "../utils/recoveryDiagnostic";
 import { formatResourceTypeLabel } from "../utils/resourceLabels";
 import { formatWorkflowLabel } from "../utils/workflowState";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import type {
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
@@ -28,10 +29,10 @@ interface HistoryItem {
 
 function formatTimestamp(value: string | null): ReactNode {
     if (!value) return "Not reported";
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime())
-        ? "Unknown time"
-        : <time dateTime={value}>{parsed.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+    const parsed = evidenceTimestamp(value);
+    return parsed === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(parsed).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function historyTargetName(workflow: WorkflowSummary, lifecycle: WorkflowOperationalLifecycle | null): string {

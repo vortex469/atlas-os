@@ -9,13 +9,13 @@ import type {
     ActionHistoryStatus,
     ProviderActionAuditEntry,
 } from "../types/actionHistory";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 function formatTimestamp(timestamp: string): ReactNode {
-    const date = new Date(timestamp);
-
-    return Number.isNaN(date.getTime())
-        ? "Unknown time"
-        : <time dateTime={timestamp}>{date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+    const parsed = evidenceTimestamp(timestamp);
+    return parsed === null
+        ? "Time unavailable"
+        : <time dateTime={timestamp}>{new Date(parsed).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function statusClasses(status: ActionHistoryStatus): string {

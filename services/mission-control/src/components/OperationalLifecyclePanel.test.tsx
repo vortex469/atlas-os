@@ -28,6 +28,16 @@ describe("OperationalLifecyclePanel", () => {
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
+    it("marks impossible technical timestamps unavailable", () => {
+        renderLifecycle({ dispatch_started_at: "2026-02-30T17:00:00Z" });
+        const details = screen.getByText("Technical evidence").closest("details") as HTMLDetailsElement;
+        fireEvent.click(within(details).getByText("Technical evidence"));
+
+        const dispatchStarted = within(details).getByText("Dispatch Started").parentElement;
+        expect(dispatchStarted).toHaveTextContent("Time unavailable");
+        expect(dispatchStarted?.querySelector("time")).toBeNull();
+    });
+
     it.each([
         { provider_operation_captured: false },
         { provider_operation_capture_count: 0 },
