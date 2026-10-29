@@ -27,6 +27,12 @@ describe("authoritative health presentation", () => {
         expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
     });
 
+    it("allows a service check to say that Atlas Core could not connect", () => {
+        render(<HealthEvidence status="offline" unavailableLabel="Atlas Core could not connect" />);
+        expect(screen.getByText("Atlas Core could not connect")).toBeInTheDocument();
+        expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
+    });
+
     it("retains source critical severity and renders reasons as plain text", () => {
         render(<HealthEvidence status="critical" reason="<script>bad()</script>" />);
         expect(screen.getByText("Reported status: critical")).toBeInTheDocument();

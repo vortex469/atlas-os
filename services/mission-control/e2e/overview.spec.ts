@@ -289,6 +289,7 @@ for (const width of [320, 1280]) {
 
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
         await expect(checks.getByText('iFileshare', { exact: true })).toBeVisible();
+        await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
         const location = checks.getByText('Where Atlas checked');
         await expect(location).toBeVisible();
         await location.click();

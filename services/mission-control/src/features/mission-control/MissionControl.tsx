@@ -55,8 +55,13 @@ function Card({ title, children, evidence, showSourceNote = true, loading = fals
         <div className="space-y-3 text-sm text-mc-text-secondary">{showSourceNote && <SourceNote evidence={evidence} loading={loading} />}{children}</div>
     </section>;
 }
-function ObservedStatus({ value, reason, stale }: { value: unknown; reason?: unknown; stale?: boolean }) {
-    return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} />;
+function ObservedStatus({ value, reason, stale, unavailableLabel }: {
+    value: unknown;
+    reason?: unknown;
+    stale?: boolean;
+    unavailableLabel?: string;
+}) {
+    return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} unavailableLabel={unavailableLabel} />;
 }
 
 function ServiceCheckLocation({ service }: { service: unknown }) {
@@ -274,7 +279,12 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
                 {displayedServices.length > 0 && <ul className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>
                     <p>{safeText(name)}</p>
-                    <ObservedStatus value={record(raw).status} reason={record(raw).message} stale={evidence.health?.stale} />
+                    <ObservedStatus
+                        value={record(raw).status}
+                        reason={record(raw).message}
+                        stale={evidence.health?.stale}
+                        unavailableLabel="Atlas Core could not connect"
+                    />
                     <ServiceCheckLocation service={raw} />
                 </li>)}</ul>}
                 {services.length > 4 && <button

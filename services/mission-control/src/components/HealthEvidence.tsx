@@ -4,10 +4,11 @@ import { HealthEvidenceContext } from "./healthEvidenceContext";
 import { HealthStatusBadge } from "./health/HealthStatusPrimitive";
 import type { HealthState } from "./health/HealthStatusPrimitive";
 
-export function HealthEvidence({ status, reason, checkedAt, stale = false, compact = false }: {
+export function HealthEvidence({ status, reason, checkedAt, unavailableLabel, stale = false, compact = false }: {
     status: unknown;
     reason?: unknown;
     checkedAt?: unknown;
+    unavailableLabel?: string;
     stale?: boolean;
     compact?: boolean;
 }) {
@@ -33,7 +34,11 @@ export function HealthEvidence({ status, reason, checkedAt, stale = false, compa
     return (
         <div className="min-w-0 space-y-1 break-words text-sm" data-health-state={isStale ? "Unknown" : state}>
             <div className="flex flex-wrap items-center gap-2">
-                <HealthStatusBadge state={state.toLowerCase() as HealthState} isStale={isStale} />
+                <HealthStatusBadge
+                    state={state.toLowerCase() as HealthState}
+                    title={state === "Unavailable" ? unavailableLabel : undefined}
+                    isStale={isStale}
+                />
             </div>
             {showReportedStatus && (
                 <p className="text-xs text-mc-text-muted">Reported status: {raw}</p>
