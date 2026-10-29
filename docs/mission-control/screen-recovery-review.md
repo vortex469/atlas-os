@@ -2306,11 +2306,12 @@ passes (29 tests), the Overview browser suite passes (24 tests, including the
 ## Overview service-check guidance — 2026-10-29
 
 The active Overview's “Where Atlas checked” disclosure now suggests a next
-check for connection-refused, no-route, and timeout results from Atlas Core's
-network location. Exact service messages remain available in the visible health
-summary, while the disclosure keeps the address and response details optional.
-Health state and probing behavior are unchanged. Overview tests cover all three
-failure types at component level and the no-route case in the browser suite.
+check for connection-refused, no-route, unreachable-network, DNS, and timeout
+results from Atlas Core's network location. Exact service messages remain
+available in the visible health summary, while the disclosure keeps the address
+and response details optional. Health state and probing behavior are unchanged.
+Overview tests cover each failure type at component level and no-route in the
+browser suite.
 
 ## Empty service-check summary — 2026-10-29
 

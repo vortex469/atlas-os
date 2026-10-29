@@ -26,6 +26,10 @@ export function healthReason(value: unknown): string | null {
     switch (message.toLowerCase()) {
         case "connection refused": return "The service refused the connection.";
         case "no route to host": return "The service could not be reached over the network.";
+        case "network is unreachable": return "Atlas Core has no reachable network path to the service host.";
+        case "name or service not known":
+        case "temporary failure in name resolution":
+        case "getaddrinfo failed": return "Atlas Core could not resolve the service host name.";
         case "connection timed out":
         case "timed out": return "The service did not respond in time.";
         default: return errno ? message || "The connection failed." : text;
@@ -41,6 +45,12 @@ export function healthNextCheck(value: unknown): string | null {
             return "Check that the service is listening on this port and that Atlas Core can reach it.";
         case "no route to host":
             return "Check the target address and the network or firewall route from Atlas Core to the service host.";
+        case "network is unreachable":
+            return "Check the target address and routing between Atlas Core and the service host.";
+        case "name or service not known":
+        case "temporary failure in name resolution":
+        case "getaddrinfo failed":
+            return "Check that the host name is correct and resolves from the machine running Atlas Core.";
         case "connection timed out":
         case "timed out":
             return "Check that the service is responding and that network or firewall rules allow access from Atlas Core.";
@@ -51,7 +61,7 @@ export function healthNextCheck(value: unknown): string | null {
 
 function parseHealthError(text: string): { errno: boolean; message: string } {
     const trimmed = text.trim();
-    const errnoMessage = /^\[Errno \d+\]\s*(.*)$/i.exec(trimmed);
+    const errnoMessage = /^\[Errno -?\d+\]\s*(.*)$/i.exec(trimmed);
     return {
         errno: errnoMessage !== null,
         message: errnoMessage ? errnoMessage[1].trim() : trimmed,

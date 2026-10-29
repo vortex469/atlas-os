@@ -51,6 +51,8 @@ describe("authoritative health presentation", () => {
         ["Connection refused", "The service refused the connection."],
         ["[Errno 113] No route to host", "The service could not be reached over the network."],
         ["No route to host", "The service could not be reached over the network."],
+        ["[Errno 101] Network is unreachable", "Atlas Core has no reachable network path to the service host."],
+        ["[Errno -3] Temporary failure in name resolution", "Atlas Core could not resolve the service host name."],
         ["[Errno 110] Connection timed out", "The service did not respond in time."],
         ["timed out", "The service did not respond in time."],
     ])("explains network failures in plain language: %s", (reason, explanation) => {

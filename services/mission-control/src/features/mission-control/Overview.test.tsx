@@ -184,6 +184,8 @@ describe("MC overview evidence", () => {
     it.each([
         ["[Errno 111] Connection refused", "Check that the service is listening on this port and that Atlas Core can reach it."],
         ["[Errno 113] No route to host", "Check the target address and the network or firewall route from Atlas Core to the service host."],
+        ["[Errno 101] Network is unreachable", "Check the target address and routing between Atlas Core and the service host."],
+        ["[Errno -3] Temporary failure in name resolution", "Check that the host name is correct and resolves from the machine running Atlas Core."],
         ["[Errno 110] Connection timed out", "Check that the service is responding and that network or firewall rules allow access from Atlas Core."],
     ])("suggests a Core-side next check for %s", (message, nextCheck) => {
         show({ health: { data: { services: { iFileshare: {
