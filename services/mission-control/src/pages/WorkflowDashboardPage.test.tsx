@@ -43,12 +43,12 @@ function workflow(overrides: Partial<WorkflowSummary> = {}): WorkflowSummary {
     };
 }
 
-function response(items: WorkflowSummary[]): WorkflowListResponse {
+function response(items: WorkflowSummary[], total = items.length, offset = 0): WorkflowListResponse {
     return {
         items,
-        total: items.length,
+        total,
         limit: 200,
-        offset: 0,
+        offset,
     };
 }
 
@@ -197,6 +197,50 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByText("Showing 1–10 of 11 loaded workflows")).toBeVisible();
         expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
         expect(screen.queryByRole("heading", { name: "Update Container Image" })).not.toBeInTheDocument();
+    });
+
+    it("loads additional workflow batches and makes the loaded filter scope clear", async () => {
+        const firstBatch = Array.from({ length: 200 }, (_, index) => workflow({
+            workflow_id: `workflow-${String(index).padStart(3, "0")}`,
+            workflow_state: index === 0 ? "executing" : "completed",
+        }));
+        const additional = workflow({ workflow_id: "workflow-older", execution_intent: "update-container-image" });
+        vi.mocked(listWorkflows)
+            .mockResolvedValueOnce(response(firstBatch, 201))
+            .mockResolvedValueOnce(response([additional], 201, 200));
+
+        renderDashboard();
+
+        expect(await screen.findByText("Loaded 200 of 201 workflows. Summary counts and filters cover the loaded workflows only.")).toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Load more workflows" }));
+        expect(await screen.findByText("Automatic refresh pauses while additional workflows are loaded. Select Refresh to reload the first 200 and resume updates.")).toBeVisible();
+        expect(screen.getByText("Showing 1–10 of 201 loaded workflows")).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Load more workflows" })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        fireEvent.change(screen.getByLabelText("Workflow ID contains"), { target: { value: "workflow-older" } });
+        fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+        expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
+        expect(vi.mocked(listWorkflows)).toHaveBeenLastCalledWith({ limit: 200, offset: 200 });
+    });
+
+    it("keeps the loaded workflows visible when loading another batch fails", async () => {
+        const firstBatch = Array.from({ length: 200 }, (_, index) => workflow({ workflow_id: `workflow-${index}` }));
+        vi.mocked(listWorkflows)
+            .mockResolvedValueOnce(response(firstBatch, 201))
+            .mockRejectedValueOnce(new Error("private list error"))
+            .mockResolvedValueOnce(response([workflow({ workflow_id: "workflow-200" })], 201, 200));
+
+        renderDashboard();
+
+        await screen.findByText("Loaded 200 of 201 workflows. Summary counts and filters cover the loaded workflows only.");
+        fireEvent.click(screen.getByRole("button", { name: "Load more workflows" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Could not load more workflows. The workflows already shown are unchanged. Try again.");
+        expect(screen.getAllByRole("heading", { name: "Update Compose Stack" }).length).toBe(10);
+
+        fireEvent.click(screen.getByRole("button", { name: "Load more workflows" }));
+        expect(await screen.findByText("Showing 1–10 of 201 loaded workflows")).toBeVisible();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     it("uses a plain fallback for missing references inside workflow details", async () => {

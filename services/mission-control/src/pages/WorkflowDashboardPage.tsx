@@ -18,6 +18,7 @@ import {
 } from "../utils/workflowState";
 
 const PAGE_SIZE = 10;
+const WORKFLOW_BATCH_SIZE = 200;
 
 type LoadMode = "initial" | "refresh";
 
@@ -53,8 +54,11 @@ export function WorkflowDashboardPage() {
     const [pageIndex, setPageIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [refreshError, setRefreshError] = useState<string | null>(null);
+    const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+    const [nextWorkflowOffset, setNextWorkflowOffset] = useState(0);
     const pendingLoad = useRef(false);
     const hasLoadedResponse = useRef(false);
 
@@ -67,8 +71,10 @@ export function WorkflowDashboardPage() {
         setRefreshError(null);
 
         try {
-            const response = await listWorkflows({ limit: 200, offset: 0 });
+            const response = await listWorkflows({ limit: WORKFLOW_BATCH_SIZE, offset: 0 });
             setWorkflowResponse(response);
+            setNextWorkflowOffset(response.items.length);
+            setLoadMoreError(null);
             hasLoadedResponse.current = true;
         } catch (error) {
             const message = getAtlasAgentErrorMessage(error, "Atlas Agent unavailable.");
@@ -90,14 +96,15 @@ export function WorkflowDashboardPage() {
 
     const workflows = useMemo(() => workflowResponse?.items ?? [], [workflowResponse]);
     const hasActiveWorkflow = workflows.some((workflow) => isActiveWorkflowState(workflow.workflow_state));
+    const hasMoreWorkflows = workflowResponse !== null && nextWorkflowOffset < workflowResponse.total;
 
     useEffect(() => {
-        if (!hasActiveWorkflow) return undefined;
+        if (!hasActiveWorkflow || workflows.length > WORKFLOW_BATCH_SIZE) return undefined;
         const interval = window.setInterval(() => {
             void loadDashboard("refresh");
         }, 5_000);
         return () => window.clearInterval(interval);
-    }, [hasActiveWorkflow, loadDashboard]);
+    }, [hasActiveWorkflow, loadDashboard, workflows.length]);
 
     const summaryCounts = useMemo(() => {
         const counts = new Map<string, number>();
@@ -147,7 +154,35 @@ export function WorkflowDashboardPage() {
 
     function refresh() {
         if (pendingLoad.current || isRefreshing) return;
+        setPageIndex(0);
         void loadDashboard("refresh");
+    }
+
+    async function loadMoreWorkflows() {
+        if (!workflowResponse || pendingLoad.current || isLoadingMore || nextWorkflowOffset >= workflowResponse.total) return;
+        const offset = nextWorkflowOffset;
+        pendingLoad.current = true;
+        setIsLoadingMore(true);
+        setLoadMoreError(null);
+        try {
+            const response = await listWorkflows({ limit: WORKFLOW_BATCH_SIZE, offset });
+            if (response.items.length === 0 && offset < response.total) {
+                throw new Error("The workflow list returned no entries for an available page.");
+            }
+            setWorkflowResponse((current) => {
+                if (!current) return response;
+                const existingIds = new Set(current.items.map((workflow) => workflow.workflow_id));
+                const newItems = response.items.filter((workflow) => !existingIds.has(workflow.workflow_id));
+                return { ...response, items: [...current.items, ...newItems], offset: 0 };
+            });
+            setNextWorkflowOffset(offset + response.items.length);
+        } catch (error) {
+            console.error("Unable to load more workflows:", error);
+            setLoadMoreError("Could not load more workflows. The workflows already shown are unchanged. Try again.");
+        } finally {
+            pendingLoad.current = false;
+            setIsLoadingMore(false);
+        }
     }
 
     if (isLoading) {
@@ -188,7 +223,7 @@ export function WorkflowDashboardPage() {
                 <button
                     type="button"
                     onClick={refresh}
-                    disabled={isRefreshing}
+                    disabled={isRefreshing || isLoadingMore}
                     className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     Refresh
@@ -196,6 +231,8 @@ export function WorkflowDashboardPage() {
             </header>
 
             {isRefreshing && <p role="status" aria-live="polite" className="text-sm text-blue-200">Refreshing workflows...</p>}
+            {hasMoreWorkflows && <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">Loaded {workflows.length} of {workflowResponse?.total ?? 0} workflows. Summary counts and filters cover the loaded workflows only.</p>}
+            {workflows.length > WORKFLOW_BATCH_SIZE && <p role="status" className="rounded-lg border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">Automatic refresh pauses while additional workflows are loaded. Select Refresh to reload the first {WORKFLOW_BATCH_SIZE} and resume updates.</p>}
             {refreshError && (
                 <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                     <p className="font-semibold text-amber-100">Could not refresh workflows</p>
@@ -292,6 +329,8 @@ export function WorkflowDashboardPage() {
                         <button type="button" onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))} disabled={hasUnappliedFilters || currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                     </nav>
                 )}
+                {loadMoreError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">{loadMoreError}</p>}
+                {hasMoreWorkflows && <button type="button" onClick={() => void loadMoreWorkflows()} disabled={isLoadingMore || isRefreshing} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{isLoadingMore ? "Loading more workflows…" : "Load more workflows"}</button>}
             </section>
         </main>
     );
