@@ -207,7 +207,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     return;
                 }
                 if (entry.item.id !== itemId) {
-                    setError("The catalog response does not match this item. Try again.");
+                    setError("Atlas got details for a different catalog item. Try again.");
                     return;
                 }
                 setState((current) => ({ ...current, entry }));
@@ -220,9 +220,9 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 console.error(`Unable to load Discovery item ${itemId}:`, requestError);
                 const message = getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load this catalog item.",
+                    "Atlas couldn’t load this catalog item.",
                 );
-                setError("Mission Control could not load this catalog item. Its current details are unknown.");
+                setError("Atlas couldn’t load this catalog item. Try again to check its details.");
                 setErrorDetails(message);
             })
             .finally(() => {
@@ -436,10 +436,10 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Catalog could not be loaded
+                        Catalog item unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error ?? "Mission Control could not load this catalog item."}
+                        {error ?? "Atlas couldn’t load this catalog item. Try again to check its details."}
                     </p>
                     {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
                     <button type="button" onClick={retryItem} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>

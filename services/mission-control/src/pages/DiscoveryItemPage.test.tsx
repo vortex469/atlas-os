@@ -323,7 +323,7 @@ describe("DiscoveryItemPage", () => {
             .mockResolvedValueOnce({ ...entry(), item: { ...entry().item, id: "other" } })
             .mockResolvedValueOnce(entry());
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("does not match this item");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas got details for a different catalog item. Try again.");
         expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
         await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
@@ -374,7 +374,8 @@ describe("DiscoveryItemPage", () => {
         mockedGetDiscoveryItem.mockRejectedValue(new Error("Proxy not found while reading catalog"));
         renderPage();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not load this catalog item. Its current details are unknown.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this catalog item. Try again to check its details.");
+        expect(alert).toHaveTextContent("Catalog item unavailable");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         const readError = within(technicalDetails as HTMLDetailsElement).getByText("Proxy not found while reading catalog");
@@ -900,6 +901,6 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Catalog could not be loaded");
+        expect(alert).toHaveTextContent("Catalog item unavailable");
     });
 });

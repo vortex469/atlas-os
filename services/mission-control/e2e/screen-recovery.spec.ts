@@ -401,13 +401,39 @@ test("discovery refuses another catalog item's details", async ({ page, rejected
     await page.route("**/api/v1/discovery/items/requested-item/relationships", (route) => route.fulfill({ json: { item_id: "requested-item", incoming: [], outgoing: [] } }));
     await page.goto("/discovery/items/requested-item");
     const itemError = page.locator("main > div[role=alert]");
-    await expect(itemError).toContainText("does not match this item");
+    await expect(itemError).toContainText("Atlas got details for a different catalog item. Try again.");
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("heading", { name: "Requested Item" })).toBeVisible();
     expect(reads).toBe(3);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("link", { name: "← Catalog" }).click();
     await expect(page.getByRole("heading", { name: "Browse the catalog", exact: true })).toBeVisible();
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
+test("catalog item details offer a clear recovery after a failed read", async ({ page, rejectedMutationRequests }) => {
+    let reads = 0;
+    let allowRecovery = false;
+    const width = 390;
+    await page.setViewportSize({ width, height: 900 });
+    await page.route("**/api/v1/discovery/items/retry-item", (route) => {
+        reads += 1;
+        if (!allowRecovery) return route.fulfill({ status: 503, json: { detail: "PRIVATE_BACKEND_DETAIL" } });
+        const entry = discoveryItemsPage.entries[0];
+        return route.fulfill({ json: { ...entry, item: { ...entry.item, id: "retry-item", name: "Recovered Item" } } });
+    });
+    await page.goto("/discovery/items/retry-item");
+
+    const alert = page.getByRole("alert");
+    await expect(alert).toContainText("Catalog item unavailable");
+    await expect(alert).toContainText("Atlas couldn’t load this catalog item. Try again to check its details.");
+    await expect(alert).not.toContainText("PRIVATE_BACKEND_DETAIL");
+    await expect(alert.locator("details")).not.toHaveAttribute("open");
+    allowRecovery = true;
+    await alert.getByRole("button", { name: "Try again" }).click();
+    await expect(page.getByRole("heading", { name: "Recovered Item", exact: true })).toBeVisible();
+    expect(reads).toBeGreaterThanOrEqual(2);
+    expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
     expect(rejectedMutationRequests).toEqual([]);
 });
 
