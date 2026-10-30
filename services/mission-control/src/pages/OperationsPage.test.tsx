@@ -268,10 +268,10 @@ describe("OperationsPage", () => {
         await act(async () => { rejectRead(new Error("Filtered history unavailable")); });
         const historyAlert = await screen.findByRole("alert");
         expect(historyAlert).toHaveTextContent("Atlas couldn’t load action history. Refresh history to try again; this won’t run any actions.");
-        const technicalDetails = within(historyAlert).getByText("Technical details").closest("details");
+        const technicalDetails = within(historyAlert).getByText("Why action history couldn't load").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(historyAlert).queryByText("Filtered history unavailable")).not.toBeVisible();
-        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Why action history couldn't load"));
         expect(within(historyAlert).getByText("Filtered history unavailable")).toBeVisible();
         expect(screen.queryByText("Unload Model")).not.toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
@@ -367,12 +367,36 @@ describe("OperationsPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Action history could not be exported. Try exporting again.");
-        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        const technicalDetails = within(alert).getByText("Why the export failed").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Export failed")).not.toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
         expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
+    });
+
+    it("distinguishes export and history read errors when both are visible", async () => {
+        const user = userEvent.setup();
+        mockedExportProviderActionHistory.mockRejectedValueOnce(new Error("Export failed"));
+        renderPage();
+
+        await screen.findByText("Unload Model");
+        await user.click(screen.getByText("Export or delete history"));
+        await user.click(screen.getByRole("button", { name: "Export JSON" }));
+        const exportAlert = await screen.findByRole("alert");
+        expect(within(exportAlert).getByText("Why the export failed")).toBeInTheDocument();
+
+        mockedGetProviderActionHistory.mockRejectedValueOnce(new Error("History refresh failed"));
+        await user.click(screen.getByRole("button", { name: "Refresh history" }));
+        const historyTitle = await screen.findByText("Action history unavailable");
+        const historyAlert = historyTitle.closest("[role='alert']");
+
+        expect(historyAlert).not.toBeNull();
+        expect(within(historyAlert as HTMLElement).getByText("Why action history couldn't load")).toBeInTheDocument();
+        expect(within(exportAlert).queryByText("Why action history couldn't load")).not.toBeInTheDocument();
+        expect(within(historyAlert as HTMLElement).queryByText("Why the export failed")).not.toBeInTheDocument();
+        expect(within(exportAlert).getByText("Export failed")).not.toBeVisible();
+        expect(within(historyAlert as HTMLElement).getByText("History refresh failed")).not.toBeVisible();
     });
 
     it("confirms and prunes expired history", async () => {
@@ -414,7 +438,7 @@ describe("OperationsPage", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Atlas could not confirm whether expired entries were deleted. Refresh history before trying again.");
-        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        const technicalDetails = within(alert).getByText("Why deletion could not be confirmed").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         expect(within(technicalDetails as HTMLElement).getByText("Delete failed")).not.toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
