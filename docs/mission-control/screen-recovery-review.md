@@ -3684,3 +3684,12 @@ context. These changes affect navigation only; workflow reads, approvals, and
 execution behavior are unchanged. The focused workflow directory and detail
 suites pass (122 tests); the full Mission Control suite passes (3,033 tests),
 and lint and production build pass.
+
+## Workflow filter empty state — 2026-10-30
+
+When more workflow records are available than have been loaded, an empty
+filtered result now says it covers only loaded workflows and directs the
+operator to load older results. Once all records are loaded, the existing
+“No workflows match” message remains. This makes the client-side filter scope
+clear without changing the workflow API. The WorkflowDashboardPage suite
+passes (21 tests), along with Mission Control lint and production build.

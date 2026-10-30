@@ -506,6 +506,19 @@ describe("WorkflowDashboardPage", () => {
         expect(within(initialErrorDetails as HTMLDetailsElement).getByText("Atlas Agent unavailable")).not.toBeVisible();
     });
 
+    it("clarifies when filtered older workflows have not been loaded yet", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([workflow()], 201));
+        renderDashboard();
+
+        expect(await screen.findByText("Loaded 1 of 201 workflows. Summary counts and filters cover the loaded workflows only.")).toBeVisible();
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        fireEvent.change(screen.getByLabelText("Workflow ID contains"), { target: { value: "older-workflow" } });
+        fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+
+        expect(screen.getByText("No loaded workflows match these filters. Load more workflows to check older results.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Load more workflows" })).toBeEnabled();
+    });
+
     it("lets an operator retry an initial failure without reloading the page", async () => {
         vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
         let resolveRetry!: (value: WorkflowListResponse) => void;

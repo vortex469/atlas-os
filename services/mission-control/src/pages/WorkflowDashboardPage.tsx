@@ -355,7 +355,11 @@ export function WorkflowDashboardPage() {
                 {workflows.length === 0 ? (
                     <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows yet.</p>
                 ) : visibleWorkflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows match the current filters.</p>
+                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
+                        {hasMoreWorkflows
+                            ? "No loaded workflows match these filters. Load more workflows to check older results."
+                            : "No workflows match the current filters."}
+                    </p>
                 ) : (
                     <div className="space-y-4">
                         {visibleWorkflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} search={dashboardSearch} />)}
