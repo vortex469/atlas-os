@@ -395,6 +395,18 @@ describe("DiscoveryPage", () => {
         expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
     });
 
+    it("explains when the catalog reports items but the list is empty", async () => {
+        mockedGetDiscoveryMetadata.mockResolvedValue(metadata({ entry_count: 2 }));
+        mockedListDiscoveryItems.mockResolvedValue(page([]));
+
+        renderPage();
+
+        expect(await screen.findByText("The catalog says it has 2 items, but none are shown here.")).toBeInTheDocument();
+        expect(screen.getByText("Catalog total").nextElementSibling).toHaveTextContent("2");
+        expect(screen.getByText("Use Search to check the catalog again.")).toBeInTheDocument();
+        expect(screen.queryByText("No catalog items were returned.")).not.toBeInTheDocument();
+    });
+
     it("offers filter recovery when a search has no matches", async () => {
         const user = userEvent.setup();
         mockedSearchDiscoveryItems.mockResolvedValue(searchPage([]));

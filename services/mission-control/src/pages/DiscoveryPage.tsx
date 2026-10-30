@@ -193,6 +193,9 @@ export function DiscoveryPage() {
     const hasAdvancedFilters = Boolean(submittedFilters.tag || submittedFilters.capability);
     const hasUnappliedFilters = !filtersEqual(normalizeFilters(filters), submittedFilters);
     const catalogIsEmpty = metadata?.catalog_loaded === true && metadata.entry_count === 0;
+    const catalogReportedItemCount = metadata?.catalog_loaded === true && metadata.entry_count > 0
+        ? metadata.entry_count
+        : null;
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const normalized = normalizeFilters(filters);
@@ -407,7 +410,9 @@ export function DiscoveryPage() {
                                   ? "No items matched these filters."
                                   : result.offset > 0
                                     ? "No items are on this page."
-                                    : "No catalog items were returned."}
+                                    : catalogReportedItemCount !== null
+                                      ? `The catalog says it has ${catalogReportedItemCount} items, but none are shown here.`
+                                      : "No catalog items are available to show."}
                         </p>
                         {!catalogIsEmpty && <p className="mt-2 text-sm text-slate-500">
                             {hasSubmittedFilters

@@ -3894,3 +3894,12 @@ The missing-page screen no longer shows the technical “404” label. It now
 explains that the address does not match a Mission Control screen and retains
 navigation and the return link. Responsive recovery checks pass at 320px,
 390px, and 1280px.
+
+## Discovery list and catalog-count mismatch — 2026-10-30
+
+When the catalog reports items but the first results page is empty, the screen
+now states both facts and offers a clear way to retry the list. Filtered empty
+searches and truly empty catalogs keep their existing messages. Focused
+component coverage passes (17 tests), and responsive browser checks pass at
+320px, 390px, and 1280px. Lint and production build pass. Catalog requests and
+data are unchanged.

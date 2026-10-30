@@ -59,4 +59,21 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Catalog total")).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
+
+    test(`catalog explains an empty list when items are reported at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/discovery", (route) => route.fulfill({ json: {
+            catalog_loaded: true, entry_count: 2, schema_version: 1,
+        } }));
+        await page.route("**/api/v1/discovery/items?**", (route) => route.fulfill({ json: {
+            entries: [], total: 0, limit: 25, offset: 0, has_more: false,
+        } }));
+
+        await page.goto("/discovery");
+
+        await expect(page.getByText("The catalog says it has 2 items, but none are shown here.")).toBeVisible();
+        await expect(page.getByText("Catalog total", { exact: true }).locator("xpath=..").getByText("2", { exact: true })).toBeVisible();
+        await expect(page.getByText("Use Search to check the catalog again.")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
 }
