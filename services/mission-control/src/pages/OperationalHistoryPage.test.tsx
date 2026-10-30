@@ -86,7 +86,7 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText("Passed", { exact: true })).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
         expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
-        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1?returnTo=%2Foperations%2Fhistory");
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
@@ -131,7 +131,7 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByRole("combobox", { name: "Resource type" })).toHaveValue("qemu");
         expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute(
             "href",
-            `/workflows/workflow-operational-1${search}`,
+            `/workflows/workflow-operational-1${search}&returnTo=%2Foperations%2Fhistory`,
         );
     });
 
@@ -185,7 +185,7 @@ describe("OperationalHistoryPage", () => {
         expect(await screen.findByText("Requested action: Restart Service · Latest maintenance status: Unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Healthy" })).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1?returnTo=%2Foperations%2Fhistory");
     });
 
     it("keeps matching lifecycle details when a diagnostic belongs to another workflow", async () => {
@@ -217,7 +217,7 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText("Atlas could not identify this maintenance status.")).toBeVisible();
         expect(screen.getByText("Do not repeat this request until its status is clear. Ask an operator to review it.")).toBeVisible();
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
-        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1?status=unavailable");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1?status=unavailable&returnTo=%2Foperations%2Fhistory");
     });
 
     it("filters only the bounded current page by controlled diagnostic status", async () => {
@@ -479,7 +479,7 @@ describe("maintenance history recovery", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("unreadable-target");
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
-        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/history-unreadable?status=unavailable");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/history-unreadable?status=unavailable&returnTo=%2Foperations%2Fhistory");
         expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });
 });

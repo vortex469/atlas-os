@@ -63,6 +63,12 @@ function operationalHistorySearch(currentSearch: string, state: OperationalHisto
     return serialized ? `?${serialized}` : "";
 }
 
+function operationalHistoryDetailSearch(search: string): string {
+    const params = new URLSearchParams(search);
+    params.set("returnTo", "/operations/history");
+    return `?${params.toString()}`;
+}
+
 interface HistoryItem {
     workflow: WorkflowSummary;
     lifecycle: WorkflowOperationalLifecycle | null;
@@ -253,7 +259,7 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
                     <p className="mt-1 text-sm text-slate-400">Requested action: {action}{!outcome && " · Latest maintenance status: Unavailable"}</p>
                     <p className="mt-1 text-sm text-slate-400">Requested (local time): {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
                 </div>
-                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search: returnSearch }} state={{ returnTo: "/operations/history" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Review maintenance request</Link>
+                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search: operationalHistoryDetailSearch(returnSearch) }} state={{ returnTo: "/operations/history" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Review maintenance request</Link>
             </div>
             {lifecycleUnavailable && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.</p>}
             <OperationalRecoverySummary diagnostic={diagnostic} error={diagnosticUnavailable ? "Could not load the latest status for this request." : null} supportEvidenceAvailable={diagnostic !== null} compact />

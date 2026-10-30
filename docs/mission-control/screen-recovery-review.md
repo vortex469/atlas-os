@@ -3695,3 +3695,14 @@ operator to load older results. Once all records are loaded, the existing
 “No workflows match” message remains. This makes the client-side filter scope
 clear without changing the workflow API. The WorkflowDashboardPage suite
 passes (21 tests), along with Mission Control lint and production build.
+
+## Maintenance history direct-link recovery — 2026-10-30
+
+Maintenance request links now keep the allowlisted Maintenance history return
+destination in the URL, together with the current filters and page. Opening a
+request in a new tab, reloading it, or encountering a workflow read error still
+offers a return to the correct list. The marker is removed when returning to
+history. The focused OperationalHistoryPage and WorkflowPage suites pass (149
+tests total), and Mission Control lint and production build pass. This changes
+navigation only; maintenance reads, approvals, and execution behavior are
+unchanged.

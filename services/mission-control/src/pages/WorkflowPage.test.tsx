@@ -858,6 +858,18 @@ describe("WorkflowPage", () => {
         );
     });
 
+    it("preserves maintenance history context when a direct workflow URL cannot load", async () => {
+        mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
+        const search = "?status=unavailable&completion=terminal&offset=10&returnTo=%2Foperations%2Fhistory";
+        renderPage(`/workflows/workflow-123${search}`);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Workflow unavailable");
+        expect(screen.getByRole("link", { name: "← Maintenance history" })).toHaveAttribute(
+            "href",
+            "/operations/history?status=unavailable&completion=terminal&offset=10",
+        );
+    });
+
     it("keeps workflow dashboard filters available when workflow details fail to load", async () => {
         mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
         const search = "?status=blocked&draftWorkflow=compose&page=2";

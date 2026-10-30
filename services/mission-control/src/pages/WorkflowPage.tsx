@@ -91,13 +91,13 @@ function workflowReturnDestination(workflow: WorkflowDetailResponse | null, stat
 }
 
 function workflowReturnSearch(destination: WorkflowReturnDestination, search: string): string {
-    if (destination.to === "/workflows") {
+    if (destination.to === "/workflows" || destination.to === "/operations/history") {
         const params = new URLSearchParams(search);
         params.delete("returnTo");
         const serialized = params.toString();
         return serialized ? `?${serialized}` : "";
     }
-    return destination.to === "/operations/history" ? search : "";
+    return "";
 }
 
 function WorkflowDetail({ workflowId }: { workflowId: string }) {
