@@ -223,7 +223,7 @@ export function DiscoveryPage() {
                         Retry search
                     </button>
                     <details className="mt-3">
-                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why the results couldn&apos;t load</summary>
                         <p className="mt-2 break-words text-sm text-slate-400">{catalogError}</p>
                     </details>
                 </div>
@@ -511,24 +511,24 @@ function DiscoveryStatus({
             </div>
             {error && (
                 <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-                    <p className="text-sm text-amber-100">Catalog status could not be checked. Catalog items remain available.</p>
+                    <p className="text-sm text-amber-100">Atlas couldn&apos;t check the catalog status.</p>
                     <button type="button" onClick={onRetry} disabled={isLoading} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
                         Retry status check
                     </button>
                     <details className="mt-3">
-                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Why the status check failed</summary>
                         <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
                     </details>
                 </div>
             )}
-            <details className="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+            {metadata && <details className="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                 <summary className="cursor-pointer text-sm font-medium text-slate-300">
-                    Technical details
+                    Catalog format information
                 </summary>
                 <p className="mt-3 text-sm text-slate-400">
-                    Catalog format version: {metadata ? `v${metadata.schema_version}` : "Not available"}
+                    Catalog format version: v{metadata.schema_version}
                 </p>
-            </details>
+            </details>}
         </>
     );
 }

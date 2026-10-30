@@ -154,7 +154,7 @@ describe("DiscoveryPage", () => {
         expect(within(itemCard as HTMLElement).getByText("Catalog item ID: home-assistant")).toBeVisible();
         const metadataDetails = screen.getByText("Catalog format version: v1").closest("details");
         expect(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format version: v1")).not.toBeVisible();
-        await user.click(within(metadataDetails as HTMLDetailsElement).getByText("Technical details"));
+        await user.click(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format information"));
         expect(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format version: v1")).toBeVisible();
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
@@ -407,11 +407,11 @@ describe("DiscoveryPage", () => {
         expect(alert).toHaveTextContent("Atlas couldn't load these results. Your search filters are still selected.");
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
-        const technicalDetails = within(alert).getByText("Technical details").closest("details");
-        expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).not.toBeVisible();
-        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog unavailable")).toBeVisible();
+        const loadErrorDetails = within(alert).getByText("Why the results couldn't load").closest("details");
+        expect(loadErrorDetails).not.toHaveAttribute("open");
+        expect(within(loadErrorDetails as HTMLDetailsElement).getByText("Catalog unavailable")).not.toBeVisible();
+        await user.click(within(loadErrorDetails as HTMLDetailsElement).getByText("Why the results couldn't load"));
+        expect(within(loadErrorDetails as HTMLDetailsElement).getByText("Catalog unavailable")).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Retry search" }));
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
@@ -431,8 +431,8 @@ describe("DiscoveryPage", () => {
         expect(screen.getByText("Results unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
         expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
-        const technicalDetails = within(alert).getByText("Technical details").closest("details");
-        expect(technicalDetails).not.toHaveAttribute("open");
+        const loadErrorDetails = within(alert).getByText("Why the results couldn't load").closest("details");
+        expect(loadErrorDetails).not.toHaveAttribute("open");
 
         await user.click(screen.getByRole("button", { name: "Retry search" }));
 
@@ -450,7 +450,7 @@ describe("DiscoveryPage", () => {
         renderPage();
 
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
-        expect(await screen.findByText("Catalog status could not be checked. Catalog items remain available.")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas couldn't check the catalog status.")).toBeInTheDocument();
         expect(screen.getByText("Catalog status unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Catalog total")).not.toBeInTheDocument();
         expect(screen.getByText("1 item listed")).toBeInTheDocument();
@@ -462,6 +462,29 @@ describe("DiscoveryPage", () => {
         expect(screen.getByText("Home Assistant")).toBeInTheDocument();
         expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(2);
         expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+    });
+
+    it("labels catalog load, status, and format details separately when both reads fail", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("Status endpoint unavailable"));
+        mockedListDiscoveryItems.mockRejectedValueOnce(new Error("Catalog endpoint unavailable"));
+
+        renderPage();
+
+        const catalogAlert = await screen.findByRole("alert");
+        expect(await screen.findByText("Atlas couldn't check the catalog status.")).toBeVisible();
+        expect(within(catalogAlert).getByText("Why the results couldn't load")).toBeInTheDocument();
+        expect(screen.getByText("Why the status check failed")).toBeInTheDocument();
+        expect(screen.queryByText("Catalog format information")).not.toBeInTheDocument();
+        expect(screen.queryByText("Catalog items remain available.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Technical details", { exact: true })).not.toBeInTheDocument();
+
+        await user.click(within(catalogAlert).getByText("Why the results couldn't load"));
+        expect(within(catalogAlert).getByText("Catalog endpoint unavailable")).toBeVisible();
+        const statusErrorDetails = screen.getByText("Why the status check failed").closest("details");
+        expect(statusErrorDetails).not.toHaveAttribute("open");
+        await user.click(screen.getByText("Why the status check failed"));
+        expect(within(statusErrorDetails as HTMLDetailsElement).getByText("Status endpoint unavailable")).toBeVisible();
     });
 
     it("clears previous results and retries the exact failed search", async () => {

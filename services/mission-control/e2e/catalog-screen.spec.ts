@@ -35,7 +35,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("More filters · active")).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Clear filters", exact: true })).toHaveCount(0);
 
-        await page.locator("details").filter({ hasText: "Catalog format version" }).getByText("Technical details", { exact: true }).click();
+        await page.locator("details").filter({ hasText: "Catalog format version" }).getByText("Catalog format information", { exact: true }).click();
         await expect(page.getByText("Catalog format version: v1")).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
