@@ -3617,4 +3617,6 @@ The shell status now says “Atlas Core API connected” and labels the sidebar
 status “Atlas Core API.” This makes clear that the badge reports whether the
 API responds; it does not summarize service health. The focused shell suite
 passes (34 tests), and lint and production build pass. The shell browser
-regression asserts the unavailable label. No health or API behavior changes.
+regression asserts the unavailable label; a responsive overview browser check
+shows the desktop API label alongside degraded Core health. No health or API
+behavior changes.
