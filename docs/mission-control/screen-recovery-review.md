@@ -3800,7 +3800,7 @@ attention. Unknown, blocked, degraded, and unavailable states all count as
 needing attention, while each provider row names its mapped health state.
 Critical provider errors use the existing plain-language connection guidance.
 No provider checks or health API behavior changed. The focused provider
-overview suite passes (7 tests); the full Mission Control suite passes (3,038
+overview suite passes (7 tests); the full Mission Control suite passes (3,039
 tests), with lint and production build passing.
 
 ## Installation handoff review clarity — 2026-10-30
@@ -3811,3 +3811,25 @@ are available under collapsed Technical details. Load and record review errors
 offer a retry; an uncertain save offers a record reload and does not repeat the
 save. The text makes clear that saving a record does not send it to Agent or
 start work. No dispatch or execution authority changed.
+
+## Delivery readiness check clarity — 2026-10-30
+
+Delivery activation preflights now appear as readiness checks with a plain
+status, check time, expiry, and next step. Linked record IDs, fingerprints,
+contract fields, and authority flags are under collapsed Technical details.
+Failed list and detail reads can be retried; an uncertain create prompts for a
+record reload without repeating the request. The visible copy distinguishes a
+readiness check from delivery approval or activation. No delivery or execution
+authority changed.
+
+## Delivery choice review clarity — 2026-10-30
+
+Operator delivery enablement now appears as a saved choice, with its plain
+status and expiry first. Linked record IDs, fingerprints, audit fields, and
+authority flags are under collapsed Technical details. The exact required
+operator confirmation remains visible at the confirmation step. Failed reads
+can be retried; an uncertain save offers a record reload without repeating the
+request. No delivery, installation, or execution behavior changed.
+
+The three focused component suites pass 13 tests together. The Mission Control
+suite passes 3,039 tests across 188 files; lint and production build pass.

@@ -13,8 +13,8 @@ describe("installation dispatch handoff authority isolation", () => {
     });
 
     it("has no delivery, execution, deployment, workflow, or rollback surface", () => {
-        expect(view).toContain("Prepared only; not sent to Agent; no work has started.");
-        expect(view).toContain("Home Assistant remains blocked and non-executable");
+        expect(view).toContain("Save a handoff record in Atlas for review. Atlas does not send it to Agent or start work.");
+        expect(view).toContain("Home Assistant cannot be installed or run from Atlas yet.");
         expect(view).not.toMatch(/<form|<Link|navigate\(|href=/);
         expect(executionRequestView).not.toMatch(/\/installation\/dispatch-handoffs/);
         for (const label of ["Install", "Run", "Execute", "Deploy", "Dispatch", "Deliver", "Send to Agent", "Start workflow", "Rollback"]) {

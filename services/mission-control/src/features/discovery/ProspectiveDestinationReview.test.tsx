@@ -256,8 +256,9 @@ describe("ProspectiveDestinationReview", () => {
         await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
         await user.click(screen.getByRole("button", { name: "Check this plan and VM" }));
         expect(await screen.findByText("Atlas has not confirmed that this VM can run the app. This check does not authorize an installation.")).toBeInTheDocument();
-        expect(screen.getByRole("status")).toHaveTextContent("Atlas cannot plan this installation yet");
-        expect(screen.getByRole("status")).not.toHaveTextContent("preconditions_satisfied_but_unsupported");
+        const result = screen.getByRole("region", { name: "Check result" });
+        expect(within(result).getByRole("status")).toHaveTextContent("Atlas cannot plan this installation yet");
+        expect(within(result).getByRole("status")).not.toHaveTextContent("preconditions_satisfied_but_unsupported");
         expect(document.body).not.toHaveTextContent(/\bready\b|\beligible\b|\bapproved\b|\bexecutable\b/i);
     });
 

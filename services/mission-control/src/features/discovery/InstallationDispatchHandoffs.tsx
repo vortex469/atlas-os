@@ -22,7 +22,7 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
     useEffect(() => {
         let current = true;
         listInstallationDispatchHandoffs()
-            .then((values) => { if (current) { setHandoffs(values); setListError(false); } })
+            .then((values) => { if (current) { setHandoffs(values); setListError(false); setSaveUncertain(false); } })
             .catch(() => { if (current) setListError(true); })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
@@ -58,8 +58,8 @@ export function InstallationDispatchHandoffs({ executionRequests, csrfToken }: {
         <p className="mt-1 text-sm text-slate-300">Save a handoff record in Atlas for review. Atlas does not send it to Agent or start work.</p>
         <p className="mt-1 text-sm text-slate-400">Home Assistant cannot be installed or run from Atlas yet.</p>
         {loading && <p role="status" className="mt-4 text-sm text-slate-400">Loading dispatch handoff records…</p>}
-        {!loading && listError && <div role="alert" className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"><p>Atlas couldn’t load saved handoff records.</p><button type="button" onClick={() => { setLoading(true); setListError(false); setListAttempt((attempt) => attempt + 1); }} className="mt-3 rounded border border-slate-500 px-3 py-1.5 font-semibold">Try again</button></div>}
-        {saveUncertain && <div role="alert" className="mt-4 rounded border border-amber-400/30 bg-amber-400/5 p-3 text-sm text-amber-100"><p>Atlas couldn’t confirm whether it saved this record. Reload the records to check; Atlas won’t retry the save automatically.</p><button type="button" onClick={() => { setSaveUncertain(false); setLoading(true); setListError(false); setListAttempt((attempt) => attempt + 1); }} className="mt-3 rounded border border-amber-400/50 px-3 py-1.5 font-semibold">Reload records</button></div>}
+        {!loading && listError && <div role="alert" className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"><p>{saveUncertain ? "Atlas couldn’t reload the records. The save is still uncertain. Try again to check; Atlas won’t repeat the save." : "Atlas couldn’t load saved handoff records."}</p><button type="button" onClick={() => { setLoading(true); setListError(false); setListAttempt((attempt) => attempt + 1); }} className="mt-3 rounded border border-slate-500 px-3 py-1.5 font-semibold">Try again</button></div>}
+        {saveUncertain && !listError && <div role="alert" className="mt-4 rounded border border-amber-400/30 bg-amber-400/5 p-3 text-sm text-amber-100"><p>Atlas couldn’t confirm whether it saved this record. Reload the records to check; Atlas won’t retry the save automatically.</p><button type="button" disabled={loading} onClick={() => { setLoading(true); setListAttempt((attempt) => attempt + 1); }} className="mt-3 rounded border border-amber-400/50 px-3 py-1.5 font-semibold disabled:opacity-50">Reload records</button></div>}
         {!loading && !listError && handoffs.length === 0 && <p role="status" className="mt-4 text-sm text-slate-400">No handoff records have been saved.</p>}
         {!loading && !listError && handoffs.length > 0 && <ul aria-label="Installation handoff records" className="mt-4 space-y-3">
             {handoffs.map((handoff) => <li key={handoff.dispatch_envelope_id} className="rounded-md border border-slate-700 p-3">
