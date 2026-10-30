@@ -4052,9 +4052,10 @@ Atlas Core and Agent error-message helpers now filter common credential and URL
 patterns and cap displayed text. Workflow setup and detail, proposal planning,
 action history, catalog item, maintenance status, and Compose analysis
 disclosures also filter backend-provided failure text at the render boundary.
+Provider action results and warnings filter the same sensitive patterns.
 Failure explanations stay collapsed until opened, while sensitive canary values
 remain withheld when opened. Focused unit tests cover both shared error helpers
 and affected screens. This changes only Mission Control presentation; it does
-not change API contracts, approval decisions, or execution behavior. Nine
-focused suites pass 270 tests, with Mission Control lint and production build
+not change API contracts, approval decisions, or execution behavior. Ten
+focused suites pass 285 tests, with Mission Control lint and production build
 passing.

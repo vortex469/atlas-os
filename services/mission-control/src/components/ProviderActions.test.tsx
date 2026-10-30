@@ -161,6 +161,27 @@ describe("ProviderActions", () => {
         ).toBeInTheDocument();
     });
 
+    it("filters sensitive text from provider action results", async () => {
+        const user = userEvent.setup();
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Bearer provider-action-canary-secret",
+            data: {},
+            warnings: ["https://private.example/provider-action-canary"],
+        });
+        renderActions();
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+
+        const result = await screen.findByRole("status");
+        expect(within(result).getAllByText("[Sensitive text withheld]")).toHaveLength(2);
+        expect(result).not.toHaveTextContent("provider-action-canary-secret");
+        expect(result).not.toHaveTextContent("private.example");
+    });
+
     it("keeps a confirmed action result separate from a failed provider refresh", async () => {
         const user = userEvent.setup();
         const refreshProvider = vi.fn()

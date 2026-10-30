@@ -594,7 +594,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     </p>
 
                     <p className="mt-1 text-sm text-slate-200">
-                        {result.message}
+                        {safeText(result.message) || "No result message was returned."}
                     </p>
 
                     {result.warnings.length > 0 && (
@@ -604,7 +604,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                                     <li
                                         key={`${warning}-${index}`}
                                     >
-                                        {warning}
+                                        {safeText(warning) || "No additional details were returned."}
                                     </li>
                                 ),
                             )}
