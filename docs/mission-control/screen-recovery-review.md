@@ -3802,3 +3802,12 @@ Critical provider errors use the existing plain-language connection guidance.
 No provider checks or health API behavior changed. The focused provider
 overview suite passes (7 tests); the full Mission Control suite passes (3,038
 tests), with lint and production build passing.
+
+## Installation handoff review clarity — 2026-10-30
+
+The handoff screen now puts saved and expired status, preparation time, and the
+next safe action first. IDs, fingerprints, contract fields, and authority flags
+are available under collapsed Technical details. Load and record review errors
+offer a retry; an uncertain save offers a record reload and does not repeat the
+save. The text makes clear that saving a record does not send it to Agent or
+start work. No dispatch or execution authority changed.
