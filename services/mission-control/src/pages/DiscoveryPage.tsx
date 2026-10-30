@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -63,24 +63,43 @@ const emptyFilters: FilterState = {
     capability: "",
 };
 
+const discoveryQueryKeys = [
+    "q",
+    "type",
+    "status",
+    "tag",
+    "capability",
+    "draft_q",
+    "draft_type",
+    "draft_status",
+    "draft_tag",
+    "draft_capability",
+    "offset",
+] as const;
+
 export function DiscoveryPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => parseDiscoveryViewState(location.search));
     const [metadata, setMetadata] = useState<DiscoveryMetadata | null>(null);
     const [metadataError, setMetadataError] = useState<string | null>(null);
     const [isMetadataLoading, setIsMetadataLoading] = useState(true);
-    const [filters, setFilters] = useState<FilterState>(emptyFilters);
-    const [submittedFilters, setSubmittedFilters] =
-        useState<FilterState>(emptyFilters);
+    const [filters, setFilters] = useState<FilterState>(initialViewState.filters);
+    const [submittedFilters, setSubmittedFilters] = useState<FilterState>(initialViewState.submittedFilters);
     const [result, setResult] = useState<DiscoveryResult>({
         entries: [],
         total: 0,
-        offset: 0,
+        offset: initialViewState.offset,
         hasMore: false,
     });
     const [isLoading, setIsLoading] = useState(true);
     const [catalogError, setCatalogError] = useState<string | null>(null);
     const requestGeneration = useRef(0);
     const metadataGeneration = useRef(0);
-    const lastRequestedQuery = useRef<DiscoveryRequest>({ filters: emptyFilters, offset: 0 });
+    const lastRequestedQuery = useRef<DiscoveryRequest>({
+        filters: { ...initialViewState.submittedFilters },
+        offset: initialViewState.offset,
+    });
 
     const loadMetadata = useCallback(async () => {
         const generation = ++metadataGeneration.current;
@@ -147,7 +166,7 @@ export function DiscoveryPage() {
         void Promise.resolve().then(() => {
             if (active) {
                 void loadMetadata();
-                void loadCatalog(emptyFilters, 0);
+                void loadCatalog(initialViewState.submittedFilters, initialViewState.offset);
             }
         });
         return () => {
@@ -155,7 +174,19 @@ export function DiscoveryPage() {
             requestGeneration.current += 1;
             metadataGeneration.current += 1;
         };
-    }, [loadCatalog, loadMetadata]);
+    }, [initialViewState, loadCatalog, loadMetadata]);
+
+    useEffect(() => {
+        const search = serializeDiscoveryViewState(
+            location.search,
+            filters,
+            submittedFilters,
+            result.offset,
+        );
+        if (search !== location.search) {
+            navigate({ pathname: location.pathname, search }, { replace: true });
+        }
+    }, [filters, location.pathname, location.search, navigate, result.offset, submittedFilters]);
 
     const hasSubmittedFilters = Object.values(submittedFilters).some((value) => value.trim().length > 0);
     const hasFiltersToClear = hasSubmittedFilters || Object.values(filters).some((value) => value.trim().length > 0);
@@ -389,7 +420,7 @@ export function DiscoveryPage() {
                 ) : (
                     <div className="grid gap-4 lg:grid-cols-2">
                         {result.entries.map((entry) => (
-                            <DiscoveryItemCard key={entry.item.id} entry={entry} />
+                            <DiscoveryItemCard key={entry.item.id} entry={entry} returnSearch={location.search} />
                         ))}
                     </div>
                 )}
@@ -454,6 +485,81 @@ function toDiscoveryQuery(filters: FilterState, offset: number): DiscoveryListQu
         tag: filters.tag.trim() || undefined,
         capability: filters.capability.trim() || undefined,
     };
+}
+
+function parseDiscoveryViewState(search: string): {
+    filters: FilterState;
+    submittedFilters: FilterState;
+    offset: number;
+} {
+    const params = new URLSearchParams(search);
+    const submittedFilters = normalizeFilters({
+        query: params.get("q") ?? "",
+        type: parseItemType(params.get("type")),
+        status: parseItemStatus(params.get("status")),
+        tag: params.get("tag") ?? "",
+        capability: params.get("capability") ?? "",
+    });
+    const filters: FilterState = {
+        query: params.get("draft_q") ?? submittedFilters.query,
+        type: params.has("draft_type") ? parseItemType(params.get("draft_type")) : submittedFilters.type,
+        status: params.has("draft_status") ? parseItemStatus(params.get("draft_status")) : submittedFilters.status,
+        tag: params.get("draft_tag") ?? submittedFilters.tag,
+        capability: params.get("draft_capability") ?? submittedFilters.capability,
+    };
+    const parsedOffset = Number(params.get("offset"));
+    const offset = Number.isSafeInteger(parsedOffset) && parsedOffset >= 0 && parsedOffset % PAGE_SIZE === 0
+        ? parsedOffset
+        : 0;
+
+    return {
+        filters,
+        submittedFilters,
+        offset,
+    };
+}
+
+function parseItemType(value: string | null): FilterState["type"] {
+    return itemTypeOptions.some((option) => option.value === value)
+        ? value as DiscoveryItemType
+        : "";
+}
+
+function parseItemStatus(value: string | null): FilterState["status"] {
+    return statusOptions.some((option) => option.value === value)
+        ? value as DiscoveryItemStatus
+        : "";
+}
+
+function serializeDiscoveryViewState(
+    currentSearch: string,
+    filters: FilterState,
+    submittedFilters: FilterState,
+    offset: number,
+): string {
+    const params = new URLSearchParams(currentSearch);
+    for (const key of discoveryQueryKeys) params.delete(key);
+
+    const applied = normalizeFilters(submittedFilters);
+    setQueryValue(params, "q", applied.query);
+    setQueryValue(params, "type", applied.type);
+    setQueryValue(params, "status", applied.status);
+    setQueryValue(params, "tag", applied.tag);
+    setQueryValue(params, "capability", applied.capability);
+
+    if (filters.query !== applied.query) params.set("draft_q", filters.query);
+    if (filters.type !== applied.type) params.set("draft_type", filters.type);
+    if (filters.status !== applied.status) params.set("draft_status", filters.status);
+    if (filters.tag !== applied.tag) params.set("draft_tag", filters.tag);
+    if (filters.capability !== applied.capability) params.set("draft_capability", filters.capability);
+    if (offset > 0) params.set("offset", String(offset));
+
+    const nextSearch = params.toString();
+    return nextSearch ? `?${nextSearch}` : "";
+}
+
+function setQueryValue(params: URLSearchParams, key: string, value: string) {
+    if (value) params.set(key, value);
 }
 
 function normalizeFilters(filters: FilterState): FilterState {
@@ -597,7 +703,7 @@ function TextFilter({
     );
 }
 
-function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
+function DiscoveryItemCard({ entry, returnSearch }: { entry: DiscoveryCatalogEntry; returnSearch: string }) {
     const item = entry.item;
 
     return (
@@ -605,7 +711,10 @@ function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <Link
-                        to={`/discovery/items/${encodeURIComponent(item.id)}`}
+                        to={{
+                            pathname: `/discovery/items/${encodeURIComponent(item.id)}`,
+                            search: returnSearch,
+                        }}
                         className="text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                     >
                         {item.name}

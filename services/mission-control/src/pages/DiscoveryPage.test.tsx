@@ -118,9 +118,9 @@ function deferred<T>() {
     return { promise, resolve };
 }
 
-function renderPage() {
+function renderPage(initialEntry = "/discovery") {
     return render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[initialEntry]}>
             <DiscoveryPage />
         </MemoryRouter>,
     );
@@ -160,6 +160,25 @@ describe("DiscoveryPage", () => {
         expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
             "href",
             "/discovery/items/home-assistant",
+        );
+    });
+
+    it("restores submitted and draft filters from the URL and keeps them on item links", async () => {
+        const user = userEvent.setup();
+        renderPage("/discovery?q=frigate&type=application&draft_q=frigates&draft_tag=local%20only");
+
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.getByRole("searchbox", { name: "Keyword search" })).toHaveValue("frigates");
+        expect(screen.getByRole("combobox", { name: "Item type" })).toHaveValue("application");
+        await user.click(screen.getByText("More filters"));
+        expect(screen.getByRole("textbox", { name: "Tag" })).toHaveValue("local only");
+        expect(mockedSearchDiscoveryItems).toHaveBeenCalledWith(expect.objectContaining({
+            q: "frigate",
+            type: "application",
+        }));
+        expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
+            "href",
+            "/discovery/items/home-assistant?q=frigate&type=application&draft_q=frigates&draft_tag=local+only",
         );
     });
 

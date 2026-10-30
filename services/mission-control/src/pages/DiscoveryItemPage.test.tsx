@@ -877,12 +877,16 @@ describe("DiscoveryItemPage", () => {
     it("renders not found state", async () => {
         mockedGetDiscoveryItem.mockRejectedValue(httpError(404, "Discovery item not found"));
 
-        renderPage();
+        renderPage("/discovery/items/frigate?q=frigate&type=application&draft_q=frigates");
 
         expect(
             await screen.findByRole("heading", { name: "Catalog item not found" }),
         ).toBeInTheDocument();
         expect(screen.getByText("This catalog item is no longer available. Return to the catalog and choose a current item.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "← Catalog" })).toHaveAttribute(
+            "href",
+            "/discovery?q=frigate&type=application&draft_q=frigates",
+        );
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).not.toBeVisible();
         await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));

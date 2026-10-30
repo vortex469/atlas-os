@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
 import type { ReactNode } from "react";
 
@@ -46,6 +46,8 @@ export function DiscoveryItemPage() {
 }
 
 function DiscoveryItem({ itemId }: { itemId: string }) {
+    const location = useLocation();
+    const catalogReturnTo = { pathname: "/discovery", search: location.search };
     const operatorSession = useOptionalOperatorSession();
     const [state, setState] = useState<DetailState>({
         entry: null,
@@ -385,7 +387,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         return (
             <main className="mx-auto max-w-5xl p-4 sm:p-8">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                     ← Catalog
@@ -401,7 +403,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         return (
             <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                     ← Catalog
@@ -426,7 +428,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         return (
             <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                     ← Catalog
@@ -455,7 +457,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
         <main className="mx-auto max-w-5xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                     ← Catalog
