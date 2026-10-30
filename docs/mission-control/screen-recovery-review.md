@@ -3831,5 +3831,7 @@ operator confirmation remains visible at the confirmation step. Failed reads
 can be retried; an uncertain save offers a record reload without repeating the
 request. No delivery, installation, or execution behavior changed.
 
-The three focused component suites pass 13 tests together. The Mission Control
-suite passes 3,039 tests across 188 files; lint and production build pass.
+The three focused component suites pass 13 tests together. The full Mission
+Control suite passes 3,039 tests across 188 files. Mission Control lint and
+production build pass. Local browser verification passes 91 screen-recovery and
+readiness cases, plus 2 built-readiness cases.
