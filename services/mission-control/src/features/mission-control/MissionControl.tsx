@@ -66,8 +66,30 @@ function ObservedStatus({ value, reason, stale, unavailableLabel }: {
     return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} unavailableLabel={unavailableLabel} />;
 }
 
-function ServiceCheckLocation({ service }: { service: unknown }) {
+function CopyCommandButton({ command }: { command: string }) {
     const [copyMessage, setCopyMessage] = useState<string | null>(null);
+    return <span className="inline-flex flex-wrap items-center gap-2">
+        <button
+            type="button"
+            onClick={() => {
+                const clipboard = navigator.clipboard;
+                if (!clipboard?.writeText) {
+                    setCopyMessage("Copy unavailable. Select and copy the command above.");
+                    return;
+                }
+                void clipboard.writeText(command)
+                    .then(() => setCopyMessage("Command copied."))
+                    .catch(() => setCopyMessage("Copy unavailable. Select and copy the command above."));
+            }}
+            className="shrink-0 rounded border border-mc-border-subtle px-2 py-1 text-xs font-medium text-mc-text-primary hover:bg-mc-surface-muted"
+        >
+            Copy command
+        </button>
+        {copyMessage && <span role="status" className="text-xs">{copyMessage}</span>}
+    </span>;
+}
+
+function ServiceCheckLocation({ service }: { service: unknown }) {
     const evidence = record(service);
     const url = record(evidence.details).url;
     const address = formatHealthCheckAddress(url);
@@ -92,24 +114,8 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                         <div role="group" aria-label="Read-only Core connection check command" className="mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2">
                             <div className="flex flex-wrap items-start gap-2">
                                 <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{command}</pre>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const clipboard = navigator.clipboard;
-                                        if (!clipboard?.writeText) {
-                                            setCopyMessage("Copy unavailable. Select and copy the command above.");
-                                            return;
-                                        }
-                                        void clipboard.writeText(command)
-                                            .then(() => setCopyMessage("Command copied."))
-                                            .catch(() => setCopyMessage("Copy unavailable. Select and copy the command above."));
-                                    }}
-                                    className="shrink-0 rounded border border-mc-border-subtle px-2 py-1 text-xs font-medium text-mc-text-primary hover:bg-mc-surface-muted"
-                                >
-                                    Copy command
-                                </button>
+                                <CopyCommandButton command={command} />
                             </div>
-                            {copyMessage && <p role="status" className="mt-2 text-xs">{copyMessage}</p>}
                         </div>
                         <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
                         <p className="mt-2 text-sm"><strong>File not found?</strong> Compose did not run the check. Run it from Atlas&apos;s Compose folder or pass the full file path with <code>--file</code>.</p>
@@ -125,7 +131,10 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                     <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">If the app runs in Docker</summary>
                     <ol aria-label="Docker and Compose checks" className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                         <li>
-                            On the service computer, run <code>{serviceContainerCheckCommand}</code> to show container names, running status, network, and published ports.
+                            <div className="space-y-1">
+                                <p>On the service computer, run <code>{serviceContainerCheckCommand}</code> to show container names, running status, network, and published ports.</p>
+                                <CopyCommandButton command={serviceContainerCheckCommand} />
+                            </div>
                         </li>
                         <li>
                             Find the service container. <code>Up</code> means the container is running, not that its web app is responding. If <code>Networks</code> says <code>host</code>, a blank <code>PORTS</code> field is expected. Otherwise, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.

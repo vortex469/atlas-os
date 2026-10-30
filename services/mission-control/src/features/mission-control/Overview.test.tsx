@@ -307,6 +307,27 @@ describe("MC overview evidence", () => {
         expect(await within(command).findByRole("status")).toHaveTextContent("Copy unavailable. Select and copy the command above.");
     });
 
+    it("copies the detailed Docker status command for the service computer", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        show({ health: { data: { services: { iFileshare: {
+            status: "healthy",
+            details: { url: "http://10.10.60.30:8080/" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        fireEvent.click(checks.getByText("Check the service computer"));
+        fireEvent.click(checks.getByText("If the app runs in Docker"));
+        const firstStep = within(checks.getByRole("list", { name: "Docker and Compose checks" })).getAllByRole("listitem")[0];
+
+        fireEvent.click(within(firstStep).getByRole("button", { name: "Copy command" }));
+
+        expect(await within(firstStep).findByRole("status")).toHaveTextContent("Command copied.");
+        expect(writeText).toHaveBeenCalledWith("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+    });
+
     it("keeps the Core connection wording in stale service-check evidence", () => {
         show({ health: { stale: true, data: { services: { iFileshare: {
             status: "offline",

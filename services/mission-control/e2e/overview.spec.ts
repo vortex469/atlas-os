@@ -383,6 +383,11 @@ for (const width of [320, 1280]) {
         const steps = checks.getByRole('list', { name: 'Docker and Compose checks' });
         await expect(steps.getByRole('listitem')).toHaveCount(4);
         await expect(steps).toHaveCSS('font-size', '14px');
+        const serviceComputerCommand = steps.getByRole('listitem').first();
+        await serviceComputerCommand.getByRole('button', { name: 'Copy command' }).click();
+        await expect(serviceComputerCommand.getByRole('status')).toHaveText('Command copied.');
+        const copiedServiceCommand = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copiedServiceCommand).toContain("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await expect(steps).not.toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
         await expect(steps).toContainText("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await expect(steps).toContainText('to show container names, running status, network, and published ports');

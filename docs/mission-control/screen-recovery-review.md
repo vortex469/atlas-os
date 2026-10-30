@@ -3881,8 +3881,9 @@ The service check now states the machine and folder before the command: run it
 on the computer running Atlas, from the folder containing
 `compose.production.yaml`. It says plainly that running the command on the
 service computer checks a different connection. The read-only command and
-network probe are unchanged. Operators can copy the displayed command; a status
-message confirms success or gives a manual-copy fallback. Clipboard and
-browser tests confirm the generated command omits URL credentials and query
-values. The focused Overview suite passes (78 tests), responsive browser checks
-pass at 320px and 1280px, and Mission Control lint and production build pass.
+network probe are unchanged. Operators can copy both the Atlas-side connection
+check and the service-side Docker status command. A status message confirms
+success or gives a manual-copy fallback. Clipboard and browser tests confirm
+the connection check omits URL credentials and query values. The focused
+Overview suite passes (79 tests), responsive browser checks pass at 320px and
+1280px, and Mission Control lint and production build pass.
