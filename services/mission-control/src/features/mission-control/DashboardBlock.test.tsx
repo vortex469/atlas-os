@@ -75,7 +75,7 @@ describe("integrated attention and activity", () => {
         expect(activity().getByText("Completion time unavailable.")).toBeVisible();
         expect(activity().getByText("Some provider action records could not be read.")).toBeVisible();
         expect(screen.queryByText(/private-value|token=private|user:pass/)).not.toBeInTheDocument();
-        expect(activity().getByRole("link", { name: "Inspect action →" })).toHaveAttribute("href", "/operations/actions/audit%2F1");
+        expect(activity().getByRole("link", { name: "View action details →" })).toHaveAttribute("href", "/operations/actions/audit%2F1");
     });
     it("distinguishes a missing completion time from an invalid timestamp", () => {
         render(dashboard({ activity: { data: { items: [

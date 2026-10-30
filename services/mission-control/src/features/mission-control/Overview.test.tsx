@@ -485,7 +485,7 @@ describe('operational activity and runtime evidence', () => {
     it('shows failed outcomes and their existing audit route without treating success as health', () => {
         show({ activity: { data: { items: [{ id: 'audit/1', action_label: 'Inspect resource', status: 'failed', message: 'Provider unavailable', completed_at: 'invalid' }] } }, ai: { data: { models: { running: [{ name: 'model-a' }] }, errors: {} } } });
         expect(screen.getByText('Failed · Inspect resource')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Inspect action →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
+        expect(screen.getByRole('link', { name: 'View action details →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
         expect(screen.getByText('Completion time unavailable.')).toBeInTheDocument();
         expect(screen.getByText('Running models: model-a')).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();

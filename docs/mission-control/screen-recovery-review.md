@@ -3574,3 +3574,10 @@ are omitted from the page. The focused ProviderOverview suite covers credential
 and token canaries, IPv6 and ports, and unsupported URL forms. Lint and
 production build pass. The stored provider URL and connection behavior are
 unchanged.
+
+## Dashboard action details wording — 2026-10-30
+
+The recent-action card now uses the same “View action details” label as Action
+History, so operators can tell that the link opens the recorded action rather
+than inspecting or retrying it. The link remains a read-only navigation to the
+existing action record. No provider action behavior changes.

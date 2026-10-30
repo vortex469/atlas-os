@@ -100,7 +100,7 @@ for (const width of [320, 390, 1280]) {
         await attention.getByRole("link", { name: "Update Compose Stack" }).click();
         await expect(page).toHaveURL(/\/workflows\/workflow-browser-baseline$/);
         await page.goBack();
-        await activity.getByRole("link", { name: "Inspect action →" }).click();
+        await activity.getByRole("link", { name: "View action details →" }).click();
         await expect(page).toHaveURL(/\/operations\/actions\/audit%2F1$/);
         await page.goBack();
         await activity.getByRole("link", { name: "Open action history →" }).click();

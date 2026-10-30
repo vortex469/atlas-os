@@ -42,7 +42,7 @@ export function RecentActivity({ evidence, loading = false }: { evidence?: Evide
                 <p className="mt-1 text-xs text-mc-text-muted">{safeText(event.provider_name) || "Provider unknown."}</p>
                 {message && <p className="mt-2 text-sm">{message}</p>}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <Link to={detailPath("/operations/actions", event.id)!}>Inspect action →</Link>
+                    <Link to={detailPath("/operations/actions", event.id)!}>View action details →</Link>
                     {date ? <time dateTime={date.toISOString()} title={`UTC ${date.toISOString()}`} className="text-mc-text-muted">Completed (local time) {date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : <span className="text-mc-text-muted">{unavailableTimeLabel}</span>}
                 </div>
             </li>;
