@@ -59,13 +59,13 @@ test('overview separates initial loading from unavailable data across dashboard 
     await expect(agent.getByText('Atlas Agent', { exact: true })).toBeVisible();
     await expect(agent.getByText('Version', { exact: true })).toBeVisible();
     await expect(agent.getByText('browser-fixture', { exact: true })).toBeVisible();
-    await expect(providers.getByText('Saved providers. Their status below reflects Atlas Core’s latest check.')).toBeVisible();
+    await expect(providers.getByText('Atlas Core reports 1 provider. No providers need attention.')).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'Atlas Core health' }).getByText('Healthy', { exact: true })).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'System findings' }).getByText('Healthy', { exact: true })).toBeVisible();
     await expect(healthReports.getByRole('article', { name: 'Policy settings check' }).getByText('Last known report (out of date): Healthy.')).toBeVisible();
 });
 
-test('provider preview prioritizes problems and uses a singular extra-provider label', async ({ page, rejectedMutationRequests }) => {
+test('provider preview summarizes issues and keeps status details collapsed until requested', async ({ page, rejectedMutationRequests }) => {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.route('**/api/v1/providers', route => route.fulfill({ json: [
         { id: 'degraded', name: 'Degraded', health: { status: 'degraded' } },
@@ -77,14 +77,15 @@ test('provider preview prioritizes problems and uses a singular extra-provider l
     await page.goto('/');
 
     const providers = page.getByRole('region', { name: 'Providers', exact: true });
+    await expect(providers.getByText('Atlas Core reports 5 providers. 3 need attention. 1 status is unknown.')).toBeVisible();
+    await expect(providers.getByRole('article', { name: 'Blocked' })).toHaveCount(0);
+    await expect(providers.getByText('Show provider status (5)')).toBeVisible();
+    await providers.getByText('Show provider status (5)').click();
     await expect(providers.getByRole('article', { name: 'Blocked' })).toBeVisible();
-    await expect(providers.getByText('Saved providers. Their status below reflects Atlas Core’s latest check.')).toBeVisible();
     await expect(providers.getByRole('article', { name: 'Offline' }).locator('[data-health-state="Unavailable"]')).toBeVisible();
     const visibleNames = await providers.getByRole('article').evaluateAll(items =>
         items.map(item => item.getAttribute('aria-label')));
-    expect(visibleNames).toEqual(['Blocked', 'Offline', 'Degraded', 'Unknown']);
-    const additional = providers.getByText('1 more provider', { exact: true });
-    await additional.click();
+    expect(visibleNames).toEqual(['Blocked', 'Offline', 'Degraded', 'Unknown', 'Healthy']);
     await expect(providers.getByRole('article', { name: 'Healthy' })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     expect(rejectedMutationRequests).toEqual([]);
@@ -137,6 +138,8 @@ for (const width of [320, 768, 1440]) {
         await page.getByRole('link', { name: 'Review workflows →' }).click();
         await expect(page).toHaveURL(/\/workflows$/);
         await page.goBack();
+        const providers = page.getByRole('region', { name: 'Providers' });
+        await providers.getByText('Show provider status (1)').click();
         await page.getByRole('link', { name: 'View Proxmox →' }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
         await page.goBack();
@@ -521,7 +524,7 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(runtime.locator('summary', { hasText: 'Technical details' })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
     const providers = page.getByRole('region', { name: 'Providers' });
-    await expect(providers.getByText('Saved providers. Their status below reflects Atlas Core’s latest check.')).toBeVisible();
+    await expect(providers.getByText('Atlas Core reports 1 provider. No providers need attention.')).toBeVisible();
     await expect(providers.getByText(/does not allow provider actions/)).toBeHidden();
     await expect(providers.getByText(/which model an Agent uses/)).toHaveCount(0);
     const providerToggle = providers.locator('summary', { hasText: 'About provider status' });

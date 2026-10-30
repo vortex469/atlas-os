@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { agentDisplayName, providerObservations, publicLabel } from "./agentProviderEvidence";
-import { record, safeText } from "./overviewEvidence";
+import { record, safeText, status } from "./overviewEvidence";
 import type { Evidence } from "./useOverviewEvidence";
 
 export function AgentOverviewContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
@@ -30,8 +30,8 @@ export function AgentOverviewContent({ evidence, loading = false }: { evidence?:
 
 export function ProviderOverviewContent({ evidence, loading = false }: { evidence?: Evidence; loading?: boolean }) {
     const providers = providerObservations(evidence?.data);
-    const additionalProviders = providers ? Math.max(0, providers.length - 4) : 0;
-    const additionalProviderNoun = additionalProviders === 1 ? "provider" : "providers";
+    const providersNeedingAttention = providers?.filter(provider => ["degraded", "unavailable", "blocked"].includes(status(provider.status))).length ?? 0;
+    const providersWithUnknownStatus = providers?.filter(provider => status(provider.status) === "unknown").length ?? 0;
     const hasData = evidence?.data !== undefined;
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && evidence.data !== undefined));
     const unavailableMessage = !hasData
@@ -47,14 +47,17 @@ export function ProviderOverviewContent({ evidence, loading = false }: { evidenc
         {provider.path && <Link to={provider.path}>View {provider.name} →</Link>}
     </article>;
     return <>
-        {providers && providers.length > 0 && <p>{stale ? "Showing providers from the last Atlas Core report; their current status may have changed." : "Saved providers. Their status below reflects Atlas Core’s latest check."}</p>}
+        {providers && providers.length > 0 && <>
+            <p>{stale
+                ? `Last report included ${providers.length} ${providers.length === 1 ? "provider" : "providers"}; current status may have changed.`
+                : `Atlas Core reports ${providers.length} ${providers.length === 1 ? "provider" : "providers"}. ${providersNeedingAttention === 0 ? "No providers need attention." : `${providersNeedingAttention} need attention.`}${providersWithUnknownStatus > 0 ? ` ${providersWithUnknownStatus} ${providersWithUnknownStatus === 1 ? "status is" : "statuses are"} unknown.` : ""}`}</p>
+            <details>
+                <summary className="mc-focusable cursor-pointer text-mc-primary">Show provider status ({providers.length})</summary>
+                <div className="mt-2 space-y-3">{providers.map(renderProvider)}</div>
+            </details>
+        </>}
         {providers === null && <p>{unavailableMessage}</p>}
         {providers?.length === 0 && <p>{stale ? "No providers were in the last Atlas Core report; the current list is unknown." : "No providers configured."}</p>}
-        {providers?.slice(0, 4).map(renderProvider)}
-        {providers && additionalProviders > 0 && <details>
-            <summary>{additionalProviders} more {additionalProviderNoun}</summary>
-            {providers.slice(4).map(renderProvider)}
-        </details>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">About provider status</summary>
             <p className="mt-2">A healthy status describes Atlas Core’s latest check. The connection may change later, and this status does not allow provider actions.</p>

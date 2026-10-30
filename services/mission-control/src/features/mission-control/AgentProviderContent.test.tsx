@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,8 @@ function show(evidence: OverviewEvidence, loading = false) {
 const registry = () => within(screen.getByRole("region", { name: "Providers" }));
 
 describe("integrated agent/provider evidence", () => {
-    it("puts the most urgent providers in the preview and labels one additional provider correctly", () => {
+    it("summarizes provider health and keeps the full status list collapsed", async () => {
+        const user = userEvent.setup();
         show({ providers: { data: [
             { id: "degraded", name: "Degraded", health: { status: "degraded" } },
             { id: "healthy", name: "Healthy", health: { status: "healthy" } },
@@ -20,15 +21,12 @@ describe("integrated agent/provider evidence", () => {
             { id: "blocked", name: "Blocked", health: { status: "blocked" } },
             { id: "unknown", name: "Unknown", health: { status: "future_state" } },
         ] } });
-        const rows = registry().getAllByRole("article")
-            .filter(row => row.closest("details") === null);
-
-        expect(rows.map(row => row.getAttribute("aria-label"))).toEqual([
-            "Blocked", "Offline", "Degraded", "Unknown",
+        expect(registry().getByText("Atlas Core reports 5 providers. 3 need attention. 1 status is unknown.")).toBeVisible();
+        expect(registry().getByRole("article", { name: "Blocked" })).not.toBeVisible();
+        await user.click(registry().getByText("Show provider status (5)"));
+        expect(registry().getAllByRole("article").map(row => row.getAttribute("aria-label"))).toEqual([
+            "Blocked", "Offline", "Degraded", "Unknown", "Healthy",
         ]);
-        const additional = registry().getByText("1 more provider");
-        fireEvent.click(additional);
-        expect(registry().getByRole("article", { name: "Healthy" })).toBeVisible();
     });
 
     it("distinguishes first-load, unavailable, and missing states", () => {
@@ -64,7 +62,8 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.queryByRole("link", { name: "View agent workflows" })).not.toBeInTheDocument();
         expect(agent.queryByRole("link", { name: "Open deployment analysis →" })).not.toBeInTheDocument();
         expect(within(screen.getByRole("region", { name: "Work activity" })).getByRole("link", { name: "Review workflows →" })).toHaveAttribute("href", "/workflows");
-        expect(registry().getByText("Saved providers. Their status below reflects Atlas Core’s latest check.")).toBeInTheDocument();
+        expect(registry().getByText("Atlas Core reports 5 providers. 3 need attention. 1 status is unknown.")).toBeInTheDocument();
+        await user.click(registry().getByText("Show provider status (5)"));
         expect(registry().getByText("Healthy")).toBeInTheDocument();
         expect(registry().getByText("Reported status: failed")).toBeInTheDocument();
         expect(registry().getByText("Unavailable")).toBeInTheDocument();
@@ -107,11 +106,13 @@ describe("integrated agent/provider evidence", () => {
         expect(agent.queryByText(/workflow availability/i)).not.toBeInTheDocument();
         expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
-    it("retains stale observations without presenting cached success as current", () => {
+    it("retains stale observations without presenting cached success as current", async () => {
+        const user = userEvent.setup();
         const view = show({ providers: { data: [provider("alpha", "healthy")], stale: true, unavailable: true }, agent: { unavailable: true } });
-        expect(registry().queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(registry().getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
-        expect(registry().getByText("Showing providers from the last Atlas Core report; their current status may have changed.")).toBeInTheDocument();
+        expect(registry().getByRole("article", { name: "alpha" })).not.toBeVisible();
+        expect(registry().getByText("Last report included 1 provider; current status may have changed.")).toBeInTheDocument();
+        await user.click(registry().getByText("Show provider status (1)"));
+        expect(registry().getByText("Last known report (out of date): Healthy.")).toBeVisible();
         view.rerender(<MemoryRouter><Overview evidence={{ providers: { data: [], stale: true, unavailable: true } }} /></MemoryRouter>);
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
         expect(registry().getByText("No providers were in the last Atlas Core report; the current list is unknown.")).toBeInTheDocument();
@@ -122,9 +123,12 @@ describe("integrated agent/provider evidence", () => {
         expect(registry().getByText(expected)).toBeInTheDocument();
         expect(registry().queryByText("No providers configured.")).not.toBeInTheDocument();
     });
-    it("rejects malformed and duplicate identities and unsafe links even in expanded rows", () => {
+    it("rejects malformed and duplicate identities and unsafe links in the collapsed list", async () => {
+        const user = userEvent.setup();
         show({ providers: { data: [null, {}, provider("duplicate", "healthy"), provider("duplicate", "healthy"), ...["..", "../escape", "https://host", "a/b", "%2e%2e", "\ud800", "token-private"].map(id => provider(id, "healthy")), { ...provider("bad-name", "healthy"), name: { secret: "private-canary" } }, provider("valid", {})] } });
-        expect(registry().queryByText("Healthy")).not.toBeInTheDocument();
+        registry().getAllByRole("article", { name: "Provider information unavailable" }).forEach(row => expect(row).not.toBeVisible());
+        await user.click(registry().getByText("Show provider status (13)"));
+        expect(within(registry().getByRole("article", { name: "valid" })).getByText("Status unknown")).toBeVisible();
         expect(registry().getAllByRole("link", { hidden: true })).toHaveLength(2);
         expect(registry().getByRole("link", { name: "View valid →", hidden: true })).toHaveAttribute("href", "/providers/valid");
     });

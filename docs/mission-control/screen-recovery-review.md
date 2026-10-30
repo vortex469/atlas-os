@@ -3286,6 +3286,17 @@ behind an expandable list. Component and overview-browser tests cover the live
 preview, status labels, stale-report wording, and mobile overflow. No API or
 authority behavior changes.
 
+## Compact provider summary — 2026-10-30
+
+The Providers card now opens with Atlas Core's provider count and how many need
+attention; unknown statuses are counted separately. The full status list starts
+collapsed, since the dashboard already surfaces degraded, unavailable, and
+blocked providers in “Needs attention.” Operators can expand “Show provider
+status” to inspect every provider. When Core returns a cached report, the
+summary says its status may have changed and avoids counting old statuses as
+current. Component and mobile browser checks cover the summary, disclosure,
+stale reports, and provider ordering. No API or authority behavior changes.
+
 ## Service reachability check command — 2026-10-29
 
 When Atlas Core cannot reach a service, the dashboard now shows the exact
