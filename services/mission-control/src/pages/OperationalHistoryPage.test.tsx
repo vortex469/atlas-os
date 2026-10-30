@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -20,6 +20,11 @@ vi.mock("../api/atlas-agent", () => ({
 const mockedLifecycle = vi.mocked(getWorkflowOperationalLifecycle);
 const mockedDiagnostic = vi.mocked(getWorkflowRecoveryDiagnostic);
 const mockedList = vi.mocked(listWorkflows);
+
+function NavigationStateProbe() {
+    const location = useLocation();
+    return <output data-testid="navigation-state">{JSON.stringify(location.state)}</output>;
+}
 
 function historyWorkflow(executionIntent: string) {
     return {
@@ -59,7 +64,7 @@ describe("OperationalHistoryPage", () => {
         });
     });
 
-    it("loads bounded operational workflows and links to lifecycle detail", async () => {
+    it("loads maintenance history and links to a request review", async () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
@@ -81,8 +86,22 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText("Passed", { exact: true })).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 0 });
         expect(mockedDiagnostic).toHaveBeenCalledTimes(1);
-        expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
+    });
+
+    it("marks maintenance history as the return destination for request review", async () => {
+        render(
+            <MemoryRouter initialEntries={["/operations/history"]}>
+                <Routes>
+                    <Route path="/operations/history" element={<OperationalHistoryPage />} />
+                    <Route path="/workflows/:workflowId" element={<NavigationStateProbe />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        fireEvent.click(await screen.findByRole("link", { name: "Review maintenance request" }));
+        expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"returnTo":"/operations/history"}');
     });
 
     it("distinguishes a malformed request time from a time not reported", async () => {
@@ -135,7 +154,7 @@ describe("OperationalHistoryPage", () => {
         expect(await screen.findByText("Requested action: Restart Service · Latest maintenance status: Unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Healthy" })).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
     });
 
     it("keeps matching lifecycle details when a diagnostic belongs to another workflow", async () => {
@@ -149,7 +168,7 @@ describe("OperationalHistoryPage", () => {
     it("keeps a matching diagnostic when lifecycle details belong to another workflow", async () => {
         mockedLifecycle.mockResolvedValue(operationalLifecycle({ workflow_id: "foreign-workflow", target_label: "Foreign target" }));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
-        await screen.findByRole("link", { name: "Open workflow" });
+        await screen.findByRole("link", { name: "Review maintenance request" });
         expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
         expect(screen.getByText("Requested action: Restart Service", { exact: true })).toBeInTheDocument();
         expect(screen.queryByText(/Latest maintenance status: Healthy/)).not.toBeInTheDocument();
@@ -167,7 +186,7 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText("Atlas could not identify this maintenance status.")).toBeVisible();
         expect(screen.getByText("Do not repeat this request until its status is clear. Ask an operator to review it.")).toBeVisible();
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
-        expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
     });
 
     it("filters only the bounded current page by controlled diagnostic status", async () => {
@@ -429,7 +448,7 @@ describe("maintenance history recovery", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("unreadable-target");
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
-        expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/history-unreadable");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/history-unreadable");
         expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });
 });

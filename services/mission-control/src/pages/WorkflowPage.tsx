@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import {
     getAtlasAgentErrorMessage,
@@ -69,7 +69,25 @@ export function WorkflowPage() {
     return <WorkflowDetail key={workflowId} workflowId={workflowId} />;
 }
 
+type WorkflowReturnDestination = {
+    to: "/operations/history" | "/workflows" | "/execution-candidates";
+    label: string;
+};
+
+function workflowReturnDestination(workflow: WorkflowDetailResponse, state: unknown): WorkflowReturnDestination {
+    const returnTo = typeof state === "object" && state !== null && "returnTo" in state
+        ? state.returnTo
+        : undefined;
+    if (returnTo === "/operations/history") return { to: returnTo, label: "← Maintenance history" };
+    if (returnTo === "/workflows") return { to: returnTo, label: "← All workflows" };
+    if (returnTo === "/execution-candidates") return { to: returnTo, label: "Back to execution candidates" };
+    if (workflow.effect_kind === "operational_action") return { to: "/operations/history", label: "← Maintenance history" };
+    if (workflow.workflow_source === "candidate") return { to: "/execution-candidates", label: "Back to execution candidates" };
+    return { to: "/workflows", label: "← All workflows" };
+}
+
 function WorkflowDetail({ workflowId }: { workflowId: string }) {
+    const location = useLocation();
     const [workflow, setWorkflow] = useState<WorkflowDetailResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -318,6 +336,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
     const isOperational = workflow.effect_kind === "operational_action";
     const isRepository = !isOperational;
+    const returnDestination = workflowReturnDestination(workflow, location.state);
     const actionRequest = isOperational ? operationalRequest(workflow.operational_action_request) : null;
     const operationalApprovalReady = !isOperational || (actionRequest !== null
         && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>
@@ -432,10 +451,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             </header>
 
             <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">Workflow summary</h2>
+                <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">{isOperational ? "Maintenance summary" : "Workflow summary"}</h2>
                 <p className="mt-1 text-sm text-slate-300">{workflowStatusMessage(workflow)}</p>
                 <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
-                    <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Workflow details</summary>
+                    <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">{isOperational ? "Technical details" : "Workflow details"}</summary>
                     <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                         <Detail label="Workflow ID" value={workflow.workflow_id} />
                         <Detail label="Workflow state" value={formatLabel(workflow.workflow_state)} />
@@ -627,10 +646,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             )}
 
             <Link
-                to={workflow.workflow_source === "candidate" ? "/execution-candidates" : "/workflows"}
+                to={returnDestination.to}
                 className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
-                {workflow.workflow_source === "candidate" ? "Back to execution candidates" : "← All workflows"}
+                {returnDestination.label}
             </Link>
             <Link
                 to={`/workflows/${workflow.workflow_id}/audit`}

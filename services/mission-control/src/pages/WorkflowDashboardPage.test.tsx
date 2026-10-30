@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listWorkflows } from "../api/atlas-agent";
@@ -58,6 +58,11 @@ function renderDashboard() {
             <WorkflowDashboardPage />
         </MemoryRouter>,
     );
+}
+
+function NavigationStateProbe() {
+    const location = useLocation();
+    return <output data-testid="navigation-state">{JSON.stringify(location.state)}</output>;
 }
 
 describe("WorkflowDashboardPage", () => {
@@ -141,6 +146,21 @@ describe("WorkflowDashboardPage", () => {
         expect(prepareDetails.queryByText("Your approval is needed")).not.toBeInTheDocument();
     });
 
+    it("keeps the workflow directory as the return destination for a detail link", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response([workflow()]));
+        render(
+            <MemoryRouter initialEntries={["/workflows"]}>
+                <Routes>
+                    <Route path="/workflows" element={<WorkflowDashboardPage />} />
+                    <Route path="/workflows/:workflowId" element={<NavigationStateProbe />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        fireEvent.click(await screen.findByRole("link", { name: "Open workflow" }));
+        expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"returnTo":"/workflows"}');
+    });
+
     it("explains the safe next step for operational maintenance", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([workflow({
             workflow_id: "maintenance-review",
@@ -157,6 +177,7 @@ describe("WorkflowDashboardPage", () => {
         const details = within(card as HTMLElement);
         expect(details.getByText("Stage: Maintenance request approval")).toBeVisible();
         expect(details.getByText("Review the maintenance request. If approved, choose Run approved maintenance.")).toBeVisible();
+        expect(details.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/maintenance-review");
         expect(details.queryByText("Your approval is needed")).not.toBeInTheDocument();
         expect(details.queryByText("Stage: Change approval")).not.toBeInTheDocument();
     });

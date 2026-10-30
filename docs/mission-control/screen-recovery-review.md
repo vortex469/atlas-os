@@ -3639,3 +3639,17 @@ unchanged. The focused maintenance summary, history, and workflow suites pass
 (163 tests), along with Mission Control lint and production build. The missing
 record explanation also uses “maintenance result” instead of the backend term
 “service run.”
+
+## Maintenance request return navigation — 2026-10-30
+
+Maintenance history now labels its detail link “Review maintenance request.”
+The request page returns to the list it was opened from; a direct link falls
+back to Maintenance history, rather than sending candidate-based maintenance
+requests to Change proposals. Maintenance cards use the same review label, the
+detail page calls its status section “Maintenance summary,” and its optional
+metadata is grouped under “Technical details.” The workflow directory likewise
+remains the return destination when it opened the detail page. The focused history,
+workflow detail, and workflow directory suites pass (159 tests), the history
+and workflow-card browser journeys pass at 320px, 390px, and 1280px, and lint/build pass.
+The navigation state is presentational and does not change maintenance
+approval or execution behavior.

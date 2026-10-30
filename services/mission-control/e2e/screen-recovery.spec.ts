@@ -961,6 +961,15 @@ for (const width of [320, 390, 1280]) {
                 } });
                 return;
             }
+            if (path.endsWith("/workflows/maintenance-test/implementation-request")) {
+                await route.fulfill({ json: workflowDetail({
+                    workflow_id: "maintenance-test",
+                    effect_kind: "operational_action",
+                    workflow_state: "completed",
+                    implementation_approval_status: "approved",
+                }) });
+                return;
+            }
             if (path.endsWith("/workflows/maintenance-test/operational-lifecycle")) {
                 await route.fulfill({ json: operationalLifecycle({ workflow_id: "maintenance-test" }) });
                 return;
@@ -994,9 +1003,14 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Status record check", { exact: true })).toBeVisible();
         await expect(page.getByText("Not available", { exact: true })).toBeVisible();
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/maintenance-test");
+        await expect(page.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/maintenance-test");
+        await page.getByRole("link", { name: "Review maintenance request" }).click();
+        await expect(page.getByRole("heading", { name: "Review maintenance request" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "← Maintenance history" })).toHaveAttribute("href", "/operations/history");
+        await page.getByRole("link", { name: "← Maintenance history" }).click();
+        await expect(page.getByRole("heading", { name: "Maintenance history" })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-        expect(reads).toBe(1);
+        expect(reads).toBe(2);
     });
 }
 

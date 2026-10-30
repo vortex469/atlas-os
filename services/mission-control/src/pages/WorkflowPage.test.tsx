@@ -77,9 +77,9 @@ function workflowAwaitingVerification(overrides: Partial<WorkflowDetailResponse>
     });
 }
 
-function renderPage(path = "/workflows/workflow-123") {
+function renderPage(path = "/workflows/workflow-123", state?: unknown) {
     return render(
-        <MemoryRouter initialEntries={[path]}>
+        <MemoryRouter initialEntries={[state === undefined ? path : { pathname: path, state }]}>
             <Routes>
                 <Route path="/workflows/:workflowId" element={<WorkflowPage />} />
             </Routes>
@@ -765,6 +765,20 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("link", { name: label })).toHaveAttribute("href", destination);
     });
 
+    it("returns a maintenance request to maintenance history when opened directly", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        renderPage();
+
+        expect(await screen.findByRole("link", { name: "← Maintenance history" })).toHaveAttribute("href", "/operations/history");
+    });
+
+    it("returns a maintenance request to the list it was opened from", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        renderPage("/workflows/workflow-123", { returnTo: "/workflows" });
+
+        expect(await screen.findByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
+    });
+
     it("submits approve with only workflow id and decision", async () => {
         mockedGetWorkflowDetail.mockResolvedValueOnce(workflow())
             .mockResolvedValue(workflow({ implementation_approval_status: "approved" }));
@@ -913,12 +927,12 @@ describe("WorkflowPage", () => {
         expect(screen.getAllByText("resolved (approved)")).toHaveLength(2);
     });
 
-    it("keeps repository-only status details out of the maintenance workflow summary", async () => {
+    it("uses maintenance labels and keeps repository-only details out of the summary", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage();
 
-        const summary = within(await screen.findByRole("region", { name: "Workflow summary" }));
-        const disclosure = summary.getByText("Workflow details", { exact: true });
+        const summary = within(await screen.findByRole("region", { name: "Maintenance summary" }));
+        const disclosure = summary.getByText("Technical details", { exact: true });
         const details = disclosure.closest("details") as HTMLDetailsElement;
         expect(details).not.toHaveAttribute("open");
         fireEvent.click(disclosure);
