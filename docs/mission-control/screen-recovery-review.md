@@ -3874,3 +3874,13 @@ instead of “Target ID.” The target value, API field, saved filters, and quer
 parameters are unchanged. The proposal list and detail component suites pass
 40 tests; their responsive browser checks pass all 20 cases; Mission Control
 lint and production build pass.
+
+## Atlas-side connection check location — 2026-10-30
+
+The service check now states the machine and folder before the command: run it
+on the computer running Atlas, from the folder containing
+`compose.production.yaml`. It says plainly that running the command on the
+service computer checks a different connection. The read-only command and
+network probe are unchanged. The focused Overview suite passes (76 tests),
+responsive browser checks pass at 320px and 1280px, and Mission Control lint
+and production build pass.

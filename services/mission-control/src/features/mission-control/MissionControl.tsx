@@ -84,7 +84,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             <details className="mt-2 text-xs text-mc-text-muted">
                 <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Test from the Atlas computer</summary>
                 <div role="group" aria-label="Next connection check" className="mt-2 rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
-                    <p className="font-medium text-mc-text-primary">Run this command from the folder containing Atlas&apos;s <code>compose.production.yaml</code>, on the computer where Atlas is installed. Compose runs the read-only request inside Atlas Core. Running it from the service computer instead checks a different network path.</p>
+                    <p className="font-medium text-mc-text-primary">On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It tests the same connection Atlas uses. Do not run it on the service computer; that checks a different connection.</p>
                     <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
                     {command && <>
                         <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>
