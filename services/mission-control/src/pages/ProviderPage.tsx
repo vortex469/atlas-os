@@ -135,8 +135,14 @@ export function ProviderPage() {
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">Some information could not be refreshed</p>
-                    <p className="mt-1 text-sm text-red-200/80">{error}</p>
-                    {failedSources.length > 0 && <p className="mt-2 text-sm text-red-200/80">Unavailable: {failedSources.join(", ")}.</p>}
+                    <p className="mt-1 text-sm text-red-200/80">Provider details may be out of date. Use Refresh above to check again.</p>
+                    {(failedSources.length > 0 || error) && <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <div className="mt-2 space-y-1 text-sm text-slate-400">
+                            {error && <p>{error}</p>}
+                            {failedSources.length > 0 && <p>Unavailable: {failedSources.join(", ")}.</p>}
+                        </div>
+                    </details>}
                     {providerCatalogUnavailable && !provider && <p className="mt-2 text-sm text-red-200/80">Atlas could not confirm whether this provider is currently listed.</p>}
                 </div>
             )}

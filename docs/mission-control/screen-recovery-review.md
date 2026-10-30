@@ -3903,3 +3903,11 @@ searches and truly empty catalogs keep their existing messages. Focused
 component coverage passes (17 tests), and responsive browser checks pass at
 320px, 390px, and 1280px. Lint and production build pass. Catalog requests and
 data are unchanged.
+
+## Provider refresh error details — 2026-10-30
+
+Provider detail refresh failures now lead with the plain next step: use the
+page's Refresh control to check again. The list of unavailable information and
+refresh summary are under collapsed Technical details. Provider status and
+actions are unchanged. The focused provider-page suite passes (18 tests), as
+do Mission Control lint, production build, and `git diff --check`.

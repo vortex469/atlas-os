@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -110,7 +110,12 @@ describe("ProviderPage authority layout", () => {
 
         expect(screen.getByRole("heading", { name: "Provider overview" })).toBeInTheDocument();
         expect(screen.getByText("Some information could not be refreshed")).toBeInTheDocument();
-        expect(screen.getByText("Unavailable: diagnostics.")).toBeInTheDocument();
+        expect(screen.getByText("Provider details may be out of date. Use Refresh above to check again.")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(screen.getByText("Unavailable: diagnostics.")).not.toBeVisible();
+        fireEvent.click(screen.getByText("Technical details"));
+        expect(screen.getByText("Unavailable: diagnostics.")).toBeVisible();
         expect(screen.getByText("Diagnostics could not be loaded.")).toBeInTheDocument();
         expect(screen.getByText("Recommendations could not be loaded.")).toBeInTheDocument();
         expect(screen.queryByText("No messages about this provider right now.")).not.toBeInTheDocument();
