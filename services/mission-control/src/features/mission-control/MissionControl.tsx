@@ -82,9 +82,9 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
         {unavailable && <>
             <p className="text-sm">Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.</p>
             <details className="mt-2 text-xs text-mc-text-muted">
-                <summary className="mc-focusable cursor-pointer text-mc-primary-strong">How to check from Atlas Core</summary>
+                <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Test from the Atlas computer</summary>
                 <div role="group" aria-label="Next connection check" className="mt-2 rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
-                    <p className="font-medium text-mc-text-primary">From the computer running Atlas Core, open a terminal in the folder containing <code>compose.production.yaml</code> and run this command. It makes a read-only request inside the <code>atlas-core</code> container; running it on the service computer or in your browser checks a different network path.</p>
+                    <p className="font-medium text-mc-text-primary">On the computer running Atlas, run this command from the folder containing <code>compose.production.yaml</code>. The read-only request runs inside Atlas Core and checks the same network path as this status report.</p>
                     <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
                     {command && <>
                         <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>

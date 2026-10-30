@@ -3731,3 +3731,12 @@ The overview's collapsed Docker guidance now says “Check Docker on the service
 computer,” making clear which machine should run the container check. The Core
 reachability probe and status interpretation are unchanged. The focused
 overview suite passes (76 tests), with lint and production build passing.
+
+## Atlas-side service check instructions — 2026-10-30
+
+The connection-check disclosure now leads with “Test from the Atlas computer”
+and gives a shorter instruction to use Atlas's Compose folder. It explains that
+the read-only request runs inside Atlas Core and follows the same network path
+as the health report. This makes the command's required location clear when
+the operator is checking a separate service computer. No health or provider
+behavior changes.

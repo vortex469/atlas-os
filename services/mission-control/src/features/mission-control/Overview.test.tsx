@@ -212,7 +212,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const howToCheck = checks.getByText("How to check from Atlas Core");
+        const howToCheck = checks.getByText("Test from the Atlas computer");
         const connectionDetails = howToCheck.closest("details");
         expect(connectionDetails).not.toHaveAttribute("open");
         expect(checks.getByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).toBeVisible();
@@ -221,7 +221,7 @@ describe("MC overview evidence", () => {
         const summary = checks.getByText("Check Docker on the service computer");
         const disclosure = summary.closest("details");
 
-        expect(nextStep).toHaveTextContent("From the computer running Atlas Core, open a terminal in the folder containing compose.production.yaml and run this command.");
+        expect(nextStep).toHaveTextContent("On the computer running Atlas, run this command from the folder containing compose.production.yaml.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
