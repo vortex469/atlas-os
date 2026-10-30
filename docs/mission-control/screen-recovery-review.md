@@ -4030,3 +4030,11 @@ plain-language outcomes while optional technical details use the shared
 bounded text filter. Duplicate-action prevention and refresh requirements are
 unchanged. The focused Provider Actions suite passes all 14 tests; Mission
 Control lint and production build pass.
+
+## Workflow directory error details — 2026-10-30
+
+Initial workflow-list and refresh failures keep their recovery guidance and
+last-loaded state visible while optional technical details use the shared
+bounded text filter. Refresh remains a read-only check. The focused Workflow
+Dashboard suite passes all 21 tests; Mission Control lint and production
+build pass.

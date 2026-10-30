@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getAtlasAgentErrorMessage, listWorkflows } from "../api/atlas-agent";
 import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
 import type { WorkflowListResponse, WorkflowSummary } from "../types/atlasAgent";
+import { safeText } from "../utils/safeText";
 import {
     WORKFLOW_STATES,
     formatWorkflowLabel,
@@ -241,7 +242,7 @@ export function WorkflowDashboardPage() {
                     </button>
                     <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{loadError}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(loadError) || "No additional details were returned."}</p>
                     </details>
                 </section>
             </main>
@@ -276,7 +277,7 @@ export function WorkflowDashboardPage() {
                     <p className="mt-1 text-sm text-amber-100/80">The list and counts below show the last successfully loaded state. Use Refresh to check again before reviewing a workflow.</p>
                     <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{refreshError}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(refreshError) || "No additional details were returned."}</p>
                     </details>
                 </div>
             )}

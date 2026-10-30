@@ -496,7 +496,7 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByText("0 workflows", { exact: true })).not.toBeInTheDocument();
 
         vi.mocked(listWorkflows).mockReset();
-        vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
+        vi.mocked(listWorkflows).mockRejectedValueOnce(new Error("Bearer workflow-list-canary-secret"));
         renderDashboard();
         const unavailableAlert = await screen.findByRole("alert");
         expect(unavailableAlert).toHaveTextContent("Workflows unavailable");
@@ -504,7 +504,8 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByText("Try loading your workflows again.")).not.toBeInTheDocument();
         const initialErrorDetails = within(unavailableAlert).getByText("Technical details").closest("details");
         expect(initialErrorDetails).not.toHaveAttribute("open");
-        expect(within(initialErrorDetails as HTMLDetailsElement).getByText("Atlas Agent unavailable")).not.toBeVisible();
+        expect(within(initialErrorDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(unavailableAlert).queryByText(/workflow-list-canary-secret/)).not.toBeInTheDocument();
     });
 
     it("clarifies when filtered older workflows have not been loaded yet", async () => {
@@ -558,7 +559,7 @@ describe("WorkflowDashboardPage", () => {
 
     it("labels stale workflow data after a failed refresh and keeps the error optional", async () => {
         vi.mocked(listWorkflows).mockResolvedValueOnce(response([workflow()]))
-            .mockRejectedValueOnce(new Error("Atlas Agent unavailable"))
+            .mockRejectedValueOnce(new Error("Bearer workflow-refresh-canary-secret"))
             .mockResolvedValueOnce(response([workflow({ workflow_id: "workflow-refreshed", workflow_state: "completed", execution_intent: "restart-service" })]));
         renderDashboard();
         await screen.findByRole("heading", { name: "Update Compose Stack" });
@@ -570,7 +571,8 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         const details = within(refreshAlert).getByText("Technical details").closest("details");
         expect(details).not.toHaveAttribute("open");
-        expect(within(details as HTMLDetailsElement).getByText("Atlas Agent unavailable")).not.toBeVisible();
+        expect(within(details as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(refreshAlert).queryByText(/workflow-refresh-canary-secret/)).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(await screen.findByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
