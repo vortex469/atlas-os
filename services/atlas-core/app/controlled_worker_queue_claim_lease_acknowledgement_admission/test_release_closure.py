@@ -351,12 +351,18 @@ def test_v051_default_off_api_ui_agent_and_execution_worker_isolation() -> None:
         mission_control_structural
     )
     assert r"atlas\.(post|put|patch|delete)" in mission_control_structural
-    assert "expect(controls).toHaveLength(0)" in mission_control_structural
-    assert "expect(consumers).toEqual" in mission_control_structural
-    assert "v0.51 state: admission evidence recorded for the completed v0.50" in (
-        mission_control_component
+    assert "expect(controls).toHaveLength(1)" in mission_control_structural
+    assert (
+        r"expect(component).toMatch(/<button\b[\s\S]*?>Retry<\/button>/)"
+        in mission_control_structural
     )
-    assert "Advanced v0.51 evidence" in mission_control_component
+    assert "expect(consumers).toEqual" in mission_control_structural
+    assert "Queue and worker review" in mission_control_component
+    assert (
+        "Queue access and worker start are not available. This record only saves review evidence."
+        in mission_control_component
+    )
+    assert "<summary>Technical details</summary>" in mission_control_component
     assert "Ordered v0.51 blockers" in mission_control_component
     assert "Controlled queue claim lease acknowledgement fixed-false authority" in (
         mission_control_component

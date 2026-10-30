@@ -337,8 +337,9 @@ def test_v050_default_off_api_ui_agent_and_execution_worker_isolation() -> None:
     assert "v0.50 prerequisite isolation" in (
         mission_control_structural
     )
-    assert "v0.50 progress: prerequisite frozen, documentation-only" in (
-        mission_control_component
+    assert (
+        "The strongest v0.50 state is documentation-only prerequisite closure."
+        in mission_control_component
     )
     assert "v0.50 prerequisite details" in mission_control_component
     assert "one active same-owner v0.49 controlled worker queue claim admission" in (
@@ -348,7 +349,7 @@ def test_v050_default_off_api_ui_agent_and_execution_worker_isolation() -> None:
         mission_control_component
     )
     assert (
-        "No queue claim, queue lease, queue acknowledgement, worker-start admission"
+        "Queue access is unavailable. No work was claimed, and no worker was started."
         in mission_control_component
     )
     assert (

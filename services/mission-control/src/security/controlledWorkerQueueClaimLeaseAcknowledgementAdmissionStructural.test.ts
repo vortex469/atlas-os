@@ -16,12 +16,13 @@ describe("v0.51 controlled queue claim lease acknowledgement admission Mission C
         expect(component).not.toMatch(/createControlledWorkerQueueClaimLeaseAcknowledgementAdmission|atlas\.|setInterval|setTimeout|refetchInterval|WebSocket|EventSource|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/);
     });
 
-    it("is nested in the existing installation workflow with no route, navigation, or controls", () => {
+    it("is nested in the existing installation workflow with no route, navigation, or runtime action", () => {
         expect(parent).toMatch(/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions/);
         expect(router).not.toMatch(/controlled-worker-queue-claim-lease-acknowledgement-admissions|ControlledWorkerQueueClaimLeaseAcknowledgementAdmission/i);
         expect(navigation).not.toMatch(/claim lease acknowledgement|controlled_worker_queue_claim_lease_acknowledgement/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
         expect(controls).toHaveLength(1);
+        expect(component).toMatch(/<button\b[\s\S]*?>Retry<\/button>/);
         expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
