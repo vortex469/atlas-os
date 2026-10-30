@@ -3976,3 +3976,11 @@ filter for common credential and URL patterns; optional action-history error
 details use the same filter. The audit record and action-history route are
 unchanged. The focused Overview, action history, and action details suites
 pass all 105 tests; Mission Control lint and production build pass.
+
+## Proposal error detail redaction — 2026-10-30
+
+Change proposal search, proposal reads, and planning failures keep their
+plain-language recovery message visible while optional technical details use
+the shared bounded text filter. Focused proposal list and detail suites pass
+all 40 tests; their responsive browser suites pass all 20 cases. Mission
+Control lint and production build pass.

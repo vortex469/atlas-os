@@ -13,6 +13,7 @@ import type {
 } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
 import { compatibilityStatusLabel, executionCandidateStatusLabel } from "../utils/operatorLanguage";
+import { safeText } from "../utils/safeText";
 
 const PAGE_SIZE = 25;
 
@@ -249,7 +250,7 @@ export function ExecutionCandidatesPage() {
                     <p className="font-semibold text-red-300">Change proposals unavailable</p>
                     <p className="mt-1 text-sm text-red-200/80">{error}</p>
                     {hasLoadedSearch && <p className="mt-1 text-sm text-red-200/80">Previous results are hidden until this search succeeds.</p>}
-                    {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
+                    {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(errorDetails) || "No additional details were returned."}</p></details>}
                     <button type="button" onClick={retryLastSearch} disabled={isLoading} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
                         Retry search
                     </button>

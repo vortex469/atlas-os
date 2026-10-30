@@ -291,7 +291,7 @@ describe("ExecutionCandidateDetailPage", () => {
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         expect(await screen.findByText("Atlas could not save the planning session. No session is ready to continue.")).toBeInTheDocument();
 
-        mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
+        mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable: Bearer canary-secret-value"));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         const planningAlert = await screen.findByRole("alert");
         expect(planningAlert).toHaveTextContent("Planning status not confirmed");
@@ -300,9 +300,10 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(planningAlert).toHaveTextContent("No approval or infrastructure change was made.");
         const technicalDetails = within(planningAlert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(planningAlert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Agent unavailable")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
     it("does not show a previous proposal or its planning action while the next loads", async () => {
         let resolveNext!: (value: ExecutionCandidate) => void;
@@ -408,7 +409,7 @@ describe("ExecutionCandidateDetailPage", () => {
 
     it("retries a temporary proposal read failure", async () => {
         const user = userEvent.setup();
-        mockedGetExecutionCandidate.mockRejectedValueOnce(new Error("Core unavailable"))
+        mockedGetExecutionCandidate.mockRejectedValueOnce(new Error("Core unavailable: Bearer canary-secret-value"))
             .mockResolvedValueOnce(candidate());
 
         renderPage();
@@ -418,8 +419,9 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(alert).toHaveTextContent("Atlas couldn’t load this change proposal. Try again to check its details.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        const readError = within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable");
+        const readError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
         expect(readError).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(readError).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Try again" }));

@@ -185,7 +185,7 @@ describe("ExecutionCandidatesPage", () => {
     it("hides previous cards after the current search fails", async () => {
         renderPage();
         await screen.findByText("candidate-1");
-        mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Current search failed"));
+        mockedListExecutionCandidates.mockRejectedValueOnce(new Error("Current search failed: Bearer canary-secret-value"));
         fireEvent.click(screen.getByRole("button", { name: "Search proposals" }));
         const alert = await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
@@ -193,7 +193,10 @@ describe("ExecutionCandidatesPage", () => {
         expect(alert).toHaveTextContent("Previous results are hidden until this search succeeds.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Current search failed")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
         expect(screen.queryByText("Results unavailable")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Next change proposals page" })).toBeDisabled();
     });

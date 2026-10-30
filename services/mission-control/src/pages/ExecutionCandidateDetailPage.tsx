@@ -13,6 +13,7 @@ import type { CandidatePlanningResponse } from "../types/atlasAgent";
 import type { ExecutionCandidate } from "../types/executionCandidates";
 import { evidenceTimestamp } from "../utils/healthPresentation";
 import { compatibilityStatusLabel, executionCandidateStatusLabel, executionConstraintLabel } from "../utils/operatorLanguage";
+import { safeText } from "../utils/safeText";
 import { PlanningProgress } from "../components/PlanningProgress";
 
 type PlanningError = {
@@ -133,7 +134,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     if (error || candidate === null) {
-        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Atlas couldn’t load this change proposal. Try again to check its details."}</p>{errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}<button type="button" onClick={retryCandidateRead} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200">Try again</button></div></PageFrame>;
+        return <PageFrame><div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><p className="font-semibold text-red-300">Change proposal unavailable</p><p className="mt-1 text-sm text-red-200/80">{error ?? "Atlas couldn’t load this change proposal. Try again to check its details."}</p>{errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(errorDetails) || "No additional details were returned."}</p></details>}<button type="button" onClick={retryCandidateRead} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200">Try again</button></div></PageFrame>;
     }
 
     return (
@@ -191,7 +192,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     {actionState.refreshRequired && !isPlanningPending && <button type="button" onClick={retryCandidateRead} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300">Refresh proposal</button>}
                 </div>
                 {planningResponse && <PlanningResult response={planningResponse} search={location.search} onRefreshCandidate={retryCandidateRead} />}
-                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">{planningError.title}</p><p className="mt-1 text-sm text-red-200/80">{planningError.message}</p><details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{planningError.details}</p></details></div>}
+                {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">{planningError.title}</p><p className="mt-1 text-sm text-red-200/80">{planningError.message}</p><details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(planningError.details) || "No additional details were returned."}</p></details></div>}
             </section>
 
             <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
