@@ -1542,7 +1542,7 @@ describe("WorkflowPage", () => {
     });
 
     it("shows approval failures in plain language with the backend message collapsed", async () => {
-        mockedSubmitWorkflowImplementationApproval.mockRejectedValue(new Error("approval already approved"));
+        mockedSubmitWorkflowImplementationApproval.mockRejectedValue(new Error("approval failed: Bearer canary-secret-value"));
         renderPage();
 
         fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
@@ -1551,6 +1551,10 @@ describe("WorkflowPage", () => {
         expect(alert).toHaveTextContent("Mission Control could not confirm the implementation approval decision.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(technicalDetails).toHaveTextContent("approval already approved");
+        const sensitiveDetails = within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]");
+        expect(sensitiveDetails).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(sensitiveDetails).toBeVisible();
     });
 });

@@ -31,6 +31,7 @@ import type {
 import { operationalRequest } from "../utils/operationalRequest";
 import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 import { workflowRailStages } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
@@ -57,7 +58,9 @@ function WorkflowActionError({ failure }: { failure: WorkflowActionFailure }) {
             {failure.details && (
                 <details className="mt-2">
                     <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                    <p className="mt-2 break-words text-sm text-slate-400">{failure.details}</p>
+                    <p className="mt-2 break-words text-sm text-slate-400">
+                        {safeText(failure.details) || "No additional details were returned."}
+                    </p>
                 </details>
             )}
         </div>

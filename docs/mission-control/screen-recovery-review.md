@@ -3984,3 +3984,11 @@ plain-language recovery message visible while optional technical details use
 the shared bounded text filter. Focused proposal list and detail suites pass
 all 40 tests; their responsive browser suites pass all 20 cases. Mission
 Control lint and production build pass.
+
+## Workflow action error detail redaction — 2026-10-30
+
+Approval and run failures keep their plain-language outcome visible, while
+the collapsed technical detail uses the shared bounded text filter. Approval,
+verification, commit, and separate run boundaries are unchanged. The focused
+Workflow page suite passes all 105 tests; Mission Control lint and production
+build pass.
