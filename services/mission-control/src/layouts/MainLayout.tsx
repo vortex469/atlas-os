@@ -115,9 +115,9 @@ const API_STATUS_KEY: Record<ApiAvailability, string> = {
     unavailable: "unavailable",
 };
 const API_HEADER_TEXT: Record<ApiAvailability, string> = {
-    checking: "Checking Atlas Core",
-    online: "Atlas Core online",
-    unavailable: "Atlas Core unavailable",
+    checking: "Checking Atlas Core API",
+    online: "Atlas Core API connected",
+    unavailable: "Atlas Core API unavailable",
 };
 
 function ApiStatusBadge({ availability, header = false }: { availability: ApiAvailability; header?: boolean }) {
@@ -136,7 +136,7 @@ function CoreApiFooter({ availability, releaseLabel }: { availability: ApiAvaila
         <div className="border-t border-mc-divider px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col items-start gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-mc-text-muted">
-                    Atlas Core
+                    Atlas Core API
                 </span>
                 <ApiStatusBadge availability={availability} />
             </div>

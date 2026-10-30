@@ -3610,3 +3610,11 @@ could open a missing page. Provider alerts continue to link to their provider
 details. The focused overview suite passes (76 tests), two responsive
 iFileshare browser cases pass at 320px and 1280px, and lint and production
 build pass.
+
+## Core API status wording — 2026-10-30
+
+The shell status now says “Atlas Core API connected” and labels the sidebar
+status “Atlas Core API.” This makes clear that the badge reports whether the
+API responds; it does not summarize service health. The focused shell suite
+passes (34 tests), and lint and production build pass. The shell browser
+regression asserts the unavailable label. No health or API behavior changes.
