@@ -662,6 +662,28 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
+    it("marks the last inventory as possibly outdated when its refresh fails", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        vi.mocked(refreshProviderResources).mockRejectedValueOnce(new Error("Inventory refresh failed"));
+
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+
+        expect(await screen.findByText("Atlas couldn’t refresh observed resources. Showing the last loaded inventory; its status may have changed.")).toBeVisible();
+        expect(screen.getByText("Frigate")).toBeVisible();
+    });
+
+    it("marks the last monitoring settings as possibly outdated when their refresh fails", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        vi.mocked(getProviderManagement).mockRejectedValueOnce(new Error("Monitoring refresh failed"));
+
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+
+        expect(await screen.findByText("Atlas couldn’t refresh monitoring settings. Showing the last loaded settings; they may have changed.")).toBeVisible();
+        expect(screen.getByText("Frigate")).toBeVisible();
+    });
+
     it("uses public v2 instead of the legacy inventory expectation", async () => {
         vi.mocked(getProviderResources).mockResolvedValue({
             ...inventory,
