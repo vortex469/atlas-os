@@ -3554,3 +3554,12 @@ its displayed provider details are the last loaded values. This makes cached
 description and feature data visibly stale alongside the existing last-known
 health status. The focused ProviderOverview suite passes; lint and production
 build pass. Provider requests and action behavior are unchanged.
+
+## Provider address display — 2026-10-30
+
+Provider technical details now show only the origin of a valid HTTP(S) address.
+Credentials, paths, query values, fragments, relative URLs, and other schemes
+are omitted from the page. The focused ProviderOverview suite covers credential
+and token canaries, IPv6 and ports, and unsupported URL forms. Lint and
+production build pass. The stored provider URL and connection behavior are
+unchanged.

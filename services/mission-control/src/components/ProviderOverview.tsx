@@ -19,6 +19,18 @@ function formatLabel(value: string): string {
         .join(" ");
 }
 
+function providerAddress(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:"
+            ? url.origin
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 export function ProviderOverview({
     provider,
     stale = false,
@@ -26,10 +38,7 @@ export function ProviderOverview({
     const capabilities = Array.isArray(provider.capabilities)
         ? provider.capabilities
         : null;
-    const endpoint =
-        typeof provider.health.details.url === "string"
-            ? provider.health.details.url
-            : null;
+    const address = providerAddress(provider.health.details.url);
     const isUnavailable = healthState(provider.health.status) === "Unavailable";
     const connectionMessage = healthReason(provider.health.message);
 
@@ -152,13 +161,13 @@ export function ProviderOverview({
                         </dd>
                     </div>
 
-                    {endpoint && (
+                    {address && (
                         <div className="sm:col-span-2 lg:col-span-3">
                             <dt className="text-xs uppercase tracking-wider text-slate-500">
-                                Health endpoint
+                                Provider address
                             </dt>
                             <dd className="mt-2 break-all font-mono text-sm text-slate-300">
-                                {endpoint}
+                                {address}
                             </dd>
                         </div>
                     )}

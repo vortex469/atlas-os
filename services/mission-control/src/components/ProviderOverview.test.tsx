@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Provider } from "../types/provider";
 import { ProviderOverview } from "./ProviderOverview";
 
-function view(capabilities: unknown, latencyMs: number | null = 24, status = "online", message: string | null = null, stale = false) {
+function view(capabilities: unknown, latencyMs: number | null = 24, status = "online", message: string | null = null, stale = false, endpoint: unknown = "https://proxmox.example/health") {
     const provider = {
         id: "proxmox",
         name: "Proxmox",
@@ -14,9 +14,9 @@ function view(capabilities: unknown, latencyMs: number | null = 24, status = "on
         description: "Virtualization",
         icon: "server",
         capabilities,
-        health: { status, latency_ms: latencyMs, http_status: 200, message, details: { url: "https://proxmox.example/health" } },
+        health: { status, latency_ms: latencyMs, http_status: 200, message, details: { url: endpoint } },
     } as unknown as Provider;
-    render(<ProviderOverview provider={provider} stale={stale} />);
+    return render(<ProviderOverview provider={provider} stale={stale} />);
 }
 
 describe("ProviderOverview feature data", () => {
@@ -29,7 +29,7 @@ describe("ProviderOverview feature data", () => {
         expect(screen.getByText("24 ms")).toBeInTheDocument();
     });
 
-    it("keeps technical facts and the endpoint collapsed until requested", async () => {
+    it("keeps technical facts and the provider address collapsed until requested", async () => {
         const user = userEvent.setup();
         view([]);
         const disclosure = screen.getByText("Technical details");
@@ -37,7 +37,7 @@ describe("ProviderOverview feature data", () => {
         expect(screen.getByText("HTTP response code")).not.toBeVisible();
         expect(screen.getByText("Provider priority")).not.toBeVisible();
         expect(screen.getByText("Version")).not.toBeVisible();
-        expect(screen.getByText("https://proxmox.example/health")).not.toBeVisible();
+        expect(screen.getByText("https://proxmox.example")).not.toBeVisible();
 
         await user.click(disclosure);
 
@@ -45,7 +45,29 @@ describe("ProviderOverview feature data", () => {
         expect(screen.getByText("200")).toBeVisible();
         expect(screen.getByText("Provider priority")).toBeVisible();
         expect(screen.getByText("Version")).toBeVisible();
-        expect(screen.getByText("https://proxmox.example/health")).toBeVisible();
+        expect(screen.getByText("Provider address")).toBeVisible();
+        expect(screen.getByText("https://proxmox.example")).toBeVisible();
+    });
+
+    it.each([
+        ["https://public-user:PRIVATE-ENDPOINT-CANARY@example.invalid:8443/private-path?token=PRIVATE-ENDPOINT-CANARY#private-fragment", "https://example.invalid:8443"],
+        ["http://[::1]:8080/provider-health", "http://[::1]:8080"],
+        ["/relative/PRIVATE-ENDPOINT-CANARY", null],
+        ["javascript:PRIVATE-ENDPOINT-CANARY", null],
+        ["ftp://example.invalid/private-path", null],
+    ])("shows only a valid public provider address for %s", async (endpoint, address) => {
+        const user = userEvent.setup();
+        const { container } = view([], 24, "online", null, false, endpoint);
+
+        expect(container.innerHTML).not.toContain("PRIVATE-ENDPOINT-CANARY");
+        if (address) {
+            expect(screen.getByText(address)).not.toBeVisible();
+            await user.click(screen.getByText("Technical details"));
+            expect(screen.getByText("Provider address")).toBeVisible();
+            expect(screen.getByText(address)).toBeVisible();
+        } else {
+            expect(screen.queryByText("Provider address")).not.toBeInTheDocument();
+        }
     });
 
     it("omits an unavailable response-time placeholder", () => {
