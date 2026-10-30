@@ -113,7 +113,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
         expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
-        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run the test on the computer where Atlas Core runs. If Core runs in Docker Compose, run it inside the atlas-core container. Your browser or the service computer may use a different network path.");
+        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run this check on the computer where Atlas Core runs. If you use Docker Compose, run the command from Atlas's Compose folder; Compose runs the request inside atlas-core. Running it from the service computer instead may use a different network path.");
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");

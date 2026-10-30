@@ -221,7 +221,8 @@ describe("MC overview evidence", () => {
         const summary = checks.getByText("Check Docker on the service computer");
         const disclosure = summary.closest("details");
 
-        expect(nextStep).toHaveTextContent("On the computer running Atlas, run this command from the folder containing compose.production.yaml.");
+        expect(nextStep).toHaveTextContent("Run this command from the folder containing Atlas's compose.production.yaml, on the computer where Atlas is installed.");
+        expect(nextStep).toHaveTextContent("Compose runs the read-only request inside Atlas Core. Running it from the service computer instead checks a different network path.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");

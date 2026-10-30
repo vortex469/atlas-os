@@ -3503,6 +3503,17 @@ networking. It connects that finding to the refused check and says the
 published host port must match Atlas's configured address. The check remains
 read-only; it does not change Docker or service configuration.
 
+## Atlas-to-service connection check location — 2026-10-30
+
+The connection-check instructions now distinguish the computer running Atlas
+from the computer hosting the checked service. They say to run the Compose
+command from Atlas's Compose folder and clarify that Compose runs the request
+inside Atlas Core. This prevents a check from the service computer from being
+mistaken for Atlas's network path. No health probe, network, or service
+configuration changed. The focused Overview and ServiceHealthSection suites
+pass (82 tests), the responsive connection-check journey passes at 320px and
+1280px, and Mission Control lint and production build pass.
+
 ## Installation review retry wording — 2026-10-29
 
 When an installation review cannot load, its recovery panel now says Atlas

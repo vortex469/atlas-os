@@ -359,7 +359,7 @@ for (const width of [320, 1280]) {
         await checks.getByText('Test from the Atlas computer', { exact: true }).click();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();
-        await expect(nextStep).toContainText('On the computer running Atlas, run this command from the folder containing compose.production.yaml. The read-only request runs inside Atlas Core and checks the same network path as this status report.');
+        await expect(nextStep).toContainText("Run this command from the folder containing Atlas's compose.production.yaml, on the computer where Atlas is installed. Compose runs the read-only request inside Atlas Core. Running it from the service computer instead checks a different network path.");
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
         await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');

@@ -184,7 +184,7 @@ export function ServiceDetailsDrawer({
                             </dd>
                         </dl>
                         <p className="mt-2 text-sm text-slate-400">
-                            Run the test on the computer where Atlas Core runs. If Core runs in Docker Compose, run it inside the <code>atlas-core</code> container. Your browser or the service computer may use a different network path.
+                            Run this check on the computer where Atlas Core runs. If you use Docker Compose, run the command from Atlas&apos;s Compose folder; Compose runs the request inside <code>atlas-core</code>. Running it from the service computer instead may use a different network path.
                         </p>
                         <details className="mt-2">
                             <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
