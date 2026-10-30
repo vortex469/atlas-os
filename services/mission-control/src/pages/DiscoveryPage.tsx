@@ -15,6 +15,7 @@ import type {
     DiscoveryListQuery,
     DiscoveryMetadata,
 } from "../types/discovery";
+import { safeText } from "../utils/safeText";
 
 const PAGE_SIZE = 25;
 
@@ -258,7 +259,7 @@ export function DiscoveryPage() {
                     </button>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why the results couldn&apos;t load</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{catalogError}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(catalogError) || "No additional details were returned."}</p>
                     </details>
                 </div>
             )}
@@ -628,7 +629,7 @@ function DiscoveryStatus({
                     </button>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300">Why the status check failed</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(error) || "No additional details were returned."}</p>
                     </details>
                 </div>
             )}

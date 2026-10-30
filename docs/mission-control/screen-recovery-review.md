@@ -4014,3 +4014,11 @@ creation keep their recovery guidance visible while optional error details use
 the shared bounded text filter. Workflow creation and implementation approval
 remain separate. The focused Planning Session suite passes all 37 tests;
 Mission Control lint and production build pass.
+
+## Discovery catalog error details — 2026-10-30
+
+Catalog load and catalog status failures keep their separate retry actions and
+plain-language recovery messages, while collapsed technical details use the
+shared bounded text filter. Results and status can still be retried
+independently. The focused Discovery page suite passes all 17 tests; Mission
+Control lint and production build pass.

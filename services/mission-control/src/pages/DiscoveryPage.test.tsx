@@ -507,8 +507,8 @@ describe("DiscoveryPage", () => {
 
     it("labels catalog load, status, and format details separately when both reads fail", async () => {
         const user = userEvent.setup();
-        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("Status endpoint unavailable"));
-        mockedListDiscoveryItems.mockRejectedValueOnce(new Error("Catalog endpoint unavailable"));
+        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("Bearer metadata-canary-secret"));
+        mockedListDiscoveryItems.mockRejectedValueOnce(new Error("Bearer catalog-canary-secret"));
 
         renderPage();
 
@@ -521,11 +521,13 @@ describe("DiscoveryPage", () => {
         expect(screen.queryByText("Technical details", { exact: true })).not.toBeInTheDocument();
 
         await user.click(within(catalogAlert).getByText("Why the results couldn't load"));
-        expect(within(catalogAlert).getByText("Catalog endpoint unavailable")).toBeVisible();
+        expect(within(catalogAlert).getByText("[Sensitive text withheld]")).toBeVisible();
+        expect(screen.queryByText(/metadata-canary-secret|catalog-canary-secret/)).not.toBeInTheDocument();
         const statusErrorDetails = screen.getByText("Why the status check failed").closest("details");
         expect(statusErrorDetails).not.toHaveAttribute("open");
         await user.click(screen.getByText("Why the status check failed"));
-        expect(within(statusErrorDetails as HTMLDetailsElement).getByText("Status endpoint unavailable")).toBeVisible();
+        expect(within(statusErrorDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
+        expect(screen.queryByText(/metadata-canary-secret|catalog-canary-secret/)).not.toBeInTheDocument();
     });
 
     it("clears previous results and retries the exact failed search", async () => {
