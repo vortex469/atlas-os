@@ -64,16 +64,23 @@ describe("installation capability assessment", () => {
         expect(screen.getByText("Select a VM to check its provider settings.")).toBeInTheDocument();
         empty.unmount();
 
-        let rejectRequest: (reason: Error) => void = () => undefined;
+        let rejectRequest: (reason: unknown) => void = () => undefined;
         vi.mocked(getInstallationCapabilityAssessment).mockReturnValueOnce(new Promise((_, reject) => { rejectRequest = reject; }));
         vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture());
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
         expect(await screen.findByText("Checking provider settings…")).toBeInTheDocument();
-        rejectRequest(new Error("secret provider address 10.0.0.1"));
+        rejectRequest({
+            isAxiosError: true,
+            response: { data: { error: { message: "Bearer canary-secret-value" } } },
+        });
         await waitFor(() => expect(screen.getByRole("alert").querySelector(":scope > p")).toHaveTextContent("Atlas couldn’t check the provider settings."));
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLElement).getByText("Provider settings could not be checked.")).toBeInTheDocument();
+        const safeError = within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]");
+        expect(safeError).not.toBeVisible();
+        expect(screen.queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(safeError).toBeVisible();
         await userEvent.setup().click(screen.getByRole("button", { name: "Retry provider check" }));
         await screen.findByRole("status");
         await userEvent.setup().click(screen.getByText("Technical details"));

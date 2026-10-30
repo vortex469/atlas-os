@@ -3999,3 +3999,10 @@ The Overview health panel keeps its plain-language recovery guidance visible
 while collapsed diagnostic details use the shared bounded text filter. The
 focused Atlas Doctor panel suite passes all 3 tests; Mission Control lint and
 production build pass.
+
+## Installation capability error details — 2026-10-30
+
+Provider-settings failures keep the retry guidance visible while collapsed
+technical details use the shared bounded text filter. The check remains
+non-authorizing. The focused assessment suite passes all 7 tests; Mission
+Control lint and production build pass.

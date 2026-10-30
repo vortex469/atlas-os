@@ -7,6 +7,7 @@ import type {
     InstallationCapabilityReasonCode,
     ProviderCapabilityFactV1,
 } from "../../types/installationCapability";
+import { safeText } from "../../utils/safeText";
 
 const REASONS: Record<InstallationCapabilityReasonCode, string> = {
     installation_plan_blocked: "The installation plan has issues that need review.",
@@ -93,7 +94,7 @@ export function InstallationCapabilityAssessment({ itemId, selectionId }: { item
             <p>Atlas couldn’t check the provider settings. Retry to check again.</p>
             <details className="mt-3 text-red-100/80">
                 <summary className="cursor-pointer">Technical details</summary>
-                <p className="mt-2 break-words">{error}</p>
+                <p className="mt-2 break-words">{safeText(error) || "No additional details were returned."}</p>
             </details>
             <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry provider check</button>
         </div>}
