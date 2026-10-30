@@ -772,6 +772,25 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("link", { name: "← Maintenance history" })).toHaveAttribute("href", "/operations/history");
     });
 
+    it("preserves maintenance history filters and page position when returning from review", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
+        const search = "?status=unavailable&completion=terminal&offset=10";
+        render(
+            <MemoryRouter initialEntries={[{
+                pathname: "/workflows/workflow-123",
+                search,
+                state: { returnTo: "/operations/history" },
+            }]}>
+                <Routes><Route path="/workflows/:workflowId" element={<WorkflowPage />} /></Routes>
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByRole("link", { name: "← Maintenance history" })).toHaveAttribute(
+            "href",
+            `/operations/history${search}`,
+        );
+    });
+
     it("returns a maintenance request to the list it was opened from", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage("/workflows/workflow-123", { returnTo: "/workflows" });

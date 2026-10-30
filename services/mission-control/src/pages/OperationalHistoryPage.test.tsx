@@ -104,6 +104,37 @@ describe("OperationalHistoryPage", () => {
         expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"returnTo":"/operations/history"}');
     });
 
+    it("restores maintenance filters and page position from the URL before opening a request", async () => {
+        mockedList.mockResolvedValueOnce({
+            items: [historyWorkflow("restart-service")],
+            total: 21,
+            limit: 10,
+            offset: 10,
+        });
+        const search = "?status=healthy&completion=terminal&action=restart-service&provider=proxmox&resource=qemu&offset=10";
+        render(
+            <MemoryRouter initialEntries={[`/operations/history${search}`]}>
+                <Routes>
+                    <Route path="/operations/history" element={<OperationalHistoryPage />} />
+                    <Route path="/workflows/:workflowId" element={<NavigationStateProbe />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 10 });
+        expect(screen.getByRole("combobox", { name: "Latest maintenance status" })).toHaveValue("healthy");
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        expect(screen.getByRole("combobox", { name: "Completion" })).toHaveValue("terminal");
+        expect(screen.getByRole("combobox", { name: "Requested action" })).toHaveValue("restart-service");
+        expect(screen.getByRole("combobox", { name: "Provider" })).toHaveValue("proxmox");
+        expect(screen.getByRole("combobox", { name: "Resource type" })).toHaveValue("qemu");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute(
+            "href",
+            `/workflows/workflow-operational-1${search}`,
+        );
+    });
+
     it("distinguishes a malformed request time from a time not reported", async () => {
         mockedLifecycle.mockResolvedValue(operationalLifecycle({ request_created_at: "2026-02-30T17:00:00Z" }));
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
@@ -186,7 +217,7 @@ describe("OperationalHistoryPage", () => {
         expect(screen.getByText("Atlas could not identify this maintenance status.")).toBeVisible();
         expect(screen.getByText("Do not repeat this request until its status is clear. Ask an operator to review it.")).toBeVisible();
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
-        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/workflow-operational-1?status=unavailable");
     });
 
     it("filters only the bounded current page by controlled diagnostic status", async () => {
@@ -448,7 +479,7 @@ describe("maintenance history recovery", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByText("unreadable-target");
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
-        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/history-unreadable");
+        expect(screen.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/history-unreadable?status=unavailable");
         expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
     getWorkflowOperationalLifecycle,
@@ -18,6 +18,50 @@ import type {
 } from "../types/atlasAgent";
 
 const PAGE_SIZE = 10;
+const DIAGNOSTIC_FILTERS = ["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"];
+const COMPLETION_FILTERS = ["all", "terminal", "non_terminal"];
+
+type OperationalHistoryViewState = {
+    diagnosticFilter: string;
+    terminalFilter: string;
+    intentFilter: string;
+    providerFilter: string;
+    resourceTypeFilter: string;
+    offset: number;
+};
+
+function operationalHistoryViewState(search: string): OperationalHistoryViewState {
+    const params = new URLSearchParams(search);
+    const diagnostic = params.get("status") ?? "all";
+    const completion = params.get("completion") ?? "all";
+    const rawOffset = Number(params.get("offset"));
+    return {
+        diagnosticFilter: DIAGNOSTIC_FILTERS.includes(diagnostic) ? diagnostic : "all",
+        terminalFilter: COMPLETION_FILTERS.includes(completion) ? completion : "all",
+        intentFilter: (params.get("action") ?? "all").slice(0, 200) || "all",
+        providerFilter: (params.get("provider") ?? "all").slice(0, 200) || "all",
+        resourceTypeFilter: (params.get("resource") ?? "all").slice(0, 200) || "all",
+        offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset % PAGE_SIZE === 0 ? rawOffset : 0,
+    };
+}
+
+function operationalHistorySearch(currentSearch: string, state: OperationalHistoryViewState): string {
+    const params = new URLSearchParams(currentSearch);
+    const values: Array<[string, string]> = [
+        ["status", state.diagnosticFilter],
+        ["completion", state.terminalFilter],
+        ["action", state.intentFilter],
+        ["provider", state.providerFilter],
+        ["resource", state.resourceTypeFilter],
+        ["offset", state.offset === 0 ? "" : String(state.offset)],
+    ];
+    for (const [key, value] of values) {
+        if (value && value !== "all") params.set(key, value);
+        else params.delete(key);
+    }
+    const serialized = params.toString();
+    return serialized ? `?${serialized}` : "";
+}
 
 interface HistoryItem {
     workflow: WorkflowSummary;
@@ -52,17 +96,28 @@ function historyTargetName(workflow: WorkflowSummary, lifecycle: WorkflowOperati
 }
 
 export function OperationalHistoryPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => operationalHistoryViewState(location.search));
     const [items, setItems] = useState<HistoryItem[]>([]);
-    const [offset, setOffset] = useState(0);
+    const [offset, setOffset] = useState(initialViewState.offset);
     const [total, setTotal] = useState(0);
     const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [diagnosticFilter, setDiagnosticFilter] = useState("all");
-    const [terminalFilter, setTerminalFilter] = useState("all");
-    const [intentFilter, setIntentFilter] = useState("all");
-    const [providerFilter, setProviderFilter] = useState("all");
-    const [resourceTypeFilter, setResourceTypeFilter] = useState("all");
+    const [diagnosticFilter, setDiagnosticFilter] = useState(initialViewState.diagnosticFilter);
+    const [terminalFilter, setTerminalFilter] = useState(initialViewState.terminalFilter);
+    const [intentFilter, setIntentFilter] = useState(initialViewState.intentFilter);
+    const [providerFilter, setProviderFilter] = useState(initialViewState.providerFilter);
+    const [resourceTypeFilter, setResourceTypeFilter] = useState(initialViewState.resourceTypeFilter);
+    const returnSearch = operationalHistorySearch(location.search, {
+        diagnosticFilter,
+        terminalFilter,
+        intentFilter,
+        providerFilter,
+        resourceTypeFilter,
+        offset,
+    });
 
     const requestGeneration = useRef(0);
     const loadedOffsetRef = useRef<number | null>(null);
@@ -116,6 +171,12 @@ export function OperationalHistoryPage() {
         void Promise.resolve().then(() => { if (active) return load(); });
         return () => { active = false; requestGeneration.current += 1; };
     }, [load]);
+
+    useEffect(() => {
+        if (returnSearch !== location.search) {
+            navigate({ pathname: location.pathname, search: returnSearch }, { replace: true });
+        }
+    }, [location.pathname, location.search, navigate, returnSearch]);
 
     const visibleItems = items.filter(({ workflow, lifecycle, diagnostic, diagnosticUnavailable }) =>
         (diagnosticFilter === "all" || diagnostic?.diagnostic_status === diagnosticFilter
@@ -171,14 +232,14 @@ export function OperationalHistoryPage() {
                 {hasActiveFilters && <div className="flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100">Clear filters</button></div>}
             </section>}
             {hasCurrentPage && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>No requests on this page match your filters.</p></section>}
-            {hasCurrentPage && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} />)}</section>}
+            {hasCurrentPage && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} returnSearch={returnSearch} />)}</section>}
             {!hasCurrentPage && offset > 0 && <nav aria-label="Maintenance history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100">Previous</button></nav>}
             {hasCurrentPage && (offset > 0 || total > PAGE_SIZE) && <nav aria-label="Operational history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} disabled={offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">{items.length > 0 ? `Showing ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}` : `${total} request${total === 1 ? "" : "s"} total`}</span><button type="button" onClick={() => setOffset((current) => current + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
         </main>
     );
 }
 
-function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, diagnostic, diagnosticUnavailable }: HistoryItem) {
+function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, diagnostic, diagnosticUnavailable, returnSearch }: HistoryItem & { returnSearch: string }) {
     const outcome = diagnostic ? recoveryPresentation(diagnostic) : null;
     const resultTimestamp = lifecycle?.verification_completed_at ?? lifecycle?.dispatch_completed_at ?? null;
     const action = workflow.execution_intent
@@ -192,7 +253,7 @@ function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, dia
                     <p className="mt-1 text-sm text-slate-400">Requested action: {action}{!outcome && " · Latest maintenance status: Unavailable"}</p>
                     <p className="mt-1 text-sm text-slate-400">Requested (local time): {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
                 </div>
-                <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} state={{ returnTo: "/operations/history" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Review maintenance request</Link>
+                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search: returnSearch }} state={{ returnTo: "/operations/history" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Review maintenance request</Link>
             </div>
             {lifecycleUnavailable && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.</p>}
             <OperationalRecoverySummary diagnostic={diagnostic} error={diagnosticUnavailable ? "Could not load the latest status for this request." : null} supportEvidenceAvailable={diagnostic !== null} compact />

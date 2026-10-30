@@ -646,7 +646,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             )}
 
             <Link
-                to={returnDestination.to}
+                to={{
+                    pathname: returnDestination.to,
+                    search: returnDestination.to === "/operations/history" ? location.search : "",
+                }}
                 className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
                 {returnDestination.label}
