@@ -4038,3 +4038,10 @@ last-loaded state visible while optional technical details use the shared
 bounded text filter. Refresh remains a read-only check. The focused Workflow
 Dashboard suite passes all 21 tests; Mission Control lint and production
 build pass.
+
+## Workflow history error details — 2026-10-30
+
+Audit read failures keep the plain retry message visible while optional error
+details use the shared bounded text filter. The workflow history remains
+read-only. The focused Workflow Audit suite passes all 29 tests; Mission
+Control lint and production build pass.

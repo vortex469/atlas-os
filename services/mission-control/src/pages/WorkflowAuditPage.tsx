@@ -10,6 +10,7 @@ import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageS
 import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 
 interface AuditStageDefinition {
     stage: WorkflowAuditStageName;
@@ -228,7 +229,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                     <button type="button" onClick={() => void loadAudit()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                     {loadError.details && <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{loadError.details}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(loadError.details) || "No additional details were returned."}</p>
                     </details>}
                 </section>
             </main>

@@ -371,7 +371,7 @@ describe("WorkflowAuditPage", () => {
     });
 
     it("shows agent unavailable alert", async () => {
-        mockedGetWorkflowAudit.mockRejectedValue(new Error("Atlas Agent unavailable."));
+        mockedGetWorkflowAudit.mockRejectedValue(new Error("Bearer audit-canary-secret"));
         renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
 
         const alert = await screen.findByRole("alert");
@@ -383,9 +383,10 @@ describe("WorkflowAuditPage", () => {
         );
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable.")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/audit-canary-secret/)).not.toBeInTheDocument();
         fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable.")).toBeInTheDocument();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
 
     it("renders back to workflow link", async () => {
