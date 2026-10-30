@@ -342,6 +342,20 @@ describe("DiscoveryItemPage", () => {
         expect(within(section).getByRole("button", { name: "Retry relationships" })).toBeInTheDocument();
     });
 
+    it("keeps the catalog search when opening a related item", async () => {
+        renderPage("/discovery/items/frigate?q=frigate&type=application");
+
+        const section = await screen.findByRole("region", { name: "Catalog relationships" });
+        expect(within(section).getByRole("link", { name: "mqtt" })).toHaveAttribute(
+            "href",
+            "/discovery/items/mqtt?q=frigate&type=application",
+        );
+        expect(within(section).getByRole("link", { name: "Mission Control" })).toHaveAttribute(
+            "href",
+            "/discovery/items/mission-control?q=frigate&type=application",
+        );
+    });
+
     it.each(["compatibility", "evidence", "grounding", "plan"])("does not display unrelated %s evidence", async (source) => {
         if (source === "compatibility") mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment({ item_id: "other" }));
         if (source === "evidence") mockedGetDiscoveryItemEvidence.mockResolvedValue({ ...itemEvidence(), catalog_item_id: "other" });
@@ -541,11 +555,15 @@ describe("DiscoveryItemPage", () => {
             total: 2,
             limit: 25,
         });
-        renderPage();
+        renderPage("/discovery/items/frigate?q=frigate&type=application");
         expect(await screen.findByRole("heading", { name: "Suggestions" })).toBeInTheDocument();
         expect(await screen.findByText("Suggestion")).toBeInTheDocument();
         expect(mockedListDiscoveryProposals).toHaveBeenCalledWith(25);
         expect(screen.queryByText("other")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "View catalog item for frigate" })).toHaveAttribute(
+            "href",
+            "/discovery/items/frigate?q=frigate&type=application",
+        );
     });
 
     it("composes read-only evidence without granting mutation or execution controls", async () => {

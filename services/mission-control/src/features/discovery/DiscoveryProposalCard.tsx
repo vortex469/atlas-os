@@ -38,15 +38,20 @@ function TimeFact({ name, value }: { name: string; value: string }) {
 export function DiscoveryProposalCard({
     proposal,
     showNavigation = true,
+    returnSearch = "",
 }: {
     proposal: DiscoveryProposalNavigation;
     showNavigation?: boolean;
+    returnSearch?: string;
 }) {
     const destination = resolveProposalNavigation(proposal);
     const reviewOnly = isReviewOnly(proposal);
     const to = destination.kind === "operator_maintenance_selection"
         ? { pathname: "/operations/request" }
-        : { pathname: `/discovery/items/${encodeURIComponent(destination.itemId ?? proposal.catalog_item_id)}` };
+        : {
+            pathname: `/discovery/items/${encodeURIComponent(destination.itemId ?? proposal.catalog_item_id)}`,
+            search: returnSearch,
+        };
     const state = destination.kind === "operator_maintenance_selection"
         ? { proposalId: destination.proposalId }
         : undefined;

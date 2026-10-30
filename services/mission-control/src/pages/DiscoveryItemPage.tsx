@@ -538,7 +538,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 {proposalsLoading && <p className="text-sm text-slate-400">Loading suggestions…</p>}
                 {proposalsError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><p>{proposalsError}</p><button type="button" onClick={retryRelatedProposals} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200">Retry suggestions</button></div>}
                 {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No suggestions are available.</p>}
-                {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} />)}
+                {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} returnSearch={location.search} />)}
             </section>
 
             <RequirementsPanel requirements={item.requirements} />
@@ -553,6 +553,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                         title="Links from this item"
                         empty="No links from this item."
                         relationships={state.outgoing}
+                        returnSearch={location.search}
                     />
                     <RelationshipsPanel
                         direction="incoming"
@@ -560,6 +561,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                         title="Items linking to this item"
                         empty="No items link to this item."
                         relationships={state.incoming}
+                        returnSearch={location.search}
                     />
                 </div>}
             </section>
@@ -818,12 +820,14 @@ function RelationshipsPanel({
     title,
     empty,
     relationships,
+    returnSearch,
 }: {
     direction: "incoming" | "outgoing";
     itemName: string;
     title: string;
     empty: string;
     relationships: DiscoveryRelationshipReference[];
+    returnSearch: string;
 }) {
     return (
         <InfoPanel title={title}>
@@ -840,7 +844,10 @@ function RelationshipsPanel({
                                 {direction === "incoming" ? (
                                     <>
                                         <Link
-                                            to={`/discovery/items/${encodeURIComponent(reference.source_item_id)}`}
+                                            to={{
+                                                pathname: `/discovery/items/${encodeURIComponent(reference.source_item_id)}`,
+                                                search: returnSearch,
+                                            }}
                                             className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                                         >
                                             {formatLabel(reference.source_item_id)}
@@ -859,9 +866,10 @@ function RelationshipsPanel({
                                         <span className="text-slate-600">→</span>
                                         {reference.resolved_target_item_id ? (
                                             <Link
-                                                to={`/discovery/items/${encodeURIComponent(
-                                                    reference.resolved_target_item_id,
-                                                )}`}
+                                                to={{
+                                                    pathname: `/discovery/items/${encodeURIComponent(reference.resolved_target_item_id)}`,
+                                                    search: returnSearch,
+                                                }}
                                                 className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                                             >
                                                 {reference.target}
