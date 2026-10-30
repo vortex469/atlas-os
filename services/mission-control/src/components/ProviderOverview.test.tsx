@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Provider } from "../types/provider";
 import { ProviderOverview } from "./ProviderOverview";
 
-function view(capabilities: unknown, latencyMs: number | null = 24, status = "online", message: string | null = null) {
+function view(capabilities: unknown, latencyMs: number | null = 24, status = "online", message: string | null = null, stale = false) {
     const provider = {
         id: "proxmox",
         name: "Proxmox",
@@ -16,13 +16,13 @@ function view(capabilities: unknown, latencyMs: number | null = 24, status = "on
         capabilities,
         health: { status, latency_ms: latencyMs, http_status: 200, message, details: { url: "https://proxmox.example/health" } },
     } as unknown as Provider;
-    render(<ProviderOverview provider={provider} />);
+    render(<ProviderOverview provider={provider} stale={stale} />);
 }
 
 describe("ProviderOverview feature data", () => {
     it("shows provider health once as a readable status badge", () => {
         view([]);
-        expect(screen.getByText("Online", { exact: true })).toBeInTheDocument();
+        expect(screen.getByText("Healthy", { exact: true })).toBeInTheDocument();
         expect(screen.queryByText("online", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByText("Status", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText(/Response time/)).toBeInTheDocument();
@@ -60,6 +60,25 @@ describe("ProviderOverview feature data", () => {
         expect(screen.getByText("Atlas Core could not reach this provider. It may still be running on its own computer.")).toBeVisible();
         expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeVisible();
         expect(screen.queryByText("Connection refused", { exact: true })).not.toBeInTheDocument();
+    });
+
+    it("marks cached provider health and response details as out of date after a catalog failure", () => {
+        view([], 24, "online", null, true);
+
+        expect(screen.getByText("Status unknown", { exact: true })).toBeVisible();
+        expect(screen.getByText("Last known report (out of date): Healthy.")).toBeVisible();
+        expect(screen.getByText(/Last known response time/)).toHaveTextContent("Last known response time 24 ms");
+        expect(screen.queryByText("Online", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas Core could not reach this provider. It may still be running on its own computer.")).not.toBeInTheDocument();
+    });
+
+    it("marks an old connection failure as last known when provider refresh fails", () => {
+        view([], null, "offline", "Connection refused", true);
+
+        expect(screen.getByText("Status unknown", { exact: true })).toBeVisible();
+        expect(screen.getByText("Last known report (out of date): Unavailable.")).toBeVisible();
+        expect(screen.getByText("Last known connection result: Atlas Core's connection to this address was refused.")).toBeVisible();
+        expect(screen.queryByText("Atlas Core could not reach this provider. It may still be running on its own computer.")).not.toBeInTheDocument();
     });
 
     it("distinguishes missing features from an empty advertised list", () => {

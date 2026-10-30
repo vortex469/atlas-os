@@ -6,7 +6,7 @@ import { useMissionControl } from "../hooks/useMissionControl";
 import { ProviderPage } from "./ProviderPage";
 
 vi.mock("../hooks/useMissionControl", () => ({ useMissionControl: vi.fn() }));
-vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: () => <section><h2>Provider overview</h2></section> }));
+vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: ({ stale }: { stale?: boolean }) => <section><h2>Provider overview</h2>{stale && <p>Last known provider status</p>}</section> }));
 vi.mock("../components/ProviderResources", () => ({ ProviderResources: () => <section><h2>Resources and monitoring</h2></section> }));
 vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Direct provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => <section><h2>Connection</h2></section> }));
@@ -128,6 +128,17 @@ describe("ProviderPage authority layout", () => {
 
         expect(screen.getByText("Atlas could not confirm whether this provider is currently listed.")).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
+    });
+
+    it("marks cached provider details as last known when the catalog refresh fails", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
+            error: "Some provider information could not be refreshed. Existing information may be out of date.",
+            failedSources: ["provider catalog"],
+            providerCatalogUnavailable: true,
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByText("Last known provider status")).toBeInTheDocument();
     });
 
     it("puts reviewed maintenance before direct actions, connection details, and retained evidence", () => {

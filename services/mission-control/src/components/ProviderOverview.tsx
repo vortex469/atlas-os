@@ -1,9 +1,10 @@
 import type { Provider } from "../types/provider";
 import { healthReason, healthState } from "../utils/healthPresentation";
-import { StatusBadge } from "./StatusBadge";
+import { HealthEvidence } from "./HealthEvidence";
 
 type ProviderOverviewProps = {
     provider: Provider;
+    stale?: boolean;
 };
 
 function formatLabel(value: string): string {
@@ -20,6 +21,7 @@ function formatLabel(value: string): string {
 
 export function ProviderOverview({
     provider,
+    stale = false,
 }: ProviderOverviewProps) {
     const capabilities = Array.isArray(provider.capabilities)
         ? provider.capabilities
@@ -29,7 +31,6 @@ export function ProviderOverview({
             ? provider.health.details.url
             : null;
     const isUnavailable = healthState(provider.health.status) === "Unavailable";
-    const healthStatusLabel = isUnavailable ? "Unavailable" : formatLabel(provider.health.status);
     const connectionMessage = healthReason(provider.health.message);
 
     return (
@@ -51,10 +52,14 @@ export function ProviderOverview({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-                    <StatusBadge status={healthStatusLabel} />
+                    <HealthEvidence
+                        status={provider.health.status}
+                        stale={stale}
+                        compact
+                    />
                     {provider.health.latency_ms !== null && (
                         <p className="text-sm text-slate-400">
-                            {"Response time "}
+                            {stale ? "Last known response time " : "Response time "}
                             <span className="font-semibold text-slate-200">
                                 {provider.health.latency_ms} ms
                             </span>
@@ -63,7 +68,7 @@ export function ProviderOverview({
                 </div>
             </div>
 
-            {isUnavailable && (
+            {isUnavailable && !stale && (
                 <p className="mt-4 text-sm text-slate-400">
                     Atlas Core could not reach this provider. It may still be running on its own computer.
                 </p>
@@ -116,7 +121,7 @@ export function ProviderOverview({
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div>
                         <dt className="text-xs uppercase tracking-wider text-slate-500">
-                            HTTP response code
+                            {stale ? "Last known HTTP response code" : "HTTP response code"}
                         </dt>
                         <dd className="mt-2 text-sm font-semibold text-slate-200">
                             {provider.health.http_status ?? "Not reported"}
@@ -157,7 +162,7 @@ export function ProviderOverview({
             {connectionMessage && (
                 <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
                     <p className="text-sm text-amber-200">
-                        {connectionMessage}
+                        {stale ? `Last known connection result: ${connectionMessage}` : connectionMessage}
                     </p>
                 </div>
             )}

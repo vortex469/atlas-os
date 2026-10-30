@@ -168,7 +168,7 @@ export function ProviderPage() {
 
             {provider && (
                 <>
-                    <ProviderOverview provider={provider} />
+                    <ProviderOverview provider={provider} stale={providerCatalogUnavailable} />
 
                     {capabilities === null && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">Supported provider features could not be loaded. Some provider sections are hidden.</p>}
 
