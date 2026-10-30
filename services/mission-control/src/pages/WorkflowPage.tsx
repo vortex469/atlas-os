@@ -91,7 +91,7 @@ function workflowReturnDestination(workflow: WorkflowDetailResponse | null, stat
 }
 
 function workflowReturnSearch(destination: WorkflowReturnDestination, search: string): string {
-    if (destination.to === "/workflows" || destination.to === "/operations/history") {
+    if (destination.to === "/workflows" || destination.to === "/operations/history" || destination.to === "/execution-candidates") {
         const params = new URLSearchParams(search);
         params.delete("returnTo");
         const serialized = params.toString();

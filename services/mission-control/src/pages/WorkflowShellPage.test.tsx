@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { act, render, screen, within } from "@testing-library/react";
-import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useLocation } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -84,16 +84,21 @@ function planningSession(overrides: Partial<CandidatePlanningResponse> = {}): Ca
     };
 }
 
-function renderPage(state?: { workflow: CandidateWorkflowResponse }) {
+function renderPage(state?: { workflow: CandidateWorkflowResponse }, search = "") {
     return render(
-        <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", state }]}>
+        <MemoryRouter initialEntries={[{ pathname: "/candidate-planning/candidate-plan-1/workflow", search, state }]}>
             <Routes>
                 <Route path="/candidate-planning/:sessionId/workflow" element={<WorkflowShellPage />} />
-                <Route path="/workflows/:workflowId" element={<div>Workflow detail</div>} />
-                <Route path="/candidate-planning/:sessionId" element={<div>Candidate planning session</div>} />
+                <Route path="/workflows/:workflowId" element={<NavigationProbe label="Workflow detail" />} />
+                <Route path="/candidate-planning/:sessionId" element={<NavigationProbe label="Candidate planning session" />} />
             </Routes>
         </MemoryRouter>,
     );
+}
+
+function NavigationProbe({ label }: { label: string }) {
+    const location = useLocation();
+    return <><div>{label}</div><output data-testid="navigation-location">{location.pathname}{location.search}</output></>;
 }
 
 describe("WorkflowShellPage", () => {
@@ -220,12 +225,13 @@ describe("WorkflowShellPage", () => {
 
 	it("prepares a change request for separate review and approval", async () => {
 		const user = userEvent.setup();
+        const search = "?eligibility=eligible&offset=25";
         const currentWorkflow = workflow({
             workflow_status: "awaiting_approval",
             conversion_status: "workflow_created",
             implementation_approval_request_id: "approval-shell",
         });
-        renderPage({ workflow: currentWorkflow });
+        renderPage({ workflow: currentWorkflow }, search);
 
         expect(await screen.findByRole("heading", { name: "Prepare change for review" })).toBeVisible();
         expect(screen.getByText("Atlas will create a request from this plan for you to review. It does not approve or run the change.")).toBeVisible();
@@ -241,6 +247,9 @@ describe("WorkflowShellPage", () => {
             },
         );
 		expect(await screen.findByText("Workflow detail")).toBeInTheDocument();
+		expect(screen.getByTestId("navigation-location")).toHaveTextContent(
+			"/workflows/workflow-1?eligibility=eligible&offset=25&returnTo=%2Fexecution-candidates",
+		);
 	});
 
 		it("does not navigate on repository_stale translation failure and renders structured failure details", async () => {
@@ -604,8 +613,8 @@ describe("WorkflowShellPage", () => {
 
     it("shows an error when no workflow shell can be loaded from the planning session ID", async () => {
         mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Workflow unavailable"));
-
-        renderPage();
+        const search = "?eligibility=eligible&offset=25";
+        renderPage(undefined, search);
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Workflow summary unavailable");
@@ -615,7 +624,7 @@ describe("WorkflowShellPage", () => {
         expect(within(technicalDetails as HTMLElement).getByText("Workflow unavailable", { exact: true })).not.toBeVisible();
         expect(screen.getByRole("link", { name: "Back to planning session" })).toHaveAttribute(
             "href",
-            "/candidate-planning/candidate-plan-1",
+            `/candidate-planning/candidate-plan-1${search}`,
         );
     });
 

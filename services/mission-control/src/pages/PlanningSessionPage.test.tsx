@@ -104,7 +104,8 @@ function renderPage(path = "/candidate-planning/candidate-plan-1") {
 describe("PlanningSessionPage", () => {
     it("renders the existing maintenance plan without requesting a repository plan", async () => {
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", operational_plan: operationalPlan() }));
-        renderPage();
+        const search = "?eligibility=eligible&change=update-compose-stack&offset=25";
+        renderPage(`/candidate-planning/candidate-plan-1${search}`);
         const title = await screen.findByRole("heading", { name: /^Maintenance plan$/ });
         expect(title.tagName).toBe("H2");
         expect(screen.getAllByRole("heading", { name: /^Maintenance plan$/ })).toHaveLength(1);
@@ -116,7 +117,7 @@ describe("PlanningSessionPage", () => {
         expect(screen.getByText("proxmox/qemu/110")).toBeVisible();
         expect(screen.getByText("Temporary service interruption.")).toBeVisible();
         expect(screen.getByText(/Stop and require operator review/)).toBeVisible();
-        expect(screen.getByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", "/execution-candidates/candidate-1");
+        expect(screen.getByRole("link", { name: "Review original proposal" })).toHaveAttribute("href", `/execution-candidates/candidate-1${search}`);
         const createdTime = screen.getByText("Created (local time)").parentElement?.querySelector("time");
         expect(createdTime).toHaveAttribute("datetime", "2026-01-01T12:00:00Z");
         expect(createdTime).toHaveTextContent(new Date("2026-01-01T12:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
@@ -404,7 +405,8 @@ describe("PlanningSessionPage", () => {
     it("creates a workflow shell from a plan-ready session", async () => {
         const user = userEvent.setup();
         mockedGetCandidatePlanningSession.mockResolvedValue(session({ status: "plan_ready", plan: plan() }));
-        renderPage();
+        const search = "?eligibility=eligible&change=update-compose-stack&offset=25";
+        renderPage(`/candidate-planning/candidate-plan-1${search}`);
 
         await user.click(await screen.findByRole("button", { name: "Create Workflow" }));
 
@@ -412,7 +414,7 @@ describe("PlanningSessionPage", () => {
         expect(mockedCreateCandidateWorkflowShell).toHaveBeenCalledTimes(1);
         const successMessage = "Workflow created. Implementation has not run and still needs separate approval.";
         expect(await screen.findByText(successMessage)).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1/workflow");
+        expect(screen.getByRole("link", { name: "Open Workflow" })).toHaveAttribute("href", `/candidate-planning/candidate-plan-1/workflow${search}`);
         const workflowResult = screen.getByText(successMessage).closest("[role='status']");
         const technicalDetails = within(workflowResult as HTMLElement).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");

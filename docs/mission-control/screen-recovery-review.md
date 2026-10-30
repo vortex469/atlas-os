@@ -3706,3 +3706,13 @@ history. The focused OperationalHistoryPage and WorkflowPage suites pass (149
 tests total), and Mission Control lint and production build pass. This changes
 navigation only; maintenance reads, approvals, and execution behavior are
 unchanged.
+
+## Change proposal context through planning — 2026-10-30
+
+The proposal list's filters and page now follow the operator through proposal
+review, planning, workflow setup, and back from workflow review. Direct workflow
+links carry an allowlisted return destination in the URL, so a reload or failed
+workflow read keeps the operator on the right route with the same search.
+Focused proposal, planning, workflow setup, and workflow detail suites pass
+(196 tests total); lint and production build pass. This changes navigation
+only; planning, approval, and execution boundaries are unchanged.

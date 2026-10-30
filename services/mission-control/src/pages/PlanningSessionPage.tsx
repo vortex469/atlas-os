@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
 
 import {
@@ -36,6 +36,7 @@ export function PlanningSessionPage() {
 }
 
 function PlanningSession({ sessionId }: { sessionId: string }) {
+    const location = useLocation();
     const [session, setSession] = useState<CandidatePlanningResponse | null>(null);
     const [plan, setPlan] = useState<CandidatePlanApiResponse | null>(null);
     const [operationalPlan, setOperationalPlan] = useState<OperationalCandidatePlanApiResponse | null>(null);
@@ -244,7 +245,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     if (error || session === null) {
         return (
             <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
-                <Link to="/execution-candidates" className="text-sm text-blue-300">← Change proposals</Link>
+                <Link to={{ pathname: "/execution-candidates", search: location.search }} className="text-sm text-blue-300">← Change proposals</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-xl font-semibold text-red-100">{error ? "Planning session unavailable" : "Planning session not found"}</h1>
                     <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>
@@ -275,11 +276,11 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
             <section aria-labelledby="planning-context-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <h2 id="planning-context-heading" className="text-lg font-semibold text-white">Planning context</h2>
-                    <Link to={`/execution-candidates/${encodeURIComponent(session.candidate_id)}`} className="text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Review original proposal</Link>
+                    <Link to={{ pathname: `/execution-candidates/${encodeURIComponent(session.candidate_id)}`, search: location.search }} className="text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Review original proposal</Link>
                 </div>
                 {session.successor_session_id && (
                     <p className="mt-3 text-sm text-slate-300">
-                        A newer planning session is available. <Link to={`/candidate-planning/${encodeURIComponent(session.successor_session_id)}`} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Open the latest session</Link>.
+                        A newer planning session is available. <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(session.successor_session_id)}`, search: location.search }} className="font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">Open the latest session</Link>.
                     </p>
                 )}
                 <details className="mt-4 border-t border-slate-800 pt-4">
@@ -364,7 +365,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                             </details>
                         </div>
                     )}
-                    {workflow && <WorkflowCreationResult workflow={workflow} />}
+                    {workflow && <WorkflowCreationResult workflow={workflow} search={location.search} />}
                     {hasPlan && session.planning_allowed !== true && (
                         <p className="mt-4 text-sm text-slate-300">You can review this plan, but this session cannot create a workflow.</p>
                     )}
@@ -374,14 +375,14 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
     );
 }
 
-function WorkflowCreationResult({ workflow }: { workflow: CandidateWorkflowResponse }) {
+function WorkflowCreationResult({ workflow, search }: { workflow: CandidateWorkflowResponse; search: string }) {
     const isSuccessful = workflow.workflow_session_id !== null && workflow.failure === null;
 
     return (
         <div role={isSuccessful ? "status" : "alert"} className={["mt-4 rounded-lg border p-4", isSuccessful ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"].join(" ")}>
             <p className={isSuccessful ? "font-semibold text-emerald-200" : "font-semibold text-amber-200"}>{workflowMessage(workflow)}</p>
             {workflow.workflow_session_id && (
-                <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}/workflow`} state={{ workflow }} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}/workflow`, search }} state={{ workflow }} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     Open Workflow
                 </Link>
             )}

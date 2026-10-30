@@ -190,7 +190,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
                     {(!actionState.enabled || isPlanningPending) && <p className="text-sm text-slate-400">{isPlanningPending ? "Planning request is already pending." : actionState.reason}</p>}
                     {actionState.refreshRequired && !isPlanningPending && <button type="button" onClick={retryCandidateRead} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-300">Refresh proposal</button>}
                 </div>
-                {planningResponse && <PlanningResult response={planningResponse} onRefreshCandidate={retryCandidateRead} />}
+                {planningResponse && <PlanningResult response={planningResponse} search={location.search} onRefreshCandidate={retryCandidateRead} />}
                 {planningError && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4"><p className="font-semibold text-red-300">{planningError.title}</p><p className="mt-1 text-sm text-red-200/80">{planningError.message}</p><details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{planningError.details}</p></details></div>}
             </section>
 
@@ -241,7 +241,7 @@ function PageFrame({ children }: { children: React.ReactNode }) {
     );
 }
 
-function PlanningResult({ response, onRefreshCandidate }: { response: CandidatePlanningResponse; onRefreshCandidate: () => void }) {
+function PlanningResult({ response, search, onRefreshCandidate }: { response: CandidatePlanningResponse; search: string; onRefreshCandidate: () => void }) {
     const message = planningMessage(response);
     const isError = !response.planning_allowed || response.planning_failure !== null || response.session_id === null;
     const isStale = response.status.includes("stale") || response.planning_failure?.code === "candidate_stale";
@@ -251,7 +251,7 @@ function PlanningResult({ response, onRefreshCandidate }: { response: CandidateP
         <div role={isError ? "alert" : "status"} className={["mt-4 rounded-lg border p-4", isError ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/10"].join(" ")}>
             <p className={isError ? "font-semibold text-amber-200" : "font-semibold text-emerald-200"}>{message}</p>
             {response.session_id && (
-                <Link to={`/candidate-planning/${encodeURIComponent(response.session_id)}`} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(response.session_id)}`, search }} className="mt-3 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     {canContinuePlanning ? "Continue planning" : "Open planning session"}
                 </Link>
             )}

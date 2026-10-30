@@ -143,7 +143,8 @@ describe("ExecutionCandidateDetailPage", () => {
 
     it("submits only candidate_id and keeps planning response details optional", async () => {
         const user = userEvent.setup();
-        renderPage();
+        const search = "?eligibility=eligible&change=update-compose-stack&target=stack-home-assistant&offset=25";
+        renderPage(`/execution-candidates/candidate-1${search}`);
 
         await screen.findByRole("heading", { name: "Update Compose Stack" });
         await user.click(screen.getByRole("button", { name: "Start planning" }));
@@ -155,7 +156,7 @@ describe("ExecutionCandidateDetailPage", () => {
         );
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
         expect(await screen.findByText("Planning is ready. Continue to review the proposal plan. No approval or change has been made.")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Continue planning" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+        expect(screen.getByRole("link", { name: "Continue planning" })).toHaveAttribute("href", `/candidate-planning/candidate-plan-1${search}`);
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toBeNull();
         expect(technicalDetails).not.toHaveAttribute("open");

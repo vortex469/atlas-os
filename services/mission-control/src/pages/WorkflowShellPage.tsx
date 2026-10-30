@@ -25,10 +25,10 @@ export function WorkflowShellPage() {
     const location = useLocation();
     const supplied = (location.state as WorkflowLocationState | null)?.workflow;
     const initialWorkflow = supplied && supplied.candidate_planning_session_id === sessionId ? supplied : null;
-    return <WorkflowShell key={JSON.stringify([sessionId, location.key])} sessionId={sessionId} initialWorkflow={initialWorkflow} />;
+    return <WorkflowShell key={JSON.stringify([sessionId, location.key])} sessionId={sessionId} search={location.search} initialWorkflow={initialWorkflow} />;
 }
 
-function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; initialWorkflow: CandidateWorkflowResponse | null }) {
+function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: string; search: string; initialWorkflow: CandidateWorkflowResponse | null }) {
     const navigate = useNavigate();
     const workflowFromLocation = initialWorkflow;
     const viewGeneration = useRef(0);
@@ -185,7 +185,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
             const isSuccessfulTranslation = isSuccessfulImplementationResponse(response);
 
             if (isSuccessfulTranslation) {
-                navigate(`/workflows/${encodeURIComponent(response.workflow_session_id)}`);
+                navigate({ pathname: `/workflows/${encodeURIComponent(response.workflow_session_id)}`, search: workflowDetailSearch(search) });
             } else if (response.failure) {
                 setImplementationError(implementationFailureMessage(response));
             } else {
@@ -228,7 +228,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 return;
             }
 
-            navigate(`/candidate-planning/${encodeURIComponent(response.session_id)}`);
+            navigate({ pathname: `/candidate-planning/${encodeURIComponent(response.session_id)}`, search });
         } catch (error) {
             if (generation !== viewGeneration.current) return;
             const fallback = "Successor planning request failed without additional details.";
@@ -266,7 +266,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                             <p className="mt-2 break-words text-sm text-slate-400">{workflowLoadErrorDetails}</p>
                         </details>
                     )}
-                    <Link to={`/candidate-planning/${encodeURIComponent(sessionId)}`} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(sessionId)}`, search }} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Back to planning session
                     </Link>
                 </div>
@@ -389,7 +389,7 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                 {successorError && (
                     <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
                         <p>{successorError}</p>
-                        {workflow.candidate_planning_session_id && <Link to={`/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}`} className="mt-3 inline-flex font-semibold text-blue-200 underline underline-offset-2">Check the earlier planning session</Link>}
+                        {workflow.candidate_planning_session_id && <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}`, search }} className="mt-3 inline-flex font-semibold text-blue-200 underline underline-offset-2">Check the earlier planning session</Link>}
                         {successorErrorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary><p className="mt-2 break-words">{successorErrorDetails}</p></details>}
                     </div>
                 )}
@@ -423,13 +423,19 @@ function WorkflowShell({ sessionId, initialWorkflow }: { sessionId: string; init
                     </div>
                 )}
                 {workflow.workflow_session_id && (
-                    <Link to={`/workflows/${encodeURIComponent(workflow.workflow_session_id)}`} className="mt-5 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_session_id)}`, search: workflowDetailSearch(search) }} className="mt-5 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Open Workflow
                     </Link>
                 )}
             </section>
         </main>
     );
+}
+
+function workflowDetailSearch(search: string): string {
+    const params = new URLSearchParams(search);
+    params.set("returnTo", "/execution-candidates");
+    return `?${params.toString()}`;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

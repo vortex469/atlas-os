@@ -870,6 +870,18 @@ describe("WorkflowPage", () => {
         );
     });
 
+    it("returns a candidate workflow to the filtered proposal list when its direct URL fails", async () => {
+        mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
+        const search = "?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates";
+        renderPage(`/workflows/workflow-123${search}`);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Workflow unavailable");
+        expect(screen.getByRole("link", { name: "Back to execution candidates" })).toHaveAttribute(
+            "href",
+            "/execution-candidates?eligibility=eligible&change=update-compose-stack&offset=25",
+        );
+    });
+
     it("keeps workflow dashboard filters available when workflow details fail to load", async () => {
         mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
         const search = "?status=blocked&draftWorkflow=compose&page=2";
