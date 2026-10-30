@@ -2,6 +2,15 @@
 
 set -euo pipefail
 
+assert_mission_control_title() {
+    local expected_title='<title>Overview | Atlas Mission Control</title>'
+
+    if ! grep -Fq "$expected_title"; then
+        printf 'Mission Control page title check failed; expected %s\n' "$expected_title" >&2
+        return 1
+    fi
+}
+
 verify_staged_repository_head() {
     local staged_repository=$1
     local expected_head=$2
@@ -428,7 +437,7 @@ docker inspect --format '{{json .HostConfig.PortBindings}}' "$mission_container"
     | python3 -c 'import json,sys; bindings=json.load(sys.stdin) or {}; assert not any(bindings.values()), bindings'
 docker exec "$edge_container" wget --quiet --output-document=- \
     http://mission-control:8080/ \
-    | grep -q '<title>mission-control</title>'
+    | assert_mission_control_title
 
 echo "Checking Atlas Core runtime policy storage"
 test "$(docker inspect \
@@ -614,9 +623,9 @@ test "$(sha256sum "$POLICY_TEMPLATE_FILE" | awk '{print $1}')" = \
 
 echo "Checking Mission Control, API proxy, and SPA fallback"
 "${curl[@]}" --fail --silent --show-error "$base_url/" \
-    | grep -q '<title>mission-control</title>'
+    | assert_mission_control_title
 "${curl[@]}" --fail --silent --show-error "$base_url/operations/actions/gate" \
-    | grep -q '<title>mission-control</title>'
+    | assert_mission_control_title
 "${curl[@]}" --fail --silent --show-error "$base_url/api/v1" \
     | grep -q '"release":"Foundry"'
 "${curl[@]}" --fail --silent --show-error --head "$base_url/" \
@@ -640,7 +649,7 @@ curl \
     --show-error \
     --user 'atlas:release-gate' \
     "$https_base_url/" \
-    | grep -q '<title>mission-control</title>'
+    | assert_mission_control_title
 curl \
     --cacert "$GATE_CERT_FILE" \
     --fail \
