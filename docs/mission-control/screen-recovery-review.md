@@ -3952,3 +3952,12 @@ disables editing, testing, and saving until a refresh succeeds. Initial read
 failures still offer a refresh. The focused Provider Connection suite passes
 all 18 tests, and Mission Control lint passes. The connection API and explicit
 test/save confirmation boundaries are unchanged.
+
+## Change proposal search recovery — 2026-10-30
+
+If a search fails after earlier results loaded, the page continues to hide
+those results so they cannot be mistaken for the current search. The error now
+explains why the results area is empty. Initial failures keep the simpler
+retry message. The focused proposal page suite passes 17 tests, the responsive
+browser suite passes all 16 cases, and Mission Control lint and production
+build pass. Search, filter, and proposal behavior are unchanged.

@@ -145,6 +145,7 @@ export function ExecutionCandidatesPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [hasLoadedSearch, setHasLoadedSearch] = useState(false);
 
     const requestGeneration = useRef(0);
     const lastRequestedQuery = useRef<CandidateRequest>({ filters: initialViewState.submittedFilters, offset: initialViewState.offset });
@@ -173,6 +174,7 @@ export function ExecutionCandidatesPage() {
                 offset: page.offset,
                 hasMore: page.has_more,
             });
+            setHasLoadedSearch(true);
         } catch (requestError) {
             if (generation !== requestGeneration.current) return;
             console.error("Unable to load change proposals:", requestError);
@@ -246,6 +248,7 @@ export function ExecutionCandidatesPage() {
                 <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <p className="font-semibold text-red-300">Change proposals unavailable</p>
                     <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    {hasLoadedSearch && <p className="mt-1 text-sm text-red-200/80">Previous results are hidden until this search succeeds.</p>}
                     {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
                     <button type="button" onClick={retryLastSearch} disabled={isLoading} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
                         Retry search

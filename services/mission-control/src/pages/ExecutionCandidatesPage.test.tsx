@@ -190,6 +190,7 @@ describe("ExecutionCandidatesPage", () => {
         const alert = await screen.findByRole("alert");
         expect(screen.queryByText("candidate-1")).not.toBeInTheDocument();
         expect(alert).toHaveTextContent("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
+        expect(alert).toHaveTextContent("Previous results are hidden until this search succeeds.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Current search failed")).not.toBeVisible();
@@ -206,6 +207,7 @@ describe("ExecutionCandidatesPage", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Change proposals unavailable");
         expect(alert).toHaveTextContent("Atlas couldn’t load the latest change proposals. Your search filters are still selected.");
+        expect(alert).not.toHaveTextContent("Previous results are hidden until this search succeeds.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(screen.queryByRole("heading", { name: "This page could not load" })).not.toBeInTheDocument();
