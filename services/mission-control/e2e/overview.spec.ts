@@ -327,6 +327,7 @@ for (const width of [320, 1280]) {
 for (const width of [320, 1280]) {
     test(`service check explains where Atlas tested iFileshare and what to check next at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 800 });
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
         await page.route('**/api/v1/health', route => route.fulfill({ json: {
             atlas: 'degraded',
             services: { iFileshare: {
@@ -364,6 +365,11 @@ for (const width of [320, 1280]) {
         const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
         await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');
         await expect(connectionCommand).toContainText('http://10.10.60.30:8080/');
+        await connectionCommand.getByRole('button', { name: 'Copy command' }).click();
+        await expect(connectionCommand.getByRole('status')).toHaveText('Command copied.');
+        const copiedCommand = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copiedCommand).toContain('http://10.10.60.30:8080/');
+        expect(copiedCommand).not.toMatch(/password|private|token=/);
         await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
         await expect(nextStep).toContainText("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');

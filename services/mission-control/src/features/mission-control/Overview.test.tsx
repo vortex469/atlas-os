@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Overview } from "./MissionControl";
 import { safeText, timestamp, status, detailPath } from "./overviewEvidence";
 import type { OverviewEvidence } from "./useOverviewEvidence";
@@ -264,6 +264,47 @@ describe("MC overview evidence", () => {
         expect(disclosure).toHaveTextContent("HTTP response: No response received");
         expect(disclosure).toHaveTextContent("Next check: Check the target address and the network or firewall route from Atlas Core to the service host.");
         expect(disclosure).not.toHaveTextContent(/password|private/);
+    });
+
+    it("copies the sanitized Atlas connection check and reports success", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        show({ health: { data: { services: { iFileshare: {
+            status: "unavailable",
+            details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        fireEvent.click(checks.getByText("Test from the Atlas computer"));
+        const command = checks.getByRole("group", { name: "Read-only Core connection check command" });
+
+        fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
+
+        expect(await within(command).findByRole("status")).toHaveTextContent("Command copied.");
+        expect(writeText).toHaveBeenCalledTimes(1);
+        expect(writeText.mock.calls[0][0]).toContain("http://10.10.60.30:8080/");
+        expect(writeText.mock.calls[0][0]).not.toMatch(/password|private|token=/);
+    });
+
+    it("explains how to copy the command when clipboard access is unavailable", async () => {
+        const writeText = vi.fn().mockRejectedValue(new Error("clipboard unavailable"));
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        show({ health: { data: { services: { iFileshare: {
+            status: "unavailable",
+            details: { url: "http://10.10.60.30:8080/" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        fireEvent.click(checks.getByText("Test from the Atlas computer"));
+        const command = checks.getByRole("group", { name: "Read-only Core connection check command" });
+
+        fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
+
+        expect(await within(command).findByRole("status")).toHaveTextContent("Copy unavailable. Select and copy the command above.");
     });
 
     it("keeps the Core connection wording in stale service-check evidence", () => {

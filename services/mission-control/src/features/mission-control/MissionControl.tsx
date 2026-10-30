@@ -67,6 +67,7 @@ function ObservedStatus({ value, reason, stale, unavailableLabel }: {
 }
 
 function ServiceCheckLocation({ service }: { service: unknown }) {
+    const [copyMessage, setCopyMessage] = useState<string | null>(null);
     const evidence = record(service);
     const url = record(evidence.details).url;
     const address = formatHealthCheckAddress(url);
@@ -89,7 +90,26 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                     {command && <>
                         <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>
                         <div role="group" aria-label="Read-only Core connection check command" className="mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2">
-                            <pre className="whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{command}</pre>
+                            <div className="flex flex-wrap items-start gap-2">
+                                <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{command}</pre>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const clipboard = navigator.clipboard;
+                                        if (!clipboard?.writeText) {
+                                            setCopyMessage("Copy unavailable. Select and copy the command above.");
+                                            return;
+                                        }
+                                        void clipboard.writeText(command)
+                                            .then(() => setCopyMessage("Command copied."))
+                                            .catch(() => setCopyMessage("Copy unavailable. Select and copy the command above."));
+                                    }}
+                                    className="shrink-0 rounded border border-mc-border-subtle px-2 py-1 text-xs font-medium text-mc-text-primary hover:bg-mc-surface-muted"
+                                >
+                                    Copy command
+                                </button>
+                            </div>
+                            {copyMessage && <p role="status" className="mt-2 text-xs">{copyMessage}</p>}
                         </div>
                         <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
                         <p className="mt-2 text-sm"><strong>File not found?</strong> Compose did not run the check. Run it from Atlas&apos;s Compose folder or pass the full file path with <code>--file</code>.</p>
