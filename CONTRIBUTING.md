@@ -35,6 +35,10 @@ Atlas never auto-approves or auto-executes side effects. Implementation, verific
 
 Run the smallest meaningful focused tests while developing, then run the release gates required by the change. Phase 3 candidate workflow changes require coverage for audit linkage, restart recovery, concurrency, approval binding, and path safety.
 
+Quality Gates keeps the active run for a pull request or branch running. Newer
+updates replace an older pending run, so they do not cancel the active test
+suite. Atlas Core is split into eight parallel test shards to shorten feedback.
+
 Common gates:
 
 ```bash
