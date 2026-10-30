@@ -68,7 +68,7 @@ describe("OperationalLifecyclePanel", () => {
 
     it("offers a read-only retry when lifecycle evidence is unavailable", () => {
         const onRefresh = vi.fn();
-        render(<OperationalLifecyclePanel lifecycle={null} isLoading={false} isRefreshing={false} error="Mission Control could not read the maintenance status." onRefresh={onRefresh} />);
+        render(<OperationalLifecyclePanel lifecycle={null} isLoading={false} isRefreshing={false} error="Bearer lifecycle-canary-secret" onRefresh={onRefresh} />);
 
         const alert = screen.getByRole("alert");
         expect(alert).toHaveTextContent("Maintenance status unavailable");
@@ -76,7 +76,10 @@ describe("OperationalLifecyclePanel", () => {
         expect(alert).toHaveTextContent("Checking status again does not repeat the maintenance action.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Mission Control could not read the maintenance status.")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/lifecycle-canary-secret/)).not.toBeInTheDocument();
+        fireEvent.click(within(alert).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
         fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
         expect(onRefresh).toHaveBeenCalledOnce();
         expect(document.body.textContent).not.toMatch(/Authorization|Bearer|vmgenid|CSRF|cookie|command|environment/i);

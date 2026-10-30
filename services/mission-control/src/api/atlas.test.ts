@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { mockGet } = vi.hoisted(() => ({ mockGet: vi.fn() }));
 
 vi.mock("axios", () => ({
-    default: { create: () => ({ get: mockGet, post: vi.fn() }) },
+    default: {
+        create: () => ({ get: mockGet, post: vi.fn() }),
+        isAxiosError: (error: unknown): error is { response?: { data?: unknown }; code?: string } =>
+            !!error && typeof error === "object" && "isAxiosError" in error,
+    },
 }));
 
 import {
+    getAtlasErrorMessage,
     getProviderActionHistory,
     getProviderActionHistoryEntry,
     getProviderActionHistoryProviders,
@@ -83,5 +88,14 @@ describe("Atlas Core action history responses", () => {
         mockGet.mockResolvedValueOnce({ data: [{ id: "proxmox", name: "Proxmox" }, null] });
 
         await expect(getProviderActionHistoryProviders()).rejects.toThrow("Malformed provider action history providers payload.");
+    });
+
+    it("redacts sensitive Core API error text before UI use", () => {
+        const error = {
+            isAxiosError: true,
+            response: { data: { error: { message: "Bearer atlas-core-canary-secret" } } },
+        };
+
+        expect(getAtlasErrorMessage(error, "Core unavailable.")).toBe("[Sensitive text withheld]");
     });
 });

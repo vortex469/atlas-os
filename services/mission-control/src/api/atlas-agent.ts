@@ -1,4 +1,5 @@
 import axios, { isAxiosError } from "axios";
+import { safeText } from "../utils/safeText";
 
 import type {
     AgentInfo,
@@ -1127,15 +1128,18 @@ export function getAtlasAgentErrorMessage(
     error: unknown,
     fallback: string,
 ): string {
+    let message: string | undefined;
     if (isAxiosError(error)) {
         const responseData = error.response?.data;
         const detail = isRecord(responseData) ? responseData.detail : undefined;
-        if (typeof detail === "string" && detail.trim()) return detail;
+        if (typeof detail === "string" && detail.trim()) message = detail;
         if (isRecord(detail) && typeof detail.message === "string" && detail.message.trim()) {
-            return detail.message;
+            message = detail.message;
         }
-        return error.message?.trim() || fallback;
+        message ??= error.message?.trim();
+    } else if (error instanceof Error && error.message.trim()) {
+        message = error.message;
     }
 
-    return error instanceof Error && error.message.trim() ? error.message : fallback;
+    return (message && safeText(message)) || fallback;
 }

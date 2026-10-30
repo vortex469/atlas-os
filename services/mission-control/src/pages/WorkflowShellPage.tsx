@@ -14,6 +14,7 @@ import type {
     CandidatePlanningResponse,
     CandidateWorkflowResponse,
 } from "../types/atlasAgent";
+import { safeText } from "../utils/safeText";
 import { workflowStageLabel } from "../utils/workflowState";
 
 type WorkflowLocationState = {
@@ -263,7 +264,7 @@ function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: stri
                     {workflowLoadErrorDetails && (
                         <details className="mt-3">
                             <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                            <p className="mt-2 break-words text-sm text-slate-400">{workflowLoadErrorDetails}</p>
+                            <p className="mt-2 break-words text-sm text-slate-400">{safeText(workflowLoadErrorDetails) || "No additional details were returned."}</p>
                         </details>
                     )}
                     <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(sessionId)}`, search }} className="mt-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
@@ -315,7 +316,7 @@ function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: stri
                         <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2">
                             {workflow.reason_codes.length > 0 && <Detail label="Reason codes" value={workflow.reason_codes.join(", ")} />}
                             {workflow.failure && <Detail label="Failure code" value={workflow.failure.code} />}
-                            {workflow.failure && <Detail label="Failure message" value={workflow.failure.message} />}
+                            {workflow.failure && <Detail label="Failure message" value={safeText(workflow.failure.message) || "No additional details were returned."} />}
                         </dl>
                     </details>
                 )}
@@ -378,7 +379,7 @@ function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: stri
                         {implementationResult.failure ? (
                             <>
                                 <p>Failure code: {implementationResult.failure.code}</p>
-                                <p>Failure message: {implementationResult.failure.message}</p>
+                                <p>Failure message: {safeText(implementationResult.failure.message) || "No additional details were returned."}</p>
                             </>
                         ) : null}
                         {implementationResult.reason_codes.length > 0 && (
@@ -390,7 +391,7 @@ function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: stri
                     <div role="alert" className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
                         <p>{successorError}</p>
                         {workflow.candidate_planning_session_id && <Link to={{ pathname: `/candidate-planning/${encodeURIComponent(workflow.candidate_planning_session_id)}`, search }} className="mt-3 inline-flex font-semibold text-blue-200 underline underline-offset-2">Check the earlier planning session</Link>}
-                        {successorErrorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary><p className="mt-2 break-words">{successorErrorDetails}</p></details>}
+                        {successorErrorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary><p className="mt-2 break-words">{safeText(successorErrorDetails) || "No additional details were returned."}</p></details>}
                     </div>
                 )}
                 {successorResult && (
@@ -402,7 +403,7 @@ function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: stri
                             <p>Intake status: {successorResult.intake_status}</p>
                             {successorResult.intake_reason_codes.length > 0 && <p>Intake reason codes: {successorResult.intake_reason_codes.join(", ")}</p>}
                             {successorResult.planning_failure && <p>Failure code: {successorResult.planning_failure.code}</p>}
-                            {successorResult.planning_failure && <p>Failure message: {successorResult.planning_failure.message}</p>}
+                            {successorResult.planning_failure && <p>Failure message: {safeText(successorResult.planning_failure.message) || "No additional details were returned."}</p>}
                         </details>
                     </div>
                 )}
@@ -415,7 +416,7 @@ function WorkflowShell({ sessionId, search, initialWorkflow }: { sessionId: stri
                                 {implementationErrorDetails && (
                                     <details className="mt-3">
                                         <summary className="mc-focusable cursor-pointer font-semibold">Technical details</summary>
-                                        <p className="mt-2 break-words">{implementationErrorDetails}</p>
+                                        <p className="mt-2 break-words">{safeText(implementationErrorDetails) || "No additional details were returned."}</p>
                                     </details>
                                 )}
                             </>

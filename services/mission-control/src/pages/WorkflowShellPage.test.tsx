@@ -612,7 +612,7 @@ describe("WorkflowShellPage", () => {
     });
 
     it("shows an error when no workflow shell can be loaded from the planning session ID", async () => {
-        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Workflow unavailable"));
+        mockedCreateCandidateWorkflowShell.mockRejectedValueOnce(new Error("Bearer workflow-shell-read-canary"));
         const search = "?eligibility=eligible&offset=25";
         renderPage(undefined, search);
 
@@ -621,7 +621,8 @@ describe("WorkflowShellPage", () => {
         expect(alert).toHaveTextContent("Atlas couldn’t load the workflow setup. Check the planning session before trying again.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLElement).getByText("Workflow unavailable", { exact: true })).not.toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]", { exact: true })).not.toBeVisible();
+        expect(within(alert).queryByText(/workflow-shell-read-canary/)).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Back to planning session" })).toHaveAttribute(
             "href",
             `/candidate-planning/candidate-plan-1${search}`,
@@ -637,7 +638,7 @@ describe("WorkflowShellPage", () => {
                 conversion_status: "stale_before_workflow",
                 implementation_approval_request_id: null,
                 reason_codes: ["stale"],
-                failure: { code: "candidate_stale", message: "Candidate changed" },
+                failure: { code: "candidate_stale", message: "Bearer workflow-shell-canary-secret" },
             }),
         });
 
@@ -650,6 +651,8 @@ describe("WorkflowShellPage", () => {
 		await user.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
 		expect(technicalDetails).toHaveAttribute("open");
 		expect(technicalDetails).toHaveTextContent("candidate_stale");
+		expect(technicalDetails).toHaveTextContent("[Sensitive text withheld]");
+		expect(technicalDetails).not.toHaveTextContent("workflow-shell-canary-secret");
         expect(screen.queryByRole("button", { name: /approve|execute|implementation|commit/i })).not.toBeInTheDocument();
     });
     it.each(["awaiting_approval", "blocked"])("does not offer cached %s actions after server validation fails", async (workflow_status) => {

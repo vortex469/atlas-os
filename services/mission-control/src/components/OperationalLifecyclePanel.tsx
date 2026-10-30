@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { WorkflowOperationalLifecycle } from "../types/atlasAgent";
 import { evidenceTimestamp } from "../utils/healthPresentation";
 import { operationalOutcome } from "../utils/operationalOutcome";
+import { safeText } from "../utils/safeText";
 
 interface OperationalLifecyclePanelProps {
     lifecycle: WorkflowOperationalLifecycle | null;
@@ -29,7 +30,7 @@ export function OperationalLifecyclePanel({ lifecycle, isLoading, isRefreshing, 
         return <section aria-label="Maintenance status"><p role="status" className="text-slate-300">Checking maintenance status…</p></section>;
     }
     if (error) {
-        return <section aria-label="Maintenance status" role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><h2 className="text-lg font-semibold text-red-100">Maintenance status unavailable</h2><p className="mt-2 text-sm text-red-100">Mission Control could not check the latest maintenance status, so the result may still be unknown.</p><p className="mt-2 text-sm text-slate-300">Checking status again does not repeat the maintenance action.</p><button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">{isRefreshing ? "Checking status…" : "Check status again"}</button><details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{error}</p></details></section>;
+        return <section aria-label="Maintenance status" role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"><h2 className="text-lg font-semibold text-red-100">Maintenance status unavailable</h2><p className="mt-2 text-sm text-red-100">Mission Control could not check the latest maintenance status, so the result may still be unknown.</p><p className="mt-2 text-sm text-slate-300">Checking status again does not repeat the maintenance action.</p><button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">{isRefreshing ? "Checking status…" : "Check status again"}</button><details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(error) || "No additional details were returned."}</p></details></section>;
     }
     if (!lifecycle || !lifecycle.applicable) return null;
     const outcome = operationalOutcome(lifecycle);

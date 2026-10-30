@@ -4045,3 +4045,15 @@ Audit read failures keep the plain retry message visible while optional error
 details use the shared bounded text filter. The workflow history remains
 read-only. The focused Workflow Audit suite passes all 29 tests; Mission
 Control lint and production build pass.
+
+## Operator-facing error detail filtering — 2026-10-30
+
+Atlas Core and Agent error-message helpers now filter common credential and URL
+patterns and cap displayed text. Workflow setup and detail, proposal planning,
+action history, catalog item, and maintenance status disclosures also filter
+backend-provided failure text at the render boundary. Failure explanations stay
+collapsed until opened, while sensitive canary values remain withheld when
+opened. Focused unit tests cover both shared error helpers and affected screens.
+This changes only Mission Control presentation; it does not change API
+contracts, approval decisions, or execution behavior. Eight focused suites pass
+258 tests, with Mission Control lint and production build passing.

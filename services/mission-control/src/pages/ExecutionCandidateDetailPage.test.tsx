@@ -283,9 +283,15 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(await screen.findByText("This proposal is out of date. Refresh it before continuing.")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh proposal" })).toBeInTheDocument();
 
-        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
+        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Bearer candidate-plan-canary-secret" } }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));
         expect(await screen.findByText("Atlas could not check whether the proposal is current because Core is unavailable.")).toBeInTheDocument();
+        const coreFailureAlert = screen.getByRole("alert");
+        const coreFailureDetails = within(coreFailureAlert).getByText("Technical details").closest("details");
+        expect(within(coreFailureDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(coreFailureAlert).queryByText(/candidate-plan-canary-secret/)).not.toBeInTheDocument();
+        await user.click(within(coreFailureDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(coreFailureDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "persistence_failed", message: "Persistence failed" } }));
         await user.click(screen.getByRole("button", { name: "Start planning" }));

@@ -22,6 +22,7 @@ import type {
     DiscoveryRequirements,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
+import { safeText } from "../utils/safeText";
 import type { InstallationPlan } from "../types/installationPlan";
 import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
 import { evidenceTimestamp } from "../utils/healthPresentation";
@@ -443,7 +444,7 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                     <p className="mt-1 text-sm text-red-200/80">
                         {error ?? "Atlas couldn’t load this catalog item. Try again to check its details."}
                     </p>
-                    {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
+                    {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(errorDetails) || "No additional details were returned."}</p></details>}
                     <button type="button" onClick={retryItem} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </div>
             </main>

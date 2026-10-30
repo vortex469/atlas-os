@@ -72,7 +72,7 @@ describe("ActionHistoryDetailPage", () => {
     });
 
     it("loads once under Strict Mode and retries an unavailable read", async () => {
-        mockedGetProviderActionHistoryEntry.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(auditEntry());
+        mockedGetProviderActionHistoryEntry.mockRejectedValueOnce(new Error("Bearer action-history-canary-secret")).mockResolvedValue(auditEntry());
         render(<StrictMode><MemoryRouter initialEntries={["/operations/actions/audit-1"]}><Routes>
             <Route path="/operations/actions/:auditId" element={<ActionHistoryDetailPage />} />
         </Routes></MemoryRouter></StrictMode>);
@@ -81,9 +81,10 @@ describe("ActionHistoryDetailPage", () => {
         expect(alert).toHaveTextContent("Atlas couldn’t load these action details. Try again to reload them; this won’t repeat the action.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
-        expect(within(technicalDetails as HTMLElement).getByText("Unavailable")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/action-history-canary-secret/)).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLElement).getByText("Unavailable")).toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Try again" }));
         expect(await screen.findByText("Model unloaded.")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();

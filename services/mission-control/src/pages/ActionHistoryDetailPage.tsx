@@ -162,7 +162,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                             ? "Atlas couldn’t load these action details. Try again to reload them; this won’t repeat the action."
                             : displayedError}
                     </p>
-                    {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
+                    {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(errorDetails) || "No additional details were returned."}</p></details>}
                     {auditId && <button type="button" onClick={() => {
                         setEntry(null); setError(null); setErrorDetails(null); setIsReadFailure(false); setIsLoading(true); setReadAttempt((attempt) => attempt + 1);
                     }} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>}

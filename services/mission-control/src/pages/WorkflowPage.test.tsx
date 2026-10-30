@@ -122,14 +122,17 @@ describe("WorkflowPage", () => {
     });
 
     it("keeps workflow request errors in collapsed technical details", async () => {
-        mockedGetWorkflowDetail.mockRejectedValue(new Error("Network Error"));
+        mockedGetWorkflowDetail.mockRejectedValue(new Error("Bearer workflow-page-canary-secret"));
         renderPage();
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Atlas couldn’t load this workflow, so its status is unknown.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLElement).getByText("Network Error")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/workflow-page-canary-secret/)).not.toBeInTheDocument();
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).toBeVisible();
         expect(within(alert).getByRole("button", { name: "Try again" })).toBeVisible();
         expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
         expect(screen.queryByRole("region", { name: "Read-only workflow rail" })).not.toBeInTheDocument();

@@ -267,7 +267,7 @@ function PlanningResult({ response, search, onRefreshCandidate }: { response: Ca
                     <DetailField label="Intake status" value={formatLabel(response.intake_status)} />
                     {response.intake_reason_codes.length > 0 && <DetailField label="Reason codes" value={response.intake_reason_codes.join(", ")} />}
                     {response.unsupported_reason && <DetailField label="Unsupported reason" value={response.unsupported_reason} />}
-                    {response.planning_failure && <DetailField label="Failure" value={`${response.planning_failure.code} — ${response.planning_failure.message}`} />}
+                    {response.planning_failure && <DetailField label="Failure" value={safeText(`${response.planning_failure.code} — ${response.planning_failure.message}`) || "No additional details were returned."} />}
                 </dl>
             </details>
         </div>

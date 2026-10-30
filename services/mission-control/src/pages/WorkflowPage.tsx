@@ -339,7 +339,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     {loadErrorDetails && (
                         <details className="mt-3">
                             <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                            <p className="mt-2 break-words text-sm text-slate-400">{loadErrorDetails}</p>
+                            <p className="mt-2 break-words text-sm text-slate-400">{safeText(loadErrorDetails) || "No additional details were returned."}</p>
                         </details>
                     )}
                     <button type="button" onClick={() => void loadWorkflow()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>

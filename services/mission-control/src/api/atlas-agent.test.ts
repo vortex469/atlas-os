@@ -235,6 +235,14 @@ describe("Atlas Agent optional summary endpoints", () => {
             axiosError(409, { detail: "Workflow is stale" }),
             "Approval failed.",
         )).toBe("Workflow is stale");
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: "Bearer atlas-agent-canary-secret" }),
+            "Approval failed.",
+        )).toBe("[Sensitive text withheld]");
+        expect(getAtlasAgentErrorMessage(
+            new Error("https://private.example/atlas-agent-canary"),
+            "Approval failed.",
+        )).toBe("[Sensitive text withheld]");
     });
 
     it("falls back to a readable request error when response details are malformed", () => {

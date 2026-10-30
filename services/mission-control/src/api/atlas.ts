@@ -1,5 +1,6 @@
 import axios from "axios";
 import { parse } from "yaml";
+import { safeText } from "../utils/safeText";
 
 import type { DeploymentAnalysisResponse } from "../features/forge/types";
 import type { DoctorReport } from "../types/doctor";
@@ -320,7 +321,7 @@ export function getAtlasErrorMessage(
         typeof apiMessage === "string" &&
         apiMessage.trim().length > 0
     ) {
-        return apiMessage;
+        return safeText(apiMessage) || fallback;
     }
 
     if (error.code === "ECONNABORTED") {

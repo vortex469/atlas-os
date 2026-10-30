@@ -385,15 +385,16 @@ describe("DiscoveryItemPage", () => {
     });
 
     it("does not infer a missing item from error prose", async () => {
-        mockedGetDiscoveryItem.mockRejectedValue(new Error("Proxy not found while reading catalog"));
+        mockedGetDiscoveryItem.mockRejectedValue(new Error("Bearer discovery-item-canary-secret"));
         renderPage();
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Atlas couldn’t load this catalog item. Try again to check its details.");
         expect(alert).toHaveTextContent("Catalog item unavailable");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        const readError = within(technicalDetails as HTMLDetailsElement).getByText("Proxy not found while reading catalog");
+        const readError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
         expect(readError).not.toBeVisible();
+        expect(within(alert).queryByText(/discovery-item-canary-secret/)).not.toBeInTheDocument();
         await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(readError).toBeVisible();
         expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
