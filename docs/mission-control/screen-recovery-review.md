@@ -24,7 +24,7 @@ runtime, tag, or publish a release.
 | Repository workflow | Preparation and detail summaries show current state and approval status first; reference metadata is optional; exact requests remain reviewable; each approval and its explicitly named follow-up action remain separate; rejection survives reload; audit follows completion | `e2e/repository-journey.spec.ts`; workflow detail, shell, timeline and audit component tests |
 | Maintenance workflow | Explicit target selection and exact request submission return a proposal; operational plan and exact verification rules precede action approval; a separate run precedes lifecycle outcome and audit | `e2e/maintenance-journey.spec.ts`; planning and workflow component tests |
 | Maintenance history and audit | Foreign workflow evidence is refused; unavailable results remain findable; maintenance audit avoids repository-only stages | History/audit component tests; history browser recovery and maintenance journey audit cases |
-| Action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results; UTC date filters are explained beside local display times; error details name the affected history operation | `src/pages/OperationsPage.test.tsx`, `e2e/action-history-dates.spec.ts` |
+| Action history | Changing filters or refreshing hides previous results; failed reads do not retain an actionable retention policy; superseded responses cannot replace current results; UTC date filters are explained beside local display times; error details name the affected history operation; search, filters and page position survive opening an action record and returning | `src/pages/OperationsPage.test.tsx`, `e2e/action-history-dates.spec.ts`, `e2e/action-history-search.spec.ts` |
 | Atlas Doctor | Rerunning clears the previous report; pending and failed reads cannot retain an old healthy score | `src/components/AtlasDoctorPanel.test.tsx` includes healthy-to-pending-to-unavailable coverage |
 | Provider connections | Saved status appears only after settings load; failed reads can be refreshed without testing or saving; field origins use plain labels; test results lead with success or failure while diagnostics stay optional; editing inputs or reloading clears the old test result; tested secrets are redacted in result messages, diagnostic field names and values | `src/components/ProviderConnection.test.tsx` covers read recovery, source labels, collapsed diagnostics, stale-result invalidation and synthetic secret canaries, and mocks every test/save request |
 | Deployment analysis | The menu and page name the task; input, findings, and proposed steps are clear; the page says it does not deploy; edited inputs invalidate results; late responses are ignored; both reported risks remain visible; unknown duration is not zero | `src/features/forge/Forge.test.tsx`, `e2e/forge-analysis.spec.ts`, shell/navigation browser checks |
@@ -3653,3 +3653,12 @@ workflow detail, and workflow directory suites pass (159 tests), the history
 and workflow-card browser journeys pass at 320px, 390px, and 1280px, and lint/build pass.
 The navigation state is presentational and does not change maintenance
 approval or execution behavior.
+
+## Action history return context — 2026-10-30
+
+Action history now keeps its applied search, draft search, filters, date range
+and page position in the URL. Opening an action record preserves that context;
+both its Back link and browser Back return to the same filtered page. The
+focused action-history component suites pass (24 tests), two simulated browser
+journeys pass at 390px and 1280px, and Mission Control lint/build pass. The
+history API queries are unchanged and the browser fixture rejects mutations.

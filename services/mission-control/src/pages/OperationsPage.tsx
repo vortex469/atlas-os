@@ -6,7 +6,7 @@ import {
     useState,
 } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
     exportProviderActionHistory,
@@ -34,6 +34,74 @@ type OperationError = {
 };
 const PAGE_SIZE = 25;
 
+type ActionHistoryViewState = {
+    filter: HistoryFilter;
+    providerId: string;
+    search: string;
+    searchInput: string;
+    completedFrom: string;
+    completedTo: string;
+    offset: number;
+};
+
+function validDateFilter(value: string | null): string {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+    const parsed = Date.parse(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value
+        ? value
+        : "";
+}
+
+function actionHistoryViewState(search: string): ActionHistoryViewState {
+    const params = new URLSearchParams(search);
+    const rawFilter = params.get("status");
+    const filter: HistoryFilter = rawFilter === "succeeded" || rawFilter === "failed"
+        ? rawFilter
+        : "all";
+    const appliedSearch = (params.get("q") ?? "").slice(0, 200).trim();
+    const rawOffset = Number(params.get("offset"));
+    let completedFrom = validDateFilter(params.get("from"));
+    let completedTo = validDateFilter(params.get("to"));
+    if (completedFrom && completedTo && completedFrom > completedTo) {
+        completedFrom = "";
+        completedTo = "";
+    }
+
+    return {
+        filter,
+        providerId: (params.get("provider") ?? "all").slice(0, 200) || "all",
+        search: appliedSearch,
+        searchInput: (params.get("draft") ?? appliedSearch).slice(0, 200),
+        completedFrom,
+        completedTo,
+        offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset % PAGE_SIZE === 0
+            ? rawOffset
+            : 0,
+    };
+}
+
+function actionHistorySearch(
+    currentSearch: string,
+    state: ActionHistoryViewState,
+): string {
+    const params = new URLSearchParams(currentSearch);
+    const values: Array<[string, string]> = [
+        ["status", state.filter === "all" ? "" : state.filter],
+        ["provider", state.providerId === "all" ? "" : state.providerId],
+        ["q", state.search],
+        ["draft", state.searchInput.trim() === state.search ? "" : state.searchInput],
+        ["from", state.completedFrom],
+        ["to", state.completedTo],
+        ["offset", state.offset === 0 ? "" : String(state.offset)],
+    ];
+    for (const [key, value] of values) {
+        if (value) params.set(key, value);
+        else params.delete(key);
+    }
+    const serialized = params.toString();
+    return serialized ? `?${serialized}` : "";
+}
+
 function formatTimestamp(value: string): ReactNode {
     const timestamp = evidenceTimestamp(value);
     return timestamp === null
@@ -60,16 +128,19 @@ function endOfUtcDay(date: string): string | undefined {
 }
 
 export function OperationsPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => actionHistoryViewState(location.search));
     const [entries, setEntries] = useState<
         ProviderActionAuditEntry[]
     >([]);
-    const [filter, setFilter] = useState<HistoryFilter>("all");
-    const [providerId, setProviderId] = useState("all");
-    const [searchInput, setSearchInput] = useState("");
-    const [search, setSearch] = useState("");
-    const [completedFrom, setCompletedFrom] = useState("");
-    const [completedTo, setCompletedTo] = useState("");
-    const [offset, setOffset] = useState(0);
+    const [filter, setFilter] = useState<HistoryFilter>(initialViewState.filter);
+    const [providerId, setProviderId] = useState(initialViewState.providerId);
+    const [searchInput, setSearchInput] = useState(initialViewState.searchInput);
+    const [search, setSearch] = useState(initialViewState.search);
+    const [completedFrom, setCompletedFrom] = useState(initialViewState.completedFrom);
+    const [completedTo, setCompletedTo] = useState(initialViewState.completedTo);
+    const [offset, setOffset] = useState(initialViewState.offset);
     const [total, setTotal] = useState(0);
     const [hasMore, setHasMore] = useState(false);
     const [providers, setProviders] = useState<
@@ -114,6 +185,21 @@ export function OperationsPage() {
     const hasUnappliedSearch = searchInput.trim() !== search;
     const hasActiveFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search || searchInput.trim());
     const hasAppliedFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search);
+    const returnSearch = useMemo(() => actionHistorySearch(location.search, {
+        filter,
+        providerId,
+        search,
+        searchInput,
+        completedFrom,
+        completedTo,
+        offset,
+    }), [completedFrom, completedTo, filter, location.search, offset, providerId, search, searchInput]);
+
+    useEffect(() => {
+        if (returnSearch !== location.search) {
+            navigate({ pathname: location.pathname, search: returnSearch }, { replace: true });
+        }
+    }, [location.pathname, location.search, navigate, returnSearch]);
 
     const loadHistory = useCallback(async () => {
         const requestId = requestSequence.current + 1;
@@ -623,9 +709,10 @@ export function OperationsPage() {
                                         Provider: {entry.provider_name}
                                     </p>
                                     <Link
-                                        to={`/operations/actions/${encodeURIComponent(
-                                            entry.id,
-                                        )}`}
+                                        to={{
+                                            pathname: `/operations/actions/${encodeURIComponent(entry.id)}`,
+                                            search: returnSearch,
+                                        }}
                                         className="mt-3 inline-flex text-sm font-medium text-blue-400 transition hover:text-blue-300"
                                     >
                                         View action details

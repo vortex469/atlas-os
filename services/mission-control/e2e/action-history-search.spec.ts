@@ -20,6 +20,85 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`action details preserve filtered history when returning at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/providers", (route) => route.fulfill({ json: [{ id: "ollama", name: "Ollama" }] }));
+        await page.route("**/api/v1/ops/actions/page**", async (route) => {
+            const url = new URL(route.request().url());
+            const offset = Number(url.searchParams.get("offset") ?? "0");
+            await route.fulfill({
+                json: {
+                    items: [{
+                        id: "audit-context",
+                        provider_id: "ollama",
+                        provider_name: "Ollama",
+                        action_id: "restart-service",
+                        action_label: "Restart service",
+                        status: "failed",
+                        success: false,
+                        message: "The service did not restart.",
+                        confirmed: true,
+                        destructive: true,
+                        parameter_names: [],
+                        request_id: "request-context",
+                        started_at: "2026-10-20T17:00:00Z",
+                        completed_at: "2026-10-20T17:00:01Z",
+                        duration_ms: 1000,
+                    }],
+                    total: 26,
+                    offset,
+                    limit: 25,
+                    has_more: false,
+                },
+            });
+        });
+        await page.route("**/api/v1/ops/actions/audit-context", (route) => route.fulfill({ json: {
+            id: "audit-context",
+            provider_id: "ollama",
+            provider_name: "Ollama",
+            action_id: "restart-service",
+            action_label: "Restart service",
+            status: "failed",
+            success: false,
+            message: "The service did not restart.",
+            confirmed: true,
+            destructive: true,
+            parameter_names: [],
+            request_id: "request-context",
+            started_at: "2026-10-20T17:00:00Z",
+            completed_at: "2026-10-20T17:00:01Z",
+            duration_ms: 1000,
+        } }));
+
+        await page.goto("/operations?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25");
+        await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        await page.getByText("More filters").click();
+        await expect(page.getByLabel("Provider")).toHaveValue("ollama");
+        await expect(page.getByLabel("From date (UTC)")).toHaveValue("2026-10-20");
+        await expect(page.getByLabel("To date (UTC)")).toHaveValue("2026-10-21");
+        await expect(page.getByLabel("Action or request ID")).toHaveValue("request-context");
+
+        await page.getByRole("link", { name: "View action details" }).click();
+        await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+        await expect(page).toHaveURL(/\/operations\/actions\/audit-context\?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25$/);
+        await page.getByRole("link", { name: "Back to action history" }).click();
+
+        await expect(page).toHaveURL(/\/operations\?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25$/);
+        await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        await page.getByRole("link", { name: "View action details" }).click();
+        await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+        await page.goBack();
+        await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByLabel("Action or request ID")).toHaveValue("request-context");
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 for (const width of [320, 390, 1280]) {
     test(`action history explains confirmation and action risk at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 });

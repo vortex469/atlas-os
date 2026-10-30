@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import {
     getAtlasErrorMessage,
@@ -34,6 +34,7 @@ export function ActionHistoryDetailPage() {
 }
 
 function ActionHistoryDetail({ auditId }: { auditId: string }) {
+    const location = useLocation();
     const [entry, setEntry] =
         useState<ProviderActionAuditEntry | null>(null);
     const [isLoading, setIsLoading] = useState(Boolean(auditId));
@@ -110,7 +111,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
             <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                 <div>
                     <Link
-                        to="/operations"
+                        to={{ pathname: "/operations", search: location.search }}
                         className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
                     >
                         ← Back to action history
