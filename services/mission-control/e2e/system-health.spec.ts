@@ -35,7 +35,10 @@ for (const width of [390, 1440]) {
         const down = checks.getByRole("list", { name: "Configured service checks" })
             .getByRole("listitem")
             .nth(1);
-        await down.locator("summary", { hasText: "Check Docker on the service computer" }).click();
+        await down.locator("summary", { hasText: "Check the service computer" }).click();
+        const dockerHelp = down.locator("summary", { hasText: "If the app runs in Docker" }).locator("xpath=ancestor::details[1]");
+        await expect(dockerHelp).not.toHaveAttribute("open", "");
+        await dockerHelp.locator("summary").click();
         await expect(down.getByRole("list", { name: "Docker and Compose checks" })).toContainText(
             "A mapping starting with 127.0.0.1: is reachable only from that computer",
         );
