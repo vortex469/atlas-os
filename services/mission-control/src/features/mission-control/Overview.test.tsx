@@ -218,7 +218,7 @@ describe("MC overview evidence", () => {
         expect(checks.getByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).toBeVisible();
         fireEvent.click(howToCheck);
         const nextStep = checks.getByRole("group", { name: "Next connection check" });
-        const summary = checks.getByText("Docker and network checks");
+        const summary = checks.getByText("Check Docker on the service computer");
         const disclosure = summary.closest("details");
 
         expect(nextStep).toHaveTextContent("From the computer running Atlas Core, open a terminal in the folder containing compose.production.yaml and run this command.");
@@ -283,7 +283,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const summary = checks.getByText("Docker and network checks");
+        const summary = checks.getByText("Check Docker on the service computer");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 
@@ -299,7 +299,7 @@ describe("MC overview evidence", () => {
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
         expect(checks.queryByRole("group", { name: "Next connection check" })).not.toBeInTheDocument();
-        const summary = checks.getByText("Docker and network checks");
+        const summary = checks.getByText("Check Docker on the service computer");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 

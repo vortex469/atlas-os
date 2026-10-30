@@ -98,7 +98,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             </details>
         </>}
         <details className="mt-2 text-xs text-mc-text-muted">
-            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Docker and network checks</summary>
+            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check Docker on the service computer</summary>
             <div className="mt-2 space-y-1">
                 <ol aria-label="Docker and Compose checks" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                     <li>
