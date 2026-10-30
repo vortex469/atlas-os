@@ -8,7 +8,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto(`/execution-candidates/${candidate.id}`);
 
         await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
-        await expect(page.getByText("Target ID: atlas · Type: Service", { exact: true })).toBeVisible();
+        await expect(page.getByText("Target: atlas · Type: Service", { exact: true })).toBeVisible();
         await expect(page.getByText("Browser fixture candidate.", { exact: true })).toBeVisible();
         await expect(page.getByText("Compatible", { exact: true })).toBeVisible();
         await expect(page.getByRole("button", { name: "Start planning", exact: true })).toBeVisible();

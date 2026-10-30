@@ -3866,3 +3866,11 @@ iFileshare while avoiding the implication that every configured service uses
 Docker. The focused Overview suite passes 76 tests; the iFileshare troubleshooting
 browser check passes at 320px and 1280px; Mission Control lint and production
 build pass. Health requests and provider behavior are unchanged.
+
+## Change proposal target labels — 2026-10-30
+
+Change proposal cards, details, and the main target filter now say “Target”
+instead of “Target ID.” The target value, API field, saved filters, and query
+parameters are unchanged. The proposal list and detail component suites pass
+40 tests; their responsive browser checks pass all 20 cases; Mission Control
+lint and production build pass.

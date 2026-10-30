@@ -262,7 +262,7 @@ export function ExecutionCandidatesPage() {
                     <div className="grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
                         <SelectFilter label="Eligibility" value={filters.status} options={statusOptions} onChange={(value) => setFilters((current) => ({ ...current, status: toStatusFilter(value) }))} />
                         <SelectFilter label="Change" value={filters.intent} options={intentOptions} onChange={(value) => setFilters((current) => ({ ...current, intent: value }))} />
-                        <TextFilter label="Target ID" value={filters.targetId} onChange={(value) => setFilters((current) => ({ ...current, targetId: value }))} />
+                        <TextFilter label="Target" value={filters.targetId} onChange={(value) => setFilters((current) => ({ ...current, targetId: value }))} />
                         <div className="flex items-end gap-2">
                             <button type="submit" className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300">
                                 Search proposals
@@ -335,7 +335,7 @@ function CandidateCard({ candidate, returnSearch }: { candidate: ExecutionCandid
                         Review {formatLabel(candidate.execution_intent)} proposal
                     </Link>
                     <p className="mt-1 text-sm text-slate-400">
-                        Target ID: <span className="text-slate-200">{candidate.target_id}</span> · Type: {formatLabel(candidate.target_type)}
+                        Target: <span className="text-slate-200">{candidate.target_id}</span> · Type: {formatLabel(candidate.target_type)}
                     </p>
                 </div>
                 <StatusBadge status={candidate.status} expiresAt={candidate.expires_at} />

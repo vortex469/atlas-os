@@ -77,7 +77,7 @@ describe("ExecutionCandidatesPage", () => {
         expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeInTheDocument();
         expect(screen.getByText("Eligible for planning")).toBeInTheDocument();
         expect(screen.getByText("stack-home-assistant")).toBeVisible();
-        expect(screen.getByRole("article")).toHaveTextContent("Target ID: stack-home-assistant · Type: Compose Stack");
+        expect(screen.getByRole("article")).toHaveTextContent("Target: stack-home-assistant · Type: Compose Stack");
         expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
         expect(screen.getByText("Expires (local time)").parentElement?.querySelector("time")).toHaveAttribute("dateTime", "2999-01-02T00:00:00Z");
         expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
@@ -129,7 +129,7 @@ describe("ExecutionCandidatesPage", () => {
         });
         expect(screen.getByLabelText("Eligibility")).toHaveValue("eligible");
         expect(screen.getByLabelText("Change")).toHaveValue("update-compose-stack");
-        expect(screen.getByLabelText("Target ID")).toHaveValue("typed-target");
+        expect(screen.getByLabelText("Target")).toHaveValue("typed-target");
         expect(screen.getByText("These filter changes haven't been searched yet. Select Search proposals to update the results.")).toBeVisible();
         expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
             "href",
@@ -226,7 +226,7 @@ describe("ExecutionCandidatesPage", () => {
 
         renderPage();
         await screen.findByText("candidate-1");
-        await user.type(screen.getByLabelText("Target ID"), "stack-home-assistant");
+        await user.type(screen.getByLabelText("Target"), "stack-home-assistant");
         await user.click(screen.getByRole("button", { name: "Search proposals" }));
         await screen.findByRole("alert");
 
@@ -272,7 +272,7 @@ describe("ExecutionCandidatesPage", () => {
         await user.selectOptions(screen.getByLabelText("Category"), "update");
         await user.selectOptions(screen.getByLabelText("Change"), "update-compose-stack");
         await user.type(screen.getByLabelText("Source"), "orion");
-        await user.type(screen.getByLabelText("Target ID"), "stack-home-assistant");
+        await user.type(screen.getByLabelText("Target"), "stack-home-assistant");
         await user.click(screen.getByRole("button", { name: "Search proposals" }));
 
         await waitFor(() =>
