@@ -61,8 +61,9 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
+      max-parallel: 8
       matrix:
-        core-shard: [0, 1, 2, 3]
+        core-shard: [0, 1, 2, 3, 4, 5, 6, 7]
 
     steps:
       - name: Check out Atlas
@@ -97,7 +98,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/services/atlas-core
           CORE_SHARD: ${{ matrix.core-shard }}
-          CORE_SHARD_COUNT: 4
+          CORE_SHARD_COUNT: ${{ strategy.job-total }}
         run: |
           pytest --collect-only -q > .core-collection.txt
           mapfile -t all_core_nodes < <(
