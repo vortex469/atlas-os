@@ -247,6 +247,9 @@ export async function installRepositoryJourney(
         if (isCore && path === `/execution-candidates/${journey.candidate}`) return route.fulfill({ json: maintenance
             ? maintenanceCandidate
             : candidate });
+        if (isCore && path === "/execution-candidates" && !maintenance) return route.fulfill({ json: {
+            candidates: [candidate], total: 26, limit: 25, offset: 25, has_more: false,
+        } });
         if (isAgent && path === planningPath) return route.fulfill({ json: sessionResponse(planReady) });
         if (isAgent && path === `${planningPath}/plan`) {
             repositoryPlanReads += 1;

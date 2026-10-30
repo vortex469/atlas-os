@@ -211,6 +211,12 @@ for (const width of [320, 390, 1280]) {
             "href",
             `/execution-candidates${proposalSearch}`,
         );
+        await page.getByRole("link", { name: "Back to execution candidates", exact: true }).click();
+        await expect(page).toHaveURL(`/execution-candidates${proposalSearch}`);
+        const proposalFilters = page.getByRole("form", { name: "Filter change proposals" });
+        await expect(proposalFilters.getByRole("combobox", { name: "Eligibility" })).toHaveValue("eligible");
+        await expect(proposalFilters.getByRole("combobox", { name: "Change" })).toHaveValue("update-compose-stack");
+        await expect(page.getByText("Showing 26–26 of 26 proposals", { exact: true })).toBeVisible();
         expect(fixture.writes).toEqual(fixture.expectedWrites);
         expect(fixture.unexpected).toEqual([]);
     });
