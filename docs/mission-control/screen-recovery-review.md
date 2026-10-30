@@ -3546,3 +3546,11 @@ complete refresh. The focused ProviderActions suite passes (13 tests), the
 useMissionControl suite passes (6 tests), and Mission Control lint and
 production build pass. Provider action and Core approval contracts are
 unchanged.
+
+## Provider catalog freshness context — 2026-10-30
+
+When the provider catalog read fails, the provider detail panel now says that
+its displayed provider details are the last loaded values. This makes cached
+description and feature data visibly stale alongside the existing last-known
+health status. The focused ProviderOverview suite passes; lint and production
+build pass. Provider requests and action behavior are unchanged.

@@ -68,6 +68,12 @@ export function ProviderOverview({
                 </div>
             </div>
 
+            {stale && (
+                <p role="status" className="mt-4 text-sm text-amber-200">
+                    Last loaded provider details are shown because the catalog refresh failed.
+                </p>
+            )}
+
             {isUnavailable && !stale && (
                 <p className="mt-4 text-sm text-slate-400">
                     Atlas Core could not reach this provider. It may still be running on its own computer.
