@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { PlanningProgress } from "../components/PlanningProgress";
 
 import { getAtlasErrorMessage } from "../api/atlas";
@@ -61,13 +61,85 @@ type CandidateRequest = {
     offset: number;
 };
 
+type CandidateListViewState = {
+    filters: FilterState;
+    submittedFilters: FilterState;
+    offset: number;
+};
+
+function readCandidateFilters(params: URLSearchParams, prefix = "", fallback = emptyFilters): FilterState {
+    const key = (name: string) => prefix ? `${prefix}${name[0].toUpperCase()}${name.slice(1)}` : name;
+    const status = params.has(key("eligibility")) ? params.get(key("eligibility")) : fallback.status;
+    const category = params.has(key("category")) ? params.get(key("category")) : fallback.category;
+    const intent = params.has(key("change")) ? params.get(key("change")) : fallback.intent;
+    return {
+        status: toStatusFilter(status ?? ""),
+        category: categoryOptions.some((option) => option.value === category) ? category! : "",
+        intent: intentOptions.some((option) => option.value === intent) ? intent! : "",
+        sourceSubsystem: ((params.has(key("source")) ? params.get(key("source")) : fallback.sourceSubsystem) ?? "").slice(0, 200),
+        targetId: ((params.has(key("target")) ? params.get(key("target")) : fallback.targetId) ?? "").slice(0, 200),
+    };
+}
+
+function candidateListViewState(search: string): CandidateListViewState {
+    const params = new URLSearchParams(search);
+    const submittedFilters = normalizeFilters(readCandidateFilters(params));
+    const draftKeys = ["eligibility", "change", "category", "source", "target"];
+    const hasDraft = draftKeys.some((key) => params.has(`draft${key[0].toUpperCase()}${key.slice(1)}`));
+    const filters = hasDraft
+        ? readCandidateFilters(params, "draft", submittedFilters)
+        : submittedFilters;
+    const rawOffset = Number(params.get("offset"));
+    return {
+        filters,
+        submittedFilters,
+        offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset % PAGE_SIZE === 0
+            ? rawOffset
+            : 0,
+    };
+}
+
+function candidateListSearch(currentSearch: string, state: CandidateListViewState): string {
+    const params = new URLSearchParams(currentSearch);
+    const applied = normalizeFilters(state.submittedFilters);
+    const draft = normalizeFilters(state.filters);
+    const values: Array<[string, string]> = [
+        ["eligibility", applied.status],
+        ["change", applied.intent],
+        ["category", applied.category],
+        ["source", applied.sourceSubsystem],
+        ["target", applied.targetId],
+        ["offset", state.offset === 0 ? "" : String(state.offset)],
+    ];
+    const draftValues: Array<[string, string, string]> = [
+        ["draftEligibility", draft.status, applied.status],
+        ["draftChange", draft.intent, applied.intent],
+        ["draftCategory", draft.category, applied.category],
+        ["draftSource", draft.sourceSubsystem, applied.sourceSubsystem],
+        ["draftTarget", draft.targetId, applied.targetId],
+    ];
+    for (const [key, value] of values) {
+        if (value) params.set(key, value);
+        else params.delete(key);
+    }
+    for (const [key, value, appliedValue] of draftValues) {
+        if (value !== appliedValue) params.set(key, value);
+        else params.delete(key);
+    }
+    const serialized = params.toString();
+    return serialized ? `?${serialized}` : "";
+}
+
 export function ExecutionCandidatesPage() {
-    const [filters, setFilters] = useState<FilterState>(emptyFilters);
-    const [submittedFilters, setSubmittedFilters] = useState<FilterState>(emptyFilters);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => candidateListViewState(location.search));
+    const [filters, setFilters] = useState<FilterState>(initialViewState.filters);
+    const [submittedFilters, setSubmittedFilters] = useState<FilterState>(initialViewState.submittedFilters);
     const [result, setResult] = useState<CandidateResult>({
         candidates: [],
         total: 0,
-        offset: 0,
+        offset: initialViewState.offset,
         hasMore: false,
     });
     const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +147,12 @@ export function ExecutionCandidatesPage() {
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
     const requestGeneration = useRef(0);
-    const lastRequestedQuery = useRef<CandidateRequest>({ filters: emptyFilters, offset: 0 });
+    const lastRequestedQuery = useRef<CandidateRequest>({ filters: initialViewState.submittedFilters, offset: initialViewState.offset });
+    const returnSearch = candidateListSearch(location.search, {
+        filters,
+        submittedFilters,
+        offset: result.offset,
+    });
 
     const loadCandidates = useCallback(async (nextFilters: FilterState, offset: number) => {
         const generation = ++requestGeneration.current;
@@ -111,9 +188,15 @@ export function ExecutionCandidatesPage() {
 
     useEffect(() => {
         let active = true;
-        void Promise.resolve().then(() => { if (active) void loadCandidates(emptyFilters, 0); });
+        void Promise.resolve().then(() => { if (active) void loadCandidates(initialViewState.submittedFilters, initialViewState.offset); });
         return () => { active = false; requestGeneration.current += 1; };
-    }, [loadCandidates]);
+    }, [initialViewState, loadCandidates]);
+
+    useEffect(() => {
+        if (returnSearch !== location.search) {
+            navigate({ pathname: location.pathname, search: returnSearch }, { replace: true });
+        }
+    }, [location.pathname, location.search, navigate, returnSearch]);
 
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -235,7 +318,7 @@ export function ExecutionCandidatesPage() {
 
                 <div className="grid gap-4">
                     {!isLoading && !error && result.candidates.map((candidate) => (
-                        <CandidateCard key={candidate.id} candidate={candidate} />
+                        <CandidateCard key={candidate.id} candidate={candidate} returnSearch={returnSearch} />
                     ))}
                 </div>
             </section>
@@ -243,12 +326,12 @@ export function ExecutionCandidatesPage() {
     );
 }
 
-function CandidateCard({ candidate }: { candidate: ExecutionCandidate }) {
+function CandidateCard({ candidate, returnSearch }: { candidate: ExecutionCandidate; returnSearch: string }) {
     return (
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <Link to={`/execution-candidates/${encodeURIComponent(candidate.id)}`} className="text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                    <Link to={{ pathname: `/execution-candidates/${encodeURIComponent(candidate.id)}`, search: returnSearch }} className="text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         Review {formatLabel(candidate.execution_intent)} proposal
                     </Link>
                     <p className="mt-1 text-sm text-slate-400">

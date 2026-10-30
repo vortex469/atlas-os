@@ -15,7 +15,7 @@ runtime, tag, or publish a release.
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Workflow directory | Each card shows its current stage and latest result, then a plain-language next step; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
-| Change proposal directory | Eligibility, change and target filters lead; category/source filters expand on demand and show when active; cards lead with the proposed change and keep references optional | `src/pages/ExecutionCandidatesPage.test.tsx`, `e2e/candidate-list-summary.spec.ts` |
+| Change proposal directory | Eligibility, change and target filters lead; category/source filters expand on demand and show when active; cards lead with the proposed change and keep references optional; submitted filters, draft edits and page position survive proposal review and return | `src/pages/ExecutionCandidatesPage.test.tsx`, `e2e/candidate-list-summary.spec.ts` |
 | Change proposal details | The proposed change, target, rationale, constraints and planning boundary lead; technical IDs remain available under optional details | `src/pages/ExecutionCandidateDetailPage.test.tsx`, `e2e/candidate-detail-summary.spec.ts` |
 | Providers | Registry and detail links work; unavailable data differs from absence; missing feature metadata leaves the provider view usable and does not imply there are no capabilities; resource identity, edit blockers, and monitoring suggestions use plain language; failed inventory is not shown as an empty provider; simultaneous inventory/monitoring failures name their source and do not claim inventory is visible when it failed; failed refreshes identify last-loaded inventory or settings as potentially outdated; edit access is checked before controls are enabled; action-catalog read failures differ from uncertain action results; the live dashboard provider preview identifies Atlas Core as the status source, distinguishes stale from current reports, and keeps additional providers optional; forms and late responses stay with their provider | `src/pages/ProviderPage.test.tsx`, `src/features/mission-control/AgentProviderContent.test.tsx`, `src/components/ProviderOverview.test.tsx`, `src/components/ProviderIntentEditor.test.tsx`, `src/components/ProviderResources.test.tsx`, `src/components/ProviderActions.test.tsx`, and route cases in `e2e/screen-recovery.spec.ts` and `e2e/overview.spec.ts` |
 | Discovery and sign-in | Advisory context survives login without selecting or authorizing a maintenance target | Discovery/login/maintenance page tests; `e2e/operator-signin.spec.ts` |
@@ -3662,3 +3662,13 @@ both its Back link and browser Back return to the same filtered page. The
 focused action-history component suites pass (24 tests), two simulated browser
 journeys pass at 390px and 1280px, and Mission Control lint/build pass. The
 history API queries are unchanged and the browser fixture rejects mutations.
+
+## Change proposal return context — 2026-10-30
+
+Change proposal search now keeps submitted filters, unfinished filter edits
+and page position in the URL. Opening a proposal carries that context, and
+both the detail-page link and browser Back restore it. Focused component and
+responsive browser checks cover submitted filters and an unsubmitted target
+edit at 390px and 1280px; the combined list/detail component suites pass 40
+tests, and Mission Control lint/build pass. Proposal reads and planning
+approval behavior are unchanged; browser fixtures reject unexpected mutations.

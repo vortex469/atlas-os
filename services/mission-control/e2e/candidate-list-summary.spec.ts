@@ -26,6 +26,59 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+for (const width of [390, 1280]) {
+    test(`proposal details preserve submitted filters and draft edits when returning at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        const returnedQueries: URL[] = [];
+        const candidate = { ...executionCandidates[0], id: "candidate-filter-context" };
+        await page.route("**/api/v1/execution-candidates**", async (route) => {
+            const url = new URL(route.request().url());
+            if (url.pathname.endsWith("/candidate-filter-context")) {
+                await route.fulfill({ json: candidate });
+                return;
+            }
+            if (url.pathname.endsWith("/execution-candidates")) {
+                returnedQueries.push(url);
+                await route.fulfill({ json: { candidates: [candidate], total: 26, limit: 25, offset: 25, has_more: false } });
+                return;
+            }
+            await route.continue();
+        });
+
+        const search = "?eligibility=eligible&change=update-compose-stack&category=update&source=orion&target=stack-home-assistant&draftTarget=typed-target&offset=25";
+        await page.goto(`/execution-candidates${search}`);
+        const filterForm = page.getByRole("form", { name: "Filter change proposals" });
+        await expect(page.getByRole("link", { name: "Review Update Compose Stack proposal" })).toBeVisible();
+        await expect(filterForm.getByRole("combobox").nth(0)).toHaveValue("eligible");
+        await expect(filterForm.getByRole("combobox").nth(1)).toHaveValue("update-compose-stack");
+        await expect(filterForm.getByRole("textbox").nth(0)).toHaveValue("typed-target");
+        await expect(page.getByText("These filter changes haven't been searched yet. Select Search proposals to update the results.")).toBeVisible();
+        await page.getByText("More filters").click();
+        await expect(filterForm.getByRole("combobox").nth(2)).toHaveValue("update");
+        await expect(filterForm.getByRole("textbox").nth(1)).toHaveValue("orion");
+        expect(returnedQueries[0].searchParams.get("target_id")).toBe("stack-home-assistant");
+        expect(returnedQueries[0].searchParams.get("offset")).toBe("25");
+
+        await page.getByRole("link", { name: "Review Update Compose Stack proposal" }).click();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack" })).toBeVisible();
+        await expect(page).toHaveURL(`/execution-candidates/candidate-filter-context${search}`);
+        await page.getByRole("link", { name: "← Change proposals", exact: true }).click();
+
+        await expect(page).toHaveURL(`/execution-candidates${search}`);
+        await expect(filterForm.getByRole("textbox").nth(0)).toHaveValue("typed-target");
+        await expect(page.getByText("These filter changes haven't been searched yet. Select Search proposals to update the results.")).toBeVisible();
+        await expect(page.getByText("More filters")).toBeVisible();
+        await page.getByRole("link", { name: "Review Update Compose Stack proposal" }).click();
+        await expect(page.getByRole("heading", { name: "Update Compose Stack" })).toBeVisible();
+        await page.goBack();
+        await expect(page).toHaveURL(`/execution-candidates${search}`);
+        await expect(filterForm.getByRole("textbox").nth(0)).toHaveValue("typed-target");
+        await expect(page.getByText("Showing 26–26 of 26 proposals")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 for (const width of [320, 390, 1280]) {
     test(`proposal pagination announces the visible range at ${width}px`, async ({ page }) => {
         const requestedOffsets: number[] = [];

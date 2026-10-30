@@ -1,7 +1,7 @@
 import { isAxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -27,6 +27,7 @@ export function ExecutionCandidateDetailPage() {
 }
 
 function CandidateDetail({ candidateId }: { candidateId: string }) {
+    const location = useLocation();
     const [candidate, setCandidate] = useState<ExecutionCandidate | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [candidateLoadAttempt, setCandidateLoadAttempt] = useState(0);
@@ -138,7 +139,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
-                <Link to="/execution-candidates" className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link to={{ pathname: "/execution-candidates", search: location.search }} className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     ← Change proposals
                 </Link>
                 <div>
@@ -231,9 +232,10 @@ function formatTimestamp(value: string): ReactNode {
 }
 
 function PageFrame({ children }: { children: React.ReactNode }) {
+    const location = useLocation();
     return (
         <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
-            <Link to="/execution-candidates" className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">← Change proposals</Link>
+            <Link to={{ pathname: "/execution-candidates", search: location.search }} className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300">← Change proposals</Link>
             {children}
         </main>
     );

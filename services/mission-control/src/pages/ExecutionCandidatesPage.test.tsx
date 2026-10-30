@@ -55,9 +55,9 @@ function page(candidates: ExecutionCandidate[], overrides: Partial<ExecutionCand
     };
 }
 
-function renderPage() {
+function renderPage(path = "/execution-candidates") {
     return render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[path]}>
             <ExecutionCandidatesPage />
         </MemoryRouter>,
     );
@@ -111,6 +111,30 @@ describe("ExecutionCandidatesPage", () => {
         expect(within(eligibility).getByRole("option", { name: "Eligible" })).toHaveValue("eligible");
         expect(within(eligibility).getByRole("option", { name: "Not eligible" })).toHaveValue("not_eligible");
         expect(within(eligibility).getByRole("option", { name: "Expired" })).toHaveValue("expired");
+    });
+
+    it("restores submitted proposal filters, draft edits, and the current page from the URL", async () => {
+        mockedListExecutionCandidates.mockResolvedValueOnce(page([candidate()], { total: 26, offset: 25 }));
+        renderPage("/execution-candidates?eligibility=eligible&change=update-compose-stack&category=update&source=orion&target=stack-home-assistant&draftTarget=typed-target&offset=25");
+
+        expect(await screen.findByRole("link", { name: "Review Update Compose Stack proposal" })).toBeVisible();
+        expect(mockedListExecutionCandidates).toHaveBeenCalledWith({
+            status: "eligible",
+            category: "update",
+            intent: "update-compose-stack",
+            sourceSubsystem: "orion",
+            targetId: "stack-home-assistant",
+            limit: 25,
+            offset: 25,
+        });
+        expect(screen.getByLabelText("Eligibility")).toHaveValue("eligible");
+        expect(screen.getByLabelText("Change")).toHaveValue("update-compose-stack");
+        expect(screen.getByLabelText("Target ID")).toHaveValue("typed-target");
+        expect(screen.getByText("These filter changes haven't been searched yet. Select Search proposals to update the results.")).toBeVisible();
+        expect(screen.getByRole("link", { name: "Review Update Compose Stack proposal" })).toHaveAttribute(
+            "href",
+            "/execution-candidates/candidate-1?eligibility=eligible&change=update-compose-stack&category=update&source=orion&target=stack-home-assistant&draftTarget=typed-target&offset=25",
+        );
     });
 
     it("shows expired candidates by expiry and keeps unknown eligibility unavailable", async () => {
