@@ -3992,3 +3992,10 @@ the collapsed technical detail uses the shared bounded text filter. Approval,
 verification, commit, and separate run boundaries are unchanged. The focused
 Workflow page suite passes all 105 tests; Mission Control lint and production
 build pass.
+
+## Atlas Doctor error detail redaction — 2026-10-30
+
+The Overview health panel keeps its plain-language recovery guidance visible
+while collapsed diagnostic details use the shared bounded text filter. The
+focused Atlas Doctor panel suite passes all 3 tests; Mission Control lint and
+production build pass.

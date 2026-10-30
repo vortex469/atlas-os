@@ -5,6 +5,7 @@ import {
     getAtlasErrorMessage,
 } from "../api/atlas";
 import type { DoctorReport } from "../types/doctor";
+import { safeText } from "../utils/safeText";
 
 const statusClasses = {
     healthy:
@@ -81,7 +82,9 @@ export function AtlasDoctorPanel() {
                     <p className="mt-1 text-sm text-red-200/80">No new health report is available. Run the checks again to get current results.</p>
                     <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{error}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">
+                            {safeText(error) || "No additional details were returned."}
+                        </p>
                     </details>
                 </div>
             )}

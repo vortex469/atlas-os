@@ -68,7 +68,7 @@ describe("AtlasDoctorPanel", () => {
     it("shows a diagnostic request failure", async () => {
         const user = userEvent.setup();
         mockedGetAtlasDoctorReport.mockRejectedValue(
-            new Error("Doctor unavailable."),
+            new Error("Doctor unavailable: Bearer canary-secret-value"),
         );
         render(<AtlasDoctorPanel />);
 
@@ -81,9 +81,11 @@ describe("AtlasDoctorPanel", () => {
         expect(alert).toHaveTextContent("No new health report is available. Run the checks again to get current results.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Doctor unavailable.")).not.toBeVisible();
+        const safeError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
+        expect(safeError).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Doctor unavailable.")).toBeVisible();
+        expect(safeError).toBeVisible();
     });
 
     it("clears the previous health report while rerunning and after failure", async () => {
