@@ -12,6 +12,7 @@ import {
 } from "../api/atlas-agent";
 import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 import type {
     CandidatePlanApiResponse,
     CandidatePlanningResponse,
@@ -249,7 +250,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-xl font-semibold text-red-100">{error ? "Planning session unavailable" : "Planning session not found"}</h1>
                     <p className="mt-2 text-sm text-slate-300">{error ?? "Planning session was not found."}</p>
-                    {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{errorDetails}</p></details>}
+                    {errorDetails && <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(errorDetails) || "No additional details were returned."}</p></details>}
                     <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
             </main>
@@ -295,8 +296,8 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         {session.successor_session_id && <Detail label="Newer session ID" value={session.successor_session_id} />}
                         {session.intake_status && <Detail label="Intake status" value={formatLabel(session.intake_status)} />}
                         {session.intake_reason_codes.length > 0 && <Detail label="Reason codes" value={session.intake_reason_codes.join(", ")} />}
-                        {session.unsupported_reason && <Detail label="Unsupported reason" value={session.unsupported_reason} />}
-                        {session.planning_failure && <Detail label="Failure" value={`${session.planning_failure.code} — ${session.planning_failure.message}`} />}
+                        {session.unsupported_reason && <Detail label="Unsupported reason" value={safeText(session.unsupported_reason) || "No additional details were returned."} />}
+                        {session.planning_failure && <Detail label="Failure" value={safeText(`${session.planning_failure.code} — ${session.planning_failure.message}`) || "No additional details were returned."} />}
                     </dl>
                 </details>
             </section>
@@ -312,7 +313,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                     {savedPlanReadFailure.kind !== "not_found" && <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check for saved plan</button>}
                     {savedPlanReadFailure.details && <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{savedPlanReadFailure.details}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(savedPlanReadFailure.details) || "No additional details were returned."}</p>
                     </details>}
                 </div>}
                 {session.status === "planning" && (
@@ -334,7 +335,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                         <button type="button" onClick={checkPlanningStatus} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Check for saved plan</button>
                         <details className="mt-3">
                             <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                            <p className="mt-2 break-words text-sm text-slate-400">{generateError}</p>
+                            <p className="mt-2 break-words text-sm text-slate-400">{safeText(generateError) || "No additional details were returned."}</p>
                         </details>
                     </div>
                 )}
@@ -361,7 +362,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                             <p className="mt-1 text-sm text-red-200/80">{workflowError.message}</p>
                             <details className="mt-3">
                                 <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
-                                <p className="mt-2 break-words text-sm text-slate-400">{workflowError.details}</p>
+                                <p className="mt-2 break-words text-sm text-slate-400">{safeText(workflowError.details) || "No additional details were returned."}</p>
                             </details>
                         </div>
                     )}
@@ -396,7 +397,7 @@ function WorkflowCreationResult({ workflow, search }: { workflow: CandidateWorkf
                     <Detail label="Core revalidation status" value={workflow.core_revalidation_status ? formatLabel(workflow.core_revalidation_status) : "Not reported"} />
                 </dl>
                 {workflow.reason_codes.length > 0 && <p className="mt-3 break-words text-sm text-slate-400">Reason codes: {workflow.reason_codes.join(", ")}</p>}
-                {workflow.failure && <p className="mt-3 break-words text-sm text-slate-400">Failure: {workflow.failure.code} — {workflow.failure.message}</p>}
+                {workflow.failure && <p className="mt-3 break-words text-sm text-slate-400">Failure: {safeText(`${workflow.failure.code} — ${workflow.failure.message}`) || "No additional details were returned."}</p>}
             </details>
         </div>
     );

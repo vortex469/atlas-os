@@ -482,7 +482,7 @@ describe("PlanningSessionPage", () => {
 
     it("checks whether a plan was saved without repeating generation", async () => {
         const user = userEvent.setup();
-        mockedGenerateCandidatePlan.mockRejectedValueOnce(new Error("Generation failed"));
+        mockedGenerateCandidatePlan.mockRejectedValueOnce(new Error("Bearer canary-secret-value"));
         mockedGetCandidatePlanningSession
             .mockResolvedValueOnce(session())
             .mockResolvedValueOnce(session({ status: "plan_ready", plan: plan() }));
@@ -499,9 +499,11 @@ describe("PlanningSessionPage", () => {
         expect(screen.queryByRole("button", { name: /create workflow|approve|execute|implementation|commit/i })).not.toBeInTheDocument();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Generation failed")).not.toBeVisible();
+        const safeError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
+        expect(safeError).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Generation failed")).toBeVisible();
+        expect(safeError).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Check for saved plan" }));
         expect(await screen.findByRole("heading", { name: "Review the plan" })).toBeInTheDocument();
         expect(screen.getByText("Update Home Assistant compose stack")).toBeVisible();

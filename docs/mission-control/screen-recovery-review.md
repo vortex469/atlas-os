@@ -4006,3 +4006,11 @@ Provider-settings failures keep the retry guidance visible while collapsed
 technical details use the shared bounded text filter. The check remains
 non-authorizing. The focused assessment suite passes all 7 tests; Mission
 Control lint and production build pass.
+
+## Planning session error details — 2026-10-30
+
+Planning-session reads, plan generation, saved-plan reads, and workflow
+creation keep their recovery guidance visible while optional error details use
+the shared bounded text filter. Workflow creation and implementation approval
+remain separate. The focused Planning Session suite passes all 37 tests;
+Mission Control lint and production build pass.
