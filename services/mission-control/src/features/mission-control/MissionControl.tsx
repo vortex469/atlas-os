@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
+import { CopyCommandButton } from "../../components/CopyCommandButton";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { healthNextCheck } from "../../utils/healthPresentation";
 import { serviceContainerCheckCommand, serviceReachabilityCommand } from "../../utils/serviceReachabilityCommand";
@@ -64,29 +65,6 @@ function ObservedStatus({ value, reason, stale, unavailableLabel }: {
     unavailableLabel?: string;
 }) {
     return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} unavailableLabel={unavailableLabel} />;
-}
-
-function CopyCommandButton({ command }: { command: string }) {
-    const [copyMessage, setCopyMessage] = useState<string | null>(null);
-    return <span className="inline-flex flex-wrap items-center gap-2">
-        <button
-            type="button"
-            onClick={() => {
-                const clipboard = navigator.clipboard;
-                if (!clipboard?.writeText) {
-                    setCopyMessage("Copy unavailable. Select and copy the command above.");
-                    return;
-                }
-                void clipboard.writeText(command)
-                    .then(() => setCopyMessage("Command copied."))
-                    .catch(() => setCopyMessage("Copy unavailable. Select and copy the command above."));
-            }}
-            className="shrink-0 rounded border border-mc-border-subtle px-2 py-1 text-xs font-medium text-mc-text-primary hover:bg-mc-surface-muted"
-        >
-            Copy command
-        </button>
-        {copyMessage && <span role="status" className="text-xs">{copyMessage}</span>}
-    </span>;
 }
 
 function ServiceCheckLocation({ service }: { service: unknown }) {

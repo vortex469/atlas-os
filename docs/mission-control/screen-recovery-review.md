@@ -3926,6 +3926,9 @@ address, and next step visible. Service cards now show a visible “View details
 action and leave response time and HTTP status in the drawer's collapsed
 Technical details, along with the raw service message. This keeps low-level
 diagnostics out of the status summary without changing the health check or
-provider behavior. The focused service health suite passes all 6 tests; the
-full Mission Control unit suite passes all 3,043 tests, with lint and production
-build passing.
+provider behavior. The drawer's “Test from the Atlas computer” disclosure also
+shows the same read-only Core connection command as Overview, with Copy and
+URL credential/query redaction. It does not run the command automatically. The
+focused service health suite passes all 7 tests, including the copied-command
+redaction check. The full Mission Control unit suite passes all 3,044 tests;
+lint and the production build also pass.

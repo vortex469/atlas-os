@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react";
+import { CopyCommandButton } from "./CopyCommandButton";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { healthNextCheck, healthState } from "../utils/healthPresentation";
+import { serviceReachabilityCommand } from "../utils/serviceReachabilityCommand";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
 
@@ -86,6 +88,7 @@ export function ServiceDetailsDrawer({
     }, []);
 
     const healthCheckAddress = formatHealthCheckAddress(health.details.url);
+    const reachabilityCommand = serviceReachabilityCommand(health.details.url);
     const technicalDetails = Object.fromEntries(
         Object.entries(health.details).filter(([key]) => key !== "url"),
     );
@@ -163,12 +166,27 @@ export function ServiceDetailsDrawer({
                                 {healthCheckAddress ?? "Not reported"}
                             </dd>
                         </dl>
-                        <p className="mt-2 text-sm text-slate-400">
-                            Run this check on the computer where Atlas Core runs. If you use Docker Compose, run the command from Atlas&apos;s Compose folder; Compose runs the request inside <code>atlas-core</code>. Running it from the service computer instead may use a different network path.
-                        </p>
                         <details className="mt-2">
-                            <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
-                            <p className="mt-2 text-sm text-slate-400">That error means Compose did not run the health check. Run the command from the directory that contains Atlas&apos;s Compose file, or pass its full path with <code>--file</code>.</p>
+                            <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">Test from the Atlas computer</summary>
+                            <div className="mt-2">
+                                <p className="text-sm text-slate-400">
+                                    On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It tests the same connection Atlas uses. Do not run it on the service computer; that checks a different connection.
+                                </p>
+                                {reachabilityCommand ? (
+                                    <div role="group" aria-label="Read-only Core connection check command" className="mt-2 rounded border border-slate-800 bg-slate-900 p-3">
+                                        <div className="flex flex-wrap items-start gap-2">
+                                            <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-slate-200">{reachabilityCommand}</pre>
+                                            <CopyCommandButton command={reachabilityCommand} />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="mt-2 text-sm text-slate-400">No HTTP or HTTPS address was reported, so Atlas cannot provide a connection-check command.</p>
+                                )}
+                                <details className="mt-2">
+                                    <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
+                                    <p className="mt-2 text-sm text-slate-400">That error means Compose did not run the health check. Run the command from the directory that contains Atlas&apos;s Compose file, or pass its full path with <code>--file</code>.</p>
+                                </details>
+                            </div>
                         </details>
                         {nextCheck && (
                             <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">

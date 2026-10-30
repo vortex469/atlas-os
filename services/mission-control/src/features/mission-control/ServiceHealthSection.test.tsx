@@ -119,7 +119,9 @@ describe("ServiceHealthSection", () => {
         const technicalDetails = within(dialog).getByText("Technical details");
         expect(within(dialog).getByText("Response time")).not.toBeVisible();
         expect(within(dialog).getByText("HTTP status")).not.toBeVisible();
-        expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run this check on the computer where Atlas Core runs. If you use Docker Compose, run the command from Atlas's Compose folder; Compose runs the request inside atlas-core. Running it from the service computer instead may use a different network path.");
+        expect(within(dialog).getByText(/On the computer running Atlas, open the folder containing/)).toHaveTextContent("compose.production.yaml");
+        expect(within(dialog).getByText(/On the computer running Atlas, open the folder containing/)).toHaveTextContent("Do not run it on the service computer");
+        await user.click(within(dialog).getByText("Test from the Atlas computer"));
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
@@ -216,6 +218,40 @@ describe("ServiceHealthSection", () => {
         expect(reportedMessage).not.toBeVisible();
         await user.click(within(dialog).getByText("Technical details"));
         expect(reportedMessage).toBeVisible();
+    });
+
+    it("shows and copies the same sanitized read-only Core connection check", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        const health = {
+            ...service("ifileshare", 0),
+            status: "offline",
+            message: "Connection refused",
+            details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
+        };
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: health }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "View details for iFileshare" }));
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        fireEvent.click(within(dialog).getByText("Test from the Atlas computer"));
+        const commandGroup = within(dialog).getByRole("group", { name: "Read-only Core connection check command" });
+        const command = commandGroup.textContent ?? "";
+        expect(command).toContain('httpx.get("http://10.10.60.30:8080/"');
+        expect(command).not.toMatch(/operator|password|private|token=/);
+        fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));
+        expect(await within(commandGroup).findByRole("status")).toHaveTextContent("Command copied.");
+        expect(writeText).toHaveBeenCalledOnce();
+        expect(writeText.mock.calls[0][0]).toBe(commandGroup.querySelector("pre")?.textContent);
     });
 
     it("does not retain successful health or provider operations for a removed service", async () => {
