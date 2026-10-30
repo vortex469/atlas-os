@@ -680,7 +680,10 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 {returnDestination.label}
             </Link>
             <Link
-                to={`/workflows/${workflow.workflow_id}/audit`}
+                to={{
+                    pathname: `/workflows/${workflow.workflow_id}/audit`,
+                    search: location.search,
+                }}
                 className="ml-4 inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
                 Open Audit

@@ -85,10 +85,14 @@ describe("WorkflowAuditPage", () => {
     it("shows maintenance lifecycle instead of repository artifacts", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(audit({ effect_kind: "operational_action" }));
         vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
-        renderAuditPage();
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
         expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Maintenance audit" })).toBeInTheDocument();
         expect(screen.getByText(/Maintenance status:/)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Back to workflow" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123?source=maintenance-history",
+        );
         expect(screen.queryByRole("heading", { name: "Commit details" })).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Change request" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|run|resume/i })).not.toBeInTheDocument();
@@ -368,11 +372,15 @@ describe("WorkflowAuditPage", () => {
 
     it("shows agent unavailable alert", async () => {
         mockedGetWorkflowAudit.mockRejectedValue(new Error("Atlas Agent unavailable."));
-        renderAuditPage();
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Atlas couldn’t load this workflow’s history. Try again to see its activity.");
         expect(alert).toHaveTextContent("Workflow history unavailable");
+        expect(screen.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123?source=maintenance-history",
+        );
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable.")).not.toBeVisible();
@@ -381,11 +389,22 @@ describe("WorkflowAuditPage", () => {
     });
 
     it("renders back to workflow link", async () => {
-        renderAuditPage();
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
 
         expect(await screen.findByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
             "href",
-            "/workflows/workflow-123",
+            "/workflows/workflow-123?source=maintenance-history",
+        );
+    });
+
+    it("keeps the workflow return link visible while audit is loading", () => {
+        mockedGetWorkflowAudit.mockImplementation(() => new Promise(() => {}));
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
+
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow audit");
+        expect(screen.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123?source=maintenance-history",
         );
     });
 

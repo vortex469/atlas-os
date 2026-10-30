@@ -746,11 +746,11 @@ describe("WorkflowPage", () => {
     });
 
     it("provides Open Audit link to workflow audit explorer", async () => {
-        renderPage();
+        renderPage("/workflows/workflow-123?source=maintenance-history");
 
         expect(await screen.findByRole("link", { name: "Open Audit" })).toHaveAttribute(
             "href",
-            "/workflows/workflow-123/audit",
+            "/workflows/workflow-123/audit?source=maintenance-history",
         );
     });
 

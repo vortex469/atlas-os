@@ -346,11 +346,11 @@ describe("DiscoveryItemPage", () => {
         renderPage("/discovery/items/frigate?q=frigate&type=application");
 
         const section = await screen.findByRole("region", { name: "Catalog relationships" });
-        expect(within(section).getByRole("link", { name: "mqtt" })).toHaveAttribute(
+        expect(await within(section).findByRole("link", { name: "mqtt" })).toHaveAttribute(
             "href",
             "/discovery/items/mqtt?q=frigate&type=application",
         );
-        expect(within(section).getByRole("link", { name: "Mission Control" })).toHaveAttribute(
+        expect(await within(section).findByRole("link", { name: "Mission Control" })).toHaveAttribute(
             "href",
             "/discovery/items/mission-control?q=frigate&type=application",
         );

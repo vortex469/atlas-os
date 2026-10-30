@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import {
     getAtlasAgentErrorMessage,
@@ -175,6 +175,9 @@ export function WorkflowAuditPage() {
 }
 
 function WorkflowAudit({ workflowId }: { workflowId: string }) {
+    const location = useLocation();
+    const workflowReturnTo = { pathname: `/workflows/${workflowId}`, search: location.search };
+    const dashboardReturnTo = { pathname: "/workflows", search: location.search };
     const [audit, setAudit] = useState<WorkflowAuditResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<{ message: string; details?: string } | null>(null);
@@ -209,6 +212,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     if (isLoading) {
         return (
             <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
+                <Link to={workflowReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
                 <p role="status" className="text-blue-200">Loading workflow audit...</p>
             </main>
         );
@@ -217,7 +221,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     if (loadError) {
         return (
             <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
-                <Link to={`/workflows/${workflowId}`} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
+                <Link to={workflowReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
                     <h1 className="text-lg font-semibold text-red-100">Workflow history unavailable</h1>
                     <p className="mt-2 text-sm text-red-100">{loadError.message}</p>
@@ -234,7 +238,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     if (!audit) {
         return (
             <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
-                <Link to="/workflows" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow Dashboard</Link>
+                <Link to={dashboardReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow Dashboard</Link>
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
                     <p className="mt-2 text-sm text-slate-300">This workflow could not be found. Check the link or return to the workflow list.</p>
@@ -245,7 +249,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
 
     const timeline = audit.timeline;
 
-    if (audit.effect_kind === "operational_action") return <MaintenanceAudit audit={audit} />;
+    if (audit.effect_kind === "operational_action") return <MaintenanceAudit audit={audit} returnSearch={location.search} />;
 
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
@@ -308,7 +312,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
             })}
 
             <Link
-                to={`/workflows/${audit.workflow_id}`}
+                to={workflowReturnTo}
                 className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
                 ← Back to Workflow
@@ -317,7 +321,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     );
 }
 
-function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
+function MaintenanceAudit({ audit, returnSearch }: { audit: WorkflowAuditResponse; returnSearch: string }) {
     const [lifecycle, setLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -346,7 +350,7 @@ function MaintenanceAudit({ audit }: { audit: WorkflowAuditResponse }) {
         <header>
             <h1 className="break-all text-3xl font-bold text-white">Maintenance audit</h1>
             <p className="mt-3 text-sm text-slate-300">Review recorded approvals, dispatch and verification. This page only reads information.</p>
-            <Link to={`/workflows/${encodeURIComponent(audit.workflow_id)}`} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
+            <Link to={{ pathname: `/workflows/${encodeURIComponent(audit.workflow_id)}`, search: returnSearch }} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
         </header>
         <section aria-label="Audit validation" className="rounded-xl border border-slate-800 p-5 text-slate-300">
             <p>Maintenance status: {formatWorkflowAuditStatus(audit)}</p>
