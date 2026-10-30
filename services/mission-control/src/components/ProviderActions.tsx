@@ -263,6 +263,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
         } catch (refreshError) {
             if (!active.current) return;
             console.error(`Unable to refresh ${provider.id} after a provider action:`, refreshError);
+            setProviderRefreshError("Refresh failed. Atlas could not confirm the latest provider information. The details shown here may be out of date.");
             setProviderRefreshErrorDetails(getAtlasErrorMessage(
                 refreshError,
                 "Provider information could not be refreshed.",

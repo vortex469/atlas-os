@@ -231,6 +231,37 @@ describe("ProviderActions", () => {
         expect(mockedRunProviderAction).toHaveBeenCalledOnce();
     });
 
+    it("explains when a provider refresh retry fails", async () => {
+        const user = userEvent.setup();
+        const refreshProvider = vi.fn()
+            .mockResolvedValueOnce(false)
+            .mockRejectedValueOnce(new Error("Provider refresh unavailable."));
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Diagnostics completed.",
+            data: {},
+            warnings: [],
+        });
+        renderActions(refreshProvider);
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action completed, but Atlas could not confirm the latest provider information.");
+
+        await user.click(within(alert).getByRole("button", { name: "Refresh provider information" }));
+
+        await waitFor(() => expect(alert).toHaveTextContent("Refresh failed. Atlas could not confirm the latest provider information."));
+        expect(alert).toHaveTextContent("Refresh the provider information before running another action.");
+        expect(within(alert).getByText("Technical details").closest("details")).not.toHaveAttribute("open");
+        expect(within(alert).getByText("Provider refresh unavailable.")).not.toBeVisible();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(refreshProvider).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+    });
+
     it("keeps provider actions separate from monitoring policy and maintenance", async () => {
         renderActions();
         expect(await screen.findByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();

@@ -3581,3 +3581,12 @@ The recent-action card now uses the same “View action details” label as Acti
 History, so operators can tell that the link opens the recorded action rather
 than inspecting or retrying it. The link remains a read-only navigation to the
 existing action record. No provider action behavior changes.
+
+## Provider refresh retry outcome — 2026-10-30
+
+If an explicit refresh after a provider action fails, the alert now says that
+the refresh failed and that the displayed provider information may be out of
+date. Direct actions stay paused until a refresh confirms current information;
+the original action is not repeated. Technical error details remain collapsed.
+The focused ProviderActions suite passes 14 tests, and the changed files pass
+ESLint and `git diff --check`.
