@@ -40,7 +40,7 @@ for (const width of [320, 390, 1280]) {
         await expect(card.getByText("candidate-browser-baseline", { exact: true })).toBeVisible();
         await expect(card.getByRole("link", { name: "Open workflow", exact: true })).toHaveAttribute(
             "href",
-            "/workflows/workflow-browser-baseline",
+            "/workflows/workflow-browser-baseline?returnTo=%2Fworkflows",
         );
 
         await page.getByLabel("Workflow status").selectOption("completed");
@@ -84,7 +84,7 @@ for (const width of [320, 390, 1280]) {
         const card = title.locator("xpath=ancestor::article[1]");
         await expect(card.getByText("Stage: Maintenance request approval", { exact: true })).toBeVisible();
         await expect(card.getByText("Review the maintenance request. If approved, choose Run approved maintenance.", { exact: true })).toBeVisible();
-        await expect(card.getByRole("link", { name: "Review maintenance request", exact: true })).toHaveAttribute("href", "/workflows/maintenance-review");
+        await expect(card.getByRole("link", { name: "Review maintenance request", exact: true })).toHaveAttribute("href", "/workflows/maintenance-review?returnTo=%2Fworkflows");
         await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Stage: Change approval", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

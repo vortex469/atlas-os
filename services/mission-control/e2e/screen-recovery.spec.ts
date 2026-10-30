@@ -1002,7 +1002,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Status record check", { exact: true })).toBeVisible();
         await expect(page.getByText("Not available", { exact: true })).toBeVisible();
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/maintenance-test?completion=terminal&status=unavailable");
+        await expect(page.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/maintenance-test?completion=terminal&status=unavailable&returnTo=%2Foperations%2Fhistory");
         await page.getByRole("link", { name: "Review maintenance request" }).click();
         await expect(page.getByRole("heading", { name: "Review maintenance request" })).toBeVisible();
         await expect(page.getByRole("link", { name: "← Maintenance history" })).toHaveAttribute("href", "/operations/history?completion=terminal&status=unavailable");
