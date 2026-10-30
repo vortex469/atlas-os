@@ -3928,7 +3928,9 @@ Technical details, along with the raw service message. This keeps low-level
 diagnostics out of the status summary without changing the health check or
 provider behavior. The drawer's “Test from the Atlas computer” disclosure also
 shows the same read-only Core connection command as Overview, with Copy and
-URL credential/query redaction. It does not run the command automatically. The
-focused service health suite passes all 7 tests, including the copied-command
+URL credential/query redaction. Both screens explain that an HTTP status means
+a server answered, while a timeout or connection error means Core received no
+HTTP response. The drawer does not run the command automatically. The focused
+service health suite passes all 7 tests, including the copied-command
 redaction check. The full Mission Control unit suite passes all 3,044 tests;
 lint and the production build also pass.

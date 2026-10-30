@@ -248,6 +248,7 @@ describe("ServiceHealthSection", () => {
         const command = commandGroup.textContent ?? "";
         expect(command).toContain('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toMatch(/operator|password|private|token=/);
+        expect(within(dialog).getByText(/An HTTP status means a server answered/)).toHaveTextContent("Atlas Core received no HTTP response");
         fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));
         expect(await within(commandGroup).findByRole("status")).toHaveTextContent("Command copied.");
         expect(writeText).toHaveBeenCalledOnce();
