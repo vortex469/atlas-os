@@ -294,11 +294,11 @@ describe("ProviderResources Provider Intent flow", () => {
 
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Observed resources could not be loaded. Refresh resources to try again.");
-        const technicalDetails = within(alert).getByText("Technical details").closest("details");
-        expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("inventory service returned 503")).not.toBeVisible();
-        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("inventory service returned 503")).toBeVisible();
+        const inventoryDetails = within(alert).getByText("Why observed resources couldn't load").closest("details");
+        expect(inventoryDetails).not.toHaveAttribute("open");
+        expect(within(inventoryDetails as HTMLDetailsElement).getByText("inventory service returned 503")).not.toBeVisible();
+        await userEvent.setup().click(within(inventoryDetails as HTMLDetailsElement).getByText("Why observed resources couldn't load"));
+        expect(within(inventoryDetails as HTMLDetailsElement).getByText("inventory service returned 503")).toBeVisible();
         expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
     });
 
@@ -747,11 +747,35 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
         const alert = screen.getByRole("alert");
-        expect(alert).toHaveTextContent("Monitoring settings could not be loaded. Observed inventory remains visible.");
-        const technicalDetails = within(alert).getByText("Technical details").closest("details");
-        expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("monitoring backend unavailable")).not.toBeVisible();
+        expect(alert).toHaveTextContent("Monitoring settings could not be loaded.");
+        expect(alert).not.toHaveTextContent("Observed inventory remains visible.");
+        const monitoringDetails = within(alert).getByText("Why monitoring settings couldn't load").closest("details");
+        expect(monitoringDetails).not.toHaveAttribute("open");
+        expect(within(monitoringDetails as HTMLDetailsElement).getByText("monitoring backend unavailable")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    });
+
+    it("distinguishes inventory and monitoring read failures when both occur", async () => {
+        vi.mocked(getProviderResources).mockRejectedValue(new Error("inventory read failed"));
+        vi.mocked(getProviderManagement).mockRejectedValue(new Error("monitoring read failed"));
+        vi.mocked(getAtlasErrorMessage)
+            .mockReturnValueOnce("inventory backend unavailable")
+            .mockReturnValueOnce("monitoring backend unavailable");
+
+        render(<ProviderResources provider={provider} />);
+
+        const inventoryAlert = await screen.findByText("Observed resources could not be loaded. Refresh resources to try again.")
+            .then(message => message.closest("[role='alert']"));
+        const monitoringAlert = await screen.findByText("Monitoring settings could not be loaded.")
+            .then(message => message.closest("[role='alert']"));
+        expect(inventoryAlert).not.toBeNull();
+        expect(monitoringAlert).not.toBeNull();
+        expect(within(inventoryAlert as HTMLElement).getByText("Why observed resources couldn't load")).toBeInTheDocument();
+        expect(within(monitoringAlert as HTMLElement).getByText("Why monitoring settings couldn't load")).toBeInTheDocument();
+        expect(within(inventoryAlert as HTMLElement).queryByText("Why monitoring settings couldn't load")).not.toBeInTheDocument();
+        expect(within(monitoringAlert as HTMLElement).queryByText("Why observed resources couldn't load")).not.toBeInTheDocument();
+        expect(screen.queryByText("Observed inventory remains visible.")).not.toBeInTheDocument();
+        expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
     });
 
     it("does not present management current_state as observed when inventory fails", async () => {

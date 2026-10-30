@@ -83,7 +83,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         catch (error) {
             const fallback = "Atlas could not load monitoring settings.";
             const details = getAtlasErrorMessage(error, fallback);
-            setManagementError("Monitoring settings could not be loaded. Observed inventory remains visible.");
+            setManagementError("Monitoring settings could not be loaded.");
             setManagementErrorDetails(details === fallback ? null : details);
             return false;
         }
@@ -226,8 +226,8 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
                 <button type="button" onClick={() => void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()])} disabled={inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? loadingResources ? "Loading resources…" : "Refreshing resources…" : "Refresh resources"}</button>
             </div>
             <div className="mt-4 space-y-2">
-                {inventoryError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"><p>{inventoryError}</p>{inventoryErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{inventoryErrorDetails}</p></details>}</div>}
-                {managementError && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"><p>{managementError}</p>{managementErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-1 break-words text-slate-400">{managementErrorDetails}</p></details>}</div>}
+                {inventoryError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"><p>{inventoryError}</p>{inventoryErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why observed resources couldn&apos;t load</summary><p className="mt-1 break-words text-slate-400">{inventoryErrorDetails}</p></details>}</div>}
+                {managementError && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"><p>{managementError}</p>{managementErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why monitoring settings couldn&apos;t load</summary><p className="mt-1 break-words text-slate-400">{managementErrorDetails}</p></details>}</div>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
                 {operatorState === "loading" && !loadingResources && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-300">Checking monitoring settings and edit access...</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
