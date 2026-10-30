@@ -295,6 +295,7 @@ for (const width of [320, 1280]) {
         await page.goto('/');
 
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
+        await checks.getByText('How to check from Atlas Core', { exact: true }).click();
         const missingAddress = checks.getByRole('group', { name: 'Next connection check' })
             .getByText('Configured service address not reported', { exact: true });
         await expect(missingAddress).toBeVisible();
@@ -348,9 +349,10 @@ for (const width of [320, 1280]) {
         await attentionLink.click();
         await expect(checks).toBeInViewport();
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
+        await checks.getByText('How to check from Atlas Core', { exact: true }).click();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();
-        await expect(nextStep).toContainText('From the computer running Atlas Core, open a terminal in the folder containing compose.production.yaml and run this command. It makes a read-only request inside the atlas-core container; running it on iFileshare or in your browser checks a different network path.');
+        await expect(nextStep).toContainText('From the computer running Atlas Core, open a terminal in the folder containing compose.production.yaml and run this command. It makes a read-only request inside the atlas-core container; running it on the service computer or in your browser checks a different network path.');
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
         await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');

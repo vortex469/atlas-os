@@ -191,6 +191,11 @@ describe("MC overview evidence", () => {
             details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        const howToCheck = checks.getByText("How to check from Atlas Core");
+        const connectionDetails = howToCheck.closest("details");
+        expect(connectionDetails).not.toHaveAttribute("open");
+        expect(checks.getByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).toBeVisible();
+        fireEvent.click(howToCheck);
         const nextStep = checks.getByRole("group", { name: "Next connection check" });
         const summary = checks.getByText("More connection checks");
         const disclosure = summary.closest("details");

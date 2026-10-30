@@ -3590,3 +3590,13 @@ date. Direct actions stay paused until a refresh confirms current information;
 the original action is not repeated. Technical error details remain collapsed.
 The focused ProviderActions suite passes 14 tests, and the changed files pass
 ESLint and `git diff --check`.
+
+## Service check diagnosis disclosure — 2026-10-30
+
+The dashboard now keeps the service reachability result and plain-language
+explanation visible while collapsing the Core-side command and Docker
+troubleshooting steps under “How to check from Atlas Core.” This reduces the
+default dashboard detail without implying that an unreachable service is
+stopped. The focused overview suite passes (75 tests), four responsive browser
+cases pass at 320px and 1280px, and Mission Control lint and production build
+pass. Health checks and service configuration are unchanged.
