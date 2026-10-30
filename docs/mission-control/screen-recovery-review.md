@@ -3940,4 +3940,6 @@ lint and the production build also pass.
 The Overview card now says plainly that it shows workflow progress and results,
 but does not show whether a worker is free to take more work. The card's status
 counts and workflow actions are unchanged. The focused Overview and Work
-activity suites pass all 109 tests; lint and the production build pass.
+activity suites pass all 109 tests; lint and the production build pass. The
+Overview browser suite also checks this wording across responsive journeys; all
+29 cases in `e2e/overview.spec.ts` pass locally.
