@@ -370,13 +370,35 @@ test "$core_agent_token_digest" = \
     "$(docker exec "$agent_container" sha256sum /run/atlas-core-agent-auth/token | awk '{print $1}')"
 
 echo "Checking Atlas Core Docker socket access and hardening"
-test "$(docker exec "$core_container" id -u)" = "10001"
-docker exec "$core_container" sh -c "id -G | tr ' ' '\n' | grep -qx '$DOCKER_GID'"
-docker exec "$core_container" test -S /var/run/docker.sock
-test "$(docker inspect \
+if ! core_uid="$(docker exec "$core_container" id -u)" || [[ "$core_uid" != "10001" ]]; then
+    printf 'Core user check failed: expected uid 10001, got %s\n' "${core_uid:-unavailable}" >&2
+    exit 1
+fi
+if ! core_groups="$(docker exec "$core_container" id -G)"; then
+    echo "Core supplementary group check failed: could not read container groups" >&2
+    exit 1
+fi
+if ! tr ' ' '\n' <<<"$core_groups" | grep -qx "$DOCKER_GID"; then
+    printf 'Core Docker socket group check failed: required gid %s, container groups %s\n' \
+        "$DOCKER_GID" "$core_groups" >&2
+    exit 1
+fi
+if ! docker exec "$core_container" test -S /var/run/docker.sock; then
+    echo "Core Docker socket check failed: /var/run/docker.sock is not a socket" >&2
+    exit 1
+fi
+if ! core_socket_mount_rw="$(docker inspect \
     --format '{{range .Mounts}}{{if eq .Destination "/var/run/docker.sock"}}{{.RW}}{{end}}{{end}}' \
-    "$core_container")" = "false"
-docker exec -i "$core_container" python - <<'PY'
+    "$core_container")"; then
+    echo "Core Docker socket mount check failed: could not inspect container mounts" >&2
+    exit 1
+fi
+if [[ "$core_socket_mount_rw" != "false" ]]; then
+    printf 'Core Docker socket mount check failed: expected read-only mount, got %s\n' \
+        "${core_socket_mount_rw:-missing}" >&2
+    exit 1
+fi
+if ! docker exec -i "$core_container" python - <<'PY'
 from app.services.atlas_contexts import LegacyAtlasContextResolver
 from app.clients.docker_client import create_docker_client, docker_connection_diagnostics
 
@@ -391,6 +413,10 @@ assert diagnostics["socket_exists"] is True
 client = create_docker_client(context)
 assert client.ping() is True
 PY
+then
+    echo "Core Docker API check failed: configured Docker client could not ping the socket" >&2
+    exit 1
+fi
 
 https_published_address="$("${compose[@]}" port atlas-edge 8443)"
 https_published_port="${https_published_address##*:}"
