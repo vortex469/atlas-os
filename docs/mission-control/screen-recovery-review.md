@@ -3918,3 +3918,14 @@ The Forge action now says “Analyze Compose file,” matching the visible input
 the page's analysis-only purpose. It still makes the same read-only analysis
 request and exposes no deployment control. The focused Forge suite and
 responsive browser checks cover the updated label.
+
+## Service reachability details — 2026-10-30
+
+The service details drawer keeps the translated reachability status, checked
+address, and next step visible. Service cards now show a visible “View details”
+action and leave response time and HTTP status in the drawer's collapsed
+Technical details, along with the raw service message. This keeps low-level
+diagnostics out of the status summary without changing the health check or
+provider behavior. The focused service health suite passes all 6 tests; the
+full Mission Control unit suite passes all 3,043 tests, with lint and production
+build passing.

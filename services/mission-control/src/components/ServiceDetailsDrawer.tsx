@@ -151,26 +151,6 @@ export function ServiceDetailsDrawer({
                         </div>
                     </div>
 
-                    <dl className="grid gap-4 sm:grid-cols-2">
-                        <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-                            <dt className="text-xs uppercase tracking-wider text-slate-500">
-                                Response time
-                            </dt>
-                            <dd className="mt-2 text-lg font-semibold text-slate-100">
-                                {formatLatency(health.latency_ms)}
-                            </dd>
-                        </div>
-
-                        <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-                            <dt className="text-xs uppercase tracking-wider text-slate-500">
-                                HTTP status
-                            </dt>
-                            <dd className="mt-2 text-lg font-semibold text-slate-100">
-                                {formatHttpStatus(health.http_status)}
-                            </dd>
-                        </div>
-                    </dl>
-
                     <section>
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
                             Health check
@@ -231,21 +211,38 @@ export function ServiceDetailsDrawer({
                     </button>
 
                     <section>
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                            Message
-                        </h3>
-                        <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
-                            <p className="text-sm text-slate-300">
-                                {health.message ?? "No service message."}
-                            </p>
-                        </div>
-                    </section>
-
-                    <section>
                         <details>
                             <summary className="cursor-pointer text-sm font-semibold text-slate-400">
                                 Technical details
                             </summary>
+                            <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+                                    <dt className="text-xs uppercase tracking-wider text-slate-500">
+                                        Response time
+                                    </dt>
+                                    <dd className="mt-2 text-lg font-semibold text-slate-100">
+                                        {formatLatency(health.latency_ms)}
+                                    </dd>
+                                </div>
+                                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+                                    <dt className="text-xs uppercase tracking-wider text-slate-500">
+                                        HTTP status
+                                    </dt>
+                                    <dd className="mt-2 text-lg font-semibold text-slate-100">
+                                        {formatHttpStatus(health.http_status)}
+                                    </dd>
+                                </div>
+                            </dl>
+                            {health.message && (
+                                <dl className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4">
+                                    <dt className="text-xs uppercase tracking-wider text-slate-500">
+                                        Reported service message
+                                    </dt>
+                                    <dd className="mt-2 break-words text-sm text-slate-300">
+                                        {health.message}
+                                    </dd>
+                                </dl>
+                            )}
                             <pre className="mt-3 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-4 text-xs leading-6 text-slate-300">
                                 {hasTechnicalDetails
                                     ? JSON.stringify(technicalDetails, null, 2)

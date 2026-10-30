@@ -92,6 +92,10 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
+        const card = screen.getByRole("button", { name: "View details for Containers" });
+        expect(within(card).getByText("View details")).toBeVisible();
+        expect(within(card).queryByText("Response time")).not.toBeInTheDocument();
+        expect(within(card).queryByText("HTTP")).not.toBeInTheDocument();
         expect(
             screen.getByText(
                 "Shows whether Atlas Core can reach each service address. A service can be running on its computer and still be unreachable from Core. Select one to see the address Atlas checked.",
@@ -103,16 +107,18 @@ describe("ServiceHealthSection", () => {
                 name: "View details for Containers",
             }),
         );
-        expect(
-            screen.getByRole("dialog", { name: "Containers" }),
-        ).toBeInTheDocument();
-        expect(within(screen.getByRole("dialog", { name: "Containers" })).getByText("Reachability from Atlas Core")).toBeInTheDocument();
+        const dialog = screen.getByRole("dialog", { name: "Containers" });
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText("Reachability from Atlas Core")).toBeInTheDocument();
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(
             screen.getByText("Operations for Docker"),
         ).toBeInTheDocument();
         expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
         expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
+        const technicalDetails = within(dialog).getByText("Technical details");
+        expect(within(dialog).getByText("Response time")).not.toBeVisible();
+        expect(within(dialog).getByText("HTTP status")).not.toBeVisible();
         expect(screen.getByText("atlas-core").closest("p")).toHaveTextContent("Run this check on the computer where Atlas Core runs. If you use Docker Compose, run the command from Atlas's Compose folder; Compose runs the request inside atlas-core. Running it from the service computer instead may use a different network path.");
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
@@ -122,9 +128,11 @@ describe("ServiceHealthSection", () => {
         await user.click(screen.getByText("If Compose says the file is missing"));
         expect(composeHelpText).toBeVisible();
         expect(screen.getByText(/"version"/)).not.toBeVisible();
-        await user.click(screen.getByText("Technical details"));
+        await user.click(technicalDetails);
+        expect(within(dialog).getByText("Response time")).toBeVisible();
+        expect(within(dialog).getByText("HTTP status")).toBeVisible();
         expect(screen.getByText(/"version"/)).toBeVisible();
-        expect(screen.getAllByText("8 ms")).toHaveLength(2);
+        expect(screen.getByText("8 ms")).toBeVisible();
 
         rerender(
             <ServiceHealthSection
@@ -138,7 +146,7 @@ describe("ServiceHealthSection", () => {
         expect(
             screen.getByText("Operations for Podman"),
         ).toBeInTheDocument();
-        expect(screen.getAllByText("14 ms")).toHaveLength(2);
+        expect(screen.getByText("14 ms")).toBeVisible();
         expect(
             screen.getByRole("button", {
                 name: "Refreshing health...",
@@ -166,8 +174,6 @@ describe("ServiceHealthSection", () => {
         expect(screen.getByText("Unreachable from Atlas Core")).toBeInTheDocument();
         expect(screen.queryByText("Offline")).not.toBeInTheDocument();
         expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
-        expect(screen.getByText("Response time")).toBeInTheDocument();
-        expect(screen.getByText("Not recorded")).toBeInTheDocument();
     });
 
     it("shows a plain next step for a refused service connection", async () => {
@@ -204,6 +210,12 @@ describe("ServiceHealthSection", () => {
                 "On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.",
             ),
         ).toBeInTheDocument();
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        expect(within(dialog).getByText("Atlas Core's connection to this address was refused.")).toBeInTheDocument();
+        const reportedMessage = within(dialog).getByText("[Errno 111] Connection refused");
+        expect(reportedMessage).not.toBeVisible();
+        await user.click(within(dialog).getByText("Technical details"));
+        expect(reportedMessage).toBeVisible();
     });
 
     it("does not retain successful health or provider operations for a removed service", async () => {
