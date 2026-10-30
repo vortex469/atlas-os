@@ -146,4 +146,30 @@ describe("ProviderPolicyDetails", () => {
             ),
         ).toBeInTheDocument();
     });
+
+    it("labels cached monitoring settings after a failed policy refresh", () => {
+        render(
+            <ProviderPolicyDetails
+                providerId="qdrant"
+                policies={policies}
+                stale
+            />,
+        );
+
+        expect(screen.getByRole("status")).toHaveTextContent("These are the last loaded monitoring settings.");
+        expect(screen.getByText("250 ms")).toBeInTheDocument();
+    });
+
+    it("does not present a cached empty policy as a current absence", () => {
+        render(
+            <ProviderPolicyDetails
+                providerId="ollama"
+                policies={policies}
+                stale
+            />,
+        );
+
+        expect(screen.getByText("The last loaded settings listed no provider-specific operational policy.")).toBeInTheDocument();
+        expect(screen.queryByText("No provider-specific operational policy is configured.")).not.toBeInTheDocument();
+    });
 });

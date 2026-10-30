@@ -15,6 +15,7 @@ type Props = {
     providerId: string;
     snapshots: IntelligenceTelemetrySnapshot[];
     performancePolicy?: PerformancePolicy | null;
+    performancePolicyStale?: boolean;
     unavailable?: boolean;
 };
 
@@ -22,6 +23,7 @@ export function ProviderTelemetryTrend({
     providerId,
     snapshots,
     performancePolicy = null,
+    performancePolicyStale = false,
     unavailable = false,
 }: Props) {
     const points = snapshots
@@ -45,6 +47,7 @@ export function ProviderTelemetryTrend({
                 title="Provider check history"
                 description="Each bar is one check. Taller bars took longer; green bars finished and amber bars timed out or failed."
             />
+            {performancePolicy && performancePolicyStale && <p role="status" className="mb-3 text-sm text-amber-200">The check limit is from the last available monitoring settings.</p>}
             {points.length === 0 ? (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
                     {unavailable
@@ -57,6 +60,7 @@ export function ProviderTelemetryTrend({
                     <TrendChart
                         points={points}
                         performancePolicy={performancePolicy}
+                        performancePolicyStale={performancePolicyStale}
                     />
                 </>
             )}
@@ -73,9 +77,11 @@ type Point = {
 function TrendChart({
     points,
     performancePolicy,
+    performancePolicyStale,
 }: {
     points: Point[];
     performancePolicy: PerformancePolicy | null;
+    performancePolicyStale: boolean;
 }) {
     const maximumDuration = Math.max(
         ...points.map(({ timing }) => timing.duration_ms),
@@ -112,7 +118,9 @@ function TrendChart({
                 <Metric
                     label={
                         performancePolicy
-                            ? "Checks over limit"
+                            ? performancePolicyStale
+                                ? "Checks over last known limit"
+                                : "Checks over limit"
                             : "Checks with issues"
                     }
                     value={String(
@@ -135,7 +143,7 @@ function TrendChart({
             <div className="relative mt-6">
                 {performancePolicy && (
                     <div
-                        aria-label={`Time limit ${duration(performancePolicy.maximum_collection_duration_ms)}`}
+                        aria-label={`Time limit ${duration(performancePolicy.maximum_collection_duration_ms)}${performancePolicyStale ? " last-known limit" : ""}`}
                         className={`absolute right-0 left-0 z-10 border-t border-dashed ${
                             performancePolicy.severity === "critical"
                                 ? "border-red-400"
@@ -149,10 +157,8 @@ function TrendChart({
                         }}
                     >
                         <span className="absolute right-0 -top-5 text-[10px] text-slate-400">
-                            {duration(
-                                performancePolicy.maximum_collection_duration_ms,
-                            )}{" "}
-                            limit
+                            {duration(performancePolicy.maximum_collection_duration_ms)}{" "}
+                            {performancePolicyStale ? "last-known limit" : "limit"}
                         </span>
                     </div>
                 )}

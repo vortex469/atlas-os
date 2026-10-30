@@ -6,6 +6,7 @@ import { SectionHeader } from "./SectionHeader";
 type ProviderPolicyDetailsProps = {
     providerId: string;
     policies: AtlasPolicies;
+    stale?: boolean;
 };
 
 type PolicyDetail = {
@@ -196,6 +197,7 @@ function policyDetails(
 export function ProviderPolicyDetails({
     providerId,
     policies,
+    stale = false,
 }: ProviderPolicyDetailsProps) {
     const providerDetails = policyDetails(providerId, policies);
     const isProxmox = providerId.replaceAll("_", "-") === "proxmox";
@@ -222,15 +224,20 @@ export function ProviderPolicyDetails({
         <section>
             <SectionHeader
                 title={isProxmox ? "Older VM settings" : "Operational Policy"}
-                description={isProxmox
+                description={stale
+                    ? "Current policy could not be confirmed."
+                    : isProxmox
                     ? "These older VM expectations are kept for reference. Atlas does not apply them automatically to current VMs. Set current monitoring expectations under Resources and monitoring above."
                     : "Live validated expectations currently enforced for this provider."}
             />
 
+            {stale && <p role="status" className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">These are the last loaded monitoring settings.</p>}
+
             {details === null ? (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                    No provider-specific operational policy is
-                    configured.
+                    {stale
+                        ? "The last loaded settings listed no provider-specific operational policy."
+                        : "No provider-specific operational policy is configured."}
                 </div>
             ) : (
                 <dl className="grid gap-px overflow-hidden rounded-lg border border-slate-800 bg-slate-800 sm:grid-cols-2">

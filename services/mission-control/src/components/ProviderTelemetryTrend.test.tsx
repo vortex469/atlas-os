@@ -119,6 +119,21 @@ describe("ProviderTelemetryTrend", () => {
         ).toBeInTheDocument();
     });
 
+    it("labels a cached collection limit when monitoring settings could not refresh", () => {
+        render(
+            <ProviderTelemetryTrend
+                providerId="qdrant"
+                snapshots={snapshots}
+                performancePolicy={{ maximum_collection_duration_ms: 150, severity: "critical" }}
+                performancePolicyStale
+            />,
+        );
+
+        expect(screen.getByRole("status")).toHaveTextContent("The check limit is from the last available monitoring settings.");
+        expect(screen.getByText("Checks over last known limit")).toBeInTheDocument();
+        expect(screen.getByLabelText("Time limit 150 ms last-known limit")).toBeInTheDocument();
+    });
+
     it("distinguishes unavailable history from an empty history", () => {
         render(
             <ProviderTelemetryTrend

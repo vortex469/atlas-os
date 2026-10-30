@@ -47,6 +47,7 @@ export function ProviderPage() {
 
     const providerName =
         provider?.name ?? formatProviderId(providerId);
+    const policiesUnavailable = failedSources.includes("monitoring policies");
 
     const relatedFindings =
         summary?.findings.filter(
@@ -267,6 +268,7 @@ export function ProviderPage() {
                         providerId={provider.id}
                         snapshots={telemetryHistory}
                         performancePolicy={policies?.intelligence.providers[provider.id] ?? null}
+                        performancePolicyStale={policiesUnavailable && policies?.intelligence.providers[provider.id] !== undefined}
                         unavailable={telemetryHistoryUnavailable}
                     />
 
@@ -274,8 +276,10 @@ export function ProviderPage() {
                         <ProviderPolicyDetails
                             providerId={provider.id}
                             policies={policies}
+                            stale={policiesUnavailable}
                         />
                     )}
+                    {!policies && policiesUnavailable && <section aria-label="Provider monitoring settings" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-5"><SectionHeader title="Provider monitoring settings" description="Settings that help explain provider checks." /><p role="status" className="text-sm text-amber-100">Current monitoring settings could not be loaded. Refresh to try again.</p></section>}
                 </>
             )}
         </main>

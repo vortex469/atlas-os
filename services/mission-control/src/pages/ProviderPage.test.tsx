@@ -10,8 +10,8 @@ vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: ({ stale }:
 vi.mock("../components/ProviderResources", () => ({ ProviderResources: () => <section><h2>Resources and monitoring</h2></section> }));
 vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Direct provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => <section><h2>Connection</h2></section> }));
-vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: () => <section><h2>Telemetry</h2></section> }));
-vi.mock("../components/ProviderPolicyDetails", () => ({ ProviderPolicyDetails: () => <section><h2>Older VM settings</h2></section> }));
+vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: ({ performancePolicyStale }: { performancePolicyStale?: boolean }) => <section><h2>Telemetry</h2>{performancePolicyStale && <p>Last known performance limit</p>}</section> }));
+vi.mock("../components/ProviderPolicyDetails", () => ({ ProviderPolicyDetails: ({ stale }: { stale?: boolean }) => <section><h2>Older VM settings</h2>{stale && <p>Last known policy settings</p>}</section> }));
 
 function position(name: string): Element {
     return screen.getByRole("heading", { name });
@@ -131,6 +131,33 @@ describe("ProviderPage authority layout", () => {
         expect(screen.getByText("The last available report had no recommendations for this provider.")).toBeInTheDocument();
         expect(screen.queryByText("No messages about this provider right now.")).not.toBeInTheDocument();
         expect(screen.queryByText("No recommendations for this provider right now.")).not.toBeInTheDocument();
+    });
+
+    it("marks cached monitoring settings and limits after a policy refresh failure", () => {
+        const policies = providerPageState(["resources", "connection"]).policies!;
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
+            policies: {
+                ...policies,
+                intelligence: { providers: { proxmox: { maximum_collection_duration_ms: 250, severity: "critical" } } },
+            },
+            error: "Some provider information could not be refreshed. Existing information may be out of date.",
+            failedSources: ["monitoring policies"],
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByText("Last known policy settings")).toBeInTheDocument();
+        expect(screen.getByText("Last known performance limit")).toBeInTheDocument();
+    });
+
+    it("explains when current policy settings could not be loaded", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
+            policies: null,
+            error: "Some provider information could not be refreshed. Existing information may be out of date.",
+            failedSources: ["monitoring policies"],
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByRole("status")).toHaveTextContent("Current monitoring settings could not be loaded. Refresh to try again.");
     });
 
     it("does not call a provider missing when the provider catalog could not be checked", () => {
