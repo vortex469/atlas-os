@@ -3961,3 +3961,18 @@ explains why the results area is empty. Initial failures keep the simpler
 retry message. The focused proposal page suite passes 17 tests, the responsive
 browser suite passes all 16 cases, and Mission Control lint and production
 build pass. Search, filter, and proposal behavior are unchanged.
+
+## Recent provider action details — 2026-10-30
+
+The Overview keeps each action's outcome, name, provider, completion time, and
+action-history link visible. The returned provider message is available under a
+closed “More details” disclosure instead of appearing inline, where it can
+include technical error text. On the action details screen, successful result
+messages remain visible while failed messages stay under a closed “Failure
+details” disclosure. The action history list now follows the same rule: it
+keeps successful results visible and puts failed messages under a closed
+“Failure details” disclosure. All three screens use the shared bounded text
+filter for common credential and URL patterns; optional action-history error
+details use the same filter. The audit record and action-history route are
+unchanged. The focused Overview, action history, and action details suites
+pass all 105 tests; Mission Control lint and production build pass.

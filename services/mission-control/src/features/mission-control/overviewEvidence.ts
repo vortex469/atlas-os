@@ -1,18 +1,14 @@
 import { mapServiceStatusToHealthState } from "../../components/health/healthPresentation";
 import { evidenceTimestamp } from "../../utils/healthPresentation";
+import { safeText } from "../../utils/safeText";
+
+export { safeText };
 
 export const record = (value: unknown): Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 export const rows = (value: unknown): Record<string, unknown>[] =>
     Array.isArray(value) ? value.map(record) : [];
 
-// Display only allowlisted fields, never arbitrary configuration/details/error bodies.
-// Suppress sensitive free text as a whole rather than partially exposing credentials.
-export function safeText(value: unknown): string {
-    if (typeof value !== "string") return "";
-    if (/(?:bearer\s|token|secret|password|api[_ -]?key|authorization|cookie|https?:\/\/|sk-[a-z0-9])/i.test(value)) return "[Sensitive text withheld]";
-    return value.slice(0, 240);
-}
 export function timestamp(value: unknown): Date | null {
     const parsed = evidenceTimestamp(value);
     return parsed === null ? null : new Date(parsed);

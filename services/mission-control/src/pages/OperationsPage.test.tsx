@@ -194,6 +194,42 @@ describe("OperationsPage", () => {
         );
     });
 
+    it("keeps failed action messages collapsed and withholds sensitive text", async () => {
+        mockedGetProviderActionHistory.mockResolvedValueOnce({
+            items: [{
+                id: "audit-failure",
+                provider_id: "ollama",
+                provider_name: "Ollama",
+                action_id: "load-model",
+                action_label: "Load Model",
+                status: "failed",
+                success: false,
+                message: "Request failed: Bearer canary-secret-value",
+                confirmed: false,
+                destructive: false,
+                parameter_names: [],
+                request_id: null,
+                started_at: "2026-07-25T17:00:00Z",
+                completed_at: "2026-07-25T17:00:01Z",
+                duration_ms: 12.5,
+            }],
+            total: 1,
+            offset: 0,
+            limit: 25,
+            has_more: false,
+        });
+        renderPage();
+
+        expect(await screen.findByText("Load Model")).toBeInTheDocument();
+        const failureDetails = screen.getByText("Failure details").closest("details");
+        expect((failureDetails as HTMLDetailsElement).open).toBe(false);
+        expect(screen.getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(screen.queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+
+        fireEvent.click(within(failureDetails as HTMLElement).getByText("Failure details"));
+        expect(screen.getByText("[Sensitive text withheld]")).toBeVisible();
+    });
+
     it("does not expose malformed history timestamps as verified times", async () => {
         mockedGetProviderActionHistory.mockResolvedValue({
             items: [{
@@ -359,7 +395,7 @@ describe("OperationsPage", () => {
 
     it("keeps loaded history visible when an export fails", async () => {
         const user = userEvent.setup();
-        mockedExportProviderActionHistory.mockRejectedValueOnce(new Error("Export failed"));
+        mockedExportProviderActionHistory.mockRejectedValueOnce(new Error("Export failed: Bearer canary-secret-value"));
         renderPage();
 
         await screen.findByText("Unload Model");
@@ -370,7 +406,10 @@ describe("OperationsPage", () => {
         expect(alert).toHaveTextContent("Action history could not be exported. Try exporting again.");
         const technicalDetails = within(alert).getByText("Why the export failed").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
-        expect(within(technicalDetails as HTMLElement).getByText("Export failed")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await user.click(within(technicalDetails as HTMLElement).getByText("Why the export failed"));
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
         expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();

@@ -152,6 +152,27 @@ describe("ActionHistoryDetailPage", () => {
         ).toHaveAttribute("href", "/operations");
     });
 
+    it("keeps a failed message collapsed and withholds common sensitive text", async () => {
+        const user = userEvent.setup();
+        mockedGetProviderActionHistoryEntry.mockResolvedValue({
+            ...auditEntry(),
+            status: "failed",
+            success: false,
+            message: "Authorization: Bearer private-canary",
+        });
+        renderPage();
+
+        expect(await screen.findByText("Failed")).toBeVisible();
+        const failureDetails = screen.getByText("Failure details").closest("details");
+        expect(failureDetails).not.toHaveAttribute("open");
+        const message = within(failureDetails as HTMLElement).getByText("[Sensitive text withheld]");
+        expect(message).not.toBeVisible();
+
+        await user.click(within(failureDetails as HTMLElement).getByText("Failure details"));
+        expect(message).toBeVisible();
+        expect(document.body.textContent).not.toContain("private-canary");
+    });
+
     it("does not normalize an impossible action timestamp into a real date", async () => {
         mockedGetProviderActionHistoryEntry.mockResolvedValue({
             ...auditEntry(),

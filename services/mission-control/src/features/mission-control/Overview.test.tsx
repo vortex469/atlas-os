@@ -577,11 +577,15 @@ describe("MC overview evidence", () => {
 });
 
 describe('operational activity and runtime evidence', () => {
-    it('shows failed outcomes and their existing audit route without treating success as health', () => {
+    it('shows failed outcomes and their existing audit route while keeping the recorded message optional', () => {
         show({ activity: { data: { items: [{ id: 'audit/1', action_label: 'Inspect resource', status: 'failed', message: 'Provider unavailable', completed_at: 'invalid' }] } }, ai: { data: { models: { running: [{ name: 'model-a' }] }, errors: {} } } });
-        expect(screen.getByText('Failed · Inspect resource')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'View action details →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
-        expect(screen.getByText('Completion time unavailable.')).toBeInTheDocument();
+        const activityCard = activity().getByRole('listitem');
+        expect(within(activityCard).getByText('Failed · Inspect resource')).toBeInTheDocument();
+        expect(within(activityCard).getByRole('link', { name: 'View action details →' })).toHaveAttribute('href', '/operations/actions/audit%2F1');
+        expect(within(activityCard).getByText('Completion time unavailable.')).toBeInTheDocument();
+        expect(within(activityCard).getByText('Provider unavailable')).not.toBeVisible();
+        fireEvent.click(within(activityCard).getByText('More details'));
+        expect(within(activityCard).getByText('Provider unavailable')).toBeVisible();
         expect(screen.getByText('Running models: model-a')).toBeInTheDocument();
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
     });

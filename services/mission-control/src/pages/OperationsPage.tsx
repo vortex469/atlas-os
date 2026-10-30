@@ -25,6 +25,7 @@ import type {
     ProviderActionHistoryProvider,
 } from "../types/actionHistory";
 import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
 type OperationError = {
@@ -583,7 +584,9 @@ export function OperationsPage() {
                             <summary className="cursor-pointer text-sm font-medium text-slate-300">
                                 {operationError.kind === "export" ? "Why the export failed" : "Why deletion could not be confirmed"}
                             </summary>
-                            <p className="mt-1 break-words text-slate-400">{operationError.details}</p>
+                            <p className="mt-1 break-words text-slate-400">
+                                {safeText(operationError.details) || "No additional details were returned."}
+                            </p>
                         </details>}
                     </div>
                 )}
@@ -646,7 +649,9 @@ export function OperationsPage() {
                     </p>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300">Why action history couldn&apos;t load</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{historyError}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">
+                            {safeText(historyError) || "No additional details were returned."}
+                        </p>
                     </details>
                 </div>
             )}
@@ -702,9 +707,18 @@ export function OperationsPage() {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-300">
-                                        {entry.message}
-                                    </p>
+                                    {entry.status === "failed" ? (
+                                        <details className="mt-2 text-sm text-slate-400">
+                                            <summary className="cursor-pointer font-medium text-slate-300">Failure details</summary>
+                                            <p className="mt-2 break-words">
+                                                {safeText(entry.message) || "No failure message was recorded."}
+                                            </p>
+                                        </details>
+                                    ) : (
+                                        <p className="mt-2 text-sm text-slate-300">
+                                            {safeText(entry.message) || "No result message was recorded."}
+                                        </p>
+                                    )}
                                     <p className="mt-1 text-sm text-slate-400">
                                         Provider: {entry.provider_name}
                                     </p>

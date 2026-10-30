@@ -40,7 +40,10 @@ export function RecentActivity({ evidence, loading = false }: { evidence?: Evide
             return <li key={String(event.id)} className="min-w-0 rounded-lg border border-mc-border-subtle p-3">
                 <p className="font-medium">{outcome} · {safeText(event.action_label)}</p>
                 <p className="mt-1 text-xs text-mc-text-muted">{safeText(event.provider_name) || "Provider unknown."}</p>
-                {message && <p className="mt-2 text-sm">{message}</p>}
+                {message && <details className="mt-2">
+                    <summary className="mc-focusable cursor-pointer text-xs text-mc-primary">More details</summary>
+                    <p className="mt-2 break-words text-sm">{message}</p>
+                </details>}
                 <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                     <Link to={detailPath("/operations/actions", event.id)!}>View action details →</Link>
                     {date ? <time dateTime={date.toISOString()} title={`UTC ${date.toISOString()}`} className="text-mc-text-muted">Completed (local time) {date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : <span className="text-mc-text-muted">{unavailableTimeLabel}</span>}

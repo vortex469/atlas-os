@@ -10,6 +10,7 @@ import type {
     ProviderActionAuditEntry,
 } from "../types/actionHistory";
 import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 
 function formatTimestamp(timestamp: string): ReactNode {
     const parsed = evidenceTimestamp(timestamp);
@@ -105,6 +106,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
     const displayedError = auditId
         ? error
         : "This action history link is missing its record ID.";
+    const resultMessage = entry ? safeText(entry.message) : "";
 
     return (
         <main className="mx-auto max-w-6xl space-y-6 p-4 [overflow-wrap:anywhere] sm:p-6">
@@ -193,9 +195,10 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                                     </span>
                                 )}
                             </div>
-                            <p className="mt-3 text-sm text-slate-300">
-                                {entry.message}
-                            </p>
+                            {entry.status === "failed" ? resultMessage
+                                ? <details className="mt-3"><summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Failure details</summary><p className="mt-2 break-words text-sm text-slate-400">{resultMessage}</p></details>
+                                : <p className="mt-3 text-sm text-slate-400">No failure message was recorded.</p>
+                                : <p className="mt-3 text-sm text-slate-300">{resultMessage || "No result message was recorded."}</p>}
                         </div>
                         <div className="text-xs text-slate-500">
                             Completed {formatTimestamp(entry.completed_at)}
