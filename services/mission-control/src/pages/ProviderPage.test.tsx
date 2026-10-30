@@ -117,6 +117,22 @@ describe("ProviderPage authority layout", () => {
         expect(screen.queryByText("No recommendations for this provider right now.")).not.toBeInTheDocument();
     });
 
+    it("marks cached empty diagnostics and recommendations as last known", () => {
+        vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
+            summary: { findings: [], recommendations: [] },
+            error: "Some provider information could not be refreshed. Existing information may be out of date.",
+            failedSources: ["diagnostics"],
+            summaryUnavailable: true,
+        }));
+        render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
+
+        expect(screen.getByRole("status")).toHaveTextContent("Diagnostics and recommendations show the last available report. Atlas could not confirm current results.");
+        expect(screen.getByText("The last available report had no messages about this provider.")).toBeInTheDocument();
+        expect(screen.getByText("The last available report had no recommendations for this provider.")).toBeInTheDocument();
+        expect(screen.queryByText("No messages about this provider right now.")).not.toBeInTheDocument();
+        expect(screen.queryByText("No recommendations for this provider right now.")).not.toBeInTheDocument();
+    });
+
     it("does not call a provider missing when the provider catalog could not be checked", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, {
             providers: [],

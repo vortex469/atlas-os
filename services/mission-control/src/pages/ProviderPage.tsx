@@ -181,6 +181,8 @@ export function ProviderPage() {
                         </section>
                     )}
 
+                    {summaryUnavailable && summary !== null && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">Diagnostics and recommendations show the last available report. Atlas could not confirm current results.</p>}
+
                     <section>
                         <SectionHeader
                             title="Diagnostics"
@@ -211,7 +213,9 @@ export function ProviderPage() {
                             </div>
                         ) : (
                             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                No messages about this provider right now.
+                                {summaryUnavailable
+                                    ? "The last available report had no messages about this provider."
+                                    : "No messages about this provider right now."}
                             </div>
                         )}
                     </section>
@@ -237,7 +241,9 @@ export function ProviderPage() {
                             </div>
                         ) : (
                             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                                No recommendations for this provider right now.
+                                {summaryUnavailable
+                                    ? "The last available report had no recommendations for this provider."
+                                    : "No recommendations for this provider right now."}
                             </div>
                         )}
                     </section>
