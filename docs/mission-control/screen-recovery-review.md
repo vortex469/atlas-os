@@ -3911,3 +3911,10 @@ page's Refresh control to check again. The list of unavailable information and
 refresh summary are under collapsed Technical details. Provider status and
 actions are unchanged. The focused provider-page suite passes (18 tests), as
 do Mission Control lint, production build, and `git diff --check`.
+
+## Compose analysis action label — 2026-10-30
+
+The Forge action now says “Analyze Compose file,” matching the visible input and
+the page's analysis-only purpose. It still makes the same read-only analysis
+request and exposes no deployment control. The focused Forge suite and
+responsive browser checks cover the updated label.

@@ -20,7 +20,7 @@ function analysis(name: string): DeploymentAnalysisResponse {
         } },
     } };
 }
-const submit = () => fireEvent.click(screen.getByRole("button", { name: "Analyze Deployment" }));
+const submit = () => fireEvent.click(screen.getByRole("button", { name: "Analyze Compose file" }));
 
 describe("Forge analysis freshness", () => {
     beforeEach(() => { analyze.mockReset().mockResolvedValue(analysis("Original result")); });
@@ -161,6 +161,7 @@ describe("Forge analysis freshness", () => {
         render(<Forge />);
         expect(screen.getByRole("heading", { name: "Deployment analysis" })).toBeInTheDocument();
         expect(screen.getByText("Review a Docker Compose file, findings, and suggested steps. This page does not deploy anything.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Analyze Compose file" })).toBeInTheDocument();
         expect(screen.queryByText("Atlas Forge")).not.toBeInTheDocument();
     });
 });

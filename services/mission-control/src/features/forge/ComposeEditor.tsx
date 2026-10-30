@@ -139,7 +139,7 @@ export function ComposeEditor({
                 >
                     {loading
                         ? "Analyzing..."
-                        : "Analyze Deployment"}
+                        : "Analyze Compose file"}
                 </button>
             </div>
         </section>
