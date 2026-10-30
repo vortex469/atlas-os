@@ -4,6 +4,7 @@ import { HealthStatusCard } from "../../components/health/HealthStatusPrimitive"
 import {
     mapServiceStatusToHealthState,
 } from "../../components/health/healthPresentation";
+import { healthReason } from "../../utils/healthPresentation";
 import type { Provider } from "../../types/provider";
 
 type AgentProviderOverviewProps = {
@@ -19,52 +20,36 @@ type AgentProviderOverviewProps = {
 export function AgentProviderOverviewSection({
     providers,
 }: AgentProviderOverviewProps) {
-    const available = providers.filter(
-        (p) =>
-            p.health?.status?.toLowerCase() === "healthy" ||
-            p.health?.status?.toLowerCase() === "online",
-    );
-    const unavailable = providers.filter(
-        (p) =>
-            p.health?.status?.toLowerCase() === "offline" ||
-            p.health?.status?.toLowerCase() === "unavailable",
-    );
-    const degraded = providers.filter(
-        (p) =>
-            p.health?.status?.toLowerCase() === "degraded" ||
-            p.health?.status?.toLowerCase() === "warning",
-    );
-
-    const criticalProviders = providers.filter((p) => p.priority === "critical");
-    const hasUnavailableCritical = criticalProviders.some(
-        (p) =>
-            p.health?.status?.toLowerCase() === "offline" ||
-            p.health?.status?.toLowerCase() === "unavailable",
+    const available = providers.filter((provider) => mapServiceStatusToHealthState(provider.health?.status) === "healthy");
+    const needsAttention = providers.length - available.length;
+    const unavailableCriticalProviders = providers.filter((provider) =>
+        provider.priority === "critical"
+        && mapServiceStatusToHealthState(provider.health?.status) === "unavailable",
     );
 
     return (
         <section>
             <SectionHeader
-                title="Agents & Providers"
-                description="Configured AI providers and external integrations."
+                title="Providers & integrations"
+                description="See whether configured AI providers and external services are responding."
             />
 
             {providers.length === 0 ? (
                 <div className="mc-surface rounded-mc-lg p-6">
                     <p className="text-sm text-mc-text-secondary">
-                        No providers configured.
+                            No providers are set up yet.
                     </p>
                     <p className="mt-2 text-xs text-mc-text-muted">
-                        Add providers to enable agent capabilities.
+                            Add a provider to connect an AI or external service.
                     </p>
                 </div>
             ) : (
                 <>
                     {/* Summary Cards */}
-                    <div className="mb-6 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                    <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <div className="mc-surface rounded-mc-lg p-4">
                             <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Total Providers
+                                Total providers
                             </p>
                             <p className="mt-2 text-2xl font-bold text-mc-text-primary">
                                 {providers.length}
@@ -82,45 +67,26 @@ export function AgentProviderOverviewSection({
 
                         <div className="mc-surface rounded-mc-lg p-4">
                             <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Degraded
+                                Needs attention
                             </p>
                             <p className="mt-2 text-2xl font-bold text-amber-400">
-                                {degraded.length}
-                            </p>
-                        </div>
-
-                        <div className="mc-surface rounded-mc-lg p-4">
-                            <p className="text-xs font-medium uppercase tracking-wider text-mc-text-muted">
-                                Unavailable
-                            </p>
-                            <p className="mt-2 text-2xl font-bold text-red-400">
-                                {unavailable.length}
+                                {needsAttention}
                             </p>
                         </div>
                     </div>
 
                     {/* Critical provider warnings */}
-                    {hasUnavailableCritical && (
+                    {unavailableCriticalProviders.length > 0 && (
                         <div className="mb-6 rounded-mc-lg border border-mc-border-subtle bg-mc-surface-elevated p-4">
                             <p className="text-sm font-medium text-mc-text-primary">
-                                ⚠️ Critical Provider Unavailable
+                                Critical provider unavailable
                             </p>
                             <div className="mt-2 space-y-1 text-xs text-mc-text-secondary">
-                                {criticalProviders
-                                    .filter(
-                                        (p) =>
-                                            p.health?.status?.toLowerCase() ===
-                                                "offline" ||
-                                            p.health?.status?.toLowerCase() ===
-                                                "unavailable",
-                                    )
-                                    .map((p) => (
-                                        <p key={p.id}>
-                                            {p.name} is not responding.{" "}
-                                            {p.health?.message &&
-                                                ` ${p.health.message}`}
-                                        </p>
-                                    ))}
+                                {unavailableCriticalProviders.map((provider) => (
+                                    <p key={provider.id}>
+                                        {provider.name} is unavailable. {healthReason(provider.health?.message) ?? "Atlas Core could not confirm a response."}
+                                    </p>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -131,20 +97,19 @@ export function AgentProviderOverviewSection({
                             const healthState = mapServiceStatusToHealthState(
                                 provider.health?.status,
                             );
-                            const isPriorityCritical = provider.priority === "critical";
+                            const stateLabel = healthState === "unknown"
+                                ? "Status unknown"
+                                : `${healthState[0].toUpperCase()}${healthState.slice(1)}`;
 
                             return (
                                 <HealthStatusCard
                                     key={provider.id}
                                     state={healthState}
-                                    title={`${provider.name}${isPriorityCritical ? " ⭐" : ""}`}
-                                    reason={
-                                        provider.health?.message ||
-                                        (provider.health?.http_status &&
-                                        provider.health.http_status >= 400
-                                            ? `HTTP ${provider.health.http_status}`
-                                            : undefined)
-                                    }
+                                    title={`${provider.name} — ${stateLabel}${provider.priority === "critical" ? " (critical)" : ""}`}
+                                    reason={healthReason(provider.health?.message)
+                                        ?? (provider.health?.http_status != null && provider.health.http_status >= 400
+                                            ? `Atlas Core received an HTTP ${provider.health.http_status} response.`
+                                            : undefined)}
                                     compact={true}
                                 />
                             );

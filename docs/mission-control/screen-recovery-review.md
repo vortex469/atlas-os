@@ -3792,3 +3792,13 @@ hide an offline or unknown state. Known connection errors use the existing
 plain-language health guidance. No health API behavior changed. The focused
 overview and health-presentation suites pass (32 tests), with Mission Control
 lint and production build passing.
+
+## Providers overview wording — 2026-10-30
+
+The overview now groups provider counts as total, available, and needing
+attention. Unknown, blocked, degraded, and unavailable states all count as
+needing attention, while each provider row names its mapped health state.
+Critical provider errors use the existing plain-language connection guidance.
+No provider checks or health API behavior changed. The focused provider
+overview suite passes (7 tests); the full Mission Control suite passes (3,038
+tests), with lint and production build passing.
