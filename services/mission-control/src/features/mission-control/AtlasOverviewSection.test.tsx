@@ -21,7 +21,7 @@ describe("AtlasOverviewSection", () => {
                 lastUpdated={new Date()}
             />,
         );
-        expect(screen.getByText("Atlas State")).toBeInTheDocument();
+        expect(screen.getByText("Atlas health")).toBeInTheDocument();
         expect(screen.getByText("Atlas Core")).toBeInTheDocument();
     });
 
@@ -91,5 +91,39 @@ describe("AtlasOverviewSection", () => {
         );
         expect(screen.getByText(/queue/)).toBeInTheDocument();
         expect(screen.getByText(/42ms/)).toBeInTheDocument();
+    });
+
+    it("shows offline and unknown services in plain language even when HTTP returned 200", () => {
+        const services: Record<string, ServiceHealth> = {
+            fileshare: {
+                provider_id: "fileshare",
+                status: "offline",
+                latency_ms: null,
+                http_status: 200,
+                message: "Connection refused",
+                details: {},
+            },
+            worker: {
+                provider_id: "worker",
+                status: "unrecognized",
+                latency_ms: 42,
+                http_status: 200,
+                message: null,
+                details: {},
+            },
+        };
+        renderWithRouter(
+            <AtlasOverviewSection
+                atlasStatus="degraded"
+                services={services}
+                lastUpdated={new Date()}
+            />,
+        );
+
+        expect(screen.getByText("Services needing attention:")).toBeVisible();
+        expect(screen.getByText(/fileshare: Unavailable · response time not reported/)).toBeVisible();
+        expect(screen.getByText(/worker: Status unknown · response time 42 ms/)).toBeVisible();
+        expect(screen.getAllByText("Atlas Core's connection to this address was refused.").length).toBeGreaterThan(0);
+        expect(screen.queryByText(/fileshare: offline|worker: unrecognized/i)).not.toBeInTheDocument();
     });
 });

@@ -3781,3 +3781,14 @@ the VM is ready and do not approve an installation. This is a read-only
 presentation change; API contracts and installation approval behavior are
 unchanged. The focused component suite passes (7 tests), along with Mission
 Control lint and production build.
+
+## Atlas health overview wording — 2026-10-30
+
+The health section is now titled “Atlas health,” and its issue list says
+“Services needing attention.” Offline and unrecognized service states display
+as “Unavailable” and “Status unknown.” Visibility follows the reported service
+health state even when an HTTP check returned 200, so a response code does not
+hide an offline or unknown state. Known connection errors use the existing
+plain-language health guidance. No health API behavior changed. The focused
+overview and health-presentation suites pass (32 tests), with Mission Control
+lint and production build passing.
