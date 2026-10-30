@@ -3716,3 +3716,18 @@ workflow read keeps the operator on the right route with the same search.
 Focused proposal, planning, workflow setup, and workflow detail suites pass
 (196 tests total); lint and production build pass. This changes navigation
 only; planning, approval, and execution boundaries are unchanged.
+
+## Repository journey restores the proposal list — 2026-10-30
+
+The responsive repository-action browser journey now follows its completed
+workflow through audit and back to the original proposal list. It verifies the
+eligibility and change filters and page position in the rendered list at 320px,
+390px, and 1280px. All three browser checks pass; the simulated journey still
+rejects unexpected writes. Approval, verification, and commit remain separate.
+
+## Service computer troubleshooting label — 2026-10-30
+
+The overview's collapsed Docker guidance now says “Check Docker on the service
+computer,” making clear which machine should run the container check. The Core
+reachability probe and status interpretation are unchanged. The focused
+overview suite passes (76 tests), with lint and production build passing.
