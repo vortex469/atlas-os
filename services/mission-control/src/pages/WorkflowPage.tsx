@@ -86,6 +86,10 @@ function workflowReturnDestination(workflow: WorkflowDetailResponse | null, stat
     return { to: "/workflows", label: "← All workflows" };
 }
 
+function workflowReturnSearch(destination: WorkflowReturnDestination, search: string): string {
+    return destination.to === "/operations/history" || destination.to === "/workflows" ? search : "";
+}
+
 function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const location = useLocation();
     const [workflow, setWorkflow] = useState<WorkflowDetailResponse | null>(null);
@@ -303,7 +307,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <Link
                     to={{
                         pathname: returnDestination.to,
-                        search: returnDestination.to === "/operations/history" ? location.search : "",
+                        search: workflowReturnSearch(returnDestination, location.search),
                     }}
                     className="text-sm text-blue-300"
                 >
@@ -330,7 +334,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <Link
                     to={{
                         pathname: returnDestination.to,
-                        search: returnDestination.to === "/operations/history" ? location.search : "",
+                        search: workflowReturnSearch(returnDestination, location.search),
                     }}
                     className="text-sm text-blue-300"
                 >
@@ -350,7 +354,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 <Link
                     to={{
                         pathname: returnDestination.to,
-                        search: returnDestination.to === "/operations/history" ? location.search : "",
+                        search: workflowReturnSearch(returnDestination, location.search),
                     }}
                     className="text-sm text-blue-300"
                 >
@@ -673,7 +677,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             <Link
                 to={{
                     pathname: returnDestination.to,
-                    search: returnDestination.to === "/operations/history" ? location.search : "",
+                    search: workflowReturnSearch(returnDestination, location.search),
                 }}
                 className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >

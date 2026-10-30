@@ -3672,3 +3672,15 @@ responsive browser checks cover submitted filters and an unsubmitted target
 edit at 390px and 1280px; the combined list/detail component suites pass 40
 tests, and Mission Control lint/build pass. Proposal reads and planning
 approval behavior are unchanged; browser fixtures reject unexpected mutations.
+
+## Workflow directory return context — 2026-10-30
+
+The workflow directory now keeps applied filters, unfinished filter edits,
+and the current page in the URL. Opening a workflow carries that context to
+the detail page, and the return link restores it while the detail is loading,
+unavailable, or readable. Unknown query parameters are retained. Discovery
+item details and workflow audit links also retain their list or detail query
+context. These changes affect navigation only; workflow reads, approvals, and
+execution behavior are unchanged. The focused workflow directory and detail
+suites pass (122 tests); the full Mission Control suite passes (3,033 tests),
+and lint and production build pass.

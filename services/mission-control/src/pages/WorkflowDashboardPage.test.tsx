@@ -52,9 +52,9 @@ function response(items: WorkflowSummary[], total = items.length, offset = 0): W
     };
 }
 
-function renderDashboard() {
+function renderDashboard(initialEntry = "/workflows") {
     return render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[initialEntry]}>
             <WorkflowDashboardPage />
         </MemoryRouter>,
     );
@@ -62,7 +62,7 @@ function renderDashboard() {
 
 function NavigationStateProbe() {
     const location = useLocation();
-    return <output data-testid="navigation-state">{JSON.stringify(location.state)}</output>;
+    return <output data-testid="navigation-state">{JSON.stringify({ state: location.state, search: location.search })}</output>;
 }
 
 describe("WorkflowDashboardPage", () => {
@@ -158,7 +158,43 @@ describe("WorkflowDashboardPage", () => {
         );
 
         fireEvent.click(await screen.findByRole("link", { name: "Open workflow" }));
-        expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"returnTo":"/workflows"}');
+        expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"state":{"returnTo":"/workflows"},"search":""}');
+    });
+
+    it("restores applied and draft filters plus page position when returning from a workflow", async () => {
+        vi.mocked(listWorkflows).mockResolvedValue(response(Array.from({ length: 11 }, (_, index) => workflow({
+            workflow_id: `workflow-${index}`,
+        }))));
+        const search = "?status=awaiting_implementation_approval&source=candidate&candidate=candidate-123&workflow=workflow&step=needed&draftWorkflow=pending&page=2&keep=yes";
+        render(
+            <MemoryRouter initialEntries={[{ pathname: "/workflows", search }]}>
+                <Routes>
+                    <Route path="/workflows" element={<WorkflowDashboardPage />} />
+                    <Route path="/workflows/:workflowId" element={<NavigationStateProbe />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByText("Showing 11–11 of 11 loaded workflows")).toBeVisible();
+        expect(screen.getByLabelText("Workflow status")).toHaveValue("awaiting_implementation_approval");
+        expect(screen.getByLabelText("Next step")).toHaveValue("needed");
+        fireEvent.click(screen.getByText("More filters", { exact: true }));
+        expect(screen.getByLabelText("Started from")).toHaveValue("candidate");
+        expect(screen.getByLabelText("Candidate ID")).toHaveValue("candidate-123");
+        expect(screen.getByLabelText("Workflow ID contains")).toHaveValue("pending");
+
+        fireEvent.click(screen.getByRole("link", { name: "Open workflow" }));
+        const navigation = JSON.parse((await screen.findByTestId("navigation-state")).textContent ?? "{}");
+        expect(navigation.state).toEqual({ returnTo: "/workflows" });
+        const returnedSearch = new URLSearchParams(navigation.search);
+        expect(returnedSearch.get("status")).toBe("awaiting_implementation_approval");
+        expect(returnedSearch.get("source")).toBe("candidate");
+        expect(returnedSearch.get("candidate")).toBe("candidate-123");
+        expect(returnedSearch.get("workflow")).toBe("workflow");
+        expect(returnedSearch.get("step")).toBe("needed");
+        expect(returnedSearch.get("draftWorkflow")).toBe("pending");
+        expect(returnedSearch.get("page")).toBe("2");
+        expect(returnedSearch.get("keep")).toBe("yes");
     });
 
     it("explains the safe next step for operational maintenance", async () => {
@@ -226,6 +262,13 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Restart Service" })).not.toBeInTheDocument();
         expect(screen.getByText("Additional filters are applied")).toBeVisible();
+        const workflowLink = screen.getByRole("link", { name: "Open workflow" });
+        const search = new URL(workflowLink.getAttribute("href") ?? "", "http://localhost").searchParams;
+        expect(search.get("status")).toBe("awaiting_implementation_approval");
+        expect(search.get("source")).toBe("candidate");
+        expect(search.get("candidate")).toBe("candidate-123");
+        expect(search.get("workflow")).toBe("workflow-123");
+        expect(search.get("step")).toBe("needed");
     });
 
     it("separates unknown workflow status from workflows with no current operator action", async () => {
@@ -334,6 +377,8 @@ describe("WorkflowDashboardPage", () => {
 
         expect(screen.getByRole("heading", { name: "Update Container Image" })).toBeInTheDocument();
         expect(screen.getByText("Showing 11–11 of 11 loaded workflows")).toBeVisible();
+        const workflowLink = screen.getByRole("link", { name: "Open workflow" });
+        expect(new URL(workflowLink.getAttribute("href") ?? "", "http://localhost").searchParams.get("page")).toBe("2");
         fireEvent.change(screen.getByLabelText("Workflow status"), { target: { value: "awaiting_implementation_approval" } });
         expect(screen.getByText("These filter changes haven't been applied yet. Select Apply filters to update the workflow list.")).toBeVisible();
         expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();

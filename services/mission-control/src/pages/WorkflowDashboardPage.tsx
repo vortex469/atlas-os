@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { getAtlasAgentErrorMessage, listWorkflows } from "../api/atlas-agent";
 import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
@@ -41,6 +41,26 @@ const EMPTY_FILTERS: DashboardFilters = {
     operatorStep: "",
 };
 
+const DASHBOARD_FILTER_QUERY_KEYS = [
+    "status",
+    "source",
+    "candidate",
+    "workflow",
+    "step",
+    "draftStatus",
+    "draftSource",
+    "draftCandidate",
+    "draftWorkflow",
+    "draftStep",
+    "page",
+] as const;
+
+interface DashboardViewState {
+    filters: DashboardFilters;
+    draftFilters: DashboardFilters;
+    pageIndex: number;
+}
+
 const SUMMARY_GROUPS = [
     { key: "running", label: "Running" },
     { key: "needs_input", label: "Needs your input" },
@@ -51,10 +71,13 @@ const SUMMARY_GROUPS = [
 ];
 
 export function WorkflowDashboardPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => workflowDashboardViewState(location.search));
     const [workflowResponse, setWorkflowResponse] = useState<WorkflowListResponse | null>(null);
-    const [draftFilters, setDraftFilters] = useState<DashboardFilters>(EMPTY_FILTERS);
-    const [filters, setFilters] = useState<DashboardFilters>(EMPTY_FILTERS);
-    const [pageIndex, setPageIndex] = useState(0);
+    const [draftFilters, setDraftFilters] = useState<DashboardFilters>(initialViewState.draftFilters);
+    const [filters, setFilters] = useState<DashboardFilters>(initialViewState.filters);
+    const [pageIndex, setPageIndex] = useState(initialViewState.pageIndex);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -135,9 +158,20 @@ export function WorkflowDashboardPage() {
 
     const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / PAGE_SIZE));
     const currentPage = Math.min(pageIndex, totalPages - 1);
+    const dashboardSearch = serializeWorkflowDashboardViewState(
+        location.search,
+        draftFilters,
+        filters,
+        currentPage,
+    );
     const visibleWorkflows = filteredWorkflows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
     const firstVisibleWorkflow = filteredWorkflows.length === 0 ? 0 : currentPage * PAGE_SIZE + 1;
     const lastVisibleWorkflow = currentPage * PAGE_SIZE + visibleWorkflows.length;
+
+    useEffect(() => {
+        if (isLoading || loadError || dashboardSearch === location.search) return;
+        navigate({ pathname: location.pathname, search: dashboardSearch }, { replace: true });
+    }, [dashboardSearch, isLoading, loadError, location.pathname, location.search, navigate]);
 
     function updateDraftFilter(name: keyof DashboardFilters, value: string) {
         setDraftFilters((current) => ({ ...current, [name]: value }));
@@ -324,15 +358,15 @@ export function WorkflowDashboardPage() {
                     <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows match the current filters.</p>
                 ) : (
                     <div className="space-y-4">
-                        {visibleWorkflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} />)}
+                        {visibleWorkflows.map((workflow) => <WorkflowCard key={workflow.workflow_id} workflow={workflow} search={dashboardSearch} />)}
                     </div>
                 )}
 
                 {filteredWorkflows.length > PAGE_SIZE && (
                     <nav aria-label="Workflow pagination" className="flex items-center gap-3">
-                        <button type="button" onClick={() => setPageIndex((page) => Math.max(0, page - 1))} disabled={hasUnappliedFilters || currentPage === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
+                        <button type="button" onClick={() => setPageIndex(Math.max(0, currentPage - 1))} disabled={hasUnappliedFilters || currentPage === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Previous</button>
                         <span className="text-sm text-slate-400">Page {currentPage + 1} of {totalPages}</span>
-                        <button type="button" onClick={() => setPageIndex((page) => Math.min(totalPages - 1, page + 1))} disabled={hasUnappliedFilters || currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
+                        <button type="button" onClick={() => setPageIndex(Math.min(totalPages - 1, currentPage + 1))} disabled={hasUnappliedFilters || currentPage >= totalPages - 1} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">Next</button>
                     </nav>
                 )}
                 {loadMoreError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">{loadMoreError}</p>}
@@ -350,6 +384,73 @@ function dashboardFiltersEqual(left: DashboardFilters, right: DashboardFilters):
         && left.operatorStep === right.operatorStep;
 }
 
+function workflowDashboardViewState(search: string): DashboardViewState {
+    const params = new URLSearchParams(search);
+    const filters = readDashboardFilters(params);
+    const draftFilters = readDashboardFilters(params, "draft", filters);
+    const rawPage = Number(params.get("page"));
+    return {
+        filters,
+        draftFilters,
+        pageIndex: Number.isSafeInteger(rawPage) && rawPage >= 1 ? rawPage - 1 : 0,
+    };
+}
+
+function readDashboardFilters(
+    params: URLSearchParams,
+    prefix = "",
+    fallback = EMPTY_FILTERS,
+): DashboardFilters {
+    const key = (name: string) => prefix ? `${prefix}${name[0].toUpperCase()}${name.slice(1)}` : name;
+    const state = params.has(key("status")) ? params.get(key("status")) ?? "" : fallback.state;
+    const source = params.has(key("source")) ? params.get(key("source")) ?? "" : fallback.source;
+    const operatorStep = params.has(key("step")) ? params.get(key("step")) ?? "" : fallback.operatorStep;
+    return {
+        state: WORKFLOW_STATES.includes(state as typeof WORKFLOW_STATES[number]) ? state : fallback.state,
+        source: source === "candidate" || source === "manual" ? source : fallback.source,
+        candidateId: (params.has(key("candidate")) ? params.get(key("candidate")) ?? "" : fallback.candidateId).slice(0, 200),
+        workflowId: (params.has(key("workflow")) ? params.get(key("workflow")) ?? "" : fallback.workflowId).slice(0, 200),
+        operatorStep: operatorStep === "needed" || operatorStep === "not_needed" || operatorStep === "unknown"
+            ? operatorStep
+            : operatorStep === "" ? "" : fallback.operatorStep,
+    };
+}
+
+function serializeWorkflowDashboardViewState(
+    currentSearch: string,
+    draftFilters: DashboardFilters,
+    filters: DashboardFilters,
+    pageIndex: number,
+): string {
+    const params = new URLSearchParams(currentSearch);
+    for (const key of DASHBOARD_FILTER_QUERY_KEYS) params.delete(key);
+
+    const appliedValues: Array<[keyof DashboardFilters, string]> = [
+        ["state", filters.state],
+        ["source", filters.source],
+        ["candidateId", filters.candidateId],
+        ["workflowId", filters.workflowId],
+        ["operatorStep", filters.operatorStep],
+    ];
+    const queryNames: Record<keyof DashboardFilters, string> = {
+        state: "status",
+        source: "source",
+        candidateId: "candidate",
+        workflowId: "workflow",
+        operatorStep: "step",
+    };
+
+    for (const [name, value] of appliedValues) {
+        if (value) params.set(queryNames[name], value);
+        const draftValue = draftFilters[name];
+        if (draftValue !== value) params.set(`draft${queryNames[name][0].toUpperCase()}${queryNames[name].slice(1)}`, draftValue);
+    }
+    if (pageIndex > 0) params.set("page", String(pageIndex + 1));
+
+    const serialized = params.toString();
+    return serialized ? `?${serialized}` : "";
+}
+
 function workflowDashboardSummaryGroup(state: string): string {
     switch (state) {
         case "planned":
@@ -364,7 +465,7 @@ function workflowDashboardSummaryGroup(state: string): string {
     }
 }
 
-function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
+function WorkflowCard({ workflow, search }: { workflow: WorkflowSummary; search: string }) {
     const nextStep = workflowNextStepLabel(workflow.workflow_state, workflow.effect_kind);
     const workflowStatusUnavailable = workflowStatusGroup(workflow.workflow_state) === "unknown";
     const railId = `workflow-rail-${workflow.workflow_id}`;
@@ -380,7 +481,7 @@ function WorkflowCard({ workflow }: { workflow: WorkflowSummary }) {
                     <h3 className="break-words text-lg font-semibold text-white">{title}</h3>
                     <p className="mt-1 text-sm text-slate-400">Stage: {workflowStatusUnavailable ? "Status unavailable" : workflowStageLabel(workflow.workflow_state, workflow.effect_kind)}</p>
                 </div>
-                <Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} state={{ returnTo: "/workflows" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search }} state={{ returnTo: "/workflows" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     {workflow.effect_kind === "operational_action" ? "Review maintenance request" : "Open workflow"}
                 </Link>
             </div>

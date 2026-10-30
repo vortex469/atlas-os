@@ -78,8 +78,9 @@ function workflowAwaitingVerification(overrides: Partial<WorkflowDetailResponse>
 }
 
 function renderPage(path = "/workflows/workflow-123", state?: unknown) {
+    const route = new URL(path, "http://localhost");
     return render(
-        <MemoryRouter initialEntries={[state === undefined ? path : { pathname: path, state }]}>
+        <MemoryRouter initialEntries={[state === undefined ? path : { pathname: route.pathname, search: route.search, state }]}>
             <Routes>
                 <Route path="/workflows/:workflowId" element={<WorkflowPage />} />
             </Routes>
@@ -836,6 +837,32 @@ describe("WorkflowPage", () => {
         renderPage("/workflows/workflow-123", { returnTo: "/workflows" });
 
         expect(await screen.findByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
+    });
+
+    it("preserves workflow dashboard filters and page position when returning from a detail", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow());
+        const search = "?status=awaiting_implementation_approval&draftWorkflow=compose&page=3&keep=yes";
+        renderPage(`/workflows/workflow-123${search}`, { returnTo: "/workflows" });
+
+        expect(await screen.findByRole("link", { name: "← All workflows" })).toHaveAttribute("href", `/workflows${search}`);
+    });
+
+    it("keeps workflow dashboard filters available when workflow details fail to load", async () => {
+        mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
+        const search = "?status=blocked&draftWorkflow=compose&page=2";
+        renderPage(`/workflows/workflow-123${search}`, { returnTo: "/workflows" });
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Workflow unavailable");
+        expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", `/workflows${search}`);
+    });
+
+    it("offers the workflow dashboard return context while details are loading", () => {
+        mockedGetWorkflowDetail.mockImplementation(() => new Promise(() => {}));
+        const search = "?status=blocked&draftWorkflow=compose&page=2";
+        renderPage(`/workflows/workflow-123${search}`, { returnTo: "/workflows" });
+
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow");
+        expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", `/workflows${search}`);
     });
 
     it("submits approve with only workflow id and decision", async () => {
