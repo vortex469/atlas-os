@@ -3770,3 +3770,14 @@ recorded execution outcomes “Execution results.” Its empty and unavailable
 messages use the same wording. These labels describe the existing workflow
 states and recorded results; they do not claim worker availability or alter
 execution behavior.
+
+## Provider settings assessment wording — 2026-10-30
+
+The selected VM's capability panel now opens with plain status and requirement
+comparisons. Provider facts, internal status codes, timestamps, identifiers,
+and fingerprints remain available under collapsed Technical details. The
+visible copy makes clear that provider settings do not confirm software inside
+the VM is ready and do not approve an installation. This is a read-only
+presentation change; API contracts and installation approval behavior are
+unchanged. The focused component suite passes (7 tests), along with Mission
+Control lint and production build.

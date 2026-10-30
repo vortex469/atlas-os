@@ -9,15 +9,28 @@ import type {
 } from "../../types/installationCapability";
 
 const REASONS: Record<InstallationCapabilityReasonCode, string> = {
-    installation_plan_blocked: "The installation plan is blocked.",
-    destination_selection_not_current: "The prospective destination selection is not current.",
-    destination_identity_not_current: "The selected and currently observed destination identities do not match.",
-    provider_facts_not_current: "The provider configuration observation is no longer current.",
-    provider_facts_unknown: "Required provider configuration facts are unavailable or unreliable.",
-    requirement_not_assessable: "A requirement needs in-guest or runtime evidence that this assessment does not collect.",
-    requirement_not_satisfied: "Observed provider configuration is below a stated requirement.",
-    agent_install_container_unsupported: "Atlas does not support installation execution for this assessment.",
+    installation_plan_blocked: "The installation plan has issues that need review.",
+    destination_selection_not_current: "The saved VM selection is no longer current.",
+    destination_identity_not_current: "Atlas could not confirm that the selected VM is still the same VM.",
+    provider_facts_not_current: "The provider settings are out of date.",
+    provider_facts_unknown: "Some required provider settings are missing or unclear.",
+    requirement_not_assessable: "Atlas needs information from inside the VM that this check does not collect.",
+    requirement_not_satisfied: "The provider settings do not meet a stated requirement.",
+    agent_install_container_unsupported: "Atlas cannot prepare this type of installation yet.",
 };
+
+const ASSESSMENT_STATUS_LABELS = {
+    blocked: "Blocked by issues listed below",
+    insufficient_provider_facts: "Some requirements could not be checked",
+    requirements_satisfied_but_non_authorizing: "Checked provider settings meet the requirements Atlas can compare",
+} as const;
+
+const COMPARISON_LABELS = {
+    satisfied: "Meets requirement",
+    not_satisfied: "Does not meet requirement",
+    unknown: "Could not confirm",
+    not_assessable: "Not assessed here",
+} as const;
 
 const FACT_LABELS: Record<ProviderCapabilityFactV1["code"], string> = {
     current_destination_identity: "Current destination identity",
@@ -65,71 +78,77 @@ export function InstallationCapabilityAssessment({ itemId, selectionId }: { item
         getInstallationCapabilityAssessment(itemId, selectionId)
             .then((value) => { if (current) setAssessment(value); })
             .catch((requestError: unknown) => {
-                if (current) setError(getAtlasErrorMessage(requestError, "Installation capability assessment is currently unavailable."));
+                if (current) setError(getAtlasErrorMessage(requestError, "Provider settings could not be checked."));
             })
             .finally(() => { if (current) setLoading(false); });
         return () => { current = false; };
     }, [itemId, selectionId, loadAttempt]);
 
     return <section aria-labelledby="capability-assessment-heading" className="mt-5 rounded-lg border border-slate-700 p-4">
-        <h4 id="capability-assessment-heading" className="font-semibold text-slate-100">Installation capability assessment</h4>
-        <p className="mt-1 text-sm text-slate-300">Read-only comparison of sanitized provider configuration facts. It does not inspect actual in-guest or runtime capability and grants no installation or execution authority.</p>
-        {!selectionId && <p className="mt-3 text-sm text-slate-400">No prospective destination selection is available for capability assessment.</p>}
-        {selectionId && loading && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Loading installation capability assessment…</p>}
+        <h4 id="capability-assessment-heading" className="font-semibold text-slate-100">Provider settings check</h4>
+        <p className="mt-1 text-sm text-slate-300">This compares settings reported by Proxmox with requirements in the plan. It does not check software inside the VM or approve an installation.</p>
+        {!selectionId && <p className="mt-3 text-sm text-slate-400">Select a VM to check its provider settings.</p>}
+        {selectionId && loading && <p role="status" aria-live="polite" className="mt-3 text-sm text-slate-400">Checking provider settings…</p>}
         {selectionId && !loading && error && <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-            <p>Atlas could not load the capability check. Retry to refresh the provider facts.</p>
+            <p>Atlas couldn’t check the provider settings. Retry to check again.</p>
             <details className="mt-3 text-red-100/80">
                 <summary className="cursor-pointer">Technical details</summary>
                 <p className="mt-2 break-words">{error}</p>
             </details>
-            <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry capability check</button>
+            <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100">Retry provider check</button>
         </div>}
-        {selectionId && !loading && !error && !assessment && <p className="mt-3 text-sm text-slate-400">No installation capability assessment was returned.</p>}
+        {selectionId && !loading && !error && !assessment && <p className="mt-3 text-sm text-slate-400">No provider check result was returned.</p>}
         {selectionId && assessment && !loading && !error && <Assessment assessment={assessment} />}
     </section>;
 }
 
 function Assessment({ assessment }: { assessment: InstallationCapabilityAssessmentV1 }) {
     return <div className="mt-4">
-        <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 font-semibold text-amber-200">Status: {label(assessment.assessment_status)} — non-authorizing</p>
-        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <Value name="Plan item" value={assessment.plan.application.item_id} />
-            <Value name="Plan fingerprint" value={assessment.plan.fingerprint.value} />
-            <Value name="Selection ID" value={assessment.selection.selection_id} />
-            <Value name="Destination resource" value={`Proxmox QEMU ${assessment.selection.resource_id} (existing guest)`} />
-            <Value name="Selected destination fingerprint" value={assessment.selection.selected_destination_fingerprint} />
-            <Value name="Current destination fingerprint" value={assessment.current_destination.destination_fingerprint} />
-        </dl>
+        <p role="status" className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 font-semibold text-amber-200">{ASSESSMENT_STATUS_LABELS[assessment.assessment_status]}</p>
+        <p className="mt-2 text-sm text-slate-300">This result does not confirm that the VM is ready or approve an installation.</p>
 
-        <h5 className="mt-5 text-sm font-semibold text-slate-200">Sanitized provider configuration facts</h5>
-        <p className="mt-1 text-xs text-slate-400">Source: Proxmox QEMU control-plane configuration. These observations do not prove process health, reachability, runtime support, free space, or in-guest readiness.</p>
-        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-            {assessment.provider_facts.facts.map((fact) => <Value key={fact.code} name={FACT_LABELS[fact.code]} value={`${formatFact(fact)} (${label(fact.state)})`} />)}
-        </dl>
-
-        <h5 className="mt-5 text-sm font-semibold text-slate-200">Requirement comparisons</h5>
+        <h5 className="mt-5 text-sm font-semibold text-slate-200">Requirements checked</h5>
         {assessment.comparisons.length === 0
-            ? <p className="mt-2 text-sm text-slate-400">No requirement comparisons are present.</p>
-            : <ul aria-label="Installation capability comparisons" className="mt-2 space-y-2">
+            ? <p className="mt-2 text-sm text-slate-400">The plan does not list requirements Atlas can compare.</p>
+            : <ul aria-label="Requirements checked" className="mt-2 space-y-2">
                 {assessment.comparisons.map((comparison) => <li key={comparison.prerequisite_id} className="rounded-md border border-slate-700 p-3 text-sm text-slate-300">
-                    <span className="font-semibold text-slate-100">{label(comparison.result)}</span> — {comparison.requirement}
-                    <span className="block text-xs text-slate-400">{comparison.observed_value === null ? "No reliable comparable value" : `Observed: ${comparison.requirement_kind === "cpu_cores" ? comparison.observed_value : formatBytes(comparison.observed_value)}`}</span>
+                    <span className="font-semibold text-slate-100">{COMPARISON_LABELS[comparison.result]}</span>
+                    <p className="mt-1">{comparison.requirement}</p>
+                    <p className="mt-1 text-xs text-slate-400">{comparison.observed_value === null ? "Atlas could not confirm a comparable value." : `Proxmox reports: ${comparison.requirement_kind === "cpu_cores" ? comparison.observed_value : formatBytes(comparison.observed_value)}`}</p>
                 </li>)}
             </ul>}
 
-        <h5 className="mt-5 text-sm font-semibold text-slate-200">Ordered blockers and reasons</h5>
-        <ol aria-label="Installation capability reasons" className="mt-2 list-decimal space-y-2 pl-5 text-sm text-slate-300">
-            {assessment.reason_codes.map((reason) => <li key={reason}>{REASONS[reason]}</li>)}
-        </ol>
+        {assessment.reason_codes.length > 0 && <>
+            <h5 className="mt-5 text-sm font-semibold text-slate-200">What needs attention</h5>
+            <ul aria-label="What needs attention" className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-300">
+                {assessment.reason_codes.map((reason) => <li key={reason}>{REASONS[reason]}</li>)}
+            </ul>
+        </>}
 
-        <h5 className="mt-5 text-sm font-semibold text-slate-200">Freshness and provenance</h5>
-        <dl className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
-            <Value name="Provider facts observed" value={assessment.provider_facts.observed_at} />
-            <Value name="Provider facts fresh until" value={assessment.provider_facts.fresh_until} />
-            <Value name="Assessment evaluated" value={assessment.evaluated_at} />
-            <Value name="Assessment fingerprint" value={assessment.assessment_fingerprint} />
-        </dl>
-        <p className="mt-4 text-sm font-semibold text-amber-200">This read model does not authorize installation, execution, provider changes, or any in-guest operation.</p>
+        <details className="mt-5 text-sm text-slate-300">
+            <summary className="cursor-pointer">Technical details</summary>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Value name="Plan item" value={assessment.plan.application.item_id} />
+                <Value name="Plan fingerprint" value={assessment.plan.fingerprint.value} />
+                <Value name="Selection ID" value={assessment.selection.selection_id} />
+                <Value name="Destination resource" value={`Proxmox QEMU ${assessment.selection.resource_id} (existing guest)`} />
+                <Value name="Selected destination fingerprint" value={assessment.selection.selected_destination_fingerprint} />
+                <Value name="Current destination fingerprint" value={assessment.current_destination.destination_fingerprint} />
+                <Value name="Assessment status code" value={assessment.assessment_status} />
+            </dl>
+            <h5 className="mt-5 text-sm font-semibold text-slate-200">Provider settings from Proxmox</h5>
+            <p className="mt-1 text-xs text-slate-400">These are control-plane settings. They do not show whether software inside the VM is running or ready.</p>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                {assessment.provider_facts.facts.map((fact) => <Value key={fact.code} name={FACT_LABELS[fact.code]} value={`${formatFact(fact)} (${label(fact.state)})`} />)}
+            </dl>
+            <h5 className="mt-5 text-sm font-semibold text-slate-200">Check times and fingerprints</h5>
+            <dl className="mt-2 grid gap-3 sm:grid-cols-2">
+                <Value name="Provider settings observed" value={assessment.provider_facts.observed_at} />
+                <Value name="Provider settings fresh until" value={assessment.provider_facts.fresh_until} />
+                <Value name="Assessment checked" value={assessment.evaluated_at} />
+                <Value name="Assessment fingerprint" value={assessment.assessment_fingerprint} />
+            </dl>
+        </details>
     </div>;
 }
 
