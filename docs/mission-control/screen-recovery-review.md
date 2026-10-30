@@ -2254,7 +2254,7 @@ pass. Approval and run steps remain separate.
 The maintenance workflow now leads with a plain-language status, explanation,
 and safe next step. Recovery reasons and suggested actions use operator terms;
 record consistency, target identity, dispatch, verification and support fields
-are under a closed “Diagnostic evidence” disclosure. Maintenance history keeps
+are under a closed “Technical details” disclosure. Maintenance history keeps
 the compact status and guidance without exposing that technical disclosure.
 Focused workflow, history and summary tests pass (124 tests). Synthetic browser
 coverage passes for the workflow at 320px, 390px and 1280px; history recovery
@@ -3628,3 +3628,14 @@ and network diagnosis. The explanation about blank Docker ports now appears
 only in the Docker and network disclosure, which has a clearer label. The
 existing read-only check commands and guidance remain available. No health
 check or service configuration behavior changes.
+
+## Maintenance status plain-language fallbacks — 2026-10-30
+
+An unavailable maintenance result now uses “Status unavailable,” and unknown
+status explanations name Atlas instead of the internal Mission Control
+component. The optional evidence section is labeled “Technical details.”
+Maintenance state, filters, recovery guidance, and approval behavior are
+unchanged. The focused maintenance summary, history, and workflow suites pass
+(163 tests), along with Mission Control lint and production build. The missing
+record explanation also uses “maintenance result” instead of the backend term
+“service run.”

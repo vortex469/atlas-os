@@ -27,7 +27,7 @@ export function OperationalRecoverySummary({ diagnostic, isLoading = false, erro
         <h3 className="font-semibold text-white">{presentation.title}</h3>
         <p className="mt-2 text-sm text-slate-200">{presentation.reason}</p>
         {!compact && <details className="mt-3 rounded-lg border border-current/20 px-3 py-2">
-            <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-200">Diagnostic evidence</summary>
+            <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-200">Technical details</summary>
             <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
                 <Evidence label="Record consistency" value={recoveryLabel(diagnostic.consistency)} />
                 <Evidence label="Target fingerprint" value={recoveryLabel(diagnostic.verification_evidence.target_fingerprint_state)} />

@@ -164,7 +164,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByRole("heading", { name: "Status unavailable" })).toBeVisible();
-        expect(screen.getByText("Mission Control cannot identify this maintenance status.")).toBeVisible();
+        expect(screen.getByText("Atlas could not identify this maintenance status.")).toBeVisible();
         expect(screen.getByText("Do not repeat this request until its status is clear. Ask an operator to review it.")).toBeVisible();
         fireEvent.change(screen.getByRole("combobox", { name: "Latest maintenance status" }), { target: { value: "unavailable" } });
         expect(screen.getByRole("link", { name: "Open workflow" })).toHaveAttribute("href", "/workflows/workflow-operational-1");

@@ -13,7 +13,7 @@ describe("OperationalRecoverySummary", () => {
         [{ diagnostic_status: "recovery_in_progress", controlled_reason: "verification_pending", safe_next_action: "wait_for_verification" }, "Recovery in progress"],
         [{ diagnostic_status: "attention_required", controlled_reason: "verification_failed", safe_next_action: "inspect_target_read_only" }, "Attention required"],
         [{ diagnostic_status: "outcome_uncertain", controlled_reason: "dispatch_outcome_unknown", safe_next_action: "preserve_evidence" }, "Outcome uncertain"],
-        [{ diagnostic_status: "unavailable", consistency: "core_unavailable", controlled_reason: "core_unavailable", safe_next_action: "restore_core_availability" }, "Diagnostic unavailable"],
+        [{ diagnostic_status: "unavailable", consistency: "core_unavailable", controlled_reason: "core_unavailable", safe_next_action: "restore_core_availability" }, "Status unavailable"],
         [{ diagnostic_status: "attention_required", controlled_reason: "target_replaced", safe_next_action: "new_request_only_after_terminal", verification_evidence: { ...diagnostic().verification_evidence, target_fingerprint_state: "replaced" } }, "Attention required"],
         [{ diagnostic_status: "attention_required", consistency: "immutable_mismatch", controlled_reason: "immutable_request_mismatch", safe_next_action: "operator_review_required" }, "Attention required"],
         [{ diagnostic_status: "attention_required", consistency: "transition_mismatch", controlled_reason: "invalid_transition_sequence", safe_next_action: "preserve_evidence" }, "Attention required"],
@@ -40,7 +40,7 @@ describe("OperationalRecoverySummary", () => {
     });
 
     it.each([
-        ["missing_core_record", "The request is recorded, but no matching service run was found."],
+        ["missing_core_record", "Atlas has the request, but no matching maintenance result is recorded."],
         ["dispatch_outcome_unknown", "The request was sent, but the service result is unknown."],
         ["terminal_state_disagreement", "Atlas has conflicting records about whether the request is finished."],
     ] as const)("explains %s in plain language", (controlled_reason, reason) => {
@@ -50,7 +50,7 @@ describe("OperationalRecoverySummary", () => {
 
     it("keeps an unknown reported reason readable", () => {
         render(<OperationalRecoverySummary diagnostic={diagnostic({ controlled_reason: "future_reason" as never })} supportEvidenceAvailable={false} />);
-        expect(screen.getByText("Mission Control could not interpret the reported reason.")).toBeVisible();
+        expect(screen.getByText("Atlas could not explain why this status was reported.")).toBeVisible();
     });
 
     it("does not omit an unknown next step", () => {
@@ -62,13 +62,13 @@ describe("OperationalRecoverySummary", () => {
         render(<OperationalRecoverySummary diagnostic={diagnostic()} supportEvidenceAvailable />);
 
         const summary = screen.getByRole("region", { name: "Maintenance status summary" });
-        const evidence = within(summary).getByText("Diagnostic evidence").closest("details");
+        const evidence = within(summary).getByText("Technical details").closest("details");
         expect(evidence).not.toHaveAttribute("open");
         expect(within(summary).getByText("Target fingerprint")).not.toBeVisible();
         expect(within(summary).getByText("Healthy")).toBeVisible();
         expect(within(summary).getByText(/Safe next action:/)).toBeVisible();
 
-        fireEvent.click(within(summary).getByText("Diagnostic evidence"));
+        fireEvent.click(within(summary).getByText("Technical details"));
 
         expect(within(summary).getByText("Target fingerprint")).toBeVisible();
         expect(within(summary).getByText("unchanged")).toBeVisible();
@@ -80,12 +80,12 @@ describe("OperationalRecoverySummary", () => {
         expect(screen.getByRole("region", { name: "Maintenance status summary" })).toBeInTheDocument();
         expect(screen.getByText("Healthy")).toBeVisible();
         expect(screen.getByText(/Safe next action:/)).toBeVisible();
-        expect(screen.queryByText("Diagnostic evidence")).not.toBeInTheDocument();
+        expect(screen.queryByText("Technical details")).not.toBeInTheDocument();
         expect(screen.queryByText("Target fingerprint")).not.toBeInTheDocument();
     });
 
     it("keeps a status read failure distinct from the maintenance outcome", () => {
-        render(<OperationalRecoverySummary diagnostic={null} error="Mission Control could not check the latest recovery status." supportEvidenceAvailable={false} />);
+        render(<OperationalRecoverySummary diagnostic={null} error="Atlas could not check the latest maintenance status." supportEvidenceAvailable={false} />);
         expect(screen.getByRole("heading", { name: "Maintenance status details unavailable" })).toBeInTheDocument();
         expect(screen.getByText("A problem checking status does not mean the maintenance request failed.")).toBeInTheDocument();
     });

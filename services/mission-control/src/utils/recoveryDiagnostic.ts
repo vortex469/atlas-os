@@ -15,7 +15,7 @@ const STATUS_PRESENTATION: Record<WorkflowRecoveryDiagnostic["diagnostic_status"
     recovery_in_progress: { title: "Recovery in progress", severity: "info" },
     attention_required: { title: "Attention required", severity: "warning" },
     outcome_uncertain: { title: "Outcome uncertain", severity: "danger" },
-    unavailable: { title: "Diagnostic unavailable", severity: "unavailable" },
+    unavailable: { title: "Status unavailable", severity: "unavailable" },
 };
 
 const UNKNOWN_STATUS_PRESENTATION = { title: "Status unavailable", severity: "unavailable" } as const;
@@ -23,7 +23,7 @@ const UNKNOWN_STATUS_PRESENTATION = { title: "Status unavailable", severity: "un
 const REASON_TEXT: Record<NonNullable<WorkflowRecoveryDiagnostic["controlled_reason"]>, string> = {
     not_applicable: "Maintenance status checks do not apply to this workflow.",
     core_unavailable: "Atlas Core could not provide the latest maintenance status.",
-    missing_core_record: "The request is recorded, but no matching service run was found.",
+    missing_core_record: "Atlas has the request, but no matching maintenance result is recorded.",
     immutable_request_mismatch: "Atlas found different request details in its records.",
     invalid_transition_sequence: "The recorded status changes are out of order.",
     dispatch_outcome_unknown: "The request was sent, but the service result is unknown.",
@@ -49,13 +49,13 @@ export function recoveryPresentation(diagnostic: WorkflowRecoveryDiagnostic): Re
     const status = STATUS_PRESENTATION[diagnostic.diagnostic_status] ?? UNKNOWN_STATUS_PRESENTATION;
     const reason = diagnostic.controlled_reason === null
         ? "No current issue has been reported."
-        : REASON_TEXT[diagnostic.controlled_reason] ?? "Mission Control could not interpret the reported reason.";
+        : REASON_TEXT[diagnostic.controlled_reason] ?? "Atlas could not explain why this status was reported.";
     const safeNextAction = SAFE_ACTION_TEXT[diagnostic.safe_next_action]
         ?? "Next step unavailable. Ask an operator to review before acting.";
     return {
         ...status,
         reason: isUnknownStatus
-            ? "Mission Control cannot identify this maintenance status."
+            ? "Atlas could not identify this maintenance status."
             : reason,
         safeNextAction: isUnknownStatus
             ? "Do not repeat this request until its status is clear. Ask an operator to review it."
