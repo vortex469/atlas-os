@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { analyzeCompose, getAtlasErrorMessage } from "../../api/atlas";
+import { safeText } from "../../utils/safeText";
 import type { DeploymentAnalysisResponse } from "./types";
 
 const defaultCompose = `services:
@@ -70,7 +71,7 @@ export function ComposeEditor({
                 caughtError,
                 "Mission Control couldn't complete the analysis. Check the Compose file and Atlas connection, then try again.",
             );
-            const details = caughtError instanceof Error ? caughtError.message : null;
+            const details = caughtError instanceof Error ? safeText(caughtError.message) : null;
             setError(message);
             setErrorDetails(details && details !== message ? details : null);
         } finally {
@@ -123,7 +124,7 @@ export function ComposeEditor({
                     <p>{error}</p>
                     {errorDetails && <details className="mt-2">
                         <summary className="mc-focusable cursor-pointer text-xs font-medium text-red-100">Technical details</summary>
-                        <p className="mt-1 break-words text-xs text-red-100/80">{errorDetails}</p>
+                        <p className="mt-1 break-words text-xs text-red-100/80">{safeText(errorDetails) || "No additional details were returned."}</p>
                     </details>}
                 </div>
             )}
