@@ -3,6 +3,7 @@ import { evidenceText, evidenceTimestamp, healthReason, healthState } from "../u
 import { HealthEvidenceContext } from "./healthEvidenceContext";
 import { HealthStatusBadge } from "./health/HealthStatusPrimitive";
 import type { HealthState } from "./health/HealthStatusPrimitive";
+import { safeText } from "../utils/safeText";
 
 export function HealthEvidence({ status, reason, checkedAt, unavailableLabel, stale = false, compact = false }: {
     status: unknown;
@@ -25,7 +26,7 @@ export function HealthEvidence({ status, reason, checkedAt, unavailableLabel, st
     const validTime = parsed !== null && parsed <= now;
     // Age is a UI freshness hint (two refresh intervals), not a Core health decision.
     const isStale = stale || snapshot.stale || (validTime && now - parsed > 60_000);
-    const raw = evidenceText(status);
+    const raw = safeText(status).trim() || null;
     const rawState = raw?.trim().toLowerCase();
     const rawAddsMeaning = ["warning", "critical", "error", "failed"].includes(rawState ?? "");
     const showReportedStatus = Boolean(raw && rawState !== state.toLowerCase() && (!compact || rawAddsMeaning));

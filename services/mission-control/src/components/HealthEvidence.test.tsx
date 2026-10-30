@@ -48,6 +48,13 @@ describe("authoritative health presentation", () => {
         expect(document.querySelector("script")).toBeNull();
     });
 
+    it("withholds credential and URL text in reported health details", () => {
+        render(<HealthEvidence status="Bearer canary-token" reason="Request to https://operator:canary-password@example.invalid/?token=canary-token failed" />);
+        expect(screen.getByText("Reported status: [Sensitive text withheld]")).toBeInTheDocument();
+        expect(screen.getByText("[Sensitive text withheld]")).toBeInTheDocument();
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
+
     it("keeps overview health summaries compact while retaining the reason and distinct severity", () => {
         render(<>
             <HealthEvidence compact status="offline" reason="Connection refused" />

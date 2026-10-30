@@ -329,4 +329,31 @@ describe("ServiceHealthSection", () => {
         expect(trigger).toHaveFocus();
         expect(document.body.style.overflow).toBe("");
     });
+
+    it("withholds credential and URL text from expanded service diagnostics", async () => {
+        const health = {
+            ...service("ifileshare", 0),
+            status: "offline",
+            message: "Request to https://operator:canary-password@example.invalid/?token=canary-token failed",
+            details: {
+                url: "http://operator:canary-password@10.10.60.30:8080/?token=canary-token",
+                diagnostic: "Authorization: Bearer canary-token",
+            },
+        };
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: health }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "View details for iFileshare" }));
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        expect(within(dialog).getAllByText("[Sensitive text withheld]").length).toBeGreaterThan(0);
+        fireEvent.click(within(dialog).getByText("Technical details"));
+        expect(within(dialog).getAllByText("[Sensitive text withheld]").length).toBeGreaterThan(1);
+        expect(within(dialog).queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
 });

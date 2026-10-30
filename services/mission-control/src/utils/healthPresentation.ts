@@ -1,4 +1,5 @@
 import type { AtlasHealth, ServiceHealth } from "../types/health";
+import { safeText } from "./safeText";
 
 export type HealthState = "Healthy" | "Degraded" | "Unavailable" | "Blocked" | "Unknown";
 
@@ -20,7 +21,7 @@ export function evidenceText(value: unknown): string | null {
 }
 
 export function healthReason(value: unknown): string | null {
-    const text = evidenceText(value);
+    const text = safeText(value).trim();
     if (!text) return null;
     const { errno, message } = parseHealthError(text);
     switch (message.toLowerCase()) {

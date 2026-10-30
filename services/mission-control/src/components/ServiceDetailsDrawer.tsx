@@ -6,6 +6,7 @@ import { healthNextCheck, healthState } from "../utils/healthPresentation";
 import { serviceReachabilityCommand } from "../utils/serviceReachabilityCommand";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
+import { safeText } from "../utils/safeText";
 
 type ServiceDetailsDrawerProps = {
     name: string;
@@ -93,6 +94,9 @@ export function ServiceDetailsDrawer({
         Object.entries(health.details).filter(([key]) => key !== "url"),
     );
     const hasTechnicalDetails = Object.keys(technicalDetails).length > 0;
+    const technicalDetailsText = hasTechnicalDetails
+        ? safeText(JSON.stringify(technicalDetails, null, 2))
+        : "";
     const nextCheck = healthNextCheck(health.message);
     const currentHealthState = healthState(health.status);
     const healthReason = ["Unavailable", "Degraded", "Blocked"].includes(currentHealthState)
@@ -262,14 +266,12 @@ export function ServiceDetailsDrawer({
                                         Reported service message
                                     </dt>
                                     <dd className="mt-2 break-words text-sm text-slate-300">
-                                        {health.message}
+                                        {safeText(health.message) || "No additional details were returned."}
                                     </dd>
                                 </dl>
                             )}
                             <pre className="mt-3 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-4 text-xs leading-6 text-slate-300">
-                                {hasTechnicalDetails
-                                    ? JSON.stringify(technicalDetails, null, 2)
-                                    : "No additional details returned."}
+                                {technicalDetailsText || "No additional details returned."}
                             </pre>
                         </details>
                     </section>

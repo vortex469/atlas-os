@@ -4059,3 +4059,13 @@ and affected screens. This changes only Mission Control presentation; it does
 not change API contracts, approval decisions, or execution behavior. Ten
 focused suites pass 285 tests, with Mission Control lint and production build
 passing.
+
+## Service health diagnostic filtering — 2026-10-30
+
+Health summaries now filter backend-provided status and reason text before it
+reaches the screen. The service details drawer also filters the reported
+message and optional technical metadata, while preserving the known network
+failure translations and the separate redacted address check. Credential and
+URL canaries stay hidden in both the summary and expanded details. Health
+probing and provider behavior are unchanged. The focused health and service
+health suites pass 66 tests; Mission Control lint and production build pass.
