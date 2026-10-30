@@ -484,11 +484,8 @@ test('narrow overview preserves unknown evidence and distinct attention conditio
     await expect(page.getByRole('article', { name: 'Atlas Core health' }).getByText('Status unknown', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await attention.getByRole('link', { name: 'API', exact: true }).click();
-    await expect(page).toHaveURL(/\/providers\/proxmox$/);
-    await expect(page.getByText('Supported provider features could not be loaded. Some provider sections are hidden.')).toBeVisible();
-    await expect(page.getByText('Features unavailable.')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Diagnostics' })).toBeVisible();
-    await expect(page.getByText('No actions are available for this provider.')).toBeVisible();
+    await expect(page).toHaveURL(/#service-checks$/);
+    await expect(page.getByRole('region', { name: 'Service checks' }).getByText('Endpoint offline')).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
 });
 
