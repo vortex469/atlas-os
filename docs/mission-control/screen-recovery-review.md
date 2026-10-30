@@ -3678,11 +3678,13 @@ approval behavior are unchanged; browser fixtures reject unexpected mutations.
 The workflow directory now keeps applied filters, unfinished filter edits,
 and the current page in the URL. Opening a workflow carries that context to
 the detail page, and the return link restores it while the detail is loading,
-unavailable, or readable. Unknown query parameters are retained. Discovery
+unavailable, or readable. The detail URL records the allowlisted return path,
+so reopening it in a new tab or after a reload still leads back to Workflows;
+the marker is removed on return. Unknown query parameters are retained. Discovery
 item details and workflow audit links also retain their list or detail query
 context. These changes affect navigation only; workflow reads, approvals, and
 execution behavior are unchanged. The focused workflow directory and detail
-suites pass (122 tests); the full Mission Control suite passes (3,033 tests),
+suites pass (124 tests); the full Mission Control suite passes (3,035 tests),
 and lint and production build pass.
 
 ## Workflow filter empty state — 2026-10-30

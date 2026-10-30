@@ -104,7 +104,7 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByText("Execution running")).toBeInTheDocument();
         expect(screen.getByText("Blocked: stale candidate")).toBeInTheDocument();
         expect(screen.getByText("Commit completed")).toBeInTheDocument();
-        expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123");
+        expect(screen.getAllByRole("link", { name: /Open Workflow/i })[0]).toHaveAttribute("href", "/workflows/workflow-123?returnTo=%2Fworkflows");
         expect(screen.getAllByText("Running")[0]).toBeInTheDocument();
         const counts = within(screen.getByRole("region", { name: "Workflow summary counts" }));
         expect(counts.getAllByRole("article")).toHaveLength(4);
@@ -158,7 +158,7 @@ describe("WorkflowDashboardPage", () => {
         );
 
         fireEvent.click(await screen.findByRole("link", { name: "Open workflow" }));
-        expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"state":{"returnTo":"/workflows"},"search":""}');
+        expect(await screen.findByTestId("navigation-state")).toHaveTextContent('{"state":{"returnTo":"/workflows"},"search":"?returnTo=%2Fworkflows"}');
     });
 
     it("restores applied and draft filters plus page position when returning from a workflow", async () => {
@@ -194,6 +194,7 @@ describe("WorkflowDashboardPage", () => {
         expect(returnedSearch.get("step")).toBe("needed");
         expect(returnedSearch.get("draftWorkflow")).toBe("pending");
         expect(returnedSearch.get("page")).toBe("2");
+        expect(returnedSearch.get("returnTo")).toBe("/workflows");
         expect(returnedSearch.get("keep")).toBe("yes");
     });
 
@@ -213,7 +214,7 @@ describe("WorkflowDashboardPage", () => {
         const details = within(card as HTMLElement);
         expect(details.getByText("Stage: Maintenance request approval")).toBeVisible();
         expect(details.getByText("Review the maintenance request. If approved, choose Run approved maintenance.")).toBeVisible();
-        expect(details.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/maintenance-review");
+        expect(details.getByRole("link", { name: "Review maintenance request" })).toHaveAttribute("href", "/workflows/maintenance-review?returnTo=%2Fworkflows");
         expect(details.queryByText("Your approval is needed")).not.toBeInTheDocument();
         expect(details.queryByText("Stage: Change approval")).not.toBeInTheDocument();
     });

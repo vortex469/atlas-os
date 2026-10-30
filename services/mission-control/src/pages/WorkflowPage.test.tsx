@@ -847,6 +847,17 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("link", { name: "← All workflows" })).toHaveAttribute("href", `/workflows${search}`);
     });
 
+    it("restores the workflow directory when a detail is opened from its URL", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow({ workflow_source: "candidate" }));
+        const search = "?status=awaiting_implementation_approval&draftWorkflow=compose&page=3&returnTo=%2Fworkflows";
+        renderPage(`/workflows/workflow-123${search}`);
+
+        expect(await screen.findByRole("link", { name: "← All workflows" })).toHaveAttribute(
+            "href",
+            "/workflows?status=awaiting_implementation_approval&draftWorkflow=compose&page=3",
+        );
+    });
+
     it("keeps workflow dashboard filters available when workflow details fail to load", async () => {
         mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
         const search = "?status=blocked&draftWorkflow=compose&page=2";

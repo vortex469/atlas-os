@@ -455,6 +455,12 @@ function serializeWorkflowDashboardViewState(
     return serialized ? `?${serialized}` : "";
 }
 
+function workflowDetailSearch(search: string): string {
+    const params = new URLSearchParams(search);
+    params.set("returnTo", "/workflows");
+    return `?${params.toString()}`;
+}
+
 function workflowDashboardSummaryGroup(state: string): string {
     switch (state) {
         case "planned":
@@ -485,7 +491,7 @@ function WorkflowCard({ workflow, search }: { workflow: WorkflowSummary; search:
                     <h3 className="break-words text-lg font-semibold text-white">{title}</h3>
                     <p className="mt-1 text-sm text-slate-400">Stage: {workflowStatusUnavailable ? "Status unavailable" : workflowStageLabel(workflow.workflow_state, workflow.effect_kind)}</p>
                 </div>
-                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search }} state={{ returnTo: "/workflows" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search: workflowDetailSearch(search) }} state={{ returnTo: "/workflows" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300">
                     {workflow.effect_kind === "operational_action" ? "Review maintenance request" : "Open workflow"}
                 </Link>
             </div>

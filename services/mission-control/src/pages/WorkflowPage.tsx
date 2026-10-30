@@ -74,10 +74,14 @@ type WorkflowReturnDestination = {
     label: string;
 };
 
-function workflowReturnDestination(workflow: WorkflowDetailResponse | null, state: unknown): WorkflowReturnDestination {
-    const returnTo = typeof state === "object" && state !== null && "returnTo" in state
+function workflowReturnDestination(workflow: WorkflowDetailResponse | null, state: unknown, search: string): WorkflowReturnDestination {
+    const stateReturnTo = typeof state === "object" && state !== null && "returnTo" in state
         ? state.returnTo
         : undefined;
+    const queryReturnTo = new URLSearchParams(search).get("returnTo");
+    const returnTo = [stateReturnTo, queryReturnTo].find((value) =>
+        value === "/operations/history" || value === "/workflows" || value === "/execution-candidates",
+    );
     if (returnTo === "/operations/history") return { to: returnTo, label: "← Maintenance history" };
     if (returnTo === "/workflows") return { to: returnTo, label: "← All workflows" };
     if (returnTo === "/execution-candidates") return { to: returnTo, label: "Back to execution candidates" };
@@ -87,7 +91,13 @@ function workflowReturnDestination(workflow: WorkflowDetailResponse | null, stat
 }
 
 function workflowReturnSearch(destination: WorkflowReturnDestination, search: string): string {
-    return destination.to === "/operations/history" || destination.to === "/workflows" ? search : "";
+    if (destination.to === "/workflows") {
+        const params = new URLSearchParams(search);
+        params.delete("returnTo");
+        const serialized = params.toString();
+        return serialized ? `?${serialized}` : "";
+    }
+    return destination.to === "/operations/history" ? search : "";
 }
 
 function WorkflowDetail({ workflowId }: { workflowId: string }) {
@@ -108,7 +118,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [commitApprovalResult, setCommitApprovalResult] = useState<WorkflowCommitApprovalResponse | null>(null);
     const [isResuming, setIsResuming] = useState(false);
     const [resumeError, setResumeError] = useState<WorkflowActionFailure | null>(null);
-    const returnDestination = workflowReturnDestination(workflow, location.state);
+    const returnDestination = workflowReturnDestination(workflow, location.state, location.search);
     const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
     const [recoveryDiagnostic, setRecoveryDiagnostic] = useState<WorkflowRecoveryDiagnostic | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
