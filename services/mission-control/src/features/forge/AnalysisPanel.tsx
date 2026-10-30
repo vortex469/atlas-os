@@ -50,7 +50,7 @@ export function AnalysisPanel({
             </dl>
 
             <p className="mt-6 text-sm text-slate-500">
-                Host ports are on this machine; service ports are inside the container. This review does not check whether a device can reach the service through a firewall, router, or the internet.
+                Host ports are on the computer where Docker runs; service ports are inside the container. This review does not check whether a firewall, router, or internet connection allows other computers to reach the service.
             </p>
 
             <div className="mt-6 space-y-3">

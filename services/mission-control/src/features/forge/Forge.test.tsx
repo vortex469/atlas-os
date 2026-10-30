@@ -148,7 +148,7 @@ describe("Forge analysis freshness", () => {
         submit();
 
         await screen.findByRole("heading", { name: "Network ports" });
-        expect(screen.getByText("Host ports are on this machine; service ports are inside the container. This review does not check whether a device can reach the service through a firewall, router, or the internet.")).toBeInTheDocument();
+        expect(screen.getByText("Host ports are on the computer where Docker runs; service ports are inside the container. This review does not check whether a firewall, router, or internet connection allows other computers to reach the service.")).toBeInTheDocument();
         expect(screen.getByText("Host port 8080 → service port 80/TCP")).toBeInTheDocument();
         expect(screen.getByText("The binding may accept connections from other computers.")).toBeInTheDocument();
         expect(screen.getByText("No fixed host port was specified in this file → service port 443/TCP")).toBeInTheDocument();

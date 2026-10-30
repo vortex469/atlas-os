@@ -67,6 +67,7 @@ for (const width of [390, 1280]) {
         await expect(page.getByText("Not estimated", { exact: true }).first()).toBeVisible();
         await expect(page.getByText("0 minutes", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "Network ports" })).toBeVisible();
+        await expect(page.getByText("Host ports are on the computer where Docker runs; service ports are inside the container. This review does not check whether a firewall, router, or internet connection allows other computers to reach the service.")).toBeVisible();
         await expect(page.getByText("Host port 8080 → service port 80/TCP", { exact: true })).toBeVisible();
         await expect(page.getByText("The binding may accept connections from other computers.", { exact: true })).toBeVisible();
         await expect(page.getByText("No fixed host port was specified in this file → service port 443/TCP", { exact: true })).toBeVisible();

@@ -3514,6 +3514,15 @@ configuration changed. The focused Overview and ServiceHealthSection suites
 pass (82 tests), the responsive connection-check journey passes at 320px and
 1280px, and Mission Control lint and production build pass.
 
+## Deployment port ownership wording — 2026-10-30
+
+Deployment analysis now says host ports belong to the computer where Docker
+runs, while service ports are inside the container. It also states that the
+review cannot confirm access through firewalls, routers, or the internet. This
+avoids implying that the uploaded file runs on the operator's computer or that
+the port review proves remote reachability. The Compose file and analysis
+behavior are unchanged.
+
 ## Installation review retry wording — 2026-10-29
 
 When an installation review cannot load, its recovery panel now says Atlas
