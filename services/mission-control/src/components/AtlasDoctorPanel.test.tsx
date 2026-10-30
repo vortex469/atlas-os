@@ -47,6 +47,7 @@ describe("AtlasDoctorPanel", () => {
         });
         render(<AtlasDoctorPanel />);
 
+        expect(screen.getByRole("region", { name: "Additional health checks" })).toBeVisible();
         await user.click(
             screen.getByRole("button", { name: "Run health checks" }),
         );
@@ -76,7 +77,7 @@ describe("AtlasDoctorPanel", () => {
         );
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Atlas Doctor could not finish its checks");
+        expect(alert).toHaveTextContent("Health checks could not finish");
         expect(alert).toHaveTextContent("No new health report is available. Run the checks again to get current results.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
@@ -103,7 +104,7 @@ describe("AtlasDoctorPanel", () => {
         expect(screen.getByRole("button", { name: "Checking health…" })).toBeDisabled();
         await act(async () => { rejectRead(new Error("Doctor unavailable.")); });
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Atlas Doctor could not finish its checks");
+        expect(alert).toHaveTextContent("Health checks could not finish");
         expect(alert).toHaveTextContent("No new health report is available.");
         expect(screen.queryByText("No critical issues or warnings detected.")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Run health checks" })).toBeEnabled();

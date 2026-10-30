@@ -365,10 +365,10 @@ describe("MC overview evidence", () => {
         fireEvent.click(checks.getByText('About service checks'));
         expect(explanation).toBeVisible();
     });
-    it('keeps Atlas Doctor under a collapsed health disclosure', () => {
+    it('keeps additional health checks under a collapsed health disclosure', () => {
         show();
         const health = within(screen.getByRole('region', { name: 'System health' }));
-        const summary = health.getByText('Use Atlas Doctor');
+        const summary = health.getByText('Run additional health checks');
         const disclosure = summary.closest('details') as HTMLDetailsElement;
         expect(disclosure.open).toBe(false);
         const runButton = within(disclosure).getByText('Run health checks').closest('button') as HTMLButtonElement;

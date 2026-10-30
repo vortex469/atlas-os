@@ -3747,3 +3747,11 @@ The first-load message and screen-reader names for the filters and pagination
 now use “Maintenance history,” matching the visible page title. The existing
 loading recovery browser case checks the updated message. History queries and
 pagination behavior are unchanged.
+
+## Additional health check wording — 2026-10-30
+
+The System health disclosure now says “Run additional health checks.” The
+opened panel goes straight to what the checks cover and the button that runs
+them, without repeating an internal feature name. The check still runs only
+after an operator opens the disclosure and selects Run health checks; it
+remains a read-only report request.

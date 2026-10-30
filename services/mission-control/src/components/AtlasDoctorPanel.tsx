@@ -33,7 +33,7 @@ export function AtlasDoctorPanel() {
             setError(
                 getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not run Atlas Doctor.",
+                    "Atlas couldn’t complete the health checks.",
                 ),
             );
         } finally {
@@ -56,12 +56,9 @@ export function AtlasDoctorPanel() {
     const passedCheckCount = report?.checks.filter((check) => check.passed).length ?? 0;
 
     return (
-        <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
+        <section aria-label="Additional health checks" className="rounded-lg border border-slate-800 bg-slate-900 p-5">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <h2 className="font-semibold text-slate-100">
-                        Atlas Doctor
-                    </h2>
                     <p className="mt-1 text-sm text-slate-400">
                         Check Atlas configuration, connected services, and current health.
                     </p>
@@ -80,7 +77,7 @@ export function AtlasDoctorPanel() {
 
             {error && (
                 <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                    <p className="font-semibold text-red-300">Atlas Doctor could not finish its checks</p>
+                    <p className="font-semibold text-red-300">Health checks could not finish</p>
                     <p className="mt-1 text-sm text-red-200/80">No new health report is available. Run the checks again to get current results.</p>
                     <details className="mt-3">
                         <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>

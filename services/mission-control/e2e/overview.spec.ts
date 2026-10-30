@@ -204,7 +204,7 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
-test('Atlas Doctor stays collapsed under System health until an operator runs it', async ({ page, rejectedMutationRequests }) => {
+test('additional health checks stay collapsed until an operator runs them', async ({ page, rejectedMutationRequests }) => {
     let doctorReads = 0;
     await page.route('**/api/v1/ops/doctor', route => {
         doctorReads += 1;
@@ -217,7 +217,7 @@ test('Atlas Doctor stays collapsed under System health until an operator runs it
     });
     await page.goto('/');
     const health = page.getByRole('region', { name: 'System health' });
-    const disclosure = health.locator('details').filter({ hasText: 'Use Atlas Doctor' });
+    const disclosure = health.locator('details').filter({ hasText: 'Run additional health checks' });
     const doctorButton = disclosure.locator('button', { hasText: 'Run health checks' });
     await expect(disclosure.locator('summary')).toBeVisible();
     await expect(disclosure).not.toHaveAttribute('open', '');

@@ -347,7 +347,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card id="system-health" title="System health" showSourceNote={false}>
                 <SystemHealthSummary evidence={evidence} loading={loading} />
                 <details>
-                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Use Atlas Doctor</summary>
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Run additional health checks</summary>
                     <div className="mt-3"><AtlasDoctorPanel /></div>
                 </details>
             </Card>
