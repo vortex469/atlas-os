@@ -3762,3 +3762,11 @@ Action history now announces its initial load and refresh as status updates in
 the results area, using the page's full name. This helps assistive technology
 users distinguish the list read from the separate retention-details read.
 History requests and results are unchanged.
+
+## Dashboard work activity labels — 2026-10-30
+
+The Work activity card now calls executing work “Running workflows” and
+recorded execution outcomes “Execution results.” Its empty and unavailable
+messages use the same wording. These labels describe the existing workflow
+states and recorded results; they do not claim worker availability or alter
+execution behavior.

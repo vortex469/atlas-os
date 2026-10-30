@@ -165,7 +165,7 @@ for (const width of [320, 1280]) {
 
         const work = page.getByRole("region", { name: "Work activity" });
         await expect(work.getByText("Some workflow statuses are not recognized. Execution and blocked counts are hidden.")).toBeVisible();
-        await expect(work.getByText("Currently executing workflows", { exact: true })).toHaveCount(0);
+        await expect(work.getByText("Running workflows", { exact: true })).toHaveCount(0);
         await expect(work.getByText("Blocked workflows", { exact: true })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
@@ -416,9 +416,9 @@ test('work activity reveals all workflow records on mobile without horizontal ov
 
     const section = page.getByRole('region', { name: 'Work activity' });
     await expect(section.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeVisible();
-    const running = section.getByRole('list', { name: 'Currently executing workflows' });
+    const running = section.getByRole('list', { name: 'Running workflows' });
     await expect(running.getByRole('listitem')).toHaveCount(3);
-    await section.getByRole('button', { name: 'Show all 5 currently executing workflows' }).click();
+    await section.getByRole('button', { name: 'Show all 5 running workflows' }).click();
     await expect(running.getByRole('listitem')).toHaveCount(5);
 
     const blocked = section.getByRole('list', { name: 'Blocked workflows' });
@@ -426,8 +426,8 @@ test('work activity reveals all workflow records on mobile without horizontal ov
     await expect(blocked.getByRole('listitem')).toHaveCount(5);
 
     await section.getByText('More workflow details').click();
-    const outcomes = section.getByRole('list', { name: 'Recorded execution outcomes' });
-    await section.getByRole('button', { name: 'Show all 5 recorded execution outcomes' }).click();
+    const outcomes = section.getByRole('list', { name: 'Execution results' });
+    await section.getByRole('button', { name: 'Show all 5 execution results' }).click();
     await expect(outcomes.getByRole('listitem')).toHaveCount(5);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     expect(rejectedMutationRequests).toEqual([]);
@@ -460,10 +460,10 @@ test('work activity shows failed outcomes before completed outcomes in its previ
 
     const work = page.getByRole('region', { name: 'Work activity' });
     await work.getByText('More workflow details').click();
-    const outcomes = work.getByRole('list', { name: 'Recorded execution outcomes' });
+    const outcomes = work.getByRole('list', { name: 'Execution results' });
     const first = outcomes.getByRole('listitem').first();
     await expect(first.getByRole('link', { name: 'Update Compose Stack · Execution failed' })).toBeVisible();
-    await expect(work.getByRole('button', { name: 'Show all 4 recorded execution outcomes' })).toBeVisible();
+    await expect(work.getByRole('button', { name: 'Show all 4 execution results' })).toBeVisible();
     expect(rejectedMutationRequests).toEqual([]);
 });
 
@@ -538,15 +538,15 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await page.keyboard.press('Enter');
     await expect(providers.getByText(/does not allow provider actions/)).toBeVisible();
     const worker = page.getByRole('region', { name: 'Work activity' });
-    await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeHidden();
+    await expect(worker.getByText('Execution results', { exact: true })).toBeHidden();
     await expect(worker.getByText('Queue size', { exact: true })).toHaveCount(0);
     await expect(worker.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.", { exact: true })).toBeVisible();
-    await expect(worker.getByText('No workflows are currently executing or blocked.', { exact: true })).toBeVisible();
+    await expect(worker.getByText('No workflows are running or blocked.', { exact: true })).toBeVisible();
     await expect(worker.getByText('No running workflows are listed. Worker availability is unknown.', { exact: true })).toHaveCount(0);
     const workerToggle = worker.locator('summary', { hasText: 'More workflow details' });
     await workerToggle.focus();
     await page.keyboard.press('Enter');
-    await expect(worker.getByText('Recorded execution outcomes', { exact: true })).toBeVisible();
+    await expect(worker.getByText('Execution results', { exact: true })).toBeVisible();
     await expect(worker.getByText('Queue size', { exact: true })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

@@ -24,25 +24,25 @@ describe("Work activity summary", () => {
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getByText("Checking workflow status…")).toBeVisible();
         expect(within(section).queryByText("Couldn't load all workflows, so the execution and blocked counts aren't shown.")).not.toBeInTheDocument();
-        expect(within(section).queryByText("Currently executing workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
     });
     it("shows one unavailable message instead of repeating it as two unavailable counts", () => {
         view(undefined, true);
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getByText("Workflow status could not be loaded.")).toBeVisible();
-        expect(within(section).queryByText("Currently executing workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
         fireEvent.click(within(section).getByText("More workflow details"));
-        expect(within(section).getByText("Workflow outcomes aren't available.")).toBeVisible();
+        expect(within(section).getByText("Workflow results aren't available.")).toBeVisible();
         expect(within(section).queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
     it("shows an idle observation without inventing worker health or queue depth", () => {
         view(page([]));
         const section = screen.getByRole("region", { name: "Work activity" });
-        expect(within(section).queryByText("Currently executing workflows", { exact: true })).not.toBeInTheDocument();
+        expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
-        expect(within(section).getByText("No workflows are currently executing or blocked.")).toBeInTheDocument();
+        expect(within(section).getByText("No workflows are running or blocked.")).toBeInTheDocument();
         expect(within(section).getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
         expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
         expect(within(section).queryByText("Queue size")).not.toBeInTheDocument();
@@ -53,8 +53,8 @@ describe("Work activity summary", () => {
     it("distinguishes executing from verification and links to encoded detail routes", () => {
         view(page([workflow("a/b?#", "executing", "current", "restart-service"), workflow("verify", "verifying", "completed")]));
         const section = screen.getByRole("region", { name: "Work activity" });
-        expect(within(section).getAllByText("Currently executing workflows")[0].nextElementSibling).toHaveTextContent("1");
-        const executing = within(section).getByRole("list", { name: "Currently executing workflows" });
+        expect(within(section).getAllByText("Running workflows")[0].nextElementSibling).toHaveTextContent("1");
+        const executing = within(section).getByRole("list", { name: "Running workflows" });
         expect(executing).toHaveTextContent("Restart Service · Running");
         expect(executing).not.toHaveTextContent("verify");
         const workflowLink = within(section).getByRole("link", { name: "Restart Service · Running" });
@@ -73,7 +73,7 @@ describe("Work activity summary", () => {
         expect(within(section).getByRole("link", { name: "Workflow · Blocked" })).toHaveAttribute("href", "/workflows/blocked");
         fireEvent.click(within(section).getByText("More workflow details"));
         expect(within(section).getByText(/A workflow can be blocked before it starts/)).toBeInTheDocument();
-        expect(screen.getByText("No execution outcomes recorded")).toBeInTheDocument();
+        expect(screen.getByText("No execution results recorded")).toBeInTheDocument();
     });
     it("uses execution evidence, not the latest commit result, and explains why results are not newest first", () => {
         view(page([workflow("success", "completed", "completed", "restart-service"), workflow("failure", "blocked", "failed", "update-container-image")]));
@@ -99,11 +99,11 @@ describe("Work activity summary", () => {
         ]));
         const section = within(screen.getByRole("region", { name: "Work activity" }));
         fireEvent.click(section.getByText("More workflow details"));
-        const outcomes = within(section.getByRole("list", { name: "Recorded execution outcomes" }));
+        const outcomes = within(section.getByRole("list", { name: "Execution results" }));
         const first = within(outcomes.getAllByRole("listitem")[0]);
 
         expect(first.getByRole("link", { name: "Update Compose Stack · Execution failed" })).toBeVisible();
-        expect(section.getByRole("button", { name: "Show all 4 recorded execution outcomes" })).toBeVisible();
+        expect(section.getByRole("button", { name: "Show all 4 execution results" })).toBeVisible();
     });
     it("lets operators expand each workflow and outcome list beyond three records", () => {
         const records = [
@@ -114,11 +114,11 @@ describe("Work activity summary", () => {
         view(page(records));
 
         const section = within(screen.getByRole("region", { name: "Work activity" }));
-        const running = section.getByRole("list", { name: "Currently executing workflows" });
+        const running = section.getByRole("list", { name: "Running workflows" });
         expect(within(running).getAllByRole("listitem")).toHaveLength(3);
-        fireEvent.click(section.getByRole("button", { name: "Show all 5 currently executing workflows" }));
+        fireEvent.click(section.getByRole("button", { name: "Show all 5 running workflows" }));
         expect(within(running).getAllByRole("listitem")).toHaveLength(5);
-        fireEvent.click(section.getByRole("button", { name: "Show fewer currently executing workflows" }));
+        fireEvent.click(section.getByRole("button", { name: "Show fewer running workflows" }));
         expect(within(running).getAllByRole("listitem")).toHaveLength(3);
 
         const blocked = section.getByRole("list", { name: "Blocked workflows" });
@@ -129,22 +129,22 @@ describe("Work activity summary", () => {
         expect(within(blocked).getAllByRole("listitem")).toHaveLength(3);
 
         fireEvent.click(section.getByText("More workflow details"));
-        const outcomes = section.getByRole("list", { name: "Recorded execution outcomes" });
+        const outcomes = section.getByRole("list", { name: "Execution results" });
         expect(within(outcomes).getAllByRole("listitem")).toHaveLength(3);
-        fireEvent.click(section.getByRole("button", { name: "Show all 5 recorded execution outcomes" }));
+        fireEvent.click(section.getByRole("button", { name: "Show all 5 execution results" }));
         expect(within(outcomes).getAllByRole("listitem")).toHaveLength(5);
-        fireEvent.click(section.getByRole("button", { name: "Show fewer recorded execution outcomes" }));
+        fireEvent.click(section.getByRole("button", { name: "Show fewer execution results" }));
         expect(within(outcomes).getAllByRole("listitem")).toHaveLength(3);
     });
     it("hides old observations on refresh failure and recovers on a new response", () => {
         const { rerender } = view(page([workflow("old")]), true);
         expect(screen.queryByRole("link", { name: "Workflow · Running" })).not.toBeInTheDocument();
         expect(screen.getByText("Workflow status could not be loaded.")).toBeInTheDocument();
-        expect(screen.queryByText("Currently executing workflows", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
         rerender(<MemoryRouter><WorkerExecutionSection evidence={{ data: page([]) }} loading={false} /></MemoryRouter>);
         const section = screen.getByRole("region", { name: "Work activity" });
-        expect(within(section).getByText("No workflows are currently executing or blocked.")).toBeInTheDocument();
+        expect(within(section).getByText("No workflows are running or blocked.")).toBeInTheDocument();
         expect(section.querySelector(":scope > dl")).toBeNull();
     });
     it("explains that retained observations may have changed during refresh", () => {
@@ -174,7 +174,7 @@ describe("Work activity summary", () => {
         view(page(Array.from({ length: 8 }, (_, index) => workflow(`item-${index}`))));
         const section = screen.getByRole("region", { name: "Work activity" });
         expect(within(section).getAllByRole("link")).toHaveLength(4);
-        expect(within(section).getByRole("button", { name: "Show all 8 currently executing workflows" })).toBeVisible();
+        expect(within(section).getByRole("button", { name: "Show all 8 running workflows" })).toBeVisible();
         expect(section.querySelectorAll("button")).toHaveLength(1);
         expect(section.querySelectorAll("form,input,select,textarea")).toHaveLength(0);
         expect(section).toHaveTextContent("Shows workflow progress and results.");

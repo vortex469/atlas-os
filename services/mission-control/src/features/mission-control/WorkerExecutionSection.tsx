@@ -60,21 +60,21 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
             {!loading && evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Atlas couldn't load the latest workflow report. The statuses shown may have changed.</p>}
             {items && knownStates && (active.length > 0 || blocked.length > 0) && (
                 <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <Metric label="Currently executing workflows" value={String(active.length)} />
+                    <Metric label="Running workflows" value={String(active.length)} />
                     <Metric label="Blocked workflows" value={String(blocked.length)} />
                 </dl>
             )}
             {loading && !items && <p role="status" className="mt-3 text-sm text-mc-text-secondary">Checking workflow status…</p>}
             {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized. Execution and blocked counts are hidden.</p>}
-            {items && knownStates && active.length === 0 && blocked.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No workflows are currently executing or blocked.</p>}
+            {items && knownStates && active.length === 0 && blocked.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No workflows are running or blocked.</p>}
             <div className="mt-4 grid gap-4">
-                {active.length > 0 && <EvidenceList key="running" title="Currently executing workflows" items={active} available={!!items} empty="Unknown" />}
+                {active.length > 0 && <EvidenceList key="running" title="Running workflows" items={active} available={!!items} empty="Unknown" />}
                 {blocked.length > 0 && <EvidenceList key="blocked" title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
             </div>
             <details className="mt-4 text-sm text-mc-text-secondary">
                 <summary className="mc-focusable cursor-pointer text-mc-primary">More workflow details</summary>
                 <div className="mt-3 space-y-4">
-                    <EvidenceList key="outcomes" title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Mission Control could not read an execution result for one or more workflows." : "No execution outcomes recorded"} outcomes />
+                    <EvidenceList key="outcomes" title="Execution results" items={outcomes} available={!!items} empty={missingStages ? "Mission Control could not read an execution result for one or more workflows." : "No execution results recorded"} outcomes />
                     <p className="text-xs text-mc-text-muted">Finish times aren't available, so results aren't shown newest first. A workflow can be blocked before it starts.</p>
                 </div>
             </details>
@@ -103,7 +103,7 @@ function EvidenceList({ title, items, available, empty, outcomes = false }: {
     const displayed = showAll ? ordered : ordered.slice(0, 3);
     return <div>
         <h3 className="text-sm font-semibold text-mc-text-primary">{title}</h3>
-        {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Workflow outcomes aren't available."}</p> :
+        {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Workflow results aren't available."}</p> :
             <ul aria-label={title} className="mt-2 space-y-2 text-sm">
                 {displayed.map((item) => <li key={item.workflow_id}>
                     <Link to={detailPath("/workflows", item.workflow_id)!} className="text-mc-primary focus-visible:outline-2">{workflowActionLabel(item.execution_intent)} · {workflowStatusLabel(item, outcomes)}</Link>

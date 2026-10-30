@@ -560,7 +560,7 @@ describe('overview fail-closed regressions', () => {
         fireEvent.click(attention.getByText('Which results are missing?'));
         expect(attention.queryByText('Workflows: workflow results are incomplete.')).not.toBeInTheDocument();
         const activity = within(screen.getByRole('region', { name: 'Work activity' }));
-        expect(activity.getByText('No workflows are currently executing or blocked.')).toBeVisible();
+        expect(activity.getByText('No workflows are running or blocked.')).toBeVisible();
         expect(activity.queryByText('Some workflow statuses are not recognized. Execution and blocked counts are hidden.')).not.toBeInTheDocument();
     });
     it('keeps a malformed provider unknown even in the expanded list', () => {
@@ -575,10 +575,10 @@ describe('overview fail-closed regressions', () => {
     });
 });
 
-it('distinguishes currently executing workflows from verification and commit activity', () => {
+it('distinguishes running workflows from verification and commit activity', () => {
     show({ workflows: { data: { total: 3, offset: 0, limit: 200, items: ['executing', 'verifying', 'committing'].map((state, i) => ({ workflow_id: String(i), workflow_state: state, last_result_summary: '', timeline: [] })) } } });
     const activity = within(screen.getByRole('region', { name: 'Work activity' }));
-    expect(activity.getAllByText('Currently executing workflows')[0].nextElementSibling).toHaveTextContent('1');
+    expect(activity.getAllByText('Running workflows')[0].nextElementSibling).toHaveTextContent('1');
     expect(activity.getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
 });
 
