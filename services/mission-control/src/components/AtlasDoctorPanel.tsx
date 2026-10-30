@@ -117,7 +117,7 @@ export function AtlasDoctorPanel() {
                                     <span className="mr-2 font-semibold text-slate-400">
                                         {issue.level}:
                                     </span>
-                                    {issue.message}
+                                    {safeText(issue.message) || "No diagnostic details were provided."}
                                 </li>
                             ))}
                         </ul>

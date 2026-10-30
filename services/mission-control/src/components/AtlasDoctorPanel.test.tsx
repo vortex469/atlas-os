@@ -88,6 +88,27 @@ describe("AtlasDoctorPanel", () => {
         expect(safeError).toBeVisible();
     });
 
+    it("withholds credential and URL text from reported health findings", async () => {
+        const user = userEvent.setup();
+        mockedGetAtlasDoctorReport.mockResolvedValue({
+            status: "critical",
+            score: 40,
+            checked_at: "2026-10-30T00:00:00Z",
+            configuration_ok: true,
+            checks: [],
+            critical: ["Request to https://operator:canary-password@example.invalid/?token=canary-token failed"],
+            warnings: [],
+            information: [],
+        });
+        render(<AtlasDoctorPanel />);
+
+        await user.click(screen.getByRole("button", { name: "Run health checks" }));
+
+        const finding = await screen.findByText("[Sensitive text withheld]");
+        expect(finding).toBeInTheDocument();
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
+
     it("clears the previous health report while rerunning and after failure", async () => {
         const user = userEvent.setup();
         mockedGetAtlasDoctorReport.mockResolvedValueOnce({

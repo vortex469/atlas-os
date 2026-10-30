@@ -3996,8 +3996,9 @@ build pass.
 ## Atlas Doctor error detail redaction — 2026-10-30
 
 The Overview health panel keeps its plain-language recovery guidance visible
-while collapsed diagnostic details use the shared bounded text filter. The
-focused Atlas Doctor panel suite passes all 3 tests; Mission Control lint and
+while collapsed diagnostic details use the shared bounded text filter. Reported
+health findings also filter backend-provided credential and URL text. The
+focused Atlas Doctor panel suite passes all 4 tests; Mission Control lint and
 production build pass.
 
 ## Installation capability error details — 2026-10-30
@@ -4068,4 +4069,5 @@ message and optional technical metadata, while preserving the known network
 failure translations and the separate redacted address check. Credential and
 URL canaries stay hidden in both the summary and expanded details. Health
 probing and provider behavior are unchanged. The focused health and service
-health suites pass 66 tests; Mission Control lint and production build pass.
+health suites pass 70 tests, and the full Mission Control unit suite passes
+3,052 tests across 188 files. Mission Control lint and production build pass.
