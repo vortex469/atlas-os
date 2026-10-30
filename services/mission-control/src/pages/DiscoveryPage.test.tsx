@@ -214,6 +214,16 @@ describe("DiscoveryPage", () => {
             }),
         );
         expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+        const itemLink = screen.getByRole("link", { name: "Home Assistant" });
+        await waitFor(() => expect(itemLink).toHaveAttribute(
+            "href",
+            "/discovery/items/home-assistant?q=ollama&type=service&status=active&tag=ai&capability=llm-inference",
+        ));
+        await user.type(screen.getByLabelText("Keyword search"), " draft");
+        await waitFor(() => expect(itemLink).toHaveAttribute(
+            "href",
+            "/discovery/items/home-assistant?q=ollama&type=service&status=active&tag=ai&capability=llm-inference&draft_q=ollama+draft",
+        ));
     });
 
     it("pauses paging while draft filters differ from the displayed results", async () => {
