@@ -37,7 +37,7 @@ type MissionControlState = {
     telemetryHistoryUnavailable: boolean;
     isLoading: boolean;
     isRefreshing: boolean;
-    refresh: () => Promise<void>;
+    refresh: () => Promise<boolean>;
 };
 
 function sortProviders(providers: Provider[]): Provider[] {
@@ -85,15 +85,9 @@ export function useMissionControl(): MissionControlState {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const hasLoadedRef = useRef(false);
-    const requestInFlightRef = useRef(false);
+    const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 
-    const refresh = useCallback(async () => {
-        if (requestInFlightRef.current) {
-            return;
-        }
-
-        requestInFlightRef.current = true;
-
+    const performRefresh = useCallback(async () => {
         if (hasLoadedRef.current) {
             setIsRefreshing(true);
         } else {
@@ -195,6 +189,7 @@ export function useMissionControl(): MissionControlState {
                 : null);
             if (!requiredReadFailed) setLastUpdated(new Date());
             hasLoadedRef.current = true;
+            return failed.length === 0;
         } catch (requestError) {
             console.error(
                 "Unable to refresh Mission Control:",
@@ -204,12 +199,23 @@ export function useMissionControl(): MissionControlState {
             setError(
                 "Mission Control could not retrieve the latest state from Atlas Core.",
             );
+            return false;
         } finally {
-            requestInFlightRef.current = false;
             setIsLoading(false);
             setIsRefreshing(false);
         }
     }, []);
+
+    const refresh = useCallback((): Promise<boolean> => {
+        if (refreshPromiseRef.current) return refreshPromiseRef.current;
+
+        const request = performRefresh();
+        refreshPromiseRef.current = request;
+        void request.then(() => {
+            if (refreshPromiseRef.current === request) refreshPromiseRef.current = null;
+        });
+        return request;
+    }, [performRefresh]);
 
     useEffect(() => {
         const initialRefreshId = window.setTimeout(() => {

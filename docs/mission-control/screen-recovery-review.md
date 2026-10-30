@@ -3535,3 +3535,14 @@ loaded inventory visible with a warning that its state may have changed, so
 the card no longer suggests a continuously current reading. The focused
 ProviderResources suite passes (60 tests), as do Mission Control lint and
 production build. Provider access and monitoring behavior are unchanged.
+
+## Provider action refresh confirmation — 2026-10-30
+
+Mission Control's refresh now reports whether all reads succeeded and shares
+an in-flight read with concurrent callers. After a direct provider action,
+Mission Control keeps the action result visible and pauses further actions if
+any source could not be refreshed. A retry re-enables actions only after a
+complete refresh. The focused ProviderActions suite passes (13 tests), the
+useMissionControl suite passes (6 tests), and Mission Control lint and
+production build pass. Provider action and Core approval contracts are
+unchanged.

@@ -205,7 +205,10 @@ describe("useMissionControl", () => {
         expect(result.current.providerCatalogUnavailable).toBe(false);
         expect(result.current.summaryUnavailable).toBe(false);
         expect(result.current.telemetryHistoryUnavailable).toBe(false);
-        expect(get).toHaveBeenCalledTimes(7);
+        let refreshSucceeded = false;
+        await act(async () => { refreshSucceeded = await result.current.refresh(); });
+        expect(refreshSucceeded).toBe(true);
+        expect(get).toHaveBeenCalledTimes(14);
     });
 
     it("normalizes malformed health API data before publishing dashboard state", async () => {
@@ -290,10 +293,15 @@ describe("useMissionControl", () => {
         const firstUpdatedAt = result.current.lastUpdated;
 
         get.mockRejectedValue(new Error("Atlas unavailable"));
+        let refreshResults: boolean[] = [];
         await act(async () => {
-            await result.current.refresh();
+            refreshResults = await Promise.all([
+                result.current.refresh(),
+                result.current.refresh(),
+            ]);
         });
 
+        expect(refreshResults).toEqual([false, false]);
         expect(result.current.summary).toEqual(summary);
         expect(result.current.lastUpdated).toBe(firstUpdatedAt);
         expect(result.current.isRefreshing).toBe(false);
@@ -322,6 +330,10 @@ describe("useMissionControl", () => {
         const { result } = renderHook(() => useMissionControl());
         await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
+        let refreshConfirmed = true;
+        await act(async () => { refreshConfirmed = await result.current.refresh(); });
+
+        expect(refreshConfirmed).toBe(false);
         expect(result.current.summary).toBeNull();
         expect(result.current.providers.map(({ id }) => id)).toEqual(["docker"]);
         expect(result.current.error).toBe("Some provider information could not be refreshed. Existing information may be out of date.");

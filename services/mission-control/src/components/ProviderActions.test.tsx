@@ -181,7 +181,7 @@ describe("ProviderActions", () => {
 
         expect(await screen.findByText("Action completed")).toBeInTheDocument();
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Action completed, but Mission Control could not refresh provider information.");
+        expect(alert).toHaveTextContent("Action completed, but Atlas could not confirm the latest provider information.");
         expect(alert).toHaveTextContent("Refresh the provider information before running another action.");
         expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
         expect(mockedRunProviderAction).toHaveBeenCalledOnce();
@@ -194,6 +194,40 @@ describe("ProviderActions", () => {
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeEnabled();
         expect(refreshProvider).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+    });
+
+    it("keeps actions paused until a refresh confirms provider information", async () => {
+        const user = userEvent.setup();
+        const refreshProvider = vi.fn()
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(true);
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Diagnostics completed.",
+            data: {},
+            warnings: [],
+        });
+        renderActions(refreshProvider);
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+
+        expect(await screen.findByText("Action completed")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Action completed, but Atlas could not confirm the latest provider information.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh provider information" }));
+        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Atlas still could not confirm the latest provider information."));
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh provider information" }));
+        await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeEnabled();
+        expect(refreshProvider).toHaveBeenCalledTimes(3);
         expect(mockedRunProviderAction).toHaveBeenCalledOnce();
     });
 

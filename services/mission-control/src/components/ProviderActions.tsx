@@ -21,7 +21,7 @@ import { SectionHeader } from "./SectionHeader";
 
 type ProviderActionsProps = {
     provider: Pick<Provider, "id" | "name">;
-    onActionCompleted: () => Promise<void> | void;
+    onActionCompleted: () => Promise<boolean | void> | void;
     compact?: boolean;
 };
 
@@ -217,11 +217,14 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
 
             if (actionResult.success) {
                 try {
-                    await onActionCompleted();
+                    const refreshConfirmed = await onActionCompleted();
+                    if (refreshConfirmed === false) {
+                        setProviderRefreshError("Action completed, but Atlas could not confirm the latest provider information. The details shown here may be out of date.");
+                    }
                 } catch (refreshError) {
                     if (!active.current) return;
                     console.error(`Unable to refresh ${provider.id} after a provider action:`, refreshError);
-                    setProviderRefreshError("Action completed, but Mission Control could not refresh provider information. The details shown here may be out of date.");
+                    setProviderRefreshError("Action completed, but Atlas could not confirm the latest provider information. The details shown here may be out of date.");
                     setProviderRefreshErrorDetails(getAtlasErrorMessage(
                         refreshError,
                         "Provider information could not be refreshed.",
@@ -248,8 +251,13 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
     async function retryProviderRefresh(): Promise<void> {
         setIsRefreshingProvider(true);
         try {
-            await onActionCompleted();
+            const refreshConfirmed = await onActionCompleted();
             if (!active.current) return;
+            if (refreshConfirmed === false) {
+                setProviderRefreshError("Atlas still could not confirm the latest provider information. The details shown here may be out of date.");
+                setProviderRefreshErrorDetails(null);
+                return;
+            }
             setProviderRefreshError(null);
             setProviderRefreshErrorDetails(null);
         } catch (refreshError) {
