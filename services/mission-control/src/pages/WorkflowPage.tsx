@@ -74,15 +74,15 @@ type WorkflowReturnDestination = {
     label: string;
 };
 
-function workflowReturnDestination(workflow: WorkflowDetailResponse, state: unknown): WorkflowReturnDestination {
+function workflowReturnDestination(workflow: WorkflowDetailResponse | null, state: unknown): WorkflowReturnDestination {
     const returnTo = typeof state === "object" && state !== null && "returnTo" in state
         ? state.returnTo
         : undefined;
     if (returnTo === "/operations/history") return { to: returnTo, label: "← Maintenance history" };
     if (returnTo === "/workflows") return { to: returnTo, label: "← All workflows" };
     if (returnTo === "/execution-candidates") return { to: returnTo, label: "Back to execution candidates" };
-    if (workflow.effect_kind === "operational_action") return { to: "/operations/history", label: "← Maintenance history" };
-    if (workflow.workflow_source === "candidate") return { to: "/execution-candidates", label: "Back to execution candidates" };
+    if (workflow?.effect_kind === "operational_action") return { to: "/operations/history", label: "← Maintenance history" };
+    if (workflow?.workflow_source === "candidate") return { to: "/execution-candidates", label: "Back to execution candidates" };
     return { to: "/workflows", label: "← All workflows" };
 }
 
@@ -104,6 +104,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [commitApprovalResult, setCommitApprovalResult] = useState<WorkflowCommitApprovalResponse | null>(null);
     const [isResuming, setIsResuming] = useState(false);
     const [resumeError, setResumeError] = useState<WorkflowActionFailure | null>(null);
+    const returnDestination = workflowReturnDestination(workflow, location.state);
     const [operationalLifecycle, setOperationalLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
     const [recoveryDiagnostic, setRecoveryDiagnostic] = useState<WorkflowRecoveryDiagnostic | null>(null);
     const [lifecycleError, setLifecycleError] = useState<string | null>(null);
@@ -317,7 +318,15 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     )}
                     <button type="button" onClick={() => void loadWorkflow()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </section>
-                <Link to="/workflows" className="text-sm text-blue-300">← All workflows</Link>
+                <Link
+                    to={{
+                        pathname: returnDestination.to,
+                        search: returnDestination.to === "/operations/history" ? location.search : "",
+                    }}
+                    className="text-sm text-blue-300"
+                >
+                    {returnDestination.label}
+                </Link>
             </main>
         );
     }
@@ -329,14 +338,21 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
                     <p className="mt-2 text-sm text-slate-300">Atlas Agent did not find workflow {workflowId}.</p>
                 </section>
-                <Link to="/workflows" className="text-sm text-blue-300">← All workflows</Link>
+                <Link
+                    to={{
+                        pathname: returnDestination.to,
+                        search: returnDestination.to === "/operations/history" ? location.search : "",
+                    }}
+                    className="text-sm text-blue-300"
+                >
+                    {returnDestination.label}
+                </Link>
             </main>
         );
     }
 
     const isOperational = workflow.effect_kind === "operational_action";
     const isRepository = !isOperational;
-    const returnDestination = workflowReturnDestination(workflow, location.state);
     const actionRequest = isOperational ? operationalRequest(workflow.operational_action_request) : null;
     const operationalApprovalReady = !isOperational || (actionRequest !== null
         && Array.isArray(workflow.approval_presentations) && workflow.approval_presentations.some((approval) =>

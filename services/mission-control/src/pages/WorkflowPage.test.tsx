@@ -791,6 +791,26 @@ describe("WorkflowPage", () => {
         );
     });
 
+    it("keeps the maintenance return context when workflow details are unavailable", async () => {
+        mockedGetWorkflowDetail.mockRejectedValue(new Error("Workflow read failed."));
+        const search = "?status=unavailable&completion=terminal&offset=10";
+        render(
+            <MemoryRouter initialEntries={[{
+                pathname: "/workflows/workflow-123",
+                search,
+                state: { returnTo: "/operations/history" },
+            }]}>
+                <Routes><Route path="/workflows/:workflowId" element={<WorkflowPage />} /></Routes>
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Workflow unavailable");
+        expect(screen.getByRole("link", { name: "← Maintenance history" })).toHaveAttribute(
+            "href",
+            `/operations/history${search}`,
+        );
+    });
+
     it("returns a maintenance request to the list it was opened from", async () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow({ effect_kind: "operational_action" }));
         renderPage("/workflows/workflow-123", { returnTo: "/workflows" });
