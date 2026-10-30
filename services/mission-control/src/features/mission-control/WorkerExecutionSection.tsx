@@ -54,7 +54,7 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
                 <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Review workflows →</Link>
             </div>
             <p className="mt-2 text-sm text-mc-text-muted">
-                Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.
+                Shows workflow progress and results. It doesn't show whether a worker is free to take more work.
             </p>
             {loading && items && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Checking for a newer workflow report. The statuses shown may have changed.</p>}
             {!loading && evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Atlas couldn't load the latest workflow report. The statuses shown may have changed.</p>}

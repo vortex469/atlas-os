@@ -3934,3 +3934,10 @@ HTTP response. The drawer does not run the command automatically. The focused
 service health suite passes all 7 tests, including the copied-command
 redaction check. The full Mission Control unit suite passes all 3,044 tests;
 lint and the production build also pass.
+
+## Work activity availability wording — 2026-10-30
+
+The Overview card now says plainly that it shows workflow progress and results,
+but does not show whether a worker is free to take more work. The card's status
+counts and workflow actions are unchanged. The focused Overview and Work
+activity suites pass all 109 tests; lint and the production build pass.

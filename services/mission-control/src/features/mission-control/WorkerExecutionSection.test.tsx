@@ -43,7 +43,7 @@ describe("Work activity summary", () => {
         expect(within(section).queryByText("Running workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).queryByText("Blocked workflows", { exact: true })).not.toBeInTheDocument();
         expect(within(section).getByText("No workflows are running or blocked.")).toBeInTheDocument();
-        expect(within(section).getByText("Shows workflow progress and results. Atlas doesn't report whether a worker is ready for more work.")).toBeInTheDocument();
+        expect(within(section).getByText("Shows workflow progress and results. It doesn't show whether a worker is free to take more work.")).toBeInTheDocument();
         expect(within(section).queryByText("Worker availability is unknown.")).not.toBeInTheDocument();
         expect(within(section).queryByText("Queue size")).not.toBeInTheDocument();
         fireEvent.click(within(section).getByText("More workflow details"));
