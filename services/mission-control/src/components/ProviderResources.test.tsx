@@ -670,6 +670,8 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(screen.getByRole("button", { name: "Refresh resources" }));
 
         expect(await screen.findByText("Atlas couldn’t refresh observed resources. Showing the last loaded inventory; its status may have changed.")).toBeVisible();
+        expect(screen.getByText("Provider-reported state; separate from monitoring policy.")).toBeVisible();
+        expect(screen.queryByText("Live provider inventory; not monitoring policy.")).not.toBeInTheDocument();
         expect(screen.getByText("Frigate")).toBeVisible();
     });
 

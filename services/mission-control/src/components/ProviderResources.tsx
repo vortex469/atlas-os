@@ -284,7 +284,7 @@ function ResourceCard({ resource, suggestion, reviewedSuggestion, reviewInvalida
         <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-5" data-testid={`resource-row-${resourceType}-${resourceId}`}>
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
                 <section aria-label={`Resource ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resource</p><h3 className="mt-2 font-semibold text-slate-100">{displayName}</h3><p className="mt-1 text-sm text-slate-400">{resourceTypeLabel} {resourceId}</p>{observed && metadataColumns.length > 0 && <dl className="mt-3 space-y-1 text-xs text-slate-400">{metadataColumns.map((column) => <div key={column.key} className="flex gap-2"><dt>{column.label}:</dt><dd>{column.render(observed)}</dd></div>)}</dl>}</section>
-                <FactSection title="Observed state" value={observedState} detail="Live provider inventory; not monitoring policy." />
+                <FactSection title="Observed state" value={observedState} detail="Provider-reported state; separate from monitoring policy." />
                 <FactSection title="Identity check" value={presentation.identity} detail={identityDetail} />
                 <section aria-label={`Monitoring for ${displayName}`}><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Monitoring expectation</p><p className="mt-2 font-semibold text-slate-100">{presentation.expectation}</p><p className="mt-2 text-sm text-slate-300">{presentation.status}</p></section>
             </div>

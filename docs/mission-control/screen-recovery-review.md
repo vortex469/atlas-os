@@ -3526,3 +3526,12 @@ catalog results.
 The workflow-list error now names Atlas and tells the operator that retry
 fetches the latest list. The existing retry remains a read of the workflow
 list; workflow actions and approvals are unchanged.
+
+## Observed provider state wording — 2026-10-30
+
+Provider resource cards now describe the observed state as provider-reported
+instead of calling it live inventory. A failed refresh can leave the last
+loaded inventory visible with a warning that its state may have changed, so
+the card no longer suggests a continuously current reading. The focused
+ProviderResources suite passes (60 tests), as do Mission Control lint and
+production build. Provider access and monitoring behavior are unchanged.
