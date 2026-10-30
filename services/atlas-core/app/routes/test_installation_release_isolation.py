@@ -739,11 +739,16 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
             "${encodeURIComponent(record.candidate_record_id)}/readiness-review"
         )
     ]
+    # Keep the narrow saved-record workflow intact while allowing its
+    # read-recovery controls and the exact-request retry label.
     button_labels = set(re.findall(r">([^<>]+)</button>", component_source))
     assert button_labels == {
-        "Delete saved record",
-        "Preserve candidate record",
-        "Review saved record",
+        "Delete review record",
+        "Refresh list",
+        "Retry list",
+        "Retry opening record",
+        "View saved record",
+        '{canRetryPreservation ? "Retry save" : "Save review record"}',
     }
 
 
