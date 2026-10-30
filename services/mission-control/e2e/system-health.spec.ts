@@ -35,7 +35,7 @@ for (const width of [390, 1440]) {
         const down = checks.getByRole("list", { name: "Configured service checks" })
             .getByRole("listitem")
             .nth(1);
-        await down.locator("summary", { hasText: "More connection checks" }).click();
+        await down.locator("summary", { hasText: "Docker and network checks" }).click();
         await expect(down.getByRole("list", { name: "Docker and Compose checks" })).toContainText(
             "A mapping starting with 127.0.0.1: is reachable only from that computer",
         );

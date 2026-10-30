@@ -3620,3 +3620,11 @@ passes (34 tests), and lint and production build pass. The shell browser
 regression asserts the unavailable label; a responsive overview browser check
 shows the desktop API label alongside degraded Core health. No health or API
 behavior changes.
+
+## Service troubleshooting disclosures — 2026-10-30
+
+The dashboard keeps the Core-side connection test separate from the Docker
+and network diagnosis. The explanation about blank Docker ports now appears
+only in the Docker and network disclosure, which has a clearer label. The
+existing read-only check commands and guidance remain available. No health
+check or service configuration behavior changes.

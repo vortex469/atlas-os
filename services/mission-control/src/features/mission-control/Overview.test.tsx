@@ -218,7 +218,7 @@ describe("MC overview evidence", () => {
         expect(checks.getByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).toBeVisible();
         fireEvent.click(howToCheck);
         const nextStep = checks.getByRole("group", { name: "Next connection check" });
-        const summary = checks.getByText("More connection checks");
+        const summary = checks.getByText("Docker and network checks");
         const disclosure = summary.closest("details");
 
         expect(nextStep).toHaveTextContent("From the computer running Atlas Core, open a terminal in the folder containing compose.production.yaml and run this command.");
@@ -229,7 +229,7 @@ describe("MC overview evidence", () => {
         expect(command).not.toHaveTextContent(/password|private|token=/);
         expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
         expect(nextStep).toHaveTextContent("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
-        expect(nextStep).toHaveTextContent("Docker: if this container runs the app, a blank PORTS field means no host port is published unless its network is host. That can explain the refusal. The published host port must match Atlas's configured address.");
+        expect(nextStep).not.toHaveTextContent("blank PORTS field");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);
         expect(disclosure).not.toHaveAttribute("open");
@@ -283,7 +283,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const summary = checks.getByText("More connection checks");
+        const summary = checks.getByText("Docker and network checks");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 
@@ -299,7 +299,7 @@ describe("MC overview evidence", () => {
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
         expect(checks.queryByRole("group", { name: "Next connection check" })).not.toBeInTheDocument();
-        const summary = checks.getByText("More connection checks");
+        const summary = checks.getByText("Docker and network checks");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 
