@@ -36,6 +36,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     );
     const [error, setError] = useState<string | null>(null);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [settingsReadFailed, setSettingsReadFailed] = useState(false);
     const [testResult, setTestResult] =
         useState<TestProviderConnectionResult | null>(null);
 
@@ -54,19 +55,23 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
             setSchema(nextSchema);
             setFormValues(initialFormValues(nextSchema));
             setSecretValues({});
+            setSettingsReadFailed(false);
         } catch (requestError) {
+            setSettingsReadFailed(true);
             console.error(
                 `Unable to load connection for ${provider.id}:`,
                 requestError,
             );
             const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
             const details = getAtlasErrorMessage(requestError, fallback);
-            setError("Atlas couldn’t load these connection settings. Refresh to try again. Your saved settings were not changed.");
+            setError(schema
+                ? "Atlas couldn’t refresh these connection settings. Refresh to try again."
+                : "Atlas couldn’t load these connection settings. Refresh to try again.");
             setErrorDetails(details === fallback ? null : details);
         } finally {
             setBusyMode(null);
         }
-    }, [hasConnectionCapability, provider.id, provider.name]);
+    }, [hasConnectionCapability, provider.id, provider.name, schema]);
 
     useEffect(() => {
         if (!hasConnectionCapability) {
@@ -87,18 +92,20 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     setSecretValues({});
                     setError(null);
                     setErrorDetails(null);
+                    setSettingsReadFailed(false);
                 })
                 .catch((requestError: unknown) => {
                     if (cancelled) {
                         return;
                     }
+                    setSettingsReadFailed(true);
                     console.error(
                         `Unable to load connection for ${provider.id}:`,
                         requestError,
                     );
                     const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
                     const details = getAtlasErrorMessage(requestError, fallback);
-                    setError("Atlas couldn’t load these connection settings. Refresh to try again. Your saved settings were not changed.");
+                    setError("Atlas couldn’t load these connection settings. Refresh to try again.");
                     setErrorDetails(details === fallback ? null : details);
                 })
                 .finally(() => {
@@ -242,7 +249,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                     <div>
                         {schema && (
                             <span className={statusClass(statusLabel)}>
-                                Saved settings: {statusLabel}
+                                {settingsReadFailed ? "Last loaded settings" : "Saved settings"}: {statusLabel}
                             </span>
                         )}
                         {schema?.updated_at && (
@@ -288,6 +295,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                             <summary className="cursor-pointer font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
                             <p className="mt-2 break-words text-slate-400">{errorDetails}</p>
                         </details>}
+                        {settingsReadFailed && schema && <p className="mt-2">These values are from the last successful read and may be out of date. Testing and saving are disabled until a refresh succeeds.</p>}
                     </div>
                 )}
 
@@ -300,7 +308,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                                     field={field}
                                     value={formValues[field.key]}
                                     secretValue={secretValues[field.key] ?? ""}
-                                    disabled={isBusy || !field.editable}
+                                    disabled={isBusy || settingsReadFailed || !field.editable}
                                     onChange={(value) => updateFormField(field, value)}
                                 />
                             ))}
@@ -318,7 +326,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => void runTest()}
-                                    disabled={isBusy}
+                                    disabled={isBusy || settingsReadFailed}
                                     className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:border-blue-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busyMode === "testing" ? "Testing..." : "Test Connection"}
@@ -329,7 +337,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => void saveConnection()}
-                                    disabled={isBusy}
+                                    disabled={isBusy || settingsReadFailed}
                                     className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busyMode === "saving" ? "Saving..." : "Save Connection"}

@@ -183,7 +183,7 @@ describe("ProviderConnection", () => {
         render(<ProviderConnection provider={provider} />);
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Atlas couldn’t load these connection settings. Refresh to try again. Your saved settings were not changed.");
+        expect(alert).toHaveTextContent("Atlas couldn’t load these connection settings. Refresh to try again.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable")).not.toBeVisible();
@@ -198,6 +198,31 @@ describe("ProviderConnection", () => {
         expect(screen.getByText("Saved settings: incomplete")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
         expect(mockedGetProviderConnection).toHaveBeenCalledTimes(2);
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("marks last loaded settings as possibly outdated and disables actions after refresh fails", async () => {
+        const user = userEvent.setup();
+        await renderConnection();
+        mockedGetProviderConnection.mockRejectedValueOnce(new Error("Core unavailable"));
+
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas couldn’t refresh these connection settings. Refresh to try again.");
+        expect(alert).toHaveTextContent("These values are from the last successful read and may be out of date.");
+        expect(screen.getByText("Last loaded settings: incomplete")).toBeInTheDocument();
+        expect(screen.getByLabelText("Host")).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+
+        expect(await screen.findByText("Saved settings: incomplete")).toBeInTheDocument();
+        expect(screen.getByLabelText("Host")).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeEnabled();
         expect(mockedTestProviderConnection).not.toHaveBeenCalled();
         expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
     });

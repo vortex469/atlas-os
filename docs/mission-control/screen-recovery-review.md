@@ -3943,3 +3943,12 @@ counts and workflow actions are unchanged. The focused Overview and Work
 activity suites pass all 109 tests; lint and the production build pass. The
 Overview browser suite also checks this wording across responsive journeys; all
 29 cases in `e2e/overview.spec.ts` pass locally.
+
+## Connection settings refresh recovery — 2026-10-30
+
+If a settings refresh fails after a successful read, the screen identifies the
+values as the last loaded report, warns that they may be out of date, and
+disables editing, testing, and saving until a refresh succeeds. Initial read
+failures still offer a refresh. The focused Provider Connection suite passes
+all 18 tests, and Mission Control lint passes. The connection API and explicit
+test/save confirmation boundaries are unchanged.
