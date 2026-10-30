@@ -70,7 +70,7 @@ for (const width of [320, 1280]) {
 
         try {
             await page.goto("/operations/history");
-            const loadingMessage = page.getByRole("status").filter({ hasText: "Loading operational history..." });
+            const loadingMessage = page.getByRole("status").filter({ hasText: "Loading maintenance history…" });
             await expect(loadingMessage).toBeVisible();
             await expectResponsiveMainPadding(loadingMessage, width);
             releaseHistoryRead();

@@ -3740,3 +3740,10 @@ the read-only request runs inside Atlas Core and follows the same network path
 as the health report. This makes the command's required location clear when
 the operator is checking a separate service computer. No health or provider
 behavior changes.
+
+## Maintenance history loading labels — 2026-10-30
+
+The first-load message and screen-reader names for the filters and pagination
+now use “Maintenance history,” matching the visible page title. The existing
+loading recovery browser case checks the updated message. History queries and
+pagination behavior are unchanged.

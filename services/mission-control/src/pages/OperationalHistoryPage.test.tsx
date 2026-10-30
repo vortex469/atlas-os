@@ -68,6 +68,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        expect(screen.getByRole("region", { name: "Maintenance history filters" })).toBeVisible();
         expect(screen.getByText("Past requests and each request's latest maintenance status. This is not a live service check.")).toBeVisible();
         const requested = screen.getByText(/^Requested \(local time\):/);
         expect(requested).toBeVisible();
@@ -122,6 +123,8 @@ describe("OperationalHistoryPage", () => {
         );
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
+        expect(screen.getByRole("region", { name: "Maintenance history filters" })).toBeVisible();
+        expect(screen.getByRole("navigation", { name: "Maintenance history pagination" })).toBeVisible();
         expect(mockedList).toHaveBeenCalledWith({ effect_kind: "operational_action", limit: 10, offset: 10 });
         expect(screen.getByRole("combobox", { name: "Latest maintenance status" })).toHaveValue("healthy");
         fireEvent.click(screen.getByText("More filters", { exact: true }));
