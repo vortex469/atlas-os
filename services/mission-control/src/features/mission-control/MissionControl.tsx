@@ -213,7 +213,7 @@ function findingAttentionPath(
 
     const matchingService = services.some(([, raw]) =>
         record(raw).provider_id === source && record(raw).message === message);
-    if (matchingService) return providerDetailPath(source) ?? "#service-checks";
+    if (matchingService) return "#service-checks";
 
     const matchingProvider = providers.some(p =>
         p.id === source && record(p.health).message === message);
@@ -285,7 +285,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention: AttentionItem[] = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
-            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: providerDetailPath(record(raw).provider_id) ?? "#service-checks", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
+            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: "#service-checks", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
         })),
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
             key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "#providers", stale: evidence.providers?.stale,

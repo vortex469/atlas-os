@@ -118,7 +118,7 @@ describe("MC overview evidence", () => {
         expect(expand).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(expand);
         expect(within(attentionList).getAllByRole('listitem')).toHaveLength(9);
-        expect(attention.getByRole('link', { name: 'service-5' })).toHaveAttribute('href', '/providers/provider-5');
+        expect(attention.getByRole('link', { name: 'service-5' })).toHaveAttribute('href', '#service-checks');
         const collapse = attention.getByRole('button', { name: 'Show fewer items' });
         expect(collapse).toHaveAttribute('aria-expanded', 'true');
         fireEvent.click(collapse);
@@ -169,6 +169,7 @@ describe("MC overview evidence", () => {
 
     it("describes unavailable service attention as a failed connection from Atlas Core", () => {
         show({ health: { data: { services: { iFileshare: {
+            provider_id: "ifileshare",
             status: "offline",
             message: "Connection refused",
         } } } } });
@@ -182,6 +183,26 @@ describe("MC overview evidence", () => {
         expect(condition.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
         expect(condition.getByRole("link", { name: "iFileshare" })).toHaveAttribute("href", "#service-checks");
         expect(screen.getByRole("region", { name: "Service checks" })).toHaveAttribute("id", "service-checks");
+    });
+
+    it("routes service-sourced findings to service checks instead of provider details", () => {
+        show({
+            health: { data: { services: { iFileshare: {
+                provider_id: "ifileshare",
+                status: "healthy",
+                message: "The previous check timed out.",
+            } } } },
+            summary: { data: { findings: [{
+                id: "ifileshare-recovery-review",
+                source: "ifileshare",
+                title: "iFileshare needs review",
+                message: "The previous check timed out.",
+                severity: "warning",
+            }] } },
+        });
+
+        const attention = within(screen.getByRole("region", { name: "Needs attention" }));
+        expect(attention.getByRole("link", { name: "iFileshare needs review" })).toHaveAttribute("href", "#service-checks");
     });
 
     it("shows a short next step and keeps extra connection checks collapsed", () => {

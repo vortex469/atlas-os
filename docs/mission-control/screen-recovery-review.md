@@ -3600,3 +3600,13 @@ default dashboard detail without implying that an unreachable service is
 stopped. The focused overview suite passes (75 tests), four responsive browser
 cases pass at 320px and 1280px, and Mission Control lint and production build
 pass. Health checks and service configuration are unchanged.
+
+## Service-health attention links — 2026-10-30
+
+Service-health alerts now link to the dashboard's Service checks section. The
+service inventory ID (for example, `ifileshare`) is not guaranteed to be a
+registered provider ID, so sending the operator to a provider detail route
+could open a missing page. Provider alerts continue to link to their provider
+details. The focused overview suite passes (76 tests), two responsive
+iFileshare browser cases pass at 320px and 1280px, and lint and production
+build pass.

@@ -330,6 +330,7 @@ for (const width of [320, 1280]) {
         await page.route('**/api/v1/health', route => route.fulfill({ json: {
             atlas: 'degraded',
             services: { iFileshare: {
+                provider_id: 'ifileshare',
                 status: 'offline',
                 message: '[Errno 111] Connection refused',
                 details: { url: 'http://10.10.60.30:8080/', critical: false },
