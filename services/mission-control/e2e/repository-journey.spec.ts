@@ -48,7 +48,8 @@ for (const width of [320, 390, 1280]) {
     test(`repository journey keeps every approval and resume separate at ${width}px`, async ({ page, baseURL }) => {
         const fixture = await installRepositoryJourney(page, false, { baseURL });
         await page.setViewportSize({ width, height: 844 });
-        await page.goto(`/execution-candidates/${journey.candidate}`);
+        const proposalSearch = "?eligibility=eligible&change=update-compose-stack&offset=25";
+        await page.goto(`/execution-candidates/${journey.candidate}${proposalSearch}`);
         await page.getByRole("button", { name: "Start planning", exact: true }).click();
         await page.getByRole("link", { name: "Continue planning", exact: true }).click();
         await expect(page.getByRole("button", { name: "Generate Plan", exact: true })).toBeVisible();
@@ -90,6 +91,10 @@ for (const width of [320, 390, 1280]) {
         await expectResponsiveMainPadding(page, "Review workflow", width);
 
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Back to execution candidates" })).toHaveAttribute(
+            "href",
+            `/execution-candidates${proposalSearch}`,
+        );
         const workflowSummary = page.getByRole("region", { name: "Workflow summary" });
         await expect(workflowSummary.getByText("Implementation needs approval.", { exact: true })).toBeVisible();
         await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeHidden();
@@ -185,7 +190,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
         await fitsViewport(page);
         await page.getByRole("link", { name: "Open Audit", exact: true }).click();
-        await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit$`));
+        await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
         await expectResponsiveMainPadding(page, "Workflow audit", width);
         await expect(page.getByText("Workflow status", { exact: true })).toBeVisible();
         await expect(page.getByText("Audit validation", { exact: true })).toBeVisible();
@@ -200,6 +205,12 @@ for (const width of [320, 390, 1280]) {
         await commitResult.getByText("Commit result", { exact: true }).click();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await fitsViewport(page);
+        await page.getByRole("link", { name: "← Back to Workflow", exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
+        await expect(page.getByRole("link", { name: "Back to execution candidates", exact: true })).toHaveAttribute(
+            "href",
+            `/execution-candidates${proposalSearch}`,
+        );
         expect(fixture.writes).toEqual(fixture.expectedWrites);
         expect(fixture.unexpected).toEqual([]);
     });
