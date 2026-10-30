@@ -17,6 +17,7 @@ import type {
     ProviderActionParameters,
     ProviderActionResult,
 } from "../types/providerAction";
+import { safeText } from "../utils/safeText";
 import { SectionHeader } from "./SectionHeader";
 
 type ProviderActionsProps = {
@@ -312,7 +313,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     </p>
                     {catalogErrorDetails && <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{catalogErrorDetails}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(catalogErrorDetails) || "No additional details were returned."}</p>
                     </details>}
                     <button
                         type="button"
@@ -547,7 +548,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     <Link to="/operations" className="mt-3 inline-flex text-sm font-semibold text-blue-300 underline underline-offset-4">Open Action history →</Link>
                     <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{executionError}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(executionError) || "No additional details were returned."}</p>
                     </details>
                 </div>
             )}
@@ -566,7 +567,7 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                     </button>
                     {providerRefreshErrorDetails && <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
-                        <p className="mt-2 break-words text-sm text-slate-400">{providerRefreshErrorDetails}</p>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(providerRefreshErrorDetails) || "No additional details were returned."}</p>
                     </details>}
                 </div>
             )}

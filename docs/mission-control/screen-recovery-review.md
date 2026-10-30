@@ -4022,3 +4022,11 @@ plain-language recovery messages, while collapsed technical details use the
 shared bounded text filter. Results and status can still be retried
 independently. The focused Discovery page suite passes all 17 tests; Mission
 Control lint and production build pass.
+
+## Provider action error details — 2026-10-30
+
+Action-list, action-result, and provider-refresh failures keep their distinct
+plain-language outcomes while optional technical details use the shared
+bounded text filter. Duplicate-action prevention and refresh requirements are
+unchanged. The focused Provider Actions suite passes all 14 tests; Mission
+Control lint and production build pass.

@@ -164,7 +164,7 @@ describe("ProviderActions", () => {
     it("keeps a confirmed action result separate from a failed provider refresh", async () => {
         const user = userEvent.setup();
         const refreshProvider = vi.fn()
-            .mockRejectedValueOnce(new Error("Provider refresh unavailable."))
+            .mockRejectedValueOnce(new Error("Bearer refresh-canary-secret"))
             .mockResolvedValueOnce(undefined);
         mockedRunProviderAction.mockResolvedValue({
             provider_id: "ollama",
@@ -187,7 +187,8 @@ describe("ProviderActions", () => {
         expect(mockedRunProviderAction).toHaveBeenCalledOnce();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider refresh unavailable.")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/refresh-canary-secret/)).not.toBeInTheDocument();
 
         await user.click(within(alert).getByRole("button", { name: "Refresh provider information" }));
 
@@ -277,7 +278,7 @@ describe("ProviderActions", () => {
 
     it("retries a failed action-list read without running an action", async () => {
         const user = userEvent.setup();
-        mockedGetProviderActions.mockRejectedValueOnce(new Error("Action list unavailable."));
+        mockedGetProviderActions.mockRejectedValueOnce(new Error("Bearer action-list-canary-secret"));
         renderActions();
 
         expect(await screen.findByRole("heading", { name: "Direct provider actions are unavailable" })).toBeInTheDocument();
@@ -285,10 +286,11 @@ describe("ProviderActions", () => {
         expect(alert).toHaveTextContent("Mission Control could not load the available actions. No action was run.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Action list unavailable.")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/action-list-canary-secret/)).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Run Diagnostics" })).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Action list unavailable.")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Try again" }));
         expect(await screen.findByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(2);
@@ -389,7 +391,7 @@ describe("ProviderActions", () => {
         ]);
         const onActionCompleted = renderActions();
         mockedRunProviderAction.mockRejectedValue(
-            new Error("Provider unavailable."),
+            new Error("Bearer action-result-canary-secret"),
         );
 
         await user.click(
@@ -413,8 +415,9 @@ describe("ProviderActions", () => {
         expect(mockedRunProviderAction).toHaveBeenCalledOnce();
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider unavailable.")).not.toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/action-result-canary-secret/)).not.toBeInTheDocument();
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
-        expect(within(technicalDetails as HTMLDetailsElement).getByText("Provider unavailable.")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
 });
