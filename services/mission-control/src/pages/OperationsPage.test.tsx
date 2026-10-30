@@ -111,11 +111,11 @@ describe("OperationsPage", () => {
 
         expect(screen.getByRole("heading", { name: "Action history" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Loading history…" })).toBeDisabled();
-        expect(screen.getByText("Loading action history...")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading action history…");
         expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
         await screen.findByText("Unload Model");
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeEnabled();
-        expect(screen.queryByText("Loading action history...")).not.toBeInTheDocument();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
         expect(screen.queryByText("Loading retention details…")).not.toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Atlas Doctor" })).not.toBeInTheDocument();
     });
@@ -129,6 +129,7 @@ describe("OperationsPage", () => {
         fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
 
         expect(screen.getByRole("button", { name: "Refreshing history…" })).toBeDisabled();
+        expect(screen.getByRole("status")).toHaveTextContent("Refreshing action history…");
         await act(async () => resolveRefresh({
             items: [],
             total: 0,

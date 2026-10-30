@@ -3755,3 +3755,10 @@ opened panel goes straight to what the checks cover and the button that runs
 them, without repeating an internal feature name. The check still runs only
 after an operator opens the disclosure and selects Run health checks; it
 remains a read-only report request.
+
+## Action history loading status — 2026-10-30
+
+Action history now announces its initial load and refresh as status updates in
+the results area, using the page's full name. This helps assistive technology
+users distinguish the list read from the separate retention-details read.
+History requests and results are unchanged.

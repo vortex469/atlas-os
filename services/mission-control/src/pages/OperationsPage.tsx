@@ -652,8 +652,8 @@ export function OperationsPage() {
             )}
 
             {!historyError && isLoading && entries.length === 0 && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
-                    Loading action history...
+                <div role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
+                    {hasLoaded ? "Refreshing action history…" : "Loading action history…"}
                 </div>
             )}
 
