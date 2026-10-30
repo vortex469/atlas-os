@@ -368,8 +368,12 @@ for (const width of [320, 1280]) {
         await expect(nextStep).toContainText("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');
         await expect(nextStep).not.toContainText('With port mappings');
-        const moreChecks = checks.locator('summary', { hasText: 'Check Docker on the service computer' });
+        const moreChecks = checks.locator('summary', { hasText: 'Check the service computer' });
         await moreChecks.click();
+        await expect(checks.getByText('Confirm the app is running and listening at the configured address. If it runs directly on this computer, check the app\'s own status and listening port.', { exact: true })).toBeVisible();
+        const dockerHelp = checks.locator('summary', { hasText: 'If the app runs in Docker' }).locator('xpath=ancestor::details[1]');
+        await expect(dockerHelp).not.toHaveAttribute('open', '');
+        await dockerHelp.locator('summary').click();
         const steps = checks.getByRole('list', { name: 'Docker and Compose checks' });
         await expect(steps.getByRole('listitem')).toHaveCount(4);
         await expect(steps).toHaveCSS('font-size', '14px');

@@ -218,7 +218,7 @@ describe("MC overview evidence", () => {
         expect(checks.getByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).toBeVisible();
         fireEvent.click(howToCheck);
         const nextStep = checks.getByRole("group", { name: "Next connection check" });
-        const summary = checks.getByText("Check Docker on the service computer");
+        const summary = checks.getByText("Check the service computer");
         const disclosure = summary.closest("details");
 
         expect(nextStep).toHaveTextContent("Run this command from the folder containing Atlas's compose.production.yaml, on the computer where Atlas is installed.");
@@ -237,6 +237,12 @@ describe("MC overview evidence", () => {
         fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
+        expect(disclosure).toHaveTextContent("Confirm the app is running and listening at the configured address.");
+        const dockerSummary = within(disclosure as HTMLDetailsElement).getByText("If the app runs in Docker");
+        expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
+        const dockerSteps = within(disclosure as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
+        expect(dockerSteps).not.toBeVisible();
+        fireEvent.click(dockerSummary);
         const steps = within(disclosure as HTMLDetailsElement).getByRole("list", {
             name: "Docker and Compose checks",
         });
@@ -284,7 +290,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const summary = checks.getByText("Check Docker on the service computer");
+        const summary = checks.getByText("Check the service computer");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 
@@ -300,7 +306,7 @@ describe("MC overview evidence", () => {
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
         expect(checks.queryByRole("group", { name: "Next connection check" })).not.toBeInTheDocument();
-        const summary = checks.getByText("Check Docker on the service computer");
+        const summary = checks.getByText("Check the service computer");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 

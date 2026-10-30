@@ -98,22 +98,26 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             </details>
         </>}
         <details className="mt-2 text-xs text-mc-text-muted">
-            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check Docker on the service computer</summary>
+            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check the service computer</summary>
             <div className="mt-2 space-y-1">
-                <ol aria-label="Docker and Compose checks" className="list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
-                    <li>
-                        On the service computer, run <code>{serviceContainerCheckCommand}</code> to show container names, running status, network, and published ports.
-                    </li>
-                    <li>
-                        Find the service container. <code>Up</code> means the container is running, not that its web app is responding. If <code>Networks</code> says <code>host</code>, a blank <code>PORTS</code> field is expected. Otherwise, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
-                    </li>
-                    <li>
-                        To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. In <code>HOST_PORT:CONTAINER_PORT</code>, the number before the colon must match the port in Atlas&apos;s configured address. The number after it must match the app&apos;s listening port. Recreate the container after changing its ports.
-                    </li>
-                    <li>
-                        With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer&apos;s port.
-                    </li>
-                </ol>
+                <p className="text-sm leading-6 text-mc-text-secondary">Confirm the app is running and listening at the configured address. If it runs directly on this computer, check the app&apos;s own status and listening port.</p>
+                <details className="pt-1">
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">If the app runs in Docker</summary>
+                    <ol aria-label="Docker and Compose checks" className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
+                        <li>
+                            On the service computer, run <code>{serviceContainerCheckCommand}</code> to show container names, running status, network, and published ports.
+                        </li>
+                        <li>
+                            Find the service container. <code>Up</code> means the container is running, not that its web app is responding. If <code>Networks</code> says <code>host</code>, a blank <code>PORTS</code> field is expected. Otherwise, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
+                        </li>
+                        <li>
+                            To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. In <code>HOST_PORT:CONTAINER_PORT</code>, the number before the colon must match the port in Atlas&apos;s configured address. The number after it must match the app&apos;s listening port. Recreate the container after changing its ports.
+                        </li>
+                        <li>
+                            With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer&apos;s port.
+                        </li>
+                    </ol>
+                </details>
                 <p>Address Atlas checked: <span className={address ? "break-all font-mono" : ""}>{address ?? "Not reported"}</span></p>
                 <p>HTTP response: {response}</p>
                 {responseTime !== null && <p>Response time: {responseTime}</p>}

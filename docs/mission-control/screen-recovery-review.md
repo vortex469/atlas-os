@@ -3855,3 +3855,14 @@ The three focused component suites pass 13 tests together. The full Mission
 Control suite passes 3,039 tests across 188 files. Mission Control lint and
 production build pass. Local browser verification passes 91 screen-recovery and
 readiness cases, plus 2 built-readiness cases.
+
+## Service computer troubleshooting — 2026-10-30
+
+The Overview service-check help now starts with guidance that applies whether
+an app runs directly on its computer or in Docker. Docker container, network,
+and published-port checks are grouped under an explicit “If the app runs in
+Docker” disclosure. This keeps the container-specific steps available for
+iFileshare while avoiding the implication that every configured service uses
+Docker. The focused Overview suite passes 76 tests; the iFileshare troubleshooting
+browser check passes at 320px and 1280px; Mission Control lint and production
+build pass. Health requests and provider behavior are unchanged.
