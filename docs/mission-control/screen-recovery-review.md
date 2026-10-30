@@ -3887,3 +3887,10 @@ success or gives a manual-copy fallback. Clipboard and browser tests confirm
 the connection check omits URL credentials and query values. The focused
 Overview suite passes (79 tests), responsive browser checks pass at 320px and
 1280px, and Mission Control lint and production build pass.
+
+## Missing-page recovery copy — 2026-10-30
+
+The missing-page screen no longer shows the technical “404” label. It now
+explains that the address does not match a Mission Control screen and retains
+navigation and the return link. Responsive recovery checks pass at 320px,
+390px, and 1280px.

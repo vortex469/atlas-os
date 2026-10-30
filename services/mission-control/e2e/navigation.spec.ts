@@ -94,6 +94,8 @@ for (const width of [320, 390, 1280]) {
 
         const heading = page.getByRole("heading", { name: "Page not found", exact: true });
         await expect(heading).toBeVisible();
+        await expect(page.getByText("This address does not match a Mission Control screen. Use the navigation to choose a screen, or return to Mission Control.")).toBeVisible();
+        await expect(page.getByText("404", { exact: true })).toHaveCount(0);
         const padding = await heading.evaluate((element) => {
             const main = element.closest("main");
             return main ? getComputedStyle(main).paddingLeft : null;
