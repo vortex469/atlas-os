@@ -298,8 +298,17 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-6xl p-4 sm:p-8">
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
                 <p role="status" className="text-slate-300">Loading workflow...</p>
+                <Link
+                    to={{
+                        pathname: returnDestination.to,
+                        search: returnDestination.to === "/operations/history" ? location.search : "",
+                    }}
+                    className="text-sm text-blue-300"
+                >
+                    {returnDestination.label}
+                </Link>
             </main>
         );
     }
