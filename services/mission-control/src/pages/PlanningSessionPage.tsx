@@ -257,6 +257,8 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
         );
     }
 
+    const planDescription = planSectionDescription(session, hasPlan);
+
     return (
         <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
@@ -306,7 +308,7 @@ function PlanningSession({ sessionId }: { sessionId: string }) {
                 <h2 id="generate-plan-heading" className="text-lg font-semibold text-white">
                     {operationalPlan ? "Maintenance plan" : "Candidate plan"}
                 </h2>
-                <p className="mt-2 text-sm text-slate-400">{planSectionDescription(session, hasPlan)}</p>
+                {planDescription && <p className="mt-2 text-sm text-slate-400">{planDescription}</p>}
                 {isLoadingSavedPlan && <p role="status" aria-live="polite" className="mt-4 text-sm text-slate-300">Loading saved plan…</p>}
                 {savedPlanReadFailure && <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
                     <p className="font-semibold text-red-200">{savedPlanReadFailureMessage(savedPlanReadFailure.kind)}</p>
@@ -518,8 +520,8 @@ function ListPanel({ title, values, empty, ordered = false }: { title: string; v
     );
 }
 
-function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boolean): string {
-    if (hasPlan) return "Review this read-only plan. No approval or change has been made.";
+function planSectionDescription(session: CandidatePlanningResponse, hasPlan: boolean): string | null {
+    if (hasPlan) return null;
     if (session.status === "plan_ready") return "Atlas checks that the saved plan belongs to this session before showing workflow setup.";
     if (session.planning_failure?.code === "atlas_core_unavailable") return "Atlas could not check whether this proposal is current because Core is unavailable.";
     if (session.planning_failure?.code === "persistence_failed") return "Atlas could not save the planning session. No plan is ready to review.";

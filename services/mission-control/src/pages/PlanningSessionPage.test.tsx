@@ -280,6 +280,8 @@ describe("PlanningSessionPage", () => {
         expect(await screen.findByText("Plan details")).toBeInTheDocument();
         expect(screen.getByText("Update Home Assistant compose stack")).toBeInTheDocument();
         expect(screen.getByText("Objective: Update the compose stack safely.")).toBeInTheDocument();
+        expect(screen.getByText(/Review the proposed steps before creating a workflow/)).toBeVisible();
+        expect(screen.queryByText("Review this read-only plan. No approval or change has been made.")).not.toBeInTheDocument();
         expect(screen.getByText("Operator has reviewed the candidate.")).toBeInTheDocument();
         expect(screen.getByText("No implementation commands are included.")).toBeInTheDocument();
         expect(screen.getByText("Review compose changes.")).toBeInTheDocument();
