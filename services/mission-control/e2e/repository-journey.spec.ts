@@ -189,11 +189,11 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Commit approved. Record it when you are ready.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
         await fitsViewport(page);
-        await page.getByRole("link", { name: "Open Audit", exact: true }).click();
+        await page.getByRole("link", { name: "View workflow history", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
-        await expectResponsiveMainPadding(page, "Workflow audit", width);
+        await expectResponsiveMainPadding(page, "Workflow history", width);
         await expect(page.getByText("Workflow status", { exact: true })).toBeVisible();
-        await expect(page.getByText("Audit validation", { exact: true })).toBeVisible();
+        await expect(page.getByText("Record consistency", { exact: true })).toBeVisible();
         await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.", { exact: true })).toBeVisible();
         for (const label of ["Change proposal", "Planning", "Change plan", "Workflow setup", "Change request", "Change approval", "Apply change", "Checks to run", "Verification approval", "Check results", "Review results", "Commit details", "Commit approval", "Commit result"]) {

@@ -151,8 +151,8 @@ for (const width of [320, 390, 1280]) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(fixture.repositoryPlanReads).toBe(0);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
-        await page.getByRole("link", { name: "Open Audit", exact: true }).click();
-        const auditHeading = page.getByRole("heading", { name: "Maintenance audit", exact: true });
+        await page.getByRole("link", { name: "View maintenance record", exact: true }).click();
+        const auditHeading = page.getByRole("heading", { name: "Maintenance record", exact: true });
         await expect(auditHeading).toBeVisible();
         await expect(page.getByRole("heading", { name: "Verified", exact: true })).toBeVisible();
         const auditMaintenanceStatus = page.getByRole("region", { name: "Maintenance status" });

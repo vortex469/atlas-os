@@ -33,12 +33,12 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockResolvedValueOnce(audit()).mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/workflows/:workflowId/audit", element: <WorkflowAuditPage /> }], { initialEntries: ["/workflows/workflow-123/audit"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("heading", { name: "Workflow audit" });
+        await screen.findByRole("heading", { name: "Workflow history" });
         await act(() => router.navigate("/workflows/next-workflow/audit"));
         expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
-        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow audit");
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow history");
         await act(async () => resolveNext(audit({ workflow_id: "next-workflow", workflow: { ...audit().workflow, workflow_id: "next-workflow" } })));
-        expect(await screen.findByRole("heading", { name: "Workflow audit" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
     });
 
     it.each(["outer", "nested"])("refuses an audit with a mismatched %s workflow identity", async (field) => {
@@ -59,7 +59,7 @@ describe("WorkflowAuditPage", () => {
             <Route path="/workflows/:workflowId/audit" element={<WorkflowAuditPage />} />
         </Routes></MemoryRouter></StrictMode>);
         fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
-        await screen.findByRole("heading", { name: "Workflow audit" });
+        await screen.findByRole("heading", { name: "Workflow history" });
         expect(mockedGetWorkflowAudit).toHaveBeenCalledTimes(2);
     });
 
@@ -71,9 +71,9 @@ describe("WorkflowAuditPage", () => {
         render(<RouterProvider router={router} />);
         await waitFor(() => expect(mockedGetWorkflowAudit).toHaveBeenCalledWith("workflow-123"));
         await act(() => router.navigate("/workflows/next-workflow/audit"));
-        await screen.findByRole("heading", { name: "Workflow audit" });
+        await screen.findByRole("heading", { name: "Workflow history" });
         await act(async () => resolveOld(audit()));
-        expect(screen.getByRole("heading", { name: "Workflow audit" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
     });
 
     beforeEach(() => {
@@ -87,7 +87,7 @@ describe("WorkflowAuditPage", () => {
         vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
         renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
         expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Maintenance audit" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Maintenance record" })).toBeInTheDocument();
         expect(screen.getByText(/Maintenance status:/)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Back to workflow" })).toHaveAttribute(
             "href",
@@ -132,7 +132,7 @@ describe("WorkflowAuditPage", () => {
         vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
         renderAuditPage();
 
-        expect(await screen.findByText("This audit record is inconsistent. Review its technical details.")).toBeInTheDocument();
+        expect(await screen.findByText("This maintenance record has inconsistent information. Review its technical details.")).toBeInTheDocument();
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
         fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
@@ -155,14 +155,14 @@ describe("WorkflowAuditPage", () => {
     it("shows a concise completed audit and keeps identifiers with their recorded details", async () => {
         renderAuditPage();
 
-        expect(await screen.findByRole("heading", { name: "Workflow audit" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
         expect(screen.getByText("Read-only record")).toBeInTheDocument();
         expect(screen.getAllByText("Workflow status").length).toBe(1);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
         expect(screen.queryByText("Overall audit status")).not.toBeInTheDocument();
-        expect(screen.getAllByText("Audit validation").length).toBe(1);
+        expect(screen.getAllByText("Record consistency").length).toBe(1);
         expect(screen.queryByText(/Overall chain state:/)).not.toBeInTheDocument();
-        expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Consistent").length).toBeGreaterThan(0);
 
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toBeNull();
@@ -186,7 +186,7 @@ describe("WorkflowAuditPage", () => {
 
     it("shows audit timestamps as local times with their exact source instants", async () => {
         renderAuditPage();
-        await screen.findByRole("heading", { name: "Workflow audit" });
+        await screen.findByRole("heading", { name: "Workflow history" });
 
         const planningStage = screen.getByRole("region", { name: "Planning, Completed" });
         fireEvent.click(within(planningStage).getByText("Planning", { exact: true }));
@@ -212,7 +212,7 @@ describe("WorkflowAuditPage", () => {
         response.planning.created_at = "2026-02-30T10:00:00Z";
         mockedGetWorkflowAudit.mockResolvedValue(response);
         renderAuditPage();
-        await screen.findByRole("heading", { name: "Workflow audit" });
+        await screen.findByRole("heading", { name: "Workflow history" });
 
         const planningStage = screen.getByRole("region", { name: "Planning, Completed" });
         fireEvent.click(within(planningStage).getByText("Planning", { exact: true }));
@@ -264,7 +264,7 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText("Required artifact is missing.")).toBeInTheDocument();
+        expect(await screen.findByText("Required information for this step is missing.")).toBeInTheDocument();
     });
 
     it("shows blocked reason in overview when workflow is blocked", async () => {
@@ -299,7 +299,7 @@ describe("WorkflowAuditPage", () => {
 
         expect(await screen.findByText("Workflow status")).toBeInTheDocument();
         expect(screen.getByText("Verification needs approval.")).toBeInTheDocument();
-        expect(screen.getByText("Valid")).toBeInTheDocument();
+        expect(screen.getByText("Consistent")).toBeInTheDocument();
         expect(screen.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.")).toBeInTheDocument();
     });
 
@@ -328,8 +328,8 @@ describe("WorkflowAuditPage", () => {
         expect(await screen.findByText("Workflow is blocked. Review the recorded stages and results below.")).toBeInTheDocument();
         expect(screen.getByText("Workflow status")).toBeInTheDocument();
         expect(screen.queryByText("Overall audit status")).not.toBeInTheDocument();
-        expect(screen.getByText("Invalid")).toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent("This audit record is inconsistent.");
+        expect(screen.getByText("Needs review")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("This workflow record has inconsistent information.");
     });
 
     it("shows inconsistent alert for failed validation", async () => {
@@ -354,8 +354,8 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText("This audit record is inconsistent. Review the flagged stage below and its recorded details.")).toBeInTheDocument();
-        expect(screen.getByText("This stage is inconsistent with audit-chain validation.")).toBeInTheDocument();
+        expect(await screen.findByText("This workflow record has inconsistent information. Review the flagged stage and its details below.")).toBeInTheDocument();
+        expect(screen.getByText("This step does not match the recorded workflow history.")).toBeInTheDocument();
         expect((await screen.findAllByText(/Inconsistent/i)).length).toBeGreaterThan(1);
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
@@ -403,7 +403,7 @@ describe("WorkflowAuditPage", () => {
         mockedGetWorkflowAudit.mockImplementation(() => new Promise(() => {}));
         renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
 
-        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow audit");
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow history");
         expect(screen.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
             "href",
             "/workflows/workflow-123?source=maintenance-history",

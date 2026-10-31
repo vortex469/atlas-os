@@ -214,7 +214,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
         return (
             <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
                 <Link to={workflowReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
-                <p role="status" className="text-blue-200">Loading workflow audit...</p>
+                <p role="status" className="text-blue-200">Loading workflow history…</p>
             </main>
         );
     }
@@ -256,7 +256,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
         <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Read-only record</p>
-                <h1 className="text-3xl font-bold text-white">Workflow audit</h1>
+                <h1 className="text-3xl font-bold text-white">Workflow history</h1>
                 <p className="max-w-3xl text-sm leading-6 text-slate-400">
                     Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.
                 </p>
@@ -267,11 +267,11 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-3">
                     <Detail label="Workflow status" value={formatWorkflowAuditStatus(audit)} />
                     {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
-                    <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
+                    <Detail label="Record consistency" value={audit.validation.valid ? "Consistent" : "Needs review"} />
                 </dl>
                 {audit.validation.failure_code !== null && (
                     <p role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                        This audit record is inconsistent. Review the flagged stage below and its recorded details.
+                        This workflow record has inconsistent information. Review the flagged stage and its details below.
                     </p>
                 )}
                 <details className="mt-4 border-t border-slate-800 pt-4">
@@ -300,7 +300,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                         </summary>
                         {isIssue && (
                             <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
-                                {status === "missing" ? "Required artifact is missing." : "This stage is inconsistent with audit-chain validation."}
+                                {status === "missing" ? "Required information for this step is missing." : "This step does not match the recorded workflow history."}
                             </p>
                         )}
                         <dl className="mt-4 grid gap-4 border-t border-slate-800 pt-4 text-sm md:grid-cols-2 xl:grid-cols-3">
@@ -349,15 +349,15 @@ function MaintenanceAudit({ audit, returnSearch }: { audit: WorkflowAuditRespons
     }, [load]);
     return <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
         <header>
-            <h1 className="break-all text-3xl font-bold text-white">Maintenance audit</h1>
-            <p className="mt-3 text-sm text-slate-300">Review recorded approvals, dispatch and verification. This page only reads information.</p>
+            <h1 className="break-all text-3xl font-bold text-white">Maintenance record</h1>
+            <p className="mt-3 text-sm text-slate-300">Review approvals, whether the maintenance ran, and its latest check. This page is read-only.</p>
             <Link to={{ pathname: `/workflows/${encodeURIComponent(audit.workflow_id)}`, search: returnSearch }} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
         </header>
-        <section aria-label="Audit validation" className="rounded-xl border border-slate-800 p-5 text-slate-300">
+        <section aria-label="Record consistency" className="rounded-xl border border-slate-800 p-5 text-slate-300">
             <p>Maintenance status: {formatWorkflowAuditStatus(audit)}</p>
-            <p>Audit validation: {audit.validation.valid ? "Valid" : "Invalid"}</p>
+            <p>Record consistency: {audit.validation.valid ? "Consistent" : "Needs review"}</p>
             {audit.blocked_reason && <p>Blocked reason: {audit.blocked_reason}</p>}
-            {audit.validation.failure_code && <p role="alert">This audit record is inconsistent. Review its technical details.</p>}
+            {audit.validation.failure_code && <p role="alert">This maintenance record has inconsistent information. Review its technical details.</p>}
             <details className="mt-4 border-t border-slate-800 pt-4">
                 <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">

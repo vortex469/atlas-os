@@ -44,12 +44,12 @@ for (const width of [320, 1280]) {
             releaseWorkflowRead();
             await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
 
-            await page.getByRole("link", { name: "Open Audit", exact: true }).click();
-            const auditLoading = page.getByRole("status").filter({ hasText: "Loading workflow audit..." });
+            await page.getByRole("link", { name: "View workflow history", exact: true }).click();
+            const auditLoading = page.getByRole("status").filter({ hasText: "Loading workflow history…" });
             await expect(auditLoading).toBeVisible();
             await expectResponsiveMainPadding(auditLoading, width);
             releaseAuditRead();
-            await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Workflow history", exact: true })).toBeVisible();
             expect(rejectedMutationRequests).toEqual([]);
         } finally {
             releaseWorkflowRead();
@@ -1275,7 +1275,7 @@ test("provider registry retries an unavailable read", async ({ page }) => {
         await route.fallback();
     });
     await page.goto("/providers");
-    await expect(page.getByRole("heading", { name: "Providers could not load" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Could not load providers" })).toBeVisible();
     await expect(page.getByRole("alert").getByRole("button")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(1);
     await expect(page.getByText("Try again to get the latest provider list.")).toHaveCount(0);
@@ -1302,10 +1302,10 @@ for (const width of [390, 1280]) {
 
         await page.getByRole("button", { name: "Refresh" }).click();
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("Provider refresh failed");
+        await expect(alert).toContainText("Could not refresh providers");
         await expect(alert.getByRole("button")).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Refresh" })).toHaveCount(1);
-        await expect(alert).toContainText("Current provider information is unknown.");
+        await expect(alert).toContainText("Showing the last loaded list. Provider statuses may be out of date.");
         await expect(alert).not.toContainText("PRIVATE_SERVER_ERROR");
         await expect(list.getByRole("heading", { name: "Proxmox" })).toBeVisible();
         await expect(list.getByText("Last known report (out of date): Healthy.", { exact: true })).toBeVisible();
@@ -1524,8 +1524,8 @@ for (const width of [320, 390, 1280]) {
                 }) });
         });
         await page.goto("/workflows/audit-recovery/audit");
-        await expect(page.getByTestId("mc-context")).toContainText("Current page: Workflow audit");
-        await expect(page).toHaveTitle("Workflow audit | Atlas Mission Control");
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Workflow history");
+        await expect(page).toHaveTitle("Workflow history | Atlas Mission Control");
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow history unavailable");
@@ -1536,10 +1536,10 @@ for (const width of [320, 390, 1280]) {
         await expect(technicalDetails.getByText("Malformed workflow audit payload.")).not.toBeVisible();
         await technicalDetails.locator("summary").click();
         await expect(technicalDetails).toContainText("Malformed workflow audit payload.");
-        await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Workflow history", exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: "Try again" }).click();
-        await expect(page.getByRole("heading", { name: "Workflow audit", exact: true })).toBeVisible();
-        await expectResponsiveMainPadding(page.getByRole("heading", { name: "Workflow audit", exact: true }), width);
+        await expect(page.getByRole("heading", { name: "Workflow history", exact: true })).toBeVisible();
+        await expectResponsiveMainPadding(page.getByRole("heading", { name: "Workflow history", exact: true }), width);
         await expect(page.getByText("candidate-123", { exact: true })).toHaveCount(1);
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

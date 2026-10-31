@@ -4444,3 +4444,11 @@ pagination and refresh behavior are unchanged.
 The running-work notice now says that the page's buttons are briefly disabled
 during an automatic status check. It no longer suggests that the running work
 itself pauses. Approval and execution behavior are unchanged.
+
+## Workflow history language — 2026-10-31
+
+The read-only workflow record is now called “Workflow history,” and the
+maintenance counterpart is called “Maintenance record.” The record check and
+inconsistent-stage messages use plain language; technical failure codes stay
+under Technical details. Links still open the same read-only records, and
+approval and execution behavior are unchanged.

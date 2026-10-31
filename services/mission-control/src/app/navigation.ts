@@ -114,7 +114,7 @@ export function routeContextForPath(pathname: string): string | undefined {
     const planningPath = path.match(/^\/candidate-planning\/[^/]+(?:\/(workflow))?$/);
     if (planningPath) return planningPath[1] ? "Workflow setup" : "Plan a change";
     if (path === "/workflows") return "Workflows";
-    if (/^\/workflows\/[^/]+\/audit$/.test(path)) return "Workflow audit";
+    if (/^\/workflows\/[^/]+\/audit$/.test(path)) return "Workflow history";
     if (/^\/workflows\/[^/]+$/.test(path)) return "Workflow details";
     if (path === "/forge") return "Deployment analysis";
     if (path === "/operator/login") return "Operator login";

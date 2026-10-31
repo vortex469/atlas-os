@@ -183,7 +183,7 @@ describe("MainLayout", () => {
             ["/providers/proxmox", "Provider details"],
             ["/execution-candidates/proposal-1", "Proposal details"],
             ["/workflows/workflow-1", "Workflow details"],
-            ["/workflows/workflow-1/audit", "Workflow audit"],
+            ["/workflows/workflow-1/audit", "Workflow history"],
             ["/candidate-planning/session-1", "Plan a change"],
             ["/candidate-planning/session-1/workflow", "Workflow setup"],
         ])("surfaces the context label for %s", (initialPath, label) => {

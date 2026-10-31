@@ -425,9 +425,9 @@ describe("WorkflowPage", () => {
         render(<RouterProvider router={router} />);
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledWith("workflow-123"));
         await act(() => router.navigate("/workflows/next-workflow"));
-        expect(await screen.findByRole("link", { name: "Open Audit" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
+        expect(await screen.findByRole("link", { name: "View workflow history" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
         await act(async () => resolveOld(workflow()));
-        expect(screen.getByRole("link", { name: "Open Audit" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
+        expect(screen.getByRole("link", { name: "View workflow history" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
         expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
     });
 
@@ -755,10 +755,10 @@ describe("WorkflowPage", () => {
         expect(changeDetails.getByRole("alert")).toHaveTextContent("Change details are unavailable. Refresh this workflow before continuing.");
     });
 
-    it("provides Open Audit link to workflow audit explorer", async () => {
+    it("provides a workflow history link to the read-only record", async () => {
         renderPage("/workflows/workflow-123?source=maintenance-history");
 
-        expect(await screen.findByRole("link", { name: "Open Audit" })).toHaveAttribute(
+        expect(await screen.findByRole("link", { name: "View workflow history" })).toHaveAttribute(
             "href",
             "/workflows/workflow-123/audit?source=maintenance-history",
         );
