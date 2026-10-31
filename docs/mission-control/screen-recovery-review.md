@@ -4139,3 +4139,13 @@ unavailable result. The copied command and probe behavior are unchanged. The
 focused Overview and service health suites pass 88 tests, two responsive
 iFileshare browser cases pass at 320px and 1280px, and Mission Control lint and
 production build pass.
+
+## Change-planning shell labels — 2026-10-31
+
+The shell header and browser title now distinguish the “Plan a change” screen
+from “Workflow setup.” Both previously used the internal “Candidate planning”
+label, which did not match the page headings or the operator's current step.
+Only presentation labels changed; routes and workflow behavior are unchanged.
+The MainLayout suite passes 36 tests, and four browser cases verify the labels
+on the planning and workflow screens at 320px, 390px, and 1280px. Mission
+Control lint and production build pass.

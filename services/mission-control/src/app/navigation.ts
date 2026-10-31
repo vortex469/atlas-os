@@ -95,7 +95,8 @@ export function routeContextForPath(pathname: string): string {
     if (pathname === "/providers") return "Providers";
     if (pathname.startsWith("/providers/")) return "Provider";
     if (pathname.startsWith("/installation/")) return "Installation readiness review";
-    if (pathname.startsWith("/candidate-planning/")) return "Candidate planning";
+    const planningPath = pathname.match(/^\/candidate-planning\/[^/]+(?:\/(workflow))?\/?$/);
+    if (planningPath) return planningPath[1] ? "Workflow setup" : "Plan a change";
     if (pathname === "/operator/login") return "Operator login";
     return "Page not found";
 }

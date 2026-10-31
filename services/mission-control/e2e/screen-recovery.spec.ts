@@ -728,6 +728,8 @@ for (const wrongIdentity of [false, true]) {
             unsupported_reason: null, plan: null, planning_failure: null,
         } }));
         await page.goto("/candidate-planning/browser-session");
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Plan a change");
+        await expect(page).toHaveTitle("Plan a change | Atlas Mission Control");
         if (wrongIdentity) {
             await expect(page.getByRole("heading", { name: "Planning session unavailable" })).toBeVisible();
             await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();

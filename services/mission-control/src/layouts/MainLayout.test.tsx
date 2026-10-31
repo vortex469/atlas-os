@@ -167,6 +167,8 @@ describe("MainLayout", () => {
             ["/operations", "Action history"],
             ["/discovery", "Catalog"],
             ["/forge", "Deployment analysis"],
+            ["/candidate-planning/session-1", "Plan a change"],
+            ["/candidate-planning/session-1/workflow", "Workflow setup"],
         ])("surfaces the context label for %s", (initialPath, label) => {
             renderAt(initialPath);
 

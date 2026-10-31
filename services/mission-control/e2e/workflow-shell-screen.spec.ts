@@ -13,6 +13,8 @@ for (const width of [320, 1280]) {
             await route.fulfill({ status: 404, json: { detail: "Planning session is not available in this fixture." } });
         });
         await page.goto("/candidate-planning/layout-session/workflow");
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Workflow setup");
+        await expect(page).toHaveTitle("Workflow setup | Atlas Mission Control");
 
         const loadingMessage = page.getByText("Loading workflow summary…", { exact: true });
         await expect(loadingMessage).toBeVisible();
