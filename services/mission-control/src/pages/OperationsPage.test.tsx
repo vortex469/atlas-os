@@ -110,7 +110,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         expect(screen.getByRole("heading", { name: "Action history" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Loading history…" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Refresh history" })).toBeDisabled();
         expect(screen.getByRole("status")).toHaveTextContent("Loading action history…");
         expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
         await screen.findByText("Unload Model");
@@ -128,7 +128,7 @@ describe("OperationsPage", () => {
         mockedGetProviderActionHistory.mockReturnValueOnce(new Promise((resolve) => { resolveRefresh = resolve; }));
         fireEvent.click(screen.getByRole("button", { name: "Refresh history" }));
 
-        expect(screen.getByRole("button", { name: "Refreshing history…" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Refresh history" })).toBeDisabled();
         expect(screen.getByRole("status")).toHaveTextContent("Refreshing action history…");
         await act(async () => resolveRefresh({
             items: [],

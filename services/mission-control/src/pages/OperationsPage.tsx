@@ -394,7 +394,7 @@ export function OperationsPage() {
                     disabled={isLoading}
                     className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    {isLoading ? hasLoaded ? "Refreshing history…" : "Loading history…" : "Refresh history"}
+                    Refresh history
                 </button>
             </header>
 
