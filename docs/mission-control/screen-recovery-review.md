@@ -4269,3 +4269,11 @@ Mission Control unit suite passes 3,094 tests across 188 files. Focused browser
 journeys pass at 320px and 1280px against both the development app and built
 assets; lint and the production build pass. Provider browser checks now use the
 active loading and “Last checked” labels rather than stale copy.
+
+## Catalog review wording — 2026-10-31
+
+Discovery item notes now use the plain label “Catalog notes.” The screen no
+longer exposes the undefined internal `reviewed_for_d5` flag; the API response
+and catalog data remain unchanged. Component coverage verifies notes remain
+visible and the internal flag is omitted. Responsive browser checks cover the
+same screen at 390px and 1280px.

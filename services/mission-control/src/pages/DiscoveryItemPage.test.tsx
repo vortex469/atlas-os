@@ -411,7 +411,7 @@ describe("DiscoveryItemPage", () => {
         mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
-    it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
+    it("renders item details, requirements, provenance, catalog notes, and compatibility", async () => {
         const user = userEvent.setup();
         renderPage();
 
@@ -439,7 +439,8 @@ describe("DiscoveryItemPage", () => {
         expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).not.toBeVisible();
         await user.click(within(sourceDetails as HTMLDetailsElement).getByText("Catalog source details"));
         expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).toBeVisible();
-        expect(screen.getByText("Reviewed for D5: Yes")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Catalog notes" })).toBeInTheDocument();
+        expect(screen.queryByText(/Reviewed for D5/)).not.toBeInTheDocument();
         expect(screen.getByText("Hardware acceleration is optional.")).toBeInTheDocument();
         expect(screen.queryByText("Ignored item metadata note.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /(?:^|\s)(?:install|approve|confirm|execute|deploy)(?:\s|$)/i })).not.toBeInTheDocument();

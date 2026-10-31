@@ -467,7 +467,10 @@ for (const width of [320, 390, 1280]) {
 
 for (const width of [390, 1280]) {
     test(`compatibility findings use clear labels and keep references optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
-        const entry = discoveryItemsPage.entries[0];
+        const entry = {
+            ...discoveryItemsPage.entries[0],
+            metadata: { reviewed_for_d5: true, catalog_notes: ["Hardware acceleration is optional."] },
+        };
         const checkedAt = "2026-10-28T12:00:00.000Z";
         await page.setViewportSize({ width, height: 900 });
         await page.route("**/api/v1/discovery/items/fixture-app", route => route.fulfill({ json: entry }));
@@ -525,6 +528,9 @@ for (const width of [390, 1280]) {
         await expect(page).toHaveTitle("Catalog item details | Atlas Mission Control");
         const itemHeader = page.getByRole("heading", { name: "Fixture Application" }).locator("xpath=..");
         await expect(page.getByRole("heading", { name: "What it supports" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Catalog notes" })).toBeVisible();
+        await expect(page.getByText("Hardware acceleration is optional.", { exact: true })).toBeVisible();
+        await expect(page.getByText(/Reviewed for D5/)).toHaveCount(0);
         await expect(page.getByText("Read only", { exact: true })).toBeVisible();
         await expect(itemHeader.getByText("Catalog item ID: fixture-app", { exact: true })).toBeHidden();
         await itemHeader.getByText("Technical details", { exact: true }).click();

@@ -921,15 +921,9 @@ function ProvenancePanel({ entry }: { entry: DiscoveryCatalogEntry }) {
 
 function ApprovedMetadataPanel({ entry }: { entry: DiscoveryCatalogEntry }) {
     const notes = entry.metadata.catalog_notes ?? entry.item.metadata.catalog_notes ?? [];
-    const reviewed = entry.metadata.reviewed_for_d5 ?? entry.item.metadata.reviewed_for_d5;
 
     return (
-        <InfoPanel title="Catalog review">
-            {reviewed !== undefined && (
-                <p className="text-sm text-slate-300">
-                    Reviewed for D5: {reviewed ? "Yes" : "No"}
-                </p>
-            )}
+        <InfoPanel title="Catalog notes">
             {notes.length > 0 ? (
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-400">
                     {notes.map((note) => (
