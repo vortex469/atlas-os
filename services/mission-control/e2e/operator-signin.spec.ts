@@ -118,11 +118,11 @@ for (const width of [320, 390, 1280]) {
         await page.getByLabel("Operator ID").fill("browser-operator");
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
-        await expect(page.getByRole("heading", { name: "Request a restart proposal" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Request a VM restart" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Suggestion details" })).toBeVisible();
         await expect(page.getByText("Atlas will not choose a VM from this suggestion. Select a running VM below.")).toBeVisible();
         await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).not.toBeChecked();
-        await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Submit restart request" })).toBeDisabled();
         expect(logins).toBe(1);
         expect(proposalReads).toBe(1);
         expect(unexpectedMutations).toEqual([]);

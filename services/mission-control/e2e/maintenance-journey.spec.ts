@@ -45,7 +45,7 @@ for (const width of [320, 390, 1280]) {
         await page.getByLabel("Operator ID").fill("browser-operator");
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
-        const requestHeading = page.getByRole("heading", { name: "Request a restart proposal", exact: true });
+        const requestHeading = page.getByRole("heading", { name: "Request a VM restart", exact: true });
         await expect(requestHeading).toBeVisible();
         const requestPadding = await requestHeading.evaluate((element) => {
             const main = element.closest("main");
@@ -65,15 +65,16 @@ for (const width of [320, 390, 1280]) {
         await expect(targetCard).toContainText("VM ID 110");
         await expect(targetCard).toContainText("Host fixture-node");
         await expect(target).not.toBeChecked();
-        await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Submit restart request" })).toBeDisabled();
         expect(fixture.entryWrites).toHaveLength(1);
         expect(fixture.writes).toHaveLength(0);
         await target.check();
-        await page.getByRole("button", { name: "Request restart proposal" }).click();
-        await expect(page.getByRole("heading", { name: "Restart proposal ready for review" })).toBeVisible();
+        await page.getByRole("button", { name: "Submit restart request" }).click();
+        await expect(page.getByRole("heading", { name: "Restart request ready for review" })).toBeVisible();
+        await expect(page.getByText("Request for Browser fixture VM is ready. The VM has not restarted.")).toBeVisible();
         expect(fixture.entryWrites).toEqual(fixture.expectedEntryWrites);
         expect(fixture.writes).toHaveLength(0);
-        await page.getByRole("link", { name: "Review restart proposal" }).click();
+        await page.getByRole("link", { name: "Review request" }).click();
         await expect(page).toHaveURL(new RegExp(`/execution-candidates/${journey.candidate}$`));
         const progress = page.getByRole("region", { name: "Planning progress" });
         await expect(progress.locator('[aria-current="step"]')).toHaveText("ProposalCurrent step");
@@ -196,13 +197,13 @@ for (const width of [320, 390, 1280]) {
         await page.getByLabel("Password").fill("fixture-only-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
         await page.getByRole("radio", { name: /Browser fixture VM/ }).check();
-        await page.getByRole("button", { name: "Request restart proposal" }).click();
+        await page.getByRole("button", { name: "Submit restart request" }).click();
 
-        await expect(page.getByRole("alert")).toContainText("Check proposals before trying again.");
-        await expect(page.getByRole("link", { name: "Check whether a proposal was created" })).toHaveAttribute("href", "/execution-candidates");
+        await expect(page.getByRole("alert")).toContainText("Check Change proposals before trying again.");
+        await expect(page.getByRole("link", { name: "Open Change proposals" })).toHaveAttribute("href", "/execution-candidates");
         await expect(page.getByRole("radio", { name: /Browser fixture VM/ })).toBeDisabled();
         await expect(page.getByRole("button", { name: "Refresh" })).toBeDisabled();
-        await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Submit restart request" })).toBeDisabled();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(proposalRequests).toBe(1);
         expect(fixture.entryWrites).toEqual(["/operator-auth/login"]);
@@ -237,7 +238,7 @@ for (const width of [320, 390, 1280]) {
 
         await expect(page.getByText("No VMs are available to select right now. Use Refresh to check again.")).toBeVisible();
         await expect(page.getByRole("button", { name: "Refresh" })).toBeEnabled();
-        await expect(page.getByRole("button", { name: "Request restart proposal" })).toBeDisabled();
+        await expect(page.getByRole("button", { name: "Submit restart request" })).toBeDisabled();
         await expect(page.getByRole("radio")).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         await page.getByRole("button", { name: "Refresh" }).click();

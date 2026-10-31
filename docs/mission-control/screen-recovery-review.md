@@ -4514,3 +4514,17 @@ them. It also clarifies that a listening port does not prove the app responds.
 The configured HTTP check and Docker port instructions remain available. The
 focused service and Overview suites pass 91 tests; the Overview browser suite
 passes all 31 cases, and Mission Control lint and production build pass.
+
+## Maintenance request wording — 2026-10-31
+
+The restart screen now leads with “Request a VM restart” and “Submit restart
+request,” with a direct explanation that sending the request does not restart
+the VM. The ready state and review link use request language, while uncertain
+results still direct the operator to Change proposals before retrying. No API,
+approval, or execution behavior changed.
+
+The full Mission Control component suite passes 3,109 tests across 188 files;
+the maintenance and sign-in browser journeys pass 16 checks against the source
+app and another 16 against its production build across phone and desktop widths.
+Mission Control lint, production build, and `git diff --check` pass. These
+browser journeys use synthetic fixtures and do not exercise a live backend.

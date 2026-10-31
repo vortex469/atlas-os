@@ -21,7 +21,7 @@ import type {
 } from "../types/operatorIntent";
 
 function errorMessage(status: number | undefined): string {
-    if (status === undefined || status >= 500) return "Atlas could not confirm whether a restart proposal was created. The VM has not restarted. Check proposals before trying again.";
+    if (status === undefined || status >= 500) return "Atlas could not confirm whether your restart request was received. The VM has not restarted. Check Change proposals before trying again.";
     if (status === 403) return "Your account does not have permission to request maintenance.";
     if (status === 409) return "This VM changed. Refresh the list and choose it again.";
     if (status === 429) return "Too many maintenance requests. Wait before trying again.";
@@ -180,7 +180,7 @@ export function MaintenanceRequestPage() {
                 || response.candidate.execution_intent !== "restart-service"
                 || response.candidate.source_subsystem !== "operator-intent") {
                 setProposalOutcomeUncertain(true);
-                setError("The returned proposal does not match this request. Check the proposal list before trying again.");
+                setError("Atlas returned details for a different request. The VM has not restarted. Check Change proposals before trying again.");
                 return;
             }
             setResult(response);
@@ -208,8 +208,8 @@ export function MaintenanceRequestPage() {
         <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
             <header>
                 <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Maintenance request</p>
-                <h1 className="mt-2 text-3xl font-bold text-white">Request a restart proposal</h1>
-                <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. This creates a proposal for separate review and approval; it does not restart the VM.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
+                <h1 className="mt-2 text-3xl font-bold text-white">Request a VM restart</h1>
+                <div className="mt-3 flex flex-wrap items-center gap-3"><p className="text-sm text-slate-400">Signed in as {session.principal?.operator_id}. Choose a running VM. Atlas sends your request for separate review and approval. Sending this request does not restart the VM.</p><button type="button" onClick={() => void session.logout()} className="text-sm font-semibold text-blue-300">Sign out</button></div>
             </header>
             {(proposalId !== null || proposalLoading || proposalError || proposal) && (
                 <section aria-label="Suggestion details" className="space-y-3">
@@ -226,9 +226,9 @@ export function MaintenanceRequestPage() {
                 <FixedField label="VM type" value={descriptorLabel(capability.resource_type)} />
             </section>}
             {!permitted && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-200">Your account does not have permission to request maintenance.</p>}
-            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Check whether a proposal was created</Link>}</div>}
+            {error && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-200"><p>{error}</p>{proposalOutcomeUncertain && <Link className="mt-3 inline-flex font-semibold text-red-100 underline underline-offset-2" to="/execution-candidates">Open Change proposals</Link>}</div>}
             <section className="space-y-3" aria-label="Available virtual machines">
-                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before creating your proposal.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting || proposalOutcomeUncertain} className="text-sm font-semibold text-blue-300">Refresh</button></div>
+                <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-semibold text-white">Choose a virtual machine</h2><p className="mt-1 text-sm text-slate-400">Only running VMs can be selected. Atlas checks the VM again before sending your request.</p></div><button type="button" onClick={() => void loadResources()} disabled={loading || submitting || proposalOutcomeUncertain} className="text-sm font-semibold text-blue-300">Refresh</button></div>
                 {loading && <p role="status" className="text-sm text-slate-400">Loading available VMs…</p>}
                 {!loading && !error && resources.length === 0 && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-300">No VMs are available to select right now. Use Refresh to check again.</p>}
                 {resources.map((resource) => (
@@ -248,14 +248,14 @@ export function MaintenanceRequestPage() {
                 ))}
             </section>
             <button type="button" onClick={() => void submit()} disabled={!selected?.requestable || loading || submitting || !permitted || proposalOutcomeUncertain} className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white disabled:bg-slate-700">
-                {submitting ? "Requesting restart proposal…" : "Request restart proposal"}
+                {submitting ? "Sending restart request…" : "Submit restart request"}
             </button>
-            {result && <section aria-label="Restart proposal ready" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
-                <h2 className="text-lg font-semibold text-emerald-200">Restart proposal ready for review</h2>
-                <p className="mt-2 text-sm text-slate-200">Target: {selected?.display_name ?? "selected VM"}. Nothing has restarted.</p>
+            {result && <section aria-label="Restart request ready" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
+                <h2 className="text-lg font-semibold text-emerald-200">Restart request ready for review</h2>
+                <p className="mt-2 text-sm text-slate-200">Request for {selected?.display_name ?? "the selected VM"} is ready. The VM has not restarted.</p>
                 <p className="mt-1 text-sm text-slate-300">Expected impact: brief service interruption.</p>
                 {expiry ? <p className="mt-1 text-sm text-slate-300">Expires {expiry}</p> : <p className="mt-1 text-sm text-slate-300">Expiry time unavailable.</p>}
-                {resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This proposal has expired. Request a new restart proposal before continuing.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Review restart proposal</Link>}
+                {resultExpired ? <p role="alert" className="mt-3 text-sm text-amber-200">This restart request has expired. Submit a new request to continue.</p> : <Link className="mt-4 inline-flex rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950" to={`/execution-candidates/${encodeURIComponent(result.candidate_id)}`}>Review request</Link>}
                 <details className="mt-4 text-sm text-slate-300"><summary>Technical details</summary><dl className="mt-3 grid gap-2 sm:grid-cols-2"><TechnicalField label="Proposal ID" value={result.candidate_id} /><TechnicalField label="Target ID" value={result.candidate.target_id} /><TechnicalField label="Reported status" value={result.candidate.status} /><TechnicalField label="Expiry time (UTC)" value={result.candidate.expires_at ?? "Not reported"} /></dl></details>
             </section>}
         </main>
