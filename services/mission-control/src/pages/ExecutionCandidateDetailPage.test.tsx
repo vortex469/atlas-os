@@ -199,7 +199,7 @@ describe("ExecutionCandidateDetailPage", () => {
         expect(await screen.findByText("This proposal is out of date. Refresh it before continuing.")).toBeInTheDocument();
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
         await user.click(screen.getByRole("button", { name: "Refresh proposal" }));
-        expect(screen.getByText("Loading execution candidate…")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading proposal details…");
         await act(async () => resolveRefresh(candidate({ rationale: "Latest proposal from Atlas Core." })));
         expect(await screen.findByText("Latest proposal from Atlas Core.")).toBeInTheDocument();
         expect(screen.queryByText("This proposal is out of date. Refresh it before continuing.")).not.toBeInTheDocument();
@@ -319,7 +319,7 @@ describe("ExecutionCandidateDetailPage", () => {
         render(<RouterProvider router={router} />);
         await screen.findByRole("heading", { name: "Update Compose Stack" });
         await act(() => router.navigate("/execution-candidates/candidate-2"));
-        expect(screen.getByText("Loading execution candidate…")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading proposal details…");
         expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
         resolveNext(candidate({ id: "candidate-2" }));
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();

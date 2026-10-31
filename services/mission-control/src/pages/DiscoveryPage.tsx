@@ -357,9 +357,9 @@ export function DiscoveryPage() {
                 </form>
             </section>
 
-            <section className="space-y-4" aria-live="polite">
+            <section className="space-y-4">
                 {hasUnappliedFilters && (
-                    <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                    <p role="status" aria-label="Unapplied catalog filters" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
                         These filter changes haven&apos;t been searched yet. Select Search to update the results.
                     </p>
                 )}
@@ -368,7 +368,7 @@ export function DiscoveryPage() {
                         <h2 className="text-xl font-semibold text-white">
                             {hasSubmittedFilters ? "Search results" : "Catalog items"}
                         </h2>
-                        {!catalogError && !isLoading && result.total > 0 && <p className="mt-1 text-sm text-slate-500">{resultSummary}</p>}
+                        {!catalogError && !isLoading && result.total > 0 && <p role="status" aria-live="polite" aria-label="Catalog result count" className="mt-1 text-sm text-slate-500">{resultSummary}</p>}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -394,7 +394,7 @@ export function DiscoveryPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
+                    <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
                         Loading catalog…
                     </div>
                 ) : catalogError ? (
@@ -403,7 +403,7 @@ export function DiscoveryPage() {
                         <p className="mt-2 text-sm text-slate-500">Select Retry search above to try again.</p>
                     </div>
                 ) : result.entries.length === 0 ? (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
+                    <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
                             {catalogIsEmpty
                                 ? "No catalog items are available."

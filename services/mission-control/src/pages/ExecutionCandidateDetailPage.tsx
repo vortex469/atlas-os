@@ -126,7 +126,7 @@ function CandidateDetail({ candidateId }: { candidateId: string }) {
     }
 
     if (isLoading) {
-        return <PageFrame><p className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">Loading execution candidate…</p></PageFrame>;
+        return <PageFrame><p role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">Loading proposal details…</p></PageFrame>;
     }
 
     if (notFound) {

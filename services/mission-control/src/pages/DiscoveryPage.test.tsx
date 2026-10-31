@@ -194,7 +194,7 @@ describe("DiscoveryPage", () => {
         await user.click(screen.getByText("More filters"));
         await user.type(screen.getByLabelText("Tag"), "ai");
         await user.type(screen.getByLabelText("Capability"), "llm-inference");
-        expect(screen.getByRole("status")).toHaveTextContent("These filter changes haven't been searched yet. Select Search to update the results.");
+        expect(screen.getByRole("status", { name: "Unapplied catalog filters" })).toHaveTextContent("These filter changes haven't been searched yet. Select Search to update the results.");
         await user.click(screen.getByRole("button", { name: "Search" }));
         expect(screen.queryByText("These filter changes haven't been searched yet. Select Search to update the results.")).not.toBeInTheDocument();
         expect(screen.getByText("More filters · active")).toBeInTheDocument();
@@ -321,7 +321,9 @@ describe("DiscoveryPage", () => {
         await act(async () => olderSearch.resolve(searchPage([entry({
             item: { ...entry().item, id: "redis", name: "Redis" },
         })])));
-        expect(screen.getByText("Loading catalog…")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading catalog…");
+        const results = screen.getByRole("heading", { name: "Search results" }).closest("section");
+        expect(results).not.toHaveAttribute("aria-live");
         expect(screen.queryByText("Loading items…")).not.toBeInTheDocument();
         expect(screen.queryByText("Redis")).not.toBeInTheDocument();
 
@@ -331,6 +333,7 @@ describe("DiscoveryPage", () => {
 
         expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
         expect(screen.queryByText("Loading catalog…")).not.toBeInTheDocument();
+        expect(screen.getByRole("status", { name: "Catalog result count" })).toHaveTextContent("1 matching item found");
         expect(screen.queryByText("Redis")).not.toBeInTheDocument();
         expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(1, expect.objectContaining({ q: "redis" }));
         expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(2, expect.objectContaining({ q: "postgres" }));
@@ -417,6 +420,7 @@ describe("DiscoveryPage", () => {
         await user.click(screen.getByRole("button", { name: "Search" }));
 
         expect(await screen.findByText("No items matched these filters.")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("No items matched these filters.");
         expect(screen.queryByText("0 matching items found", { exact: true })).not.toBeInTheDocument();
         expect(screen.getByText("Clear filters or broaden your search.")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
