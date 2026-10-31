@@ -298,7 +298,7 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage();
 
         expect(await screen.findByText("Workflow status")).toBeInTheDocument();
-        expect(screen.getByText("Verification needs approval.")).toBeInTheDocument();
+        expect(screen.getByText("Checks need approval.")).toBeInTheDocument();
         expect(screen.getByText("Consistent")).toBeInTheDocument();
         expect(screen.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.")).toBeInTheDocument();
     });
@@ -309,7 +309,7 @@ describe("WorkflowAuditPage", () => {
         );
         renderAuditPage();
 
-        expect(await screen.findByText("Verification is approved. Run the approved checks when you are ready.")).toBeInTheDocument();
+        expect(await screen.findByText("Checks are approved. Run them when you are ready.")).toBeInTheDocument();
     });
 
     it("keeps workflow status separate from audit validation when validation is invalid", async () => {

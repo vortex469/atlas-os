@@ -110,10 +110,10 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "verification",
-        title: "Verification approval",
+        title: "Check approval",
         details: (audit) => [
-            { label: "Verification approval status", value: formatStatusLabel(audit.approvals.verification.status) },
-            { label: "Verification approval ID", value: audit.approvals.verification.approval_id ?? "Not started" },
+            { label: "Check approval status", value: formatStatusLabel(audit.approvals.verification.status) },
+            { label: "Check approval ID", value: audit.approvals.verification.approval_id ?? "Not started" },
             { label: "Verification evidence ID", value: audit.verification.verification_evidence_id ?? "Not started" },
         ],
     },
@@ -436,26 +436,27 @@ function formatStatusLabel(value: string): string {
 
 function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
     const isMaintenance = audit.effect_kind === "operational_action";
-    const action = isMaintenance ? "Maintenance request" : "Implementation";
     switch (audit.workflow_state) {
         case "planned":
             return isMaintenance ? "Maintenance request is ready for review." : "Workflow is ready for review.";
         case "awaiting_approval":
             return isMaintenance ? "Maintenance workflow is waiting for review." : "Workflow is waiting for review.";
         case "awaiting_implementation_approval":
-            return approvalStatusMessage(action, audit.approvals.implementation.status, isMaintenance
-                ? "Run approved maintenance when you are ready."
-                : "Run the approved change when you are ready.");
+            if (isMaintenance) return approvalStatusMessage("Maintenance request", audit.approvals.implementation.status, "Run approved maintenance when you are ready.");
+            if (audit.approvals.implementation.status === "approved") return "The change is approved. Run it when you are ready.";
+            if (audit.approvals.implementation.status === "rejected") return "Change approval was rejected.";
+            if (audit.approvals.implementation.status === "pending") return "Change needs approval.";
+            return "Change approval status is unavailable.";
         case "awaiting_execution":
-            return action + " is approved and ready to run.";
+            return isMaintenance ? "Maintenance request is approved and ready to run." : "The change is approved and ready to run.";
         case "executing":
-            return isMaintenance ? "Maintenance is running." : action + " is running.";
+            return isMaintenance ? "Maintenance is running." : "The change is running.";
         case "patch_applied_pending_verification":
-            return "Implementation is complete. Verification is next.";
+            return "The change is applied. Review and approve the checks before they run.";
         case "awaiting_verification_approval":
-            return approvalStatusMessage("Verification", audit.approvals.verification.status, "Run the approved checks when you are ready.");
+            return checksApprovalStatusMessage(audit.approvals.verification.status);
         case "verifying":
-            return "Verification checks are running.";
+            return "The checks are running.";
         case "awaiting_commit_approval":
             return approvalStatusMessage("Commit", audit.approvals.commit.status, "Record the approved commit when you are ready.");
         case "committing":
@@ -465,7 +466,7 @@ function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
                 ? "Maintenance workflow is blocked. Review the recorded stages and results below."
                 : "Workflow is blocked. Review the recorded stages and results below.";
         case "implementation_rejected":
-            return action + " approval was rejected.";
+            return isMaintenance ? "Maintenance request approval was rejected." : "Change approval was rejected.";
         case "completed":
             return isMaintenance ? "Maintenance workflow completed." : "Workflow completed.";
         default:
@@ -478,4 +479,11 @@ function approvalStatusMessage(action: string, status: string, approvedNextStep:
     if (status === "rejected") return action + " approval was rejected.";
     if (status === "pending") return action + " needs approval.";
     return action + " approval status is unavailable.";
+}
+
+function checksApprovalStatusMessage(status: string): string {
+    if (status === "approved") return "Checks are approved. Run them when you are ready.";
+    if (status === "rejected") return "Check approval was rejected.";
+    if (status === "pending") return "Checks need approval.";
+    return "Check approval status is unavailable.";
 }

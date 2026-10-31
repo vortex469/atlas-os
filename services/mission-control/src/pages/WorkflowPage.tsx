@@ -288,7 +288,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         } catch (error) {
             setVerificationApprovalError(workflowActionFailure(
                 error,
-                "Mission Control could not confirm the verification approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+                "Mission Control could not confirm the check approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
             ));
             await loadWorkflow("refresh");
         } finally {
@@ -509,7 +509,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                         <Detail label="Candidate fingerprint" value={workflow.candidate_fingerprint ?? "Not available"} />
                         <Detail label="Plan fingerprint" value={workflow.plan_fingerprint ?? "Not available"} />
                         {isRepository && <>
-                            <Detail label="Verification approval" value={formatLabel(workflow.verification_approval_status)} />
+                            <Detail label="Check approval" value={formatLabel(workflow.verification_approval_status)} />
                             <Detail label="Commit approval" value={formatLabel(workflow.commit_approval_status)} />
                             <Detail label="Repository" value={workflow.repository ?? "Not available"} />
                             <Detail label="Working directory" value={workflow.working_directory ?? "Not available"} />
@@ -571,7 +571,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             {isRepository && workflow.execution.output_capture?.some((item) => item.truncated) && (
                 <section aria-labelledby="output-capture-heading" className="rounded-xl border border-amber-500/50 p-5">
                     <h2 id="output-capture-heading" className="font-semibold text-white">Worker output was shortened</h2>
-                    <p className="mt-2 text-sm text-slate-300">Only part of the worker's output is shown. Verification and commit each need separate approval.</p>
+                    <p className="mt-2 text-sm text-slate-300">Only part of the worker's output is shown. Checks and commit each need separate approval.</p>
                     <details className="mt-3 text-sm text-slate-300">
                         <summary className="mc-focusable cursor-pointer text-blue-200">Output details</summary>
                         {workflow.execution.output_capture.filter((item) => item.truncated).map((item) => (
@@ -813,7 +813,7 @@ function VerificationReviewSection({
     return (
         <section aria-labelledby="verification-review-heading" className="space-y-5 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
             <div>
-                <h2 id="verification-review-heading" className="text-lg font-semibold text-white">Verification and review</h2>
+                <h2 id="verification-review-heading" className="text-lg font-semibold text-white">Checks and review</h2>
                 <p className="mt-2 text-sm text-slate-400">Review the planned checks and their results. Approve the checks before Atlas runs them.</p>
             </div>
 
@@ -857,7 +857,7 @@ function VerificationReviewSection({
                             ? "Review these checks. Approve them before Atlas runs them."
                             : awaitingVerificationApproval && workflow.verification_approval_status === "approved"
                                 ? "Checks are approved. Run them when you are ready."
-                                : "Check results will appear after implementation and verification finish."}
+                                : "Results will appear after the change is applied and the checks finish."}
                     </p>
                 )}
             </section>}
@@ -871,28 +871,28 @@ function VerificationReviewSection({
                         <Detail label="Changed files" value={review.changed_files.length > 0 ? review.changed_files.join(", ") : "None reported"} />
                     </dl>
                 ) : (
-                    <p className="mt-3 text-sm text-slate-300">Review results will appear after verification runs.</p>
+                    <p className="mt-3 text-sm text-slate-300">Review results will appear after the checks finish.</p>
                 )}
             </section>}
 
             {shouldShowVerificationApprovalSection(workflow, verificationApprovalResult, verificationApprovalError) && <section aria-labelledby="verification-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="verification-approval-heading" className="text-base font-semibold text-white">Verification approval</h3>
-                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and verification approval decision. Approved checks run only after you choose Run approved checks.</p>
+                <h3 id="verification-approval-heading" className="text-base font-semibold text-white">Check approval</h3>
+                <p className="mt-2 text-sm text-slate-400">Approve these planned checks before Atlas runs them. Approval does not start them; choose Run approved checks separately when you are ready.</p>
                 {canDecideVerification ? (
                     <div className="mt-4 flex flex-wrap gap-3">
-                        <button type="button" onClick={() => void onVerificationDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Verification</button>
-                        <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Verification</button>
+                        <button type="button" onClick={() => void onVerificationDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve checks</button>
+                        <button type="button" onClick={() => void onVerificationDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject checks</button>
                     </div>
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">{workflow.verification_approval_status === "approved"
-                        ? "Verification approval is recorded."
+                        ? "Check approval is recorded."
                         : workflow.verification_approval_status === "rejected"
-                            ? "Verification approval was rejected. No further decision is available."
-                            : "Verification approval is not available at this step."}</p>
+                            ? "Check approval was rejected. No further decision is available."
+                            : "Check approval is not available at this step."}</p>
                 )}
-                {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting verification approval...</p>}
+                {isSubmittingVerification && <p role="status" aria-live="polite" className="mt-3 text-sm text-blue-200">Submitting check approval...</p>}
                 {verificationApprovalResult?.verification_approval_status === "approved" && !actionsDisabled && workflow.workflow_state === "awaiting_verification_approval" && workflow.verification_approval_status === "approved" && <p role="status" className="mt-3 text-sm text-emerald-200">Checks approved. Run them when you are ready.</p>}
-                {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Verification approval rejected.</p>}
+                {verificationApprovalResult?.verification_approval_status === "rejected" && <p role="status" className="mt-3 text-sm text-red-100">Check approval rejected.</p>}
                 {verificationApprovalError && <WorkflowActionError failure={verificationApprovalError} />}
             </section>}
 
@@ -1033,10 +1033,10 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
             return "The change is applied. Review and approve the checks before they run.";
         case "awaiting_verification_approval":
             if (workflow.verification_approval_status === "approved") return "Checks are approved. Run them when you are ready.";
-            if (workflow.verification_approval_status === "rejected") return "Verification approval was rejected.";
-            return "Verification needs approval.";
+            if (workflow.verification_approval_status === "rejected") return "Check approval was rejected.";
+            return "Checks need approval.";
         case "verifying":
-            return "Verification checks are running.";
+            return "The checks are running.";
         case "awaiting_commit_approval":
             if (workflow.commit_approval_status === "approved") return "Commit is approved. Record it when you are ready.";
             if (workflow.commit_approval_status === "rejected") return "Commit approval was rejected.";

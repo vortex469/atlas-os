@@ -4461,6 +4461,18 @@ or has been applied; the operator-facing buttons say “Approve change” and
 “Reject change.” The page still names the exact request being approved and
 keeps running the approved change as a separate action. API fields, approval
 decisions, and execution controls are unchanged. The WorkflowPage suite passes
-(110 tests), the repository journey passes at 320px, 390px, and 1280px (15
+(111 tests), the repository journey passes at 320px, 390px, and 1280px (15
 tests), the workflow recovery checks pass at those widths (6 tests), and lint,
 production build, and `git diff --check` pass.
+
+## Check approval wording — 2026-10-31
+
+The workflow's verification stage now uses “Checks and review,” “Check
+approval,” and “Approve checks.” Its status explains that the planned checks
+need approval and that approval does not start them. Workflow history uses the
+same check-approval label and outcome. The operator messages say when checks
+are running and when their results will appear. The approval and run requests
+remain separate, and no API fields or decision rules changed. The focused
+workflow and history suites pass (140 tests); repository and maintenance
+journeys pass (26 tests across 320px, 390px, and 1280px), with lint, production
+build, and `git diff --check` passing.

@@ -95,6 +95,7 @@ describe("WorkflowPage", () => {
         ["approved and ready", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" }), "The change is approved and ready to run."],
         ["unconfirmed approval", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "pending" }), "Change approval is not confirmed. Refresh before running it."],
         ["applied and awaiting checks", workflow({ workflow_state: "patch_applied_pending_verification" }), "The change is applied. Review and approve the checks before they run."],
+        ["checks running", workflow({ workflow_state: "verifying" }), "The checks are running."],
         ["commit approval", workflow({ workflow_state: "awaiting_commit_approval" }), "Commit needs approval."],
         ["completed", workflow({ workflow_state: "completed" }), "Workflow completed."],
         ["unknown", workflow({ workflow_state: "unexpected_state" }), "Current status is unavailable. Open Workflow details."],
@@ -269,7 +270,7 @@ describe("WorkflowPage", () => {
         let resolveRead!: (value: WorkflowDetailResponse) => void;
         mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }));
         renderPage();
-        const name = stage === "implementation" ? "Approve change" : stage === "verification" ? "Approve Verification" : "Approve Commit";
+        const name = stage === "implementation" ? "Approve change" : stage === "verification" ? "Approve checks" : "Approve Commit";
         const approve = await screen.findByRole("button", { name });
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
@@ -296,8 +297,8 @@ describe("WorkflowPage", () => {
         } else if (stage === "verification") {
             initial = workflowAwaitingVerification({ verification_approval_status: "pending" });
             decided = workflowAwaitingVerification({ verification_approval_status: "approved" });
-            buttonName = "Approve Verification";
-            expectedFailureMessage = "Mission Control could not confirm the verification approval decision.";
+            buttonName = "Approve checks";
+            expectedFailureMessage = "Mission Control could not confirm the check approval decision.";
             mockedSubmitWorkflowVerificationApproval.mockRejectedValueOnce(new Error("Approval already decided"));
         } else {
             initial = workflowAwaitingCommit();
@@ -361,7 +362,7 @@ describe("WorkflowPage", () => {
                 await act(async () => resolveRead(running));
                 await act(async () => vi.advanceTimersByTime(5_000));
                 expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(3);
-                expect(screen.getByRole("button", { name: "Approve Verification" })).toBeEnabled();
+                expect(screen.getByRole("button", { name: "Approve checks" })).toBeEnabled();
                 expect(screen.queryByText("When work is running, Atlas checks its status every 5 seconds. Buttons are briefly disabled during each check.")).not.toBeInTheDocument();
                 expect(mockedResumeWorkflow).not.toHaveBeenCalled();
             } finally {
@@ -457,7 +458,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(detail);
         renderPage();
         expect(await screen.findByRole("heading", { name: "Worker output was shortened" })).toBeInTheDocument();
-        expect(screen.getByText("Only part of the worker's output is shown. Verification and commit each need separate approval.")).toBeVisible();
+        expect(screen.getByText("Only part of the worker's output is shown. Checks and commit each need separate approval.")).toBeVisible();
         const outputDetails = screen.getByText("Output details").closest("details") as HTMLElement;
         const byteCounts = within(outputDetails).getByText(/1024 bytes retained; 4096 bytes observed/);
         expect(outputDetails).not.toHaveAttribute("open");
@@ -646,7 +647,7 @@ describe("WorkflowPage", () => {
 
         fireEvent.click(await screen.findByRole("button", { name: "Run approved change" }));
 
-        expect(await screen.findByText("Verification needs approval.")).toBeInTheDocument();
+        expect(await screen.findByText("Checks need approval.")).toBeInTheDocument();
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
     });
 
@@ -686,7 +687,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Run approved checks" })).toBeInTheDocument();
-        expect(screen.getByText("Verification approval is recorded.", { exact: true })).toBeVisible();
+        expect(screen.getByText("Check approval is recorded.", { exact: true })).toBeVisible();
     });
 
     it("shows Record approved commit for approved commit state", async () => {
@@ -1085,7 +1086,7 @@ describe("WorkflowPage", () => {
         const detailsContent = within(details);
         expect(detailsContent.getByText("Maintenance request approval", { exact: true })).toBeVisible();
         expect(detailsContent.queryByText("Change approval", { exact: true })).not.toBeInTheDocument();
-        expect(detailsContent.queryByText("Verification approval", { exact: true })).not.toBeInTheDocument();
+        expect(detailsContent.queryByText("Check approval", { exact: true })).not.toBeInTheDocument();
         expect(detailsContent.queryByText("Commit approval", { exact: true })).not.toBeInTheDocument();
         expect(detailsContent.queryByText("Repository", { exact: true })).not.toBeInTheDocument();
         expect(detailsContent.queryByText("Working directory", { exact: true })).not.toBeInTheDocument();
@@ -1242,7 +1243,7 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Checks to run" })).toBeInTheDocument();
-        const verificationReview = within(screen.getByRole("region", { name: "Verification and review" }));
+        const verificationReview = within(screen.getByRole("region", { name: "Checks and review" }));
         const technicalDetails = verificationReview.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(verificationReview.getByText("verification-plan-123")).not.toBeVisible();
@@ -1318,12 +1319,12 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        const verification = within(await screen.findByRole("region", { name: "Verification and review" }));
+        const verification = within(await screen.findByRole("region", { name: "Checks and review" }));
         expect(verification.getByRole("heading", { name: "Checks to run" })).toBeVisible();
         expect(verification.getAllByText("compose-config, compose-ps").length).toBeGreaterThan(0);
         expect(verification.queryByRole("heading", { name: "Check results" })).not.toBeInTheDocument();
         expect(verification.queryByRole("heading", { name: "Review" })).not.toBeInTheDocument();
-        expect(verification.queryByRole("heading", { name: "Verification approval" })).not.toBeInTheDocument();
+        expect(verification.queryByRole("heading", { name: "Check approval" })).not.toBeInTheDocument();
     });
 
     it("shows the next verification step without empty result fields", async () => {
@@ -1356,8 +1357,8 @@ describe("WorkflowPage", () => {
         expect(checkResults.getByText("Review these checks. Approve them before Atlas runs them.")).toBeVisible();
         expect(checkResults.queryByText("Completed", { exact: true })).not.toBeInTheDocument();
         const review = within(screen.getByRole("region", { name: "Review" }));
-        expect(review.getByText("Review results will appear after verification runs.")).toBeVisible();
-        expect(screen.getByRole("button", { name: "Approve Verification" })).toBeVisible();
+        expect(review.getByText("Review results will appear after the checks finish.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Approve checks" })).toBeVisible();
     });
 
     it("submits verification approval with only workflow id and decision", async () => {
@@ -1371,7 +1372,7 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve checks" }));
 
         await screen.findByText("Checks approved. Run them when you are ready.");
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledTimes(1);
@@ -1394,11 +1395,11 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Verification" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve checks" }));
 
         await screen.findByText("Checks approved. Run them when you are ready.");
-        expect(screen.queryByRole("button", { name: "Approve Verification" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Reject Verification" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve checks" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject checks" })).not.toBeInTheDocument();
     });
 
     it("submits verification rejection and blocks duplicate clicks", async () => {
@@ -1409,11 +1410,11 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        const reject = await screen.findByRole("button", { name: "Reject Verification" });
+        const reject = await screen.findByRole("button", { name: "Reject checks" });
         fireEvent.click(reject);
         fireEvent.click(reject);
 
-        expect(await screen.findByText("Submitting verification approval...")).toBeInTheDocument();
+        expect(await screen.findByText("Submitting check approval...")).toBeInTheDocument();
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowVerificationApproval).toHaveBeenCalledWith("workflow-123", "reject");
         resolveApproval({
@@ -1422,7 +1423,7 @@ describe("WorkflowPage", () => {
             verification_approval_status: "rejected",
             message: null,
         });
-        await screen.findByText("Verification approval rejected.");
+        await screen.findByText("Check approval rejected.");
     });
 
     it("does not show an empty commit stage before a commit request exists", async () => {

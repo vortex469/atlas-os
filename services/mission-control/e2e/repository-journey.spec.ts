@@ -123,10 +123,10 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("button", { name: "Run approved change", exact: true })).toBeVisible();
         await expect(page.getByText("Change approved. Run it when you are ready.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(6);
-        await expect(page.getByRole("button", { name: "Approve Verification", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Approve checks", exact: true })).toHaveCount(0);
         await page.getByRole("button", { name: "Run approved change", exact: true }).click();
 
-        await expect(page.getByRole("button", { name: "Approve Verification", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Approve checks", exact: true })).toBeVisible();
         const executionSummary = changeProgress.getByRole("region", { name: "Execution" });
         await expect(executionSummary.getByText("Files changed: 1", { exact: true })).toBeVisible();
         const executionDetails = executionSummary.locator("details");
@@ -137,7 +137,7 @@ for (const width of [320, 390, 1280]) {
         await executionDetails.getByText("Technical details", { exact: true }).click();
         await expect(executionDetails.getByText("execution-browser-journey", { exact: true })).toBeHidden();
         const outputNotice = page.getByRole("region", { name: "Worker output was shortened" });
-        await expect(outputNotice.getByText("Only part of the worker's output is shown. Verification and commit each need separate approval.", { exact: true })).toBeVisible();
+        await expect(outputNotice.getByText("Only part of the worker's output is shown. Checks and commit each need separate approval.", { exact: true })).toBeVisible();
         const outputDetails = outputNotice.getByText("Output details", { exact: true });
         const outputCounts = outputNotice.getByText("stdout: 1024 bytes retained; 4096 bytes observed.", { exact: true });
         await expect(outputCounts).toBeHidden();
@@ -148,18 +148,18 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Change approved. Run it when you are ready.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Run approved|Record approved/ })).toHaveCount(0);
         expect(fixture.writes).toHaveLength(7);
-        const verificationReview = page.getByRole("region", { name: "Verification and review" });
+        const verificationReview = page.getByRole("region", { name: "Checks and review" });
         const plannedCheck = verificationReview.getByRole("definition").filter({ hasText: "compose-config" }).last();
         await expect(plannedCheck).toBeVisible();
         await expect(page.getByRole("region", { name: "Check results" }).getByText("Review these checks. Approve them before Atlas runs them.", { exact: true })).toBeVisible();
-        await expect(page.getByRole("region", { name: "Review" }).getByText("Review results will appear after verification runs.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("region", { name: "Review" }).getByText("Review results will appear after the checks finish.", { exact: true })).toBeVisible();
         await expect(verificationReview.getByText("Verification check IDs", { exact: true })).toBeHidden();
         await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeHidden();
         await verificationReview.getByText("Technical details", { exact: true }).click();
         await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeVisible();
         await verificationReview.getByText("Technical details", { exact: true }).click();
         await expect(verificationReview.getByText("verification-browser-journey", { exact: true })).toBeHidden();
-        await page.getByRole("button", { name: "Approve Verification", exact: true }).click();
+        await page.getByRole("button", { name: "Approve checks", exact: true }).click();
         await expect(page.getByRole("button", { name: "Run approved checks", exact: true })).toBeVisible();
         await expect(page.getByText("Checks approved. Run them when you are ready.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(8);
@@ -187,7 +187,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Completed workflow", exact: true })).toBeVisible();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Record it when you are ready.", { exact: true })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve Verification|Approve Commit/ })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve Commit/ })).toHaveCount(0);
         await fitsViewport(page);
         await page.getByRole("link", { name: "View workflow history", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
@@ -196,7 +196,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByText("Record consistency", { exact: true })).toBeVisible();
         await expect(page.getByText("Overall audit status", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.", { exact: true })).toBeVisible();
-        for (const label of ["Change proposal", "Planning", "Change plan", "Workflow setup", "Change request", "Change approval", "Apply change", "Checks to run", "Verification approval", "Check results", "Review results", "Commit details", "Commit approval", "Commit result"]) {
+        for (const label of ["Change proposal", "Planning", "Change plan", "Workflow setup", "Change request", "Change approval", "Apply change", "Checks to run", "Check approval", "Check results", "Review results", "Commit details", "Commit approval", "Commit result"]) {
             await expect(page.getByRole("region", { name: new RegExp(`^${label},`) })).toBeVisible();
         }
         await expect(page.getByRole("region", { name: /Candidate Plan/ })).toHaveCount(0);
@@ -329,10 +329,10 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     await page.goto(`/workflows/${journey.workflow}`);
     await page.getByRole("button", { name: "Reject change", exact: true }).click();
     await expect(page.getByText("Change rejected.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve Verification|Approve Commit/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve Commit/ })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve Verification|Approve Commit/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve Commit/ })).toHaveCount(0);
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);
 });
