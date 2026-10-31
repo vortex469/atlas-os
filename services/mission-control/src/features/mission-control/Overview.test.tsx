@@ -172,12 +172,20 @@ describe("MC overview evidence", () => {
             provider_id: "ifileshare",
             status: "offline",
             message: "Connection refused",
+        }, PhotoShare: {
+            provider_id: "photoshare",
+            status: "offline",
+            message: "Connection timed out",
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        expect(checks.getByText("These results show whether Atlas Core can reach each service. Unavailable means Atlas Core got no response; the service may still be running on its own computer.")).toBeVisible();
+        expect(checks.getByText("An unavailable service did not respond to Atlas Core. It might still be running on its own computer.")).toBeVisible();
+        expect(checks.getAllByText("An unavailable service did not respond to Atlas Core. It might still be running on its own computer.")).toHaveLength(1);
+        expect(checks.queryByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).not.toBeInTheDocument();
+        expect(checks.getByText("iFileshare", { exact: true })).toBeVisible();
+        expect(checks.getByText("PhotoShare", { exact: true })).toBeVisible();
         const attention = within(screen.getByRole("region", { name: "Needs attention" }));
         const conditions = within(attention.getByRole("list", { name: "Items needing attention" }));
-        const condition = within(conditions.getByRole("listitem"));
+        const condition = within(conditions.getByRole("link", { name: "iFileshare" }).closest("li") as HTMLElement);
 
         expect(condition.getByText("Atlas Core could not connect", { exact: true })).toBeVisible();
         expect(condition.queryByText("Unavailable", { exact: true })).not.toBeInTheDocument();
@@ -228,7 +236,7 @@ describe("MC overview evidence", () => {
         const howToCheck = checks.getByText("Test from the Atlas computer");
         const connectionDetails = howToCheck.closest("details");
         expect(connectionDetails).not.toHaveAttribute("open");
-        expect(checks.getByText("Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.")).toBeVisible();
+        expect(checks.getByText("An unavailable service did not respond to Atlas Core. It might still be running on its own computer.")).toBeVisible();
         fireEvent.click(howToCheck);
         const nextStep = checks.getByRole("group", { name: "Next connection check" });
         const summary = checks.getByText("Check the service computer");

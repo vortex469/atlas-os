@@ -4316,3 +4316,13 @@ empty result says “This provider has not reported any resources.” A failed
 read keeps its separate message, so an unavailable list is not presented as
 empty. All 61 focused Provider Resources tests pass, including the
 empty-versus-failed distinction; Mission Control lint and build pass.
+
+## Service reachability explanation — 2026-10-31
+
+The Overview now explains once that an unavailable service did not respond to
+Atlas Core and may still be running on its own computer. Repeating the same
+warning beneath every unavailable service has been removed; the individual
+service checks and troubleshooting steps remain available. The focused
+Overview suite passes 81 tests; Mission Control lint and production build
+pass. This changes presentation only; health probes and status rules are
+unchanged.
