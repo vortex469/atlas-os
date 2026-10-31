@@ -190,6 +190,23 @@ describe("PolicyVisibilitySection", () => {
         expect(screen.getByText("No diagnostic message provided.")).toBeVisible();
     });
 
+    it("withholds credential and URL text from policy diagnostics", () => {
+        render(<PolicyVisibilitySection policies={null} health={{
+            ...health,
+            status: "degraded",
+            diagnostics: [{
+                path: "https://operator:canary-password@example.invalid/?token=canary-token",
+                error_type: "Authorization: Bearer canary-token",
+                message: "Unable to verify https://operator:canary-password@example.invalid/",
+            }],
+        }} />);
+
+        fireEvent.click(screen.getByText("Technical details (1)"));
+
+        expect(screen.getAllByText("[Sensitive text withheld]")).toHaveLength(3);
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
+
     it("explains when last loaded policy settings remain available", () => {
         render(
             <PolicyVisibilitySection

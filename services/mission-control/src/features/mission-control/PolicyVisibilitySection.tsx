@@ -1,5 +1,6 @@
 import { HealthEvidence } from "../../components/HealthEvidence";
-import { evidenceRecord, evidenceText, healthState } from "../../utils/healthPresentation";
+import { evidenceRecord, healthState } from "../../utils/healthPresentation";
+import { safeText } from "../../utils/safeText";
 import { SectionHeader } from "../../components/SectionHeader";
 import type {
     AtlasPolicies,
@@ -258,10 +259,10 @@ function PolicyReloadStatus({
                                 >
                                     <div className="flex flex-wrap items-center gap-2">
                                         <code className="text-xs font-semibold text-red-200">
-                                            {evidenceText(diagnostic.path) ?? "Path unavailable"}
+                                            {safeText(diagnostic.path) || "Path unavailable"}
                                         </code>
                                         <span className="text-xs text-slate-500">
-                                            {evidenceText(diagnostic.error_type) ?? "Issue type unavailable"}
+                                            {safeText(diagnostic.error_type) || "Issue type unavailable"}
                                         </span>
                                         {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
                                             <span className="text-xs text-slate-500">
@@ -272,7 +273,7 @@ function PolicyReloadStatus({
                                         )}
                                     </div>
                                     <p className="mt-1 text-sm text-red-200/80">
-                                        {evidenceText(diagnostic.message) ?? "No diagnostic message provided."}
+                                        {safeText(diagnostic.message) || "No diagnostic message provided."}
                                     </p>
                                 </li>
                             ),

@@ -4090,3 +4090,19 @@ hidden while ordinary advisory text stays visible. Finding severity, health
 effect, and suggestion-only presentation are unchanged. The focused advisory
 card, finding, and overview-attention suites pass 16 tests; Mission Control
 lint and production build pass.
+
+## Policy diagnostic text filtering — 2026-10-31
+
+Policy validation paths, issue types, and messages now pass through the shared
+bounded filter before display. The technical disclosure remains collapsed,
+and ordinary policy findings remain readable. Policy settings, health state,
+and refresh behavior are unchanged. The focused Policy Visibility suite passes
+14 tests, including credential and URL canaries; Mission Control lint and
+production build pass.
+
+## Full Mission Control unit validation — 2026-10-31
+
+After the service-health, Compose analysis, advisory-card, and policy diagnostic
+updates, the full Mission Control unit suite passes 3,055 tests across 188
+files. This is source-level unit validation; the live-service and production
+acceptance gaps in the review remain open.
