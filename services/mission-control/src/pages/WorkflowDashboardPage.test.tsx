@@ -492,7 +492,8 @@ describe("WorkflowDashboardPage", () => {
 
         expect(listWorkflows).toHaveBeenCalledTimes(2);
         expect(screen.getByText("Refreshing workflows...")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Refreshing…" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Refreshing…" })).not.toBeInTheDocument();
         resolveRefresh(response([workflow({ workflow_id: "workflow-refreshed", execution_intent: "restart-service" })]));
         expect(await screen.findByRole("heading", { name: "Restart Service" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();

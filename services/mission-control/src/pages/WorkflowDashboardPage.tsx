@@ -267,7 +267,7 @@ export function WorkflowDashboardPage() {
                         aria-describedby={autoRefreshEnabled ? "workflow-auto-refresh-note" : undefined}
                         className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {refreshMode === "manual" ? "Refreshing…" : "Refresh"}
+                        Refresh
                     </button>
                     {autoRefreshEnabled && <p id="workflow-auto-refresh-note" className="max-w-64 text-right text-xs text-slate-400">The list checks for updates every 5 seconds while a workflow is running.</p>}
                 </div>
