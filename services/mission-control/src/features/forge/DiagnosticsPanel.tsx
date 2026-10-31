@@ -1,4 +1,5 @@
 import type { DeploymentAnalysisResponse } from "./types";
+import { safeText } from "../../utils/safeText";
 
 type DiagnosticsPanelProps = {
     result: DeploymentAnalysisResponse | null;
@@ -43,7 +44,7 @@ export function DiagnosticsPanel({
                             </p>
 
                             <p className="mt-1 text-sm text-amber-100/80">
-                                {diagnostic.message}
+                                {safeText(diagnostic.message) || "No diagnostic details were provided."}
                             </p>
                         </div>
                     ))}

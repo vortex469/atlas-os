@@ -6,6 +6,16 @@ import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { PlanPanel } from "./PlanPanel";
 import type { DeploymentAnalysisResponse } from "./types";
 import { DeploymentBrief } from "./DeploymentBrief";
+import { safeText } from "../../utils/safeText";
+
+function redactResponseText(value: unknown): unknown {
+    if (typeof value === "string") return safeText(value);
+    if (Array.isArray(value)) return value.map(redactResponseText);
+    if (value !== null && typeof value === "object") {
+        return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, redactResponseText(nested)]));
+    }
+    return value;
+}
 
 export function Forge() {
     const [result, setResult] =
@@ -46,7 +56,7 @@ export function Forge() {
                     </summary>
 
                     <pre className="mt-4 overflow-x-auto whitespace-pre-wrap text-xs text-slate-400">
-                        {JSON.stringify(result, null, 2)}
+                        {JSON.stringify(redactResponseText(result), null, 2)}
                     </pre>
                 </details>
             )}

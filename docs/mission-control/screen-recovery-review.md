@@ -4073,3 +4073,11 @@ URL canaries stay hidden in both the summary and expanded details. Health
 probing and provider behavior are unchanged. The focused health and service
 health suites pass 70 tests, and the full Mission Control unit suite passes
 3,052 tests across 188 files. Mission Control lint and production build pass.
+
+## Compose analysis finding filtering — 2026-10-31
+
+Compose analysis finding text and the expanded technical response now pass
+through the shared bounded filter, so credential and URL canaries remain
+withheld in both places. The proposed plan, approval checks, and analysis-only
+boundary are unchanged. The focused Forge suite passes 13 tests; Mission
+Control lint and production build pass.

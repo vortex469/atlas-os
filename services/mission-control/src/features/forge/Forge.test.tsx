@@ -132,6 +132,29 @@ describe("Forge analysis freshness", () => {
         expect(screen.queryByText(/security or operational concerns/)).not.toBeInTheDocument();
     });
 
+    it("withholds credential and URL text from Compose analysis findings", async () => {
+        const result = analysis("Secret-bearing compose input");
+        result.result.analysis.diagnostics = [{
+            code: "compose.endpoint",
+            severity: "warning",
+            message: "Analysis found https://operator:canary-password@example.invalid/?token=canary-token",
+            component_id: null,
+        }];
+        analyze.mockResolvedValue(result);
+        render(<Forge />);
+        submit();
+
+        expect(await screen.findByText("[Sensitive text withheld]")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Technical details"));
+        expect(technicalDetails).toHaveAttribute("open");
+        expect(technicalDetails).toHaveTextContent("[Sensitive text withheld]");
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+        expect(screen.getByText("This is a proposed plan. Workflow permissions and exact approvals are checked separately.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|execute|deploy now/i })).not.toBeInTheDocument();
+    });
+
     it("explains port bindings without claiming internet access", async () => {
         const result = analysis("Home services");
         result.result.analysis.plan.components = [{
