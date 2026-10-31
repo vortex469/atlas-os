@@ -4389,3 +4389,12 @@ language for local checks and Docker container identification. Focused
 Overview and service-health suites pass 91 tests; the responsive service-check
 journey passes at 320px and 1280px. Mission Control lint and production build
 pass.
+
+## Provider refresh warning — 2026-10-31
+
+The provider detail page now says plainly when it could not update provider
+details and that the displayed information may be out of date. The warning
+keeps the stale-data meaning without exposing the catalog implementation
+detail. Provider data and refresh behavior are unchanged.
+The focused ProviderOverview suite passes 13 tests; Mission Control lint and
+the production build pass.

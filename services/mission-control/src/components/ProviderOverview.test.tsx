@@ -87,7 +87,7 @@ describe("ProviderOverview feature data", () => {
     it("marks cached provider health and response details as out of date after a catalog failure", () => {
         view([], 24, "online", null, true);
 
-        expect(screen.getByRole("status")).toHaveTextContent("Last loaded provider details are shown because the catalog refresh failed.");
+        expect(screen.getByRole("status")).toHaveTextContent("Could not update provider details. This information may be out of date.");
         expect(screen.getByText("Status unknown", { exact: true })).toBeVisible();
         expect(screen.getByText("Last known report (out of date): Healthy.")).toBeVisible();
         expect(screen.getByText(/Last known response time/)).toHaveTextContent("Last known response time 24 ms");

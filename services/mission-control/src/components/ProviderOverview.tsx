@@ -79,7 +79,7 @@ export function ProviderOverview({
 
             {stale && (
                 <p role="status" className="mt-4 text-sm text-amber-200">
-                    Last loaded provider details are shown because the catalog refresh failed.
+                    Could not update provider details. This information may be out of date.
                 </p>
             )}
 
