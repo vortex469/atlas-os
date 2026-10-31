@@ -234,15 +234,17 @@ describe("MC overview evidence", () => {
         const summary = checks.getByText("Check the service computer");
         const disclosure = summary.closest("details");
 
-        expect(nextStep).toHaveTextContent("On the computer running Atlas, open the folder containing compose.production.yaml and run this read-only command.");
-        expect(nextStep).toHaveTextContent("It checks whether Atlas Core can reach iFileshare. If iFileshare runs on a different computer, checking from that computer does not test the same connection.");
+        const instructions = within(nextStep).getByRole("list", { name: "Steps to check the Atlas Core connection" });
+        expect(instructions).toBeVisible();
+        expect(instructions).toHaveTextContent("On the Atlas computer, run docker ps --all. Continue only if a container name includes atlas-core; otherwise, switch to the computer running Atlas Core.");
+        expect(instructions).toHaveTextContent("Open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach iFileshare; running it on the computer where iFileshare runs does not test this path.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
         expect(command).toHaveTextContent('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toHaveTextContent(/password|private|token=/);
         expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
-        expect(nextStep).toHaveTextContent("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. On the computer running Atlas, docker ps --all should list a container whose name includes atlas-core. If not, this is not the Atlas host. Run the check from Atlas's Compose folder, or pass the file's full path with --file.");
+        expect(nextStep).toHaveTextContent("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas's Compose folder, or pass the file's full path with --file.");
         expect(nextStep).not.toHaveTextContent("blank PORTS field");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);

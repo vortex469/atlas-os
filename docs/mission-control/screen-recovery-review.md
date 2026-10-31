@@ -4168,3 +4168,15 @@ withheld in both the visible finding and expanded evidence details, while
 ordinary findings remain readable. Compatibility checks and their results are
 unchanged. The full Mission Control unit suite passes 3,066 tests across 188
 files, including the focused redaction canary; lint and production build pass.
+
+## Atlas Core connection-check guidance — 2026-10-31
+
+The service-check instructions now first ask the operator to confirm that
+`docker ps --all` lists an `atlas-core` container, then direct them to Atlas's
+Compose folder before running the read-only reachability check. The missing
+file help explains that Compose resolves the file path from the current folder.
+This addresses confusing a service-host check or a missing Compose file with a
+failed network probe. The focused Overview and service-health suites pass 88
+tests, and both development and built-app iFileshare browser journeys pass at
+320px and 1280px. Mission Control lint and production build pass. Health
+probing and status rules are unchanged.

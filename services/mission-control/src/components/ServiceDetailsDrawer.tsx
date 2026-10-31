@@ -174,9 +174,10 @@ export function ServiceDetailsDrawer({
                         <details className="mt-2">
                             <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">Test from the Atlas computer</summary>
                             <div className="mt-2">
-                                <p className="text-sm text-slate-400">
-                                    On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It checks whether Atlas Core can reach {serviceName}. If {serviceName} runs on a different computer, checking from that computer does not test the same connection.
-                                </p>
+                                <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
+                                    <li>On the Atlas computer, run <code>docker ps --all</code>. Continue only if a container name includes <code>atlas-core</code>; otherwise, switch to the computer running Atlas Core.</li>
+                                    <li>Open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}; running it on the computer where {serviceName} runs does not test this path.</li>
+                                </ol>
                                 {reachabilityCommand ? (
                                     <div role="group" aria-label="Read-only Core connection check command" className="mt-2 rounded border border-slate-800 bg-slate-900 p-3">
                                         <div className="flex flex-wrap items-start gap-2">
@@ -194,7 +195,7 @@ export function ServiceDetailsDrawer({
                                 )}
                                 <details className="mt-2">
                                     <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
-                                    <p className="mt-2 text-sm text-slate-400">“No such file” means Compose did not run the check; it says nothing about service reachability. On the computer running Atlas, <code>docker ps --all</code> should list a container whose name includes <code>atlas-core</code>. If not, this is not the Atlas host. Run the check from Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
+                                    <p className="mt-2 text-sm text-slate-400">“No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
                                 </details>
                             </div>
                         </details>
