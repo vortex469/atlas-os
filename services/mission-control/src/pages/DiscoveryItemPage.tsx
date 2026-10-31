@@ -645,7 +645,7 @@ function CompatibilityPanel({
                     <KeyValue label="Last checked" value={formatLocalTimestamp(compatibility.checked_at)} />
                     {compatibility.findings.length > 0 && <KeyValue label="Findings" value={String(compatibility.findings.length)} />}
                     <KeyValue
-                        label="Unconfirmed details"
+                        label="Details not confirmed"
                         value={compatibility.unknown_facts.length === 0 ? "None" : String(compatibility.unknown_facts.length)}
                     />
                 </dl>
@@ -664,7 +664,11 @@ function CompatibilityPanel({
             <InfoPanel title="What Atlas found">
                 <div className="space-y-4">
                     {compatibility.findings.length === 0 ? (
-                        <p className="text-sm text-slate-500">No issues or notes were found.</p>
+                        <p className="text-sm text-slate-500">
+                            {compatibility.unknown_facts.length === 0
+                                ? "No issues or notes were found."
+                                : "No issues or notes were reported. Atlas could not confirm some details; see below."}
+                        </p>
                     ) : (
                         Object.entries(findingsBySeverity).map(([severity, findings]) => (
                             <div key={`${targetItemId}-${severity}`}>

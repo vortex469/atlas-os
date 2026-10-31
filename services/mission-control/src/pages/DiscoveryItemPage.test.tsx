@@ -881,7 +881,21 @@ describe("DiscoveryItemPage", () => {
         expect(within(summary as HTMLElement).queryByText("Findings")).not.toBeInTheDocument();
         expect(within(summary as HTMLElement).queryByText("Results")).not.toBeInTheDocument();
         expect(screen.getByText("Atlas Environment")).toBeInTheDocument();
-        expect(screen.getByText("Unconfirmed details")).toBeInTheDocument();
+        expect(screen.getByText("Details not confirmed")).toBeInTheDocument();
+    });
+
+    it("does not present missing compatibility facts as a clean result", async () => {
+        mockedGetDiscoveryCompatibility.mockResolvedValue(
+            compatibilityAssessment({ findings: [], evidence: [], unknown_facts: ["open_ports"] }),
+        );
+
+        renderPage();
+
+        expect(await screen.findByText("No issues or notes were reported. Atlas could not confirm some details; see below.")).toBeInTheDocument();
+        expect(screen.getByText("What Atlas could not confirm")).toBeInTheDocument();
+        expect(screen.getByText("Open ports")).toBeInTheDocument();
+        const summary = screen.getByRole("heading", { name: "Compatibility summary" }).closest("section");
+        expect(within(summary as HTMLElement).getByText("Details not confirmed")).toBeInTheDocument();
     });
 
     it("renders incoming and outgoing relationships separately with links and labels", async () => {

@@ -4647,3 +4647,12 @@ explains that the choice only selects the VM and that the check has not
 confirmed the app can run there. The page-level boundary still says that the
 review does not install or authorize an installation. The focused selection
 suite passes 13 tests; lint, production build, and the whitespace check pass.
+
+## Catalog compatibility empty state — 2026-10-31
+
+When compatibility returns no findings but leaves details unconfirmed, the
+catalog now states both facts instead of saying that no issues were found.
+The summary label matches the list of details Atlas could not confirm.
+Compatibility status and installation decisions are unchanged. The Discovery
+item suite passes 41 tests; lint, production build, and the whitespace check
+pass.
