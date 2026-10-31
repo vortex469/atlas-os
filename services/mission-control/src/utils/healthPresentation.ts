@@ -37,13 +37,18 @@ export function healthReason(value: unknown): string | null {
     }
 }
 
-export function healthNextCheck(value: unknown): string | null {
+export function healthNextCheck(value: unknown, serviceName?: unknown): string | null {
     const text = evidenceText(value);
     if (!text) return null;
     const { message } = parseHealthError(text);
     switch (message.toLowerCase()) {
-        case "connection refused":
-            return "On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.";
+        case "connection refused": {
+            const name = safeText(serviceName);
+            const localCheck = name
+                ? `On the computer that runs ${name}, confirm the app is listening.`
+                : "On the service computer, confirm the app is listening.";
+            return `${localCheck} If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.`;
+        }
         case "no route to host":
             return "Check the target address and the network or firewall route from Atlas Core to the service host.";
         case "network is unreachable":

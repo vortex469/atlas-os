@@ -121,7 +121,7 @@ describe("ServiceHealthSection", () => {
         expect(within(dialog).getByText("HTTP status")).not.toBeVisible();
         const connectionSteps = within(dialog).getByRole("list", { name: "Steps to check the Atlas Core connection" });
         expect(connectionSteps).not.toBeVisible();
-        await user.click(within(dialog).getByText("Test from the Atlas computer"));
+        await user.click(within(dialog).getByText("Test the connection from Atlas Core to Containers"));
         expect(connectionSteps).toBeVisible();
         expect(within(dialog).getByRole("group", { name: "Next connection check" })).toHaveTextContent("These commands only check status and send a GET request. They do not change Atlas or the service.");
         expect(connectionSteps).toHaveTextContent("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
@@ -215,7 +215,7 @@ describe("ServiceHealthSection", () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                "On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.",
+                "On the computer that runs iFileshare, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.",
             ),
         ).toBeInTheDocument();
         const dialog = screen.getByRole("dialog", { name: "iFileshare" });
@@ -249,14 +249,14 @@ describe("ServiceHealthSection", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "View details for iFileshare" }));
         const dialog = screen.getByRole("dialog", { name: "iFileshare" });
-        fireEvent.click(within(dialog).getByText("Test from the Atlas computer"));
+        fireEvent.click(within(dialog).getByText("Test the connection from Atlas Core to iFileshare"));
         const commandGroup = within(dialog).getByRole("group", { name: "Read-only Core connection check command" });
         const command = commandGroup.textContent ?? "";
         expect(command).toContain('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toMatch(/operator|password|private|token=/);
-        const serviceComputer = within(dialog).getByText("Check the service computer").closest("details");
+        const serviceComputer = within(dialog).getByText("Check iFileshare on the computer where it runs").closest("details");
         expect(serviceComputer).not.toHaveAttribute("open");
-        fireEvent.click(within(serviceComputer as HTMLDetailsElement).getByText("Check the service computer"));
+        fireEvent.click(within(serviceComputer as HTMLDetailsElement).getByText("Check iFileshare on the computer where it runs"));
         const listeningPortCommand = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
         expect(listeningPortCommand).toHaveTextContent("ss -ltnp 'sport = :8080'");
         expect(listeningPortCommand).not.toHaveTextContent(/operator|password|private|token=/);
@@ -264,7 +264,7 @@ describe("ServiceHealthSection", () => {
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         fireEvent.click(dockerSummary);
         const dockerChecks = within(serviceComputer as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
-        expect(dockerChecks).toHaveTextContent("On the service computer, run docker ps --all");
+        expect(dockerChecks).toHaveTextContent("On the computer that runs iFileshare, run docker ps --all");
         expect(dockerChecks).toHaveTextContent("With host networking, a blank value is expected");
         expect(dockerChecks).toHaveTextContent("A mapping starting with 127.0.0.1: works only on that computer.");
         expect(dockerChecks).toHaveTextContent("use HOST_PORT in Atlas's address");

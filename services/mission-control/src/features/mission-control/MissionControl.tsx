@@ -74,24 +74,24 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
     const serviceName = safeText(name) || "this service";
     const address = formatServiceCheckAddress(url);
     const unavailable = status(evidence.status) === "unavailable";
-    const nextCheck = healthNextCheck(evidence.message);
+    const nextCheck = healthNextCheck(evidence.message, serviceName);
     const httpStatus = formatHttpStatus(evidence.http_status);
     const response = httpStatus ?? (status(evidence.status) === "unavailable" ? "No response received" : "Not reported");
     const responseTime = typeof evidence.latency_ms === "number"
         && Number.isFinite(evidence.latency_ms) && evidence.latency_ms >= 0
         ? `${Math.round(evidence.latency_ms)} ms` : null;
     return <div className="mt-2">
-        {unavailable && <AtlasComputerConnectionChecks serviceName={serviceName} address={url} surface="overview" />}
         <details className="mt-2 text-xs text-mc-text-muted">
-            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check the service computer</summary>
+            <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check {serviceName} on the computer where it runs</summary>
             <div className="mt-2 space-y-1">
-                <ServiceComputerChecks address={url} />
+                <ServiceComputerChecks address={url} serviceName={serviceName} />
                 <p>Address Atlas checked: <span className={address ? "break-all font-mono" : ""}>{address ?? "Not reported"}</span></p>
                 <p>HTTP response: {response}</p>
                 {responseTime !== null && <p>Response time: {responseTime}</p>}
                 {nextCheck !== null && <p>Next check: {nextCheck}</p>}
             </div>
         </details>
+        {unavailable && <AtlasComputerConnectionChecks serviceName={serviceName} address={url} surface="overview" />}
     </div>;
 }
 

@@ -15,7 +15,7 @@ type AtlasComputerConnectionChecksProps = {
 const classes = {
     overview: {
         details: "mt-2 text-xs text-mc-text-muted",
-        summary: "mc-focusable cursor-pointer text-mc-primary-strong",
+        summary: "mc-focusable cursor-pointer break-words text-mc-primary-strong",
         group: "mt-2 rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary",
         command: "mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2",
         code: "text-mc-text-primary",
@@ -23,7 +23,7 @@ const classes = {
     },
     drawer: {
         details: "mt-2",
-        summary: "mc-focusable cursor-pointer text-sm text-cyan-300",
+        summary: "mc-focusable cursor-pointer break-words text-sm text-cyan-300",
         group: "mt-2 rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-400",
         command: "mt-1 rounded border border-slate-800 bg-slate-900 p-2",
         code: "text-slate-200",
@@ -43,7 +43,7 @@ export function AtlasComputerConnectionChecks({
 
     return (
         <details className={style.details}>
-            <summary className={style.summary}>Test from the Atlas computer</summary>
+            <summary className={style.summary}>Test the connection from Atlas Core to {name}</summary>
             <div role="group" aria-label="Next connection check" className={style.group}>
                 <p>These commands only check status and send a GET request. They do not change Atlas or the service.</p>
                 <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm">

@@ -97,9 +97,9 @@ export function ServiceDetailsDrawer({
     const technicalDetailsText = hasTechnicalDetails
         ? safeText(JSON.stringify(technicalDetails, null, 2))
         : "";
-    const nextCheck = healthNextCheck(health.message);
-    const currentHealthState = healthState(health.status);
     const serviceName = safeText(name) || "this service";
+    const nextCheck = healthNextCheck(health.message, serviceName);
+    const currentHealthState = healthState(health.status);
     const healthReason = ["Unavailable", "Degraded", "Blocked"].includes(currentHealthState)
         ? health.message
         : undefined;
@@ -171,7 +171,6 @@ export function ServiceDetailsDrawer({
                                 {healthCheckAddress ?? "Not reported"}
                             </dd>
                         </dl>
-                        <AtlasComputerConnectionChecks serviceName={serviceName} address={health.details.url} surface="drawer" />
                         {nextCheck && (
                             <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                                 <h4 className="text-sm font-semibold text-amber-200">
@@ -183,9 +182,10 @@ export function ServiceDetailsDrawer({
                             </div>
                         )}
                         <details className="mt-3 text-sm text-mc-text-secondary">
-                            <summary className="mc-focusable cursor-pointer text-cyan-300">Check the service computer</summary>
-                            <div className="mt-2 space-y-2"><ServiceComputerChecks address={health.details.url} /></div>
+                            <summary className="mc-focusable cursor-pointer break-words text-cyan-300">Check {serviceName} on the computer where it runs</summary>
+                            <div className="mt-2 space-y-2"><ServiceComputerChecks address={health.details.url} serviceName={serviceName} /></div>
                         </details>
+                        <AtlasComputerConnectionChecks serviceName={serviceName} address={health.details.url} surface="drawer" />
                     </section>
 
                     {provider ? (

@@ -1,12 +1,14 @@
 import { CopyCommandButton } from "./CopyCommandButton";
 import { serviceContainerCheckCommand, serviceListeningPortCommand } from "../utils/serviceReachabilityCommand";
+import { safeText } from "../utils/safeText";
 
-export function ServiceComputerChecks({ address }: { address: unknown }) {
+export function ServiceComputerChecks({ address, serviceName }: { address: unknown; serviceName: unknown }) {
     const listeningPortCommand = serviceListeningPortCommand(address);
+    const name = safeText(serviceName) || "the service";
     return <>
-        <p className="text-sm leading-6 text-mc-text-secondary">Confirm the app is running and listening at the configured address. If it runs directly on this computer, check the app&apos;s own status and listening port.</p>
+        <p className="text-sm leading-6 text-mc-text-secondary">These checks run on the computer that runs {name}. They show whether the app is running locally; they do not test whether Atlas Core can reach it. If the app runs directly on this computer, check its own status and listening port.</p>
         {listeningPortCommand && <div className="space-y-1 pt-1 text-sm leading-6 text-mc-text-secondary">
-            <p>On a Linux service computer, run this read-only check for the configured port:</p>
+            <p>On a Linux computer that runs {name}, run this read-only check for the configured port:</p>
             <div role="group" aria-label="Service computer listening-port command" className="flex flex-wrap items-start gap-2 rounded border border-slate-800 bg-slate-900 p-2">
                 <code className="min-w-0 flex-1 break-all font-mono text-xs text-slate-200">{listeningPortCommand}</code>
                 <CopyCommandButton command={listeningPortCommand} />
@@ -18,7 +20,7 @@ export function ServiceComputerChecks({ address }: { address: unknown }) {
             <ol aria-label="Docker and Compose checks" className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                 <li>
                     <div className="space-y-1">
-                        <p>On the service computer, run <code>{serviceContainerCheckCommand}</code>. It lists running and stopped containers, networks, and published ports.</p>
+                        <p>On the computer that runs {name}, run <code>{serviceContainerCheckCommand}</code>. It lists running and stopped containers, networks, and published ports.</p>
                         <CopyCommandButton command={serviceContainerCheckCommand} />
                     </div>
                 </li>

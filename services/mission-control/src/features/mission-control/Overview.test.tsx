@@ -244,13 +244,20 @@ describe("MC overview evidence", () => {
             details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const howToCheck = checks.getByText("Test from the Atlas computer");
+        const howToCheck = checks.getByText("Test the connection from Atlas Core to iFileshare");
         const connectionDetails = howToCheck.closest("details");
+        const disclosureLabels = Array.from(
+            screen.getByRole("region", { name: "Service checks" }).querySelectorAll("summary"),
+            (summary) => summary.textContent ?? "",
+        );
+        expect(disclosureLabels.indexOf("Check iFileshare on the computer where it runs")).toBeLessThan(
+            disclosureLabels.indexOf("Test the connection from Atlas Core to iFileshare"),
+        );
         expect(connectionDetails).not.toHaveAttribute("open");
         expect(checks.getByText("An unavailable service did not respond to Atlas Core. It might still be running on its own computer.")).toBeVisible();
         fireEvent.click(howToCheck);
         const nextStep = checks.getByRole("group", { name: "Next connection check" });
-        const summary = checks.getByText("Check the service computer");
+        const summary = checks.getByText("Check iFileshare on the computer where it runs");
         const disclosure = summary.closest("details");
 
         const instructions = within(nextStep).getByRole("list", { name: "Steps to check the Atlas Core connection" });
@@ -277,7 +284,7 @@ describe("MC overview evidence", () => {
         fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(disclosure).toHaveTextContent("Confirm the app is running and listening at the configured address.");
+        expect(disclosure).toHaveTextContent("These checks run on the computer that runs iFileshare. They show whether the app is running locally; they do not test whether Atlas Core can reach it.");
         const dockerSummary = within(disclosure as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         const dockerSteps = within(disclosure as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
@@ -319,7 +326,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        fireEvent.click(checks.getByText("Test from the Atlas computer"));
+        fireEvent.click(checks.getByText("Test the connection from Atlas Core to iFileshare"));
         const command = checks.getByRole("group", { name: "Read-only Core connection check command" });
 
         fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
@@ -341,7 +348,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        fireEvent.click(checks.getByText("Test from the Atlas computer"));
+        fireEvent.click(checks.getByText("Test the connection from Atlas Core to iFileshare"));
         const command = checks.getByRole("group", { name: "Atlas container status command" });
 
         fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
@@ -361,7 +368,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        fireEvent.click(checks.getByText("Test from the Atlas computer"));
+        fireEvent.click(checks.getByText("Test the connection from Atlas Core to iFileshare"));
         const command = checks.getByRole("group", { name: "Read-only Core connection check command" });
 
         fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
@@ -380,7 +387,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        fireEvent.click(checks.getByText("Check the service computer"));
+        fireEvent.click(checks.getByText("Check iFileshare on the computer where it runs"));
         fireEvent.click(checks.getByText("If the app runs in Docker"));
         const firstStep = within(checks.getByRole("list", { name: "Docker and Compose checks" })).getAllByRole("listitem")[0];
 
@@ -402,7 +409,7 @@ describe("MC overview evidence", () => {
     });
 
     it.each([
-        ["[Errno 111] Connection refused", "On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core."],
+        ["[Errno 111] Connection refused", "On the computer that runs iFileshare, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core."],
         ["[Errno 113] No route to host", "Check the target address and the network or firewall route from Atlas Core to the service host."],
         ["[Errno 101] Network is unreachable", "Check the target address and routing between Atlas Core and the service host."],
         ["[Errno -3] Temporary failure in name resolution", "Check that the host name is correct and resolves from the machine running Atlas Core."],
@@ -414,7 +421,7 @@ describe("MC overview evidence", () => {
             details: { url: "http://10.10.60.30:8080/" },
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        const summary = checks.getByText("Check the service computer");
+        const summary = checks.getByText("Check iFileshare on the computer where it runs");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 
@@ -430,7 +437,7 @@ describe("MC overview evidence", () => {
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
         expect(checks.queryByRole("group", { name: "Next connection check" })).not.toBeInTheDocument();
-        const summary = checks.getByText("Check the service computer");
+        const summary = checks.getByText("Check iFileshare on the computer where it runs");
         const disclosure = summary.closest("details");
         fireEvent.click(summary);
 

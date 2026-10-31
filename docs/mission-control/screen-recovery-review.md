@@ -4355,3 +4355,14 @@ the directory now explains the mismatch and offers Refresh. It no longer says
 there are no workflows or offers a “Load more” action that repeats the empty
 page. The focused workflow directory suite covers recovery; lint and build
 pass. Workflow reads and approval behavior are unchanged.
+
+## Service troubleshooting location labels — 2026-10-31
+
+The Overview and service details now put the local service-computer check before
+the Atlas Core connection check. Each label names the service, and the local
+instructions say that checking its container or listening port does not prove
+Atlas Core can reach it. A connection-refused next step also names the computer
+running the service. The existing checks remain read-only and the probe and
+network behavior are unchanged. Focused Overview and service-details suites
+pass 90 tests; Overview and system-health browser checks pass 35 cases at mobile
+and desktop widths; Mission Control lint and production build pass.

@@ -252,7 +252,7 @@ test('service check summary reveals every reported check on mobile', async ({ pa
     await expect(serviceItems).toHaveCount(4);
     await checks.getByRole('button', { name: 'Show all 6 service checks' }).click();
     await expect(serviceItems).toHaveCount(6);
-    await expect(checks.getByText('service-5')).toBeVisible();
+    await expect(checks.getByText('service-5', { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
     await checks.getByRole('button', { name: 'Show fewer service checks' }).click();
@@ -317,7 +317,7 @@ for (const width of [320, 1280]) {
         await page.goto('/');
 
         const checks = page.getByRole('region', { name: 'Service checks', exact: true });
-        await checks.getByText('Test from the Atlas computer', { exact: true }).click();
+        await checks.getByText('Test the connection from Atlas Core to iFileshare', { exact: true }).click();
         const missingAddress = checks.getByRole('group', { name: 'Next connection check' })
             .getByText('Configured service address not reported', { exact: true });
         await expect(missingAddress).toBeVisible();
@@ -379,7 +379,11 @@ for (const width of [320, 1280]) {
         await attentionLink.click();
         await expect(checks).toBeInViewport();
         await expect(checks.getByText('Atlas Core could not connect', { exact: true })).toBeVisible();
-        await checks.getByText('Test from the Atlas computer', { exact: true }).click();
+        const serviceComputerLabel = 'Check iFileshare on the computer where it runs';
+        const atlasConnectionLabel = 'Test the connection from Atlas Core to iFileshare';
+        const disclosureLabels = await checks.locator('summary').allTextContents();
+        expect(disclosureLabels.indexOf(serviceComputerLabel)).toBeLessThan(disclosureLabels.indexOf(atlasConnectionLabel));
+        await checks.getByText('Test the connection from Atlas Core to iFileshare', { exact: true }).click();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();
         const connectionSteps = nextStep.getByRole('list', { name: 'Steps to check the Atlas Core connection' });
@@ -409,9 +413,9 @@ for (const width of [320, 1280]) {
         await expect(composeHelp).toContainText("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');
         await expect(nextStep).not.toContainText('With port mappings');
-        const moreChecks = checks.locator('summary', { hasText: 'Check the service computer' });
+        const moreChecks = checks.locator('summary', { hasText: serviceComputerLabel });
         await moreChecks.click();
-        await expect(checks.getByText('Confirm the app is running and listening at the configured address. If it runs directly on this computer, check the app\'s own status and listening port.', { exact: true })).toBeVisible();
+        await expect(checks.getByText('These checks run on the computer that runs iFileshare. They show whether the app is running locally; they do not test whether Atlas Core can reach it. If the app runs directly on this computer, check its own status and listening port.', { exact: true })).toBeVisible();
         await expect(checks.getByRole('group', { name: 'Service computer listening-port command' })).toContainText("ss -ltnp 'sport = :8080'");
         await expect(checks).toContainText('A LISTEN row means something is listening on that port. No row means nothing is listening on that port on this computer.');
         const dockerHelp = checks.locator('summary', { hasText: 'If the app runs in Docker' }).locator('xpath=ancestor::details[1]');
@@ -439,7 +443,7 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('Recreate the container after changing the ports');
         await expect(steps).toContainText('HOST_PORT:CONTAINER_PORT');
         await expect(checks.getByText('HTTP response: No response received', { exact: true })).toBeVisible();
-        await expect(checks.getByText('Next check: On the service computer, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.', { exact: true })).toBeVisible();
+        await expect(checks.getByText('Next check: On the computer that runs iFileshare, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
