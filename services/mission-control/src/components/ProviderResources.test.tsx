@@ -194,7 +194,8 @@ describe("ProviderResources Provider Intent flow", () => {
 
         expect(screen.getByRole("button", { name: "Refresh resources" })).toBeDisabled();
         expect(screen.queryByRole("button", { name: "Loading resources…" })).not.toBeInTheDocument();
-        expect(screen.getByRole("status")).toHaveTextContent("Loading observed resources and monitoring settings...");
+        expect(screen.getByRole("status")).toHaveTextContent("Loading provider resources and monitoring settings...");
+        expect(screen.getByText("See the resources this provider reports, their current state, and what Atlas expects to monitor.")).toBeInTheDocument();
 
         await act(async () => {
             resolveInventory(inventory);
@@ -210,7 +211,7 @@ describe("ProviderResources Provider Intent flow", () => {
         const time = screen.getByText(new Date(inventory.refreshed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(time.tagName).toBe("TIME");
         expect(time).toHaveAttribute("datetime", inventory.refreshed_at);
-        expect(time.parentElement).toHaveTextContent("Observed inventory refreshed (local time):");
+        expect(time.parentElement).toHaveTextContent("Provider resources last checked (local time):");
     });
 
     it("keeps the refresh label stable and announces when resources are updating", async () => {
@@ -223,19 +224,19 @@ describe("ProviderResources Provider Intent flow", () => {
 
         const refreshButton = screen.getByRole("button", { name: "Refresh resources" });
         expect(refreshButton).toBeDisabled();
-        expect(screen.getByText("Refreshing observed resources and monitoring settings...", { exact: true })).toBeVisible();
+        expect(screen.getByText("Refreshing provider resources and monitoring settings...", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Refreshing resources…" })).not.toBeInTheDocument();
 
         await act(async () => resolveRefresh(inventory));
 
         await waitFor(() => expect(refreshButton).toBeEnabled());
-        expect(screen.queryByText("Refreshing observed resources and monitoring settings...", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Refreshing provider resources and monitoring settings...", { exact: true })).not.toBeInTheDocument();
     });
 
     it("explains provider-verified identity in plain language", async () => {
         await renderResources();
 
-        expect(screen.getByText("See what Atlas observes, whether it can identify each resource, and what monitoring expects.")).toBeVisible();
+        expect(screen.getByText("See the resources this provider reports, their current state, and what Atlas expects to monitor.")).toBeVisible();
         expect(screen.getByText("Virtual machine 110")).toBeVisible();
         expect(screen.getByText("Provider verified")).toBeVisible();
         expect(screen.getByText("Atlas can detect if this provider instance is replaced.")).toBeVisible();
@@ -269,7 +270,7 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(screen.queryByLabelText(/monitoring expectation/i)).not.toBeInTheDocument();
         await waitFor(() => expect(getProviderResources).toHaveBeenCalledWith("docker"));
         await act(async () => resolveInventory({ ...inventory, provider_id: "docker", provider_name: "Docker", resources: [] }));
-        expect(await screen.findByText("No provider resources are available.")).toBeInTheDocument();
+        expect(await screen.findByText("This provider has not reported any resources.")).toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
         expect(refreshProviderResources).not.toHaveBeenCalled();
     });
@@ -313,13 +314,13 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Observed resources could not be loaded. Refresh resources to try again.");
-        const inventoryDetails = within(alert).getByText("Why observed resources couldn't load").closest("details");
+        expect(alert).toHaveTextContent("Could not load resources from this provider. Refresh resources to try again.");
+        const inventoryDetails = within(alert).getByText("Why the provider's resources couldn't load").closest("details");
         expect(inventoryDetails).not.toHaveAttribute("open");
         expect(within(inventoryDetails as HTMLDetailsElement).getByText("inventory service returned 503")).not.toBeVisible();
-        await userEvent.setup().click(within(inventoryDetails as HTMLDetailsElement).getByText("Why observed resources couldn't load"));
+        await userEvent.setup().click(within(inventoryDetails as HTMLDetailsElement).getByText("Why the provider's resources couldn't load"));
         expect(within(inventoryDetails as HTMLDetailsElement).getByText("inventory service returned 503")).toBeVisible();
-        expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
+        expect(screen.queryByText("This provider has not reported any resources.")).not.toBeInTheDocument();
     });
 
     it("shows the resource matching problem without an empty-inventory claim", async () => {
@@ -331,7 +332,7 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
 
         expect(await screen.findByText(/Atlas found conflicting resource records/i)).toBeInTheDocument();
-        expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
+        expect(screen.queryByText("This provider has not reported any resources.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     });
 
@@ -689,7 +690,7 @@ describe("ProviderResources Provider Intent flow", () => {
 
         await user.click(screen.getByRole("button", { name: "Refresh resources" }));
 
-        expect(await screen.findByText("Atlas couldn’t refresh observed resources. Showing the last loaded inventory; its status may have changed.")).toBeVisible();
+        expect(await screen.findByText("Atlas couldn’t refresh this provider’s resources. Showing the last results; their status may have changed.")).toBeVisible();
         expect(screen.getByText("Provider-reported state; separate from monitoring policy.")).toBeVisible();
         expect(screen.queryByText("Live provider inventory; not monitoring policy.")).not.toBeInTheDocument();
         expect(screen.getByText("Frigate")).toBeVisible();
@@ -808,18 +809,18 @@ describe("ProviderResources Provider Intent flow", () => {
 
         render(<ProviderResources provider={provider} />);
 
-        const inventoryAlert = await screen.findByText("Observed resources could not be loaded. Refresh resources to try again.")
+        const inventoryAlert = await screen.findByText("Could not load resources from this provider. Refresh resources to try again.")
             .then(message => message.closest("[role='alert']"));
         const monitoringAlert = await screen.findByText("Monitoring settings could not be loaded.")
             .then(message => message.closest("[role='alert']"));
         expect(inventoryAlert).not.toBeNull();
         expect(monitoringAlert).not.toBeNull();
-        expect(within(inventoryAlert as HTMLElement).getByText("Why observed resources couldn't load")).toBeInTheDocument();
+        expect(within(inventoryAlert as HTMLElement).getByText("Why the provider's resources couldn't load")).toBeInTheDocument();
         expect(within(monitoringAlert as HTMLElement).getByText("Why monitoring settings couldn't load")).toBeInTheDocument();
         expect(within(inventoryAlert as HTMLElement).queryByText("Why monitoring settings couldn't load")).not.toBeInTheDocument();
-        expect(within(monitoringAlert as HTMLElement).queryByText("Why observed resources couldn't load")).not.toBeInTheDocument();
+        expect(within(monitoringAlert as HTMLElement).queryByText("Why the provider's resources couldn't load")).not.toBeInTheDocument();
         expect(screen.queryByText("Observed inventory remains visible.")).not.toBeInTheDocument();
-        expect(screen.queryByText("No provider resources are available.")).not.toBeInTheDocument();
+        expect(screen.queryByText("This provider has not reported any resources.")).not.toBeInTheDocument();
     });
 
     it("does not present management current_state as observed when inventory fails", async () => {

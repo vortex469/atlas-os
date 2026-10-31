@@ -4306,3 +4306,13 @@ layout overflowed its 236px card by 40px at 320px. The two responsive browser
 checks pass, as do the focused Provider Resources and Intent Editor suites (77
 tests), Mission Control lint, and production build. The fixture has no operator
 session and makes no settings changes.
+
+## Provider inventory labels — 2026-10-31
+
+The section description and loading/recovery copy now refer to the resources
+reported by the provider rather than internal inventory terminology. The
+timestamp says when provider resources were last checked, and a successful
+empty result says “This provider has not reported any resources.” A failed
+read keeps its separate message, so an unavailable list is not presented as
+empty. All 61 focused Provider Resources tests pass, including the
+empty-versus-failed distinction; Mission Control lint and build pass.
