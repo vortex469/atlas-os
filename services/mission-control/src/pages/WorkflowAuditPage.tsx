@@ -239,7 +239,7 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
     if (!audit) {
         return (
             <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
-                <Link to={dashboardReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow Dashboard</Link>
+                <Link to={dashboardReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← All workflows</Link>
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
                     <p className="mt-2 text-sm text-slate-300">This workflow could not be found. Check the link or return to the workflow list.</p>

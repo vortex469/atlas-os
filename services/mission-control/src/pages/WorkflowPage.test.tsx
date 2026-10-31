@@ -765,7 +765,7 @@ describe("WorkflowPage", () => {
     });
 
     it.each([
-        ["candidate", "Back to execution candidates", "/execution-candidates"],
+        ["candidate", "← Change proposals", "/execution-candidates"],
         ["manual", "← All workflows", "/workflows"],
         ["unrecognized", "← All workflows", "/workflows"],
     ])("returns a %s workflow to its matching list", async (source, label, destination) => {
@@ -885,7 +885,7 @@ describe("WorkflowPage", () => {
         renderPage(`/workflows/workflow-123${search}`);
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Workflow unavailable");
-        expect(screen.getByRole("link", { name: "Back to execution candidates" })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "← Change proposals" })).toHaveAttribute(
             "href",
             "/execution-candidates?eligibility=eligible&change=update-compose-stack&offset=25",
         );

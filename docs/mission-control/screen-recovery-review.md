@@ -4335,3 +4335,12 @@ remains explicitly unreported. This keeps the visible health summary from
 implying that a running-model entry is ready for operator work. Focused
 Overview and AI-provider tests, Mission Control lint, and the production build
 pass. No provider settings or requests change.
+
+## Workflow return-link wording — 2026-10-31
+
+Proposal-based workflow details now return to “Change proposals,” matching the
+navigation and proposal screens instead of exposing the old internal route
+name “execution candidates.” A missing audit now returns to “All workflows,”
+matching the workflow directory instead of calling it a dashboard. Destination
+selection and preserved filters are unchanged. The focused workflow and audit
+page suites, Mission Control lint, and build pass.

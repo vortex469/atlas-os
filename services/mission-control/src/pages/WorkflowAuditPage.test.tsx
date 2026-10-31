@@ -368,6 +368,7 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage("/workflows/workflow-missing/audit");
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Workflow not found");
+        expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
     });
 
     it("shows agent unavailable alert", async () => {

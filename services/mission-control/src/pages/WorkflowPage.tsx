@@ -87,9 +87,9 @@ function workflowReturnDestination(workflow: WorkflowDetailResponse | null, stat
     );
     if (returnTo === "/operations/history") return { to: returnTo, label: "← Maintenance history" };
     if (returnTo === "/workflows") return { to: returnTo, label: "← All workflows" };
-    if (returnTo === "/execution-candidates") return { to: returnTo, label: "Back to execution candidates" };
+    if (returnTo === "/execution-candidates") return { to: returnTo, label: "← Change proposals" };
     if (workflow?.effect_kind === "operational_action") return { to: "/operations/history", label: "← Maintenance history" };
-    if (workflow?.workflow_source === "candidate") return { to: "/execution-candidates", label: "Back to execution candidates" };
+    if (workflow?.workflow_source === "candidate") return { to: "/execution-candidates", label: "← Change proposals" };
     return { to: "/workflows", label: "← All workflows" };
 }
 
