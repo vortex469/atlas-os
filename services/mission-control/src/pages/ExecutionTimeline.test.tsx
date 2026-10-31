@@ -401,7 +401,10 @@ describe("ExecutionTimeline", () => {
         expect(onRefresh).toHaveBeenCalledTimes(1);
 
         rerender(<ExecutionTimeline workflow={workflow()} isRefreshing={true} onRefresh={onRefresh} />);
-        fireEvent.click(screen.getByRole("button", { name: "Refreshing..." }));
+        const refreshButton = screen.getByRole("button", { name: "Refresh" });
+        expect(refreshButton).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Refreshing..." })).not.toBeInTheDocument();
+        fireEvent.click(refreshButton);
         expect(onRefresh).toHaveBeenCalledTimes(1);
     });
 

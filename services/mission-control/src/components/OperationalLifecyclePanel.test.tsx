@@ -28,6 +28,17 @@ describe("OperationalLifecyclePanel", () => {
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
+    it("keeps the refresh control label stable while the status check is running", () => {
+        const onRefresh = vi.fn();
+        render(<OperationalLifecyclePanel lifecycle={operationalLifecycle()} isLoading={false} isRefreshing={true} error={null} onRefresh={onRefresh} />);
+
+        const refreshButton = screen.getByRole("button", { name: "Refresh maintenance status" });
+        expect(refreshButton).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Refreshing..." })).not.toBeInTheDocument();
+        fireEvent.click(refreshButton);
+        expect(onRefresh).not.toHaveBeenCalled();
+    });
+
     it("marks impossible technical timestamps unavailable", () => {
         renderLifecycle({ dispatch_started_at: "2026-02-30T17:00:00Z" });
         const details = screen.getByText("Technical evidence").closest("details") as HTMLDetailsElement;

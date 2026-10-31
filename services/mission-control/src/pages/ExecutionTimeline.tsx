@@ -26,7 +26,7 @@ export function ExecutionTimeline({ workflow, isRefreshing, refreshDisabled = fa
                     <p aria-live="polite" role="status" className="mt-1 text-sm text-slate-300">{executionState}</p>
                 </div>
                 <button type="button" onClick={onRefresh} disabled={isRefreshing || refreshDisabled} className="rounded-lg border border-blue-400 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60">
-                    {isRefreshing ? "Refreshing..." : "Refresh"}
+                    Refresh
                 </button>
             </div>
 
