@@ -4404,3 +4404,29 @@ provider catalog is the only unavailable source. Other partial failures still
 show the page-wide refresh notice. The ProviderPage and ProviderOverview
 suites pass 31 tests covering both cases; Mission Control lint and production
 build pass.
+
+When supported-feature data is missing, one plain-language notice now appears
+beside the feature list and explains that some provider sections are hidden.
+The duplicate page-wide notice was removed; the page and overview suites
+continue to cover the missing-versus-empty distinction.
+
+The provider-not-found state now says whether Atlas lists the provider. A
+failed catalog read retains a distinct “couldn't check” message, so missing
+data is not presented as a missing provider. The ProviderPage and
+ProviderOverview suites pass 31 tests; Mission Control lint and production
+build pass. Four focused browser cases pass, covering the feature-data notice
+and provider-not-listed recovery at 320px, 390px, and 1280px.
+
+The provider registry now says that a refresh failed while showing the last
+loaded list, and marks provider statuses as potentially out of date. This
+keeps a failed refresh from implying that all provider information is unknown.
+The ProvidersPage suite passes 10 tests; Mission Control lint and production
+build pass.
+
+## Action history uncertain deletion — 2026-10-31
+
+When Atlas cannot confirm whether expired history was deleted, Action history
+shows one alert with the refresh instruction. The duplicate status message was
+removed. Deletion remains disabled until a successful history refresh; the
+focused OperationsPage suite passes 18 tests, and Mission Control lint and
+production build pass.

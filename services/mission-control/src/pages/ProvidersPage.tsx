@@ -54,13 +54,13 @@ export function ProvidersPage() {
             {loading && providers !== null && <p role="status" className="text-slate-300">Refreshing providers. Showing the last loaded information.</p>}
             {!loading && error && providers === null && (
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <h2 className="font-semibold text-red-100">Providers could not load</h2>
+                    <h2 className="font-semibold text-red-100">Could not load providers</h2>
                 </section>
             )}
             {!loading && error && providers !== null && (
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
-                    <h2 className="font-semibold text-amber-100">Provider refresh failed</h2>
-                    <p className="mt-1 text-sm text-amber-100/80">Current provider information is unknown. The list shows the last loaded response.</p>
+                    <h2 className="font-semibold text-amber-100">Could not refresh providers</h2>
+                    <p className="mt-1 text-sm text-amber-100/80">Showing the last loaded list. Provider statuses may be out of date.</p>
                 </section>
             )}
             {!loading && !error && providers?.length === 0 && <p className="rounded-xl border border-slate-800 p-5 text-slate-300">No providers are listed yet.</p>}

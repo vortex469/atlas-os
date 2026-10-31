@@ -73,7 +73,7 @@ describe("ProvidersPage", () => {
             .mockResolvedValueOnce({ data: [] });
         show();
         const alert = await screen.findByRole("alert");
-        expect(within(alert).getByRole("heading", { name: "Providers could not load" })).toBeInTheDocument();
+        expect(within(alert).getByRole("heading", { name: "Could not load providers" })).toBeInTheDocument();
         expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
         expect(screen.getAllByRole("button", { name: "Try again" })).toHaveLength(1);
         expect(within(alert).queryByText("Try again to get the latest provider list.")).not.toBeInTheDocument();
@@ -116,8 +116,8 @@ describe("ProvidersPage", () => {
         await act(async () => rejectRefresh(new Error("offline")));
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Provider refresh failed");
-        expect(alert).toHaveTextContent("Current provider information is unknown.");
+        expect(alert).toHaveTextContent("Could not refresh providers");
+        expect(alert).toHaveTextContent("Showing the last loaded list. Provider statuses may be out of date.");
         expect(within(alert).queryByRole("button")).not.toBeInTheDocument();
         expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(1);
         expect(screen.getByRole("region", { name: "Provider list" })).toBeInTheDocument();

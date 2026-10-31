@@ -82,7 +82,7 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [] }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.getByRole("heading", { name: "Provider not found" })).toBeInTheDocument();
-        expect(screen.getByText("This provider is not in the current catalog.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas doesn't list this provider right now.")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "← All providers" })).toHaveAttribute("href", "/providers");
         expect(screen.queryByText(/Refresh to check again/)).not.toBeInTheDocument();
     });
@@ -90,7 +90,7 @@ describe("ProviderPage authority layout", () => {
     it("keeps provider details usable when supported-feature data is missing", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
-        expect(screen.getByRole("status")).toHaveTextContent("Supported provider features could not be loaded. Some provider sections are hidden.");
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Provider overview" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Diagnostics" })).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Resources and monitoring" })).not.toBeInTheDocument();
@@ -188,7 +188,7 @@ describe("ProviderPage authority layout", () => {
         }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
-        expect(screen.getByText("Atlas could not confirm whether this provider is currently listed.")).toBeInTheDocument();
+        expect(screen.getByText("Atlas couldn't check whether this provider is listed.")).toBeInTheDocument();
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
     });
 

@@ -590,7 +590,6 @@ export function OperationsPage() {
                         </details>}
                     </div>
                 )}
-                {pruneNeedsRefresh && <p role="status" className="text-sm text-amber-200">Deleting expired entries is paused until Refresh history confirms the latest records and retention details.</p>}
                 <details className="rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
                     <div className="mt-4 flex flex-wrap gap-2">

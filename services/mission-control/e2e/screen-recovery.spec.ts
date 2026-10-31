@@ -130,6 +130,20 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+test("provider details show one notice when supported features cannot be loaded", async ({ page, rejectedMutationRequests }) => {
+    await page.route("**/api/v1/providers", (route) => route.fulfill({
+        json: providers.map((provider) => ({ ...provider, capabilities: null })),
+    }));
+    await page.goto("/providers/proxmox");
+
+    await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
+    await expect(page.locator("p[role='status']")).toHaveText("Atlas couldn't load this provider's supported features. Some sections are hidden.");
+    await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Resources and monitoring" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Connection" })).toHaveCount(0);
+    expect(rejectedMutationRequests).toEqual([]);
+});
+
 for (const width of [320, 1280]) {
     test(`provider resource monitoring fits the screen at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });
@@ -992,7 +1006,7 @@ for (const width of [320, 390, 1280]) {
         const heading = page.getByRole("heading", { name: "Provider not found" });
         await expect(heading).toBeVisible();
         await expect(page.getByText("Not updated yet")).not.toBeVisible();
-        await expect(page.getByText("This provider is not in the current catalog.")).toBeVisible();
+        await expect(page.getByText("Atlas doesn't list this provider right now.")).toBeVisible();
         const pagePadding = await heading.evaluate((element) => {
             const main = element.closest("main");
             return main ? getComputedStyle(main).paddingLeft : null;

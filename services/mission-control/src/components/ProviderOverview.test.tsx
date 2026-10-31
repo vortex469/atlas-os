@@ -106,13 +106,13 @@ describe("ProviderOverview feature data", () => {
 
     it("distinguishes missing features from an empty advertised list", () => {
         view(undefined);
-        expect(screen.getByText("Features unavailable.")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Atlas couldn't load this provider's supported features. Some sections are hidden.");
         expect(screen.queryByText("No supported features are listed.")).not.toBeInTheDocument();
     });
 
     it("reports an empty but valid feature list plainly", () => {
         view([]);
         expect(screen.getByText("No supported features are listed.")).toBeInTheDocument();
-        expect(screen.queryByText("Features unavailable.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
     });
 });

@@ -146,7 +146,7 @@ export function ProviderPage() {
                             {failedSources.length > 0 && <p>Unavailable: {failedSources.join(", ")}.</p>}
                         </div>
                     </details>}
-                    {providerCatalogUnavailable && !provider && <p className="mt-2 text-sm text-red-200/80">Atlas could not confirm whether this provider is currently listed.</p>}
+                    {providerCatalogUnavailable && !provider && <p className="mt-2 text-sm text-red-200/80">Atlas couldn't check whether this provider is listed.</p>}
                 </div>
             )}
 
@@ -165,7 +165,7 @@ export function ProviderPage() {
                         </h1>
 
                         <p className="mt-3 text-sm leading-6 text-slate-300">
-                            This provider is not in the current catalog.
+                            Atlas doesn't list this provider right now.
                         </p>
                     </section>
                 )}
@@ -173,8 +173,6 @@ export function ProviderPage() {
             {provider && (
                 <>
                     <ProviderOverview provider={provider} stale={providerCatalogUnavailable} />
-
-                    {capabilities === null && <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">Supported provider features could not be loaded. Some provider sections are hidden.</p>}
 
                     {capabilities?.includes("resources") && (
                         <section aria-label="Monitoring policy boundary">

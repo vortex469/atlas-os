@@ -484,7 +484,8 @@ describe("OperationsPage", () => {
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
-        expect(screen.getByRole("status")).toHaveTextContent("Deleting expired entries is paused until Refresh history confirms the latest records and retention details.");
+        expect(screen.queryByText("Deleting expired entries is paused until Refresh history confirms the latest records and retention details.")).not.toBeInTheDocument();
+        expect(screen.getAllByText("Atlas could not confirm whether expired entries were deleted. Refresh history before trying again.")).toHaveLength(1);
         expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(1);
         await user.click(screen.getByRole("button", { name: "Refresh history" }));
         expect(await screen.findByText("Unload Model")).toBeInTheDocument();

@@ -106,8 +106,8 @@ export function ProviderOverview({
                     </p>
 
                     {capabilities === null ? (
-                        <p className="mt-2 text-sm text-slate-500">
-                            Features unavailable.
+                        <p role="status" className="mt-2 text-sm text-slate-500">
+                            Atlas couldn't load this provider's supported features. Some sections are hidden.
                         </p>
                     ) : capabilities.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
