@@ -1,5 +1,5 @@
-/** Show running and stopped service containers, networks, and published ports. */
-export const serviceContainerCheckCommand = "docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'";
+/** Show container names, images, status, networks, and published ports. */
+export const serviceContainerCheckCommand = "docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'";
 
 /** Show the checked address without exposing credentials or query values. */
 export function formatServiceCheckAddress(value: unknown): string | null {

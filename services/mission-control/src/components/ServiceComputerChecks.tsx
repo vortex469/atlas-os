@@ -33,7 +33,7 @@ export function ServiceComputerChecks({ address, serviceName }: { address: unkno
             <ol aria-label="Docker and Compose checks" className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                 <li>
                     <div className="space-y-1">
-                        <p>On the computer that runs {name}, run <code>{serviceContainerCheckCommand}</code>. It lists running and stopped containers, networks, and published ports.</p>
+                        <p>On the computer that runs {name}, run <code>{serviceContainerCheckCommand}</code>. Find the app by its container name or image; Docker may use a different name than Atlas. The list also shows whether each container is running, its network, and published ports.</p>
                         <CopyCommandButton command={serviceContainerCheckCommand} />
                     </div>
                 </li>

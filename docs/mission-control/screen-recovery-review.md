@@ -4367,3 +4367,13 @@ computer running the service. Existing probes and network behavior are
 unchanged. Focused service-command, Overview, and service-details suites pass
 123 tests; Overview and system-health browser checks pass 35 cases at mobile
 and desktop widths; Mission Control lint and production build pass.
+
+## Docker service identification — 2026-10-31
+
+The read-only Docker check now includes the image alongside each container name,
+status, network, and published port. The instructions explain that Docker's
+container name can differ from the service name shown by Atlas, so operators can
+identify the right row when checking a service computer. The check makes no
+Docker API request and changes no container. The focused Overview and service
+health suites pass 91 tests, and the responsive service-check browser journey
+passes at 320px and 1280px. Mission Control lint and production build pass.

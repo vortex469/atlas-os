@@ -265,7 +265,7 @@ describe("MC overview evidence", () => {
         expect(nextStep).toHaveTextContent("These commands only check status and send a GET request. They do not change Atlas or the service.");
         expect(instructions).toHaveTextContent("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
         const atlasCommand = within(nextStep).getByRole("group", { name: "Atlas container status command" });
-        expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         expect(instructions).toHaveTextContent("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach iFileshare. Running it on the service computer tests a different connection.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
@@ -300,8 +300,9 @@ describe("MC overview evidence", () => {
         expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
         expect(steps).toHaveClass("text-sm");
         expect(steps).not.toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
-        expect(steps).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(steps).toHaveTextContent("It lists running and stopped containers, networks, and published ports.");
+        expect(steps).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(steps).toHaveTextContent("Find the app by its container name or image; Docker may use a different name than Atlas.");
+        expect(steps).toHaveTextContent("The list also shows whether each container is running, its network, and published ports.");
         expect(steps).toHaveTextContent("Up means it is running; Exited means it stopped.");
         expect(steps).toHaveTextContent("If it is missing, this Docker engine does not manage it.");
         expect(steps).toHaveTextContent("A running container does not prove its web app responds.");
@@ -379,7 +380,7 @@ describe("MC overview evidence", () => {
         fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
 
         expect(await within(command).findByRole("status")).toHaveTextContent("Command copied.");
-        expect(writeText).toHaveBeenCalledWith("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(writeText).toHaveBeenCalledWith("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
     });
 
     it("explains how to copy the command when clipboard access is unavailable", async () => {
@@ -419,7 +420,7 @@ describe("MC overview evidence", () => {
         fireEvent.click(within(firstStep).getByRole("button", { name: "Copy command" }));
 
         expect(await within(firstStep).findByRole("status")).toHaveTextContent("Command copied.");
-        expect(writeText).toHaveBeenCalledWith("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(writeText).toHaveBeenCalledWith("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
     });
 
     it("keeps the Core connection wording in stale service-check evidence", () => {

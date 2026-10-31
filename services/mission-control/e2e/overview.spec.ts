@@ -392,11 +392,11 @@ for (const width of [320, 1280]) {
         await expect(connectionSteps).toContainText("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
         await expect(connectionSteps).toContainText("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach iFileshare. Running it on the service computer tests a different connection.");
         const atlasCommand = nextStep.getByRole('group', { name: 'Atlas container status command' });
-        await expect(atlasCommand).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        await expect(atlasCommand).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await atlasCommand.getByRole('button', { name: 'Copy command' }).click();
         await expect(atlasCommand.getByRole('status')).toHaveText('Command copied.');
         const copiedAtlasCommand = await page.evaluate(() => navigator.clipboard.readText());
-        expect(copiedAtlasCommand).toBe("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(copiedAtlasCommand).toBe("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
         await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');
@@ -436,10 +436,11 @@ for (const width of [320, 1280]) {
         await serviceComputerCommand.getByRole('button', { name: 'Copy command' }).click();
         await expect(serviceComputerCommand.getByRole('status')).toHaveText('Command copied.');
         const copiedServiceCommand = await page.evaluate(() => navigator.clipboard.readText());
-        expect(copiedServiceCommand).toContain("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(copiedServiceCommand).toContain("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await expect(steps).not.toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
-        await expect(steps).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        await expect(steps).toContainText('It lists running and stopped containers, networks, and published ports');
+        await expect(steps).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        await expect(steps).toContainText('Find the app by its container name or image; Docker may use a different name than Atlas');
+        await expect(steps).toContainText('The list also shows whether each container is running, its network, and published ports');
         await expect(steps).toContainText('Up means it is running; Exited means it stopped');
         await expect(steps).toContainText('If it is missing, this Docker engine does not manage it');
         await expect(steps).toContainText('A running container does not prove its web app responds');
