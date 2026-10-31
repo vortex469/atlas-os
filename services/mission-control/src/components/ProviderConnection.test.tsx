@@ -307,12 +307,13 @@ describe("ProviderConnection", () => {
         expect(mockedGetProviderConnection).not.toHaveBeenCalled();
     });
 
-    it("renders Docker path read-only and warning with save unavailable", async () => {
+    it("renders the Docker path read-only and explains its power in plain language", async () => {
         mockedGetProviderConnection.mockResolvedValue(dockerSchema());
         await renderConnection({ ...provider, id: "docker", name: "Docker" });
 
         expect(screen.getByLabelText("Docker socket path")).toBeDisabled();
-        expect(screen.getByText(/Privileged local runtime connection/)).toBeInTheDocument();
+        expect(screen.getByText("Atlas can still send Docker commands that change containers through this connection, even if the socket is mounted read-only.")).toBeInTheDocument();
+        expect(screen.queryByText(/Privileged local runtime/)).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save Connection" })).not.toBeInTheDocument();
         expect(screen.getByText(/Connection editing is not available/)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Test Connection" })).toBeInTheDocument();

@@ -4274,6 +4274,16 @@ active loading and “Last checked” labels rather than stale copy.
 
 Discovery item notes now use the plain label “Catalog notes.” The screen no
 longer exposes the undefined internal `reviewed_for_d5` flag; the API response
-and catalog data remain unchanged. Component coverage verifies notes remain
-visible and the internal flag is omitted. Responsive browser checks cover the
-same screen at 390px and 1280px.
+and catalog data remain unchanged. The full Mission Control suite passes 3,094
+tests across 188 files; two responsive browser checks confirm the notes remain
+visible and the internal flag is omitted at 390px and 1280px. Lint and build
+pass.
+
+## Docker connection warning wording — 2026-10-31
+
+The provider connection screen now explains the Docker socket warning in terms
+operators can act on: Atlas can still issue commands that change containers
+even when the socket mount is read-only. Connection settings, test behavior,
+and permissions are unchanged. The full Mission Control suite passes 3,094
+tests across 188 files, including the warning and read-only settings case; lint
+and build pass.

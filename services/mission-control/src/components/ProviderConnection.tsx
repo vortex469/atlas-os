@@ -264,7 +264,7 @@ function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
                         )}
                         {schema?.metadata.privileged_local_runtime === true && (
                             <p className="mt-2 text-sm text-amber-300">
-                                Privileged local runtime connection. A read-only socket mount does not make the Docker API read-only.
+                                Atlas can still send Docker commands that change containers through this connection, even if the socket is mounted read-only.
                             </p>
                         )}
                     </div>
