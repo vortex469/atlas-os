@@ -1,5 +1,5 @@
-/** Show the service container's status, network, and published ports. */
-export const serviceContainerCheckCommand = "docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'";
+/** Show running and stopped service containers, networks, and published ports. */
+export const serviceContainerCheckCommand = "docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'";
 
 /**
  * Build a read-only HTTP probe that follows Atlas Core's network path.

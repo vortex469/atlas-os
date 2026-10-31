@@ -387,11 +387,13 @@ for (const width of [320, 1280]) {
         await serviceComputerCommand.getByRole('button', { name: 'Copy command' }).click();
         await expect(serviceComputerCommand.getByRole('status')).toHaveText('Command copied.');
         const copiedServiceCommand = await page.evaluate(() => navigator.clipboard.readText());
-        expect(copiedServiceCommand).toContain("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(copiedServiceCommand).toContain("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await expect(steps).not.toContainText('Run the test on the computer running Atlas Core or inside its atlas-core container');
-        await expect(steps).toContainText("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        await expect(steps).toContainText('to show container names, running status, network, and published ports');
-        await expect(steps).toContainText('Up means the container is running, not that its web app is responding');
+        await expect(steps).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        await expect(steps).toContainText('to show running and stopped containers, networks, and published ports');
+        await expect(steps).toContainText('Up means the container is running; Exited means it stopped');
+        await expect(steps).toContainText('If the expected app is missing, this Docker engine does not manage it; check whether it runs directly on the computer or in another VM');
+        await expect(steps).toContainText('A running container does not prove its web app is responding');
         await expect(steps).toContainText('If Networks says host, a blank PORTS field is expected');
         await expect(steps).toContainText('Otherwise, a blank field means no host port is published');
         await expect(steps).toContainText("To publish a port, use Compose's ports: or docker run -p");

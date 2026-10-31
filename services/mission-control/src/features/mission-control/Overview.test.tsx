@@ -249,9 +249,12 @@ describe("MC overview evidence", () => {
         expect(within(steps).getAllByRole("listitem")).toHaveLength(4);
         expect(steps).toHaveClass("text-sm");
         expect(steps).not.toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
-        expect(steps).toHaveTextContent("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(steps).toHaveTextContent("to show container names, running status, network, and published ports.");
-        expect(steps).toHaveTextContent("Up means the container is running, not that its web app is responding.");
+        expect(steps).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(steps).toHaveTextContent("to show running and stopped containers, networks, and published ports.");
+        expect(steps).toHaveTextContent("Up means the container is running; Exited means it stopped.");
+        expect(steps).toHaveTextContent("A running container does not prove its web app is responding.");
+        expect(steps).toHaveTextContent("Exited means it stopped.");
+        expect(steps).toHaveTextContent("If the expected app is missing, this Docker engine does not manage it; check whether it runs directly on the computer or in another VM.");
         expect(steps).toHaveTextContent("If Networks says host, a blank PORTS field is expected.");
         expect(steps).toHaveTextContent("Otherwise, a blank field means no host port is published.");
         expect(steps).toHaveTextContent("To publish a port, use Compose's ports: or docker run -p.");
@@ -325,7 +328,7 @@ describe("MC overview evidence", () => {
         fireEvent.click(within(firstStep).getByRole("button", { name: "Copy command" }));
 
         expect(await within(firstStep).findByRole("status")).toHaveTextContent("Command copied.");
-        expect(writeText).toHaveBeenCalledWith("docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(writeText).toHaveBeenCalledWith("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
     });
 
     it("keeps the Core connection wording in stale service-check evidence", () => {

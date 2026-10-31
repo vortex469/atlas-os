@@ -3863,7 +3863,9 @@ an app runs directly on its computer or in Docker. Docker container, network,
 and published-port checks are grouped under an explicit “If the app runs in
 Docker” disclosure. This keeps the container-specific steps available for
 iFileshare while avoiding the implication that every configured service uses
-Docker. The focused Overview suite passes 76 tests; the iFileshare troubleshooting
+Docker. The copied Docker command includes stopped containers, and the guidance
+explains that a missing app may be running directly on the host or in another
+VM. The focused Overview suite passes 79 tests; the iFileshare troubleshooting
 browser check passes at 320px and 1280px; Mission Control lint and production
 build pass. Health requests and provider behavior are unchanged.
 
