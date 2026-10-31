@@ -123,7 +123,7 @@ export function WorkflowDashboardPage() {
 
     const workflows = useMemo(() => workflowResponse?.items ?? [], [workflowResponse]);
     const hasActiveWorkflow = workflows.some((workflow) => isActiveWorkflowState(workflow.workflow_state));
-    const hasMoreWorkflows = workflowResponse !== null && nextWorkflowOffset < workflowResponse.total;
+    const hasMoreWorkflows = workflowResponse !== null && workflows.length > 0 && nextWorkflowOffset < workflowResponse.total;
     const autoRefreshEnabled = hasActiveWorkflow && workflows.length <= WORKFLOW_BATCH_SIZE;
 
     useEffect(() => {
@@ -359,10 +359,12 @@ export function WorkflowDashboardPage() {
                 </div>
 
                 {workflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
-                        {dashboardFiltersEqual(filters, EMPTY_FILTERS)
-                            ? "No workflows yet."
-                            : "No workflows match the current filters."}
+                    <p role="status" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
+                        {workflowResponse?.total
+                            ? "Atlas reports workflows but returned no entries. Select Refresh to try again."
+                            : dashboardFiltersEqual(filters, EMPTY_FILTERS)
+                                ? "No workflows yet."
+                                : "No workflows match the current filters."}
                     </p>
                 ) : visibleWorkflows.length === 0 ? (
                     <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">

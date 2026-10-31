@@ -538,6 +538,21 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.queryByText("No workflows yet.")).not.toBeInTheDocument();
     });
 
+    it("offers refresh when the API reports workflows but returns no first-page entries", async () => {
+        vi.mocked(listWorkflows)
+            .mockResolvedValueOnce(response([], 1))
+            .mockResolvedValueOnce(response([workflow()]));
+        renderDashboard();
+
+        expect(await screen.findByText("Atlas reports workflows but returned no entries. Select Refresh to try again.")).toBeVisible();
+        expect(screen.queryByText("No workflows yet.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Load more workflows" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Loaded 0 of 1 workflows. Summary counts and filters cover the loaded workflows only.")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeVisible();
+    });
+
     it("clarifies when filtered older workflows have not been loaded yet", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([workflow()], 201));
         renderDashboard();

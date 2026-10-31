@@ -4346,3 +4346,11 @@ selection and preserved filters are unchanged. The focused workflow and audit
 page suites, Mission Control lint, and build pass. The workflow directory also
 explains that refreshing after loading older records resumes automatic checks
 only while a workflow in the refreshed list is running.
+
+## Workflow list empty-page recovery — 2026-10-31
+
+If Atlas reports existing workflows but returns no entries on the first page,
+the directory now explains the mismatch and offers Refresh. It no longer says
+there are no workflows or offers a “Load more” action that repeats the empty
+page. The focused workflow directory suite covers recovery; lint and build
+pass. Workflow reads and approval behavior are unchanged.
