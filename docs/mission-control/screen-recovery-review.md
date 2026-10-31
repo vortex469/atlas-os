@@ -4114,6 +4114,7 @@ Compose never ran the check and does not report whether the service is
 reachable. It explains how to identify the Atlas Core computer with
 `docker ps --all`, then directs the operator to Atlas's Compose folder or the
 full file path when needed. The focused Overview and service-details suites
-pass 87 tests; the iFileshare browser journey passes at 320px and 1280px.
+pass 87 tests, and the full Mission Control unit suite passes 3,055 tests
+across 188 files. The iFileshare browser journey passes at 320px and 1280px.
 Mission Control lint and build pass. This is guidance-only; it does not alter
 health probes, backend behavior, or production acceptance.
