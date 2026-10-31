@@ -208,7 +208,7 @@ function SelectionSummary({ selection }: { selection: InstallationDestinationSel
     const terminal = selection.status !== "active";
     return <section aria-labelledby="selection-summary-heading" className={`mt-5 rounded-lg border p-4 ${terminal ? "border-amber-500/40" : "border-slate-700"}`}>
         <h4 id="selection-summary-heading" className="font-semibold text-slate-100">VM selected for assessment</h4>
-        <p className="mt-1 text-sm text-slate-300">This is a temporary choice for a check. Atlas has not confirmed that this VM can run the app. It does not install or approve anything. It does not authorize execution.</p>
+        <p className="mt-1 text-sm text-slate-300">This temporary choice only selects which VM to check. It does not confirm that the app can run here.</p>
         {selection.status !== "active" && <p role="status" className="mt-2 font-semibold text-amber-200">{terminalSelectionMessage(selection.status)}</p>}
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <Value name="VM ID" value={selection.resource_id} />

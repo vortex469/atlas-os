@@ -4638,4 +4638,12 @@ required approval before a change, so a planner's flag cannot be mistaken for
 Atlas authorization. This is display-only; analysis, permission, and approval
 behavior are unchanged. The focused Forge component suite passes 14 tests and
 the browser journey passes at 390px and 1280px. Lint, production build, and
-git diff check pass.
+the whitespace check pass.
+
+## VM selection wording — 2026-10-31
+
+After an operator chooses a VM for an installation-plan check, the message now
+explains that the choice only selects the VM and that the check has not
+confirmed the app can run there. The page-level boundary still says that the
+review does not install or authorize an installation. The focused selection
+suite passes 13 tests; lint, production build, and the whitespace check pass.

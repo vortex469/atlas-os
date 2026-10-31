@@ -70,7 +70,7 @@ describe("ProspectiveDestinationReview", () => {
             { resource_id: "101", enumeration_token: "b".repeat(64) }, "csrf", "mission-control-test-key",
         );
         expect(await screen.findByRole("heading", { name: "VM selected for assessment" })).toBeInTheDocument();
-        expect(screen.getByText("This is a temporary choice for a check. Atlas has not confirmed that this VM can run the app. It does not install or approve anything. It does not authorize execution.")).toBeInTheDocument();
+        expect(screen.getByText("This temporary choice only selects which VM to check. It does not confirm that the app can run here.")).toBeInTheDocument();
         expect(screen.getByText(selection.selection_id)).toBeInTheDocument();
         const selectionDetails = screen.getByText("Selection details").closest("details");
         expect(selectionDetails).not.toHaveAttribute("open");
@@ -95,9 +95,7 @@ describe("ProspectiveDestinationReview", () => {
         render(<ProspectiveDestinationReview plan={plan} csrfToken="csrf" />);
         await user.click(await screen.findByRole("button", { name: "Select VM 101 for assessment" }));
 
-        expect(await screen.findByText(/temporary choice for a check/i)).toHaveTextContent(/Atlas has not confirmed that this VM can run the app/i);
-        expect(screen.getByText(/temporary choice for a check/i)).toHaveTextContent(/does not install or approve anything/i);
-        expect(screen.getByText(/temporary choice for a check/i)).toHaveTextContent(/It does not authorize execution/i);
+        expect(await screen.findByText("This temporary choice only selects which VM to check. It does not confirm that the app can run here.")).toBeInTheDocument();
     });
 
     it("renders bounded empty and API unavailable states", async () => {
