@@ -67,9 +67,10 @@ function ObservedStatus({ value, reason, stale, unavailableLabel }: {
     return <HealthEvidence compact status={safeText(value)} stale={stale} reason={safeText(reason)} unavailableLabel={unavailableLabel} />;
 }
 
-function ServiceCheckLocation({ service }: { service: unknown }) {
+function ServiceCheckLocation({ service, name }: { service: unknown; name: unknown }) {
     const evidence = record(service);
     const url = record(evidence.details).url;
+    const serviceName = safeText(name) || "this service";
     const address = formatHealthCheckAddress(url);
     const unavailable = status(evidence.status) === "unavailable";
     const command = unavailable ? serviceReachabilityCommand(url) : null;
@@ -85,7 +86,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
             <details className="mt-2 text-xs text-mc-text-muted">
                 <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Test from the Atlas computer</summary>
                 <div role="group" aria-label="Next connection check" className="mt-2 rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
-                    <p className="font-medium text-mc-text-primary">On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It tests the same connection Atlas uses. Do not run it on the service computer; that checks a different connection.</p>
+                    <p className="font-medium text-mc-text-primary">On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It checks whether Atlas Core can reach {serviceName}. If {serviceName} runs on a different computer, checking from that computer does not test the same connection.</p>
                     <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
                     {command && <>
                         <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>
@@ -373,7 +374,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 </details>
             </Card>
             <Card id="service-checks" title="Service checks" evidence={evidence.health} loading={loading}>
-                <p>These results show whether Atlas Core can reach each service. Unavailable means it got no response; the service may still be running on its own computer.</p>
+                <p>These results show whether Atlas Core can reach each service. Unavailable means Atlas Core got no response; the service may still be running on its own computer.</p>
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
                 {displayedServices.length > 0 && <ul aria-label="Configured service checks" className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>
@@ -384,7 +385,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                         stale={evidence.health?.stale}
                         unavailableLabel="Atlas Core could not connect"
                     />
-                    <ServiceCheckLocation service={raw} />
+                    <ServiceCheckLocation service={raw} name={name} />
                 </li>)}</ul>}
                 {services.length > 4 && <button
                     type="button"

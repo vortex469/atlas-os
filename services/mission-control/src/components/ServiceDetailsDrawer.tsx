@@ -99,6 +99,7 @@ export function ServiceDetailsDrawer({
         : "";
     const nextCheck = healthNextCheck(health.message);
     const currentHealthState = healthState(health.status);
+    const serviceName = safeText(name) || "this service";
     const healthReason = ["Unavailable", "Degraded", "Blocked"].includes(currentHealthState)
         ? health.message
         : undefined;
@@ -174,7 +175,7 @@ export function ServiceDetailsDrawer({
                             <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">Test from the Atlas computer</summary>
                             <div className="mt-2">
                                 <p className="text-sm text-slate-400">
-                                    On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It tests the same connection Atlas uses. Do not run it on the service computer; that checks a different connection.
+                                    On the computer running Atlas, open the folder containing <code>compose.production.yaml</code> and run this read-only command. It checks whether Atlas Core can reach {serviceName}. If {serviceName} runs on a different computer, checking from that computer does not test the same connection.
                                 </p>
                                 {reachabilityCommand ? (
                                     <div role="group" aria-label="Read-only Core connection check command" className="mt-2 rounded border border-slate-800 bg-slate-900 p-3">

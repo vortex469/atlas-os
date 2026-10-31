@@ -120,7 +120,8 @@ describe("ServiceHealthSection", () => {
         expect(within(dialog).getByText("Response time")).not.toBeVisible();
         expect(within(dialog).getByText("HTTP status")).not.toBeVisible();
         expect(within(dialog).getByText(/On the computer running Atlas, open the folder containing/)).toHaveTextContent("compose.production.yaml");
-        expect(within(dialog).getByText(/On the computer running Atlas, open the folder containing/)).toHaveTextContent("Do not run it on the service computer");
+        expect(within(dialog).getByText(/On the computer running Atlas, open the folder containing/)).toHaveTextContent("It checks whether Atlas Core can reach Containers.");
+        expect(within(dialog).getByText(/On the computer running Atlas, open the folder containing/)).toHaveTextContent("If Containers runs on a different computer, checking from that computer does not test the same connection.");
         await user.click(within(dialog).getByText("Test from the Atlas computer"));
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");

@@ -4128,3 +4128,14 @@ distinguishes a reachable service with an unhealthy response from a failed
 connection. Health probing and status rules are unchanged. The focused Overview
 suite passes 80 tests; the responsive browser check passes at 320px and 1280px;
 Mission Control lint and production build pass.
+
+## Service connection-check host clarity — 2026-10-31
+
+The Overview and service detail help now name the service being checked and
+explain that a separate check from that service's computer may use a different
+connection. This avoids implying that Atlas and every service must run on
+separate computers. The Overview also names Atlas Core as the source of an
+unavailable result. The copied command and probe behavior are unchanged. The
+focused Overview and service health suites pass 88 tests, two responsive
+iFileshare browser cases pass at 320px and 1280px, and Mission Control lint and
+production build pass.

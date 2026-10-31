@@ -382,7 +382,7 @@ for (const width of [320, 1280]) {
         await checks.getByText('Test from the Atlas computer', { exact: true }).click();
         const nextStep = checks.getByRole('group', { name: 'Next connection check' });
         await expect(nextStep).toBeVisible();
-        await expect(nextStep).toContainText("On the computer running Atlas, open the folder containing compose.production.yaml and run this read-only command. It tests the same connection Atlas uses. Do not run it on the service computer; that checks a different connection.");
+        await expect(nextStep).toContainText("On the computer running Atlas, open the folder containing compose.production.yaml and run this read-only command. It checks whether Atlas Core can reach iFileshare. If iFileshare runs on a different computer, checking from that computer does not test the same connection.");
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
         await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');

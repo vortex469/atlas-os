@@ -174,7 +174,7 @@ describe("MC overview evidence", () => {
             message: "Connection refused",
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
-        expect(checks.getByText("These results show whether Atlas Core can reach each service. Unavailable means it got no response; the service may still be running on its own computer.")).toBeVisible();
+        expect(checks.getByText("These results show whether Atlas Core can reach each service. Unavailable means Atlas Core got no response; the service may still be running on its own computer.")).toBeVisible();
         const attention = within(screen.getByRole("region", { name: "Needs attention" }));
         const conditions = within(attention.getByRole("list", { name: "Items needing attention" }));
         const condition = within(conditions.getByRole("listitem"));
@@ -235,7 +235,7 @@ describe("MC overview evidence", () => {
         const disclosure = summary.closest("details");
 
         expect(nextStep).toHaveTextContent("On the computer running Atlas, open the folder containing compose.production.yaml and run this read-only command.");
-        expect(nextStep).toHaveTextContent("It tests the same connection Atlas uses. Do not run it on the service computer; that checks a different connection.");
+        expect(nextStep).toHaveTextContent("It checks whether Atlas Core can reach iFileshare. If iFileshare runs on a different computer, checking from that computer does not test the same connection.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
