@@ -220,7 +220,7 @@ export function ServiceDetailsDrawer({
                         )}
                         <details className="mt-3 text-sm text-mc-text-secondary">
                             <summary className="mc-focusable cursor-pointer text-cyan-300">Check the service computer</summary>
-                            <div className="mt-2 space-y-2"><ServiceComputerChecks /></div>
+                            <div className="mt-2 space-y-2"><ServiceComputerChecks address={health.details.url} /></div>
                         </details>
                     </section>
 

@@ -19,7 +19,7 @@ for (const width of [390, 1440]) {
         await page.route("**/api/v1/health", route => route.fulfill({ json: {
             services: {
                 Slow: { status: "degraded", message: "Unexpected HTTP status from the provider." },
-                Down: { status: "offline", message: "Connection refused" },
+                Down: { status: "offline", message: "Connection refused", details: { url: "http://fileshare.local/" } },
                 Gated: { status: "blocked", message: "Policy denies access" },
                 Missing: null,
             },
@@ -36,6 +36,7 @@ for (const width of [390, 1440]) {
             .getByRole("listitem")
             .nth(1);
         await down.locator("summary", { hasText: "Check the service computer" }).click();
+        await expect(down.getByRole("group", { name: "Service computer listening-port command" })).toContainText("ss -ltnp 'sport = :80'");
         const dockerHelp = down.locator("summary", { hasText: "If the app runs in Docker" }).locator("xpath=ancestor::details[1]");
         await expect(dockerHelp).not.toHaveAttribute("open", "");
         await dockerHelp.locator("summary").click();

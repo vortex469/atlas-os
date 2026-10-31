@@ -1,6 +1,25 @@
 import { describe, expect, it } from "vitest";
 
-import { serviceReachabilityCommand } from "./serviceReachabilityCommand";
+import { serviceListeningPortCommand, serviceReachabilityCommand } from "./serviceReachabilityCommand";
+
+describe("serviceListeningPortCommand", () => {
+    it("checks the configured HTTP port without exposing URL details", () => {
+        expect(serviceListeningPortCommand("http://operator:secret@10.10.60.30:8080/health?token=private"))
+            .toBe("ss -ltnp 'sport = :8080'");
+    });
+
+    it.each([
+        ["http://example.test/", "ss -ltnp 'sport = :80'"],
+        ["https://example.test/", "ss -ltnp 'sport = :443'"],
+    ])("uses the default port for %s", (address, command) => {
+        expect(serviceListeningPortCommand(address)).toBe(command);
+    });
+
+    it.each([undefined, null, "", "not a URL", "file:///etc/passwd", "http://example.test:70000/"])(
+        "does not produce a command for an invalid or non-HTTP address (%s)",
+        value => expect(serviceListeningPortCommand(value)).toBeNull(),
+    );
+});
 
 describe("serviceReachabilityCommand", () => {
     it("builds a read-only Core-container probe for an HTTP endpoint", () => {

@@ -117,7 +117,7 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check the service computer</summary>
             <div className="mt-2 space-y-1">
-                <ServiceComputerChecks />
+                <ServiceComputerChecks address={url} />
                 <p>Address Atlas checked: <span className={address ? "break-all font-mono" : ""}>{address ?? "Not reported"}</span></p>
                 <p>HTTP response: {response}</p>
                 {responseTime !== null && <p>Response time: {responseTime}</p>}

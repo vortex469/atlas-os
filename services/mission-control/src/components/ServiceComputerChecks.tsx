@@ -1,9 +1,18 @@
 import { CopyCommandButton } from "./CopyCommandButton";
-import { serviceContainerCheckCommand } from "../utils/serviceReachabilityCommand";
+import { serviceContainerCheckCommand, serviceListeningPortCommand } from "../utils/serviceReachabilityCommand";
 
-export function ServiceComputerChecks() {
+export function ServiceComputerChecks({ address }: { address: unknown }) {
+    const listeningPortCommand = serviceListeningPortCommand(address);
     return <>
         <p className="text-sm leading-6 text-mc-text-secondary">Confirm the app is running and listening at the configured address. If it runs directly on this computer, check the app&apos;s own status and listening port.</p>
+        {listeningPortCommand && <div className="space-y-1 pt-1 text-sm leading-6 text-mc-text-secondary">
+            <p>On a Linux service computer, run this read-only check for the configured port:</p>
+            <div role="group" aria-label="Service computer listening-port command" className="flex flex-wrap items-start gap-2 rounded border border-slate-800 bg-slate-900 p-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-xs text-slate-200">{listeningPortCommand}</code>
+                <CopyCommandButton command={listeningPortCommand} />
+            </div>
+            <p>A <code>LISTEN</code> row means something is listening on that port. No row means nothing is listening on that port on this computer. If the app runs in Docker, also check its port mapping below.</p>
+        </div>}
         <details className="pt-1">
             <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">If the app runs in Docker</summary>
             <ol aria-label="Docker and Compose checks" className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">

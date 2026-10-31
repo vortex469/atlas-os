@@ -4223,3 +4223,15 @@ Overview and service-detail drawer. Health probing and status rules are
 unchanged. The focused Overview and service-health suites pass 89 tests;
 four built-app browser cases pass at 320px, 390px, 1280px, and 1440px; Mission
 Control lint and production build pass.
+
+## Service computer listening-port check — 2026-10-31
+
+The service-computer guidance now provides a copyable, read-only Linux
+`ss -ltnp` command scoped to the configured service port. A short explanation
+distinguishes a host listener from a running container and connects the result
+to the existing Docker port checks. The same command appears in the Overview
+and service-detail drawer. Invalid or missing addresses produce no command;
+URL credentials and query values are never included. Health probes and status
+rules are unchanged. Unit tests cover custom and default ports and unsafe
+addresses. The Overview and system-health browser journeys pass at mobile and
+desktop widths; Mission Control lint and build pass.

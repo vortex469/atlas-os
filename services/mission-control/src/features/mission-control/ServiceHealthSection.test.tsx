@@ -256,6 +256,9 @@ describe("ServiceHealthSection", () => {
         const serviceComputer = within(dialog).getByText("Check the service computer").closest("details");
         expect(serviceComputer).not.toHaveAttribute("open");
         fireEvent.click(within(serviceComputer as HTMLDetailsElement).getByText("Check the service computer"));
+        const listeningPortCommand = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
+        expect(listeningPortCommand).toHaveTextContent("ss -ltnp 'sport = :8080'");
+        expect(listeningPortCommand).not.toHaveTextContent(/operator|password|private|token=/);
         const dockerSummary = within(serviceComputer as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         fireEvent.click(dockerSummary);

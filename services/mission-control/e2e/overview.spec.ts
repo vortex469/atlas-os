@@ -408,6 +408,8 @@ for (const width of [320, 1280]) {
         const moreChecks = checks.locator('summary', { hasText: 'Check the service computer' });
         await moreChecks.click();
         await expect(checks.getByText('Confirm the app is running and listening at the configured address. If it runs directly on this computer, check the app\'s own status and listening port.', { exact: true })).toBeVisible();
+        await expect(checks.getByRole('group', { name: 'Service computer listening-port command' })).toContainText("ss -ltnp 'sport = :8080'");
+        await expect(checks).toContainText('A LISTEN row means something is listening on that port. No row means nothing is listening on that port on this computer.');
         const dockerHelp = checks.locator('summary', { hasText: 'If the app runs in Docker' }).locator('xpath=ancestor::details[1]');
         await expect(dockerHelp).not.toHaveAttribute('open', '');
         await dockerHelp.locator('summary').click();
