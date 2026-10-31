@@ -125,7 +125,7 @@ describe("ServiceHealthSection", () => {
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
-        expect(composeHelpText).toHaveTextContent("That error means Compose did not run the health check. Run the command from the directory that contains Atlas's Compose file, or pass its full path with --file.");
+        expect(composeHelpText).toHaveTextContent("“No such file” means the check did not run, so it says nothing about service reachability. Run it on the computer running Atlas Core, from the folder containing compose.production.yaml—not on the service computer. If the file is elsewhere, pass its full path with --file.");
         expect(composeHelpText).not.toBeVisible();
         await user.click(screen.getByText("If Compose says the file is missing"));
         expect(composeHelpText).toBeVisible();

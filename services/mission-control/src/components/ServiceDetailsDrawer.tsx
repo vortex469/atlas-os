@@ -193,7 +193,7 @@ export function ServiceDetailsDrawer({
                                 )}
                                 <details className="mt-2">
                                     <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
-                                    <p className="mt-2 text-sm text-slate-400">That error means Compose did not run the health check. Run the command from the directory that contains Atlas&apos;s Compose file, or pass its full path with <code>--file</code>.</p>
+                                    <p className="mt-2 text-sm text-slate-400">“No such file” means the check did not run, so it says nothing about service reachability. Run it on the computer running Atlas Core, from the folder containing <code>compose.production.yaml</code>—not on the service computer. If the file is elsewhere, pass its full path with <code>--file</code>.</p>
                                 </details>
                             </div>
                         </details>

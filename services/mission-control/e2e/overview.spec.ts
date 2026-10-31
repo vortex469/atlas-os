@@ -371,7 +371,7 @@ for (const width of [320, 1280]) {
         expect(copiedCommand).toContain('http://10.10.60.30:8080/');
         expect(copiedCommand).not.toMatch(/password|private|token=/);
         await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
-        await expect(nextStep).toContainText("File not found? Compose did not run the check. Run it from Atlas's Compose folder or pass the full file path with --file.");
+        await expect(nextStep).toContainText("File not found? “No such file” means the check did not run, so it says nothing about service reachability. Run it on the computer running Atlas Core, from the folder containing compose.production.yaml—not on the service computer. If the file is elsewhere, pass its full path with --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'Check the service computer' });
