@@ -274,8 +274,8 @@ export function WorkflowDashboardPage() {
             </header>
 
             {refreshMode === "manual" && <p role="status" aria-live="polite" className="text-sm text-blue-200">Refreshing workflows...</p>}
-            {hasMoreWorkflows && <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">Loaded {workflows.length} of {workflowResponse?.total ?? 0} workflows. Summary counts and filters cover the loaded workflows only.</p>}
-            {workflows.length > WORKFLOW_BATCH_SIZE && <p role="status" className="rounded-lg border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">Automatic updates pause while more than {WORKFLOW_BATCH_SIZE} workflows are loaded. Select Refresh to show the newest {WORKFLOW_BATCH_SIZE} again; updates resume only while a workflow in that list is running.</p>}
+            {hasMoreWorkflows && <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">Loaded {workflows.length} of {workflowResponse?.total ?? 0} workflows. Counts and filters use only the workflows already loaded.</p>}
+            {workflows.length > WORKFLOW_BATCH_SIZE && <p role="status" className="rounded-lg border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">Auto-refresh pauses when you load more than {WORKFLOW_BATCH_SIZE} workflows. Select Refresh to return to the newest {WORKFLOW_BATCH_SIZE}; running workflows there update automatically.</p>}
             {refreshError && (
                 <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                     <p className="font-semibold text-amber-100">Could not refresh workflows</p>

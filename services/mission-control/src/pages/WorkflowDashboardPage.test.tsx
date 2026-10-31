@@ -425,9 +425,9 @@ describe("WorkflowDashboardPage", () => {
 
         renderDashboard();
 
-        expect(await screen.findByText("Loaded 200 of 201 workflows. Summary counts and filters cover the loaded workflows only.")).toBeVisible();
+        expect(await screen.findByText("Loaded 200 of 201 workflows. Counts and filters use only the workflows already loaded.")).toBeVisible();
         fireEvent.click(screen.getByRole("button", { name: "Load more workflows" }));
-        expect(await screen.findByText("Automatic updates pause while more than 200 workflows are loaded. Select Refresh to show the newest 200 again; updates resume only while a workflow in that list is running.")).toBeVisible();
+        expect(await screen.findByText("Auto-refresh pauses when you load more than 200 workflows. Select Refresh to return to the newest 200; running workflows there update automatically.")).toBeVisible();
         expect(screen.getByText("Showing 1–10 of 201 loaded workflows")).toBeVisible();
         expect(screen.queryByRole("button", { name: "Load more workflows" })).not.toBeInTheDocument();
 
@@ -447,7 +447,7 @@ describe("WorkflowDashboardPage", () => {
 
         renderDashboard();
 
-        await screen.findByText("Loaded 200 of 201 workflows. Summary counts and filters cover the loaded workflows only.");
+        await screen.findByText("Loaded 200 of 201 workflows. Counts and filters use only the workflows already loaded.");
         fireEvent.click(screen.getByRole("button", { name: "Load more workflows" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Could not load more workflows. The workflows already shown are unchanged. Try again.");
         expect(screen.getAllByRole("heading", { name: "Update Compose Stack" }).length).toBe(10);
@@ -547,7 +547,7 @@ describe("WorkflowDashboardPage", () => {
         expect(await screen.findByText("Atlas reports workflows but returned no entries. Select Refresh to try again.")).toBeVisible();
         expect(screen.queryByText("No workflows yet.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Load more workflows" })).not.toBeInTheDocument();
-        expect(screen.queryByText("Loaded 0 of 1 workflows. Summary counts and filters cover the loaded workflows only.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Loaded 0 of 1 workflows. Counts and filters use only the workflows already loaded.")).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeVisible();
@@ -557,7 +557,7 @@ describe("WorkflowDashboardPage", () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([workflow()], 201));
         renderDashboard();
 
-        expect(await screen.findByText("Loaded 1 of 201 workflows. Summary counts and filters cover the loaded workflows only.")).toBeVisible();
+        expect(await screen.findByText("Loaded 1 of 201 workflows. Counts and filters use only the workflows already loaded.")).toBeVisible();
         fireEvent.click(screen.getByText("More filters", { exact: true }));
         fireEvent.change(screen.getByLabelText("Workflow ID contains"), { target: { value: "older-workflow" } });
         fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));

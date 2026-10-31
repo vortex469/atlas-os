@@ -4430,3 +4430,11 @@ shows one alert with the refresh instruction. The duplicate status message was
 removed. Deletion remains disabled until a successful history refresh; the
 focused OperationsPage suite passes 18 tests, and Mission Control lint and
 production build pass.
+
+## Workflow list loading notices — 2026-10-31
+
+The workflow directory now says directly that counts and filters use only the
+workflows already loaded. Its auto-refresh note explains that loading older
+workflows pauses automatic checks, and that Refresh returns to the newest 200
+so running workflows can update again. This changes presentation only;
+pagination and refresh behavior are unchanged.
