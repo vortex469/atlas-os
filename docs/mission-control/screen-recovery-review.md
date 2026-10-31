@@ -4180,6 +4180,16 @@ reachability probe are unchanged. The focused Overview and service-health
 suites pass 89 tests; the responsive iFileshare browser journey passes at 320px
 and 1280px. Mission Control lint and production build pass.
 
+## Workflow directory background refresh — 2026-10-31
+
+The workflow list now says when running workflows trigger five-second automatic
+updates. Background checks no longer flash the manual “Refreshing workflows”
+message or change the Refresh button label. Manual refresh still shows its
+progress state. The note disappears when no workflow is running; workflow
+refresh behavior and approval boundaries are unchanged. The focused workflow
+directory suite passes 22 tests, and five responsive browser cases pass at
+320px, 390px, and 1280px. Mission Control lint and production build pass.
+
 ## Atlas Core connection-check guidance — 2026-10-31
 
 The service-check instructions now first ask the operator to confirm that

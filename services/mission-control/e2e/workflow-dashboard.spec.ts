@@ -56,6 +56,39 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+for (const width of [320, 1280]) {
+    test(`workflow list explains background updates while work is running at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+            items: [{
+                workflow_id: "workflow-running",
+                workflow_source: "candidate",
+                workflow_state: "executing",
+                effect_kind: "repository_change",
+                execution_intent: "update-compose-stack",
+                candidate_id: "candidate-running",
+                planning_session_id: "planning-running",
+                repository: "/repo",
+                target_id: null,
+                last_result_summary: "Applying the change.",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 200,
+            offset: 0,
+        } }));
+        await page.goto("/workflows");
+
+        const note = page.getByText("The list checks for updates every 5 seconds while a workflow is running.", { exact: true });
+        const refreshButton = page.getByRole("button", { name: "Refresh", exact: true });
+        await expect(note).toBeVisible();
+        await expect(refreshButton).toHaveAttribute("aria-describedby", "workflow-auto-refresh-note");
+        await expect(page.getByText("Refreshing workflows...", { exact: true })).toHaveCount(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
 for (const width of [320, 390, 1280]) {
     test(`maintenance workflow card shows its safe next step at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         await page.setViewportSize({ width, height: 900 });

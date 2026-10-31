@@ -24,7 +24,7 @@ import type { WorkflowOperatorStepState } from "../utils/workflowState";
 const PAGE_SIZE = 10;
 const WORKFLOW_BATCH_SIZE = 200;
 
-type LoadMode = "initial" | "refresh";
+type LoadMode = "initial" | "manual" | "automatic";
 
 interface DashboardFilters {
     state: string;
@@ -80,7 +80,7 @@ export function WorkflowDashboardPage() {
     const [filters, setFilters] = useState<DashboardFilters>(initialViewState.filters);
     const [pageIndex, setPageIndex] = useState(initialViewState.pageIndex);
     const [isLoading, setIsLoading] = useState(true);
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [refreshMode, setRefreshMode] = useState<Exclude<LoadMode, "initial"> | null>(null);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export function WorkflowDashboardPage() {
         if (pendingLoad.current) return;
         pendingLoad.current = true;
         if (mode === "initial") setIsLoading(true);
-        if (mode === "refresh") setIsRefreshing(true);
+        if (mode !== "initial") setRefreshMode(mode);
         if (mode === "initial") setLoadError(null);
         setRefreshError(null);
 
@@ -113,7 +113,7 @@ export function WorkflowDashboardPage() {
         } finally {
             pendingLoad.current = false;
             if (mode === "initial") setIsLoading(false);
-            if (mode === "refresh") setIsRefreshing(false);
+            if (mode !== "initial") setRefreshMode(null);
         }
     }, []);
 
@@ -124,14 +124,15 @@ export function WorkflowDashboardPage() {
     const workflows = useMemo(() => workflowResponse?.items ?? [], [workflowResponse]);
     const hasActiveWorkflow = workflows.some((workflow) => isActiveWorkflowState(workflow.workflow_state));
     const hasMoreWorkflows = workflowResponse !== null && nextWorkflowOffset < workflowResponse.total;
+    const autoRefreshEnabled = hasActiveWorkflow && workflows.length <= WORKFLOW_BATCH_SIZE;
 
     useEffect(() => {
-        if (!hasActiveWorkflow || workflows.length > WORKFLOW_BATCH_SIZE) return undefined;
+        if (!autoRefreshEnabled) return undefined;
         const interval = window.setInterval(() => {
-            void loadDashboard("refresh");
+            void loadDashboard("automatic");
         }, 5_000);
         return () => window.clearInterval(interval);
-    }, [hasActiveWorkflow, loadDashboard, workflows.length]);
+    }, [autoRefreshEnabled, loadDashboard]);
 
     const hasAppliedMoreFilters = Boolean(filters.source || filters.candidateId || filters.workflowId);
     const hasUnappliedFilters = !dashboardFiltersEqual(draftFilters, filters);
@@ -191,9 +192,9 @@ export function WorkflowDashboardPage() {
     }
 
     function refresh() {
-        if (pendingLoad.current || isRefreshing) return;
+        if (pendingLoad.current || refreshMode !== null) return;
         setPageIndex(0);
-        void loadDashboard("refresh");
+        void loadDashboard("manual");
     }
 
     async function loadMoreWorkflows() {
@@ -258,17 +259,21 @@ export function WorkflowDashboardPage() {
                         See what is running, what needs your review, and what has finished. Open a workflow to see its details.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={refresh}
-                    disabled={isRefreshing || isLoadingMore}
-                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                    {isRefreshing ? "Refreshing…" : "Refresh"}
-                </button>
+                <div className="flex flex-col items-end gap-1">
+                    <button
+                        type="button"
+                        onClick={refresh}
+                        disabled={refreshMode !== null || isLoadingMore}
+                        aria-describedby={autoRefreshEnabled ? "workflow-auto-refresh-note" : undefined}
+                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {refreshMode === "manual" ? "Refreshing…" : "Refresh"}
+                    </button>
+                    {autoRefreshEnabled && <p id="workflow-auto-refresh-note" className="max-w-64 text-right text-xs text-slate-400">The list checks for updates every 5 seconds while a workflow is running.</p>}
+                </div>
             </header>
 
-            {isRefreshing && <p role="status" aria-live="polite" className="text-sm text-blue-200">Refreshing workflows...</p>}
+            {refreshMode === "manual" && <p role="status" aria-live="polite" className="text-sm text-blue-200">Refreshing workflows...</p>}
             {hasMoreWorkflows && <p role="status" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">Loaded {workflows.length} of {workflowResponse?.total ?? 0} workflows. Summary counts and filters cover the loaded workflows only.</p>}
             {workflows.length > WORKFLOW_BATCH_SIZE && <p role="status" className="rounded-lg border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-slate-300">You loaded more than {WORKFLOW_BATCH_SIZE} workflows. Automatic refresh is paused; select Refresh to return to the first {WORKFLOW_BATCH_SIZE} and turn it back on.</p>}
             {refreshError && (
@@ -375,7 +380,7 @@ export function WorkflowDashboardPage() {
                     </nav>
                 )}
                 {loadMoreError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">{loadMoreError}</p>}
-                {hasMoreWorkflows && <button type="button" onClick={() => void loadMoreWorkflows()} disabled={isLoadingMore || isRefreshing} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{isLoadingMore ? "Loading more workflows…" : "Load more workflows"}</button>}
+                {hasMoreWorkflows && <button type="button" onClick={() => void loadMoreWorkflows()} disabled={isLoadingMore || refreshMode !== null} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 disabled:cursor-not-allowed disabled:opacity-60">{isLoadingMore ? "Loading more workflows…" : "Load more workflows"}</button>}
             </section>
         </main>
     );

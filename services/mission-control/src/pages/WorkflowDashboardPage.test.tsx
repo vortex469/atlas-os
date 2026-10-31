@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -144,6 +144,27 @@ describe("WorkflowDashboardPage", () => {
         expect(prepareDetails.getByText("Stage: Prepare change")).toBeVisible();
         expect(prepareDetails.getByText("Prepare the change for review.")).toBeVisible();
         expect(prepareDetails.queryByText("Your approval is needed")).not.toBeInTheDocument();
+    });
+
+    it("explains quiet automatic updates for active workflows and stops them after completion", async () => {
+        vi.useFakeTimers();
+        vi.mocked(listWorkflows)
+            .mockResolvedValueOnce(response([workflow({ workflow_state: "executing" })]))
+            .mockResolvedValueOnce(response([workflow({ workflow_state: "completed", last_result_summary: "Run finished" })]));
+        renderDashboard();
+
+        await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+        const note = screen.getByText("The list checks for updates every 5 seconds while a workflow is running.");
+        expect(note).toBeVisible();
+        expect(screen.getByRole("button", { name: "Refresh" })).toHaveAttribute("aria-describedby", "workflow-auto-refresh-note");
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+
+        expect(listWorkflows).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText("Refreshing workflows...")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled();
+        expect(screen.getByText("Run finished")).toBeInTheDocument();
+        expect(screen.queryByText("The list checks for updates every 5 seconds while a workflow is running.")).not.toBeInTheDocument();
     });
 
     it("keeps the workflow directory as the return destination for a detail link", async () => {
