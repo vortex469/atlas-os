@@ -284,11 +284,18 @@ describe("MC overview evidence", () => {
         fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(disclosure).toHaveTextContent("These checks run on the computer where iFileshare runs. They show whether it is running there, not whether Atlas Core can connect. If it is installed directly on this computer, check that it is running on the port Atlas uses.");
+        expect(disclosure).toHaveTextContent("These checks run on the computer where iFileshare runs. They do not test whether Atlas Core can connect.");
         const localHttpCheck = within(disclosure as HTMLDetailsElement).getByRole("group", { name: "Service computer HTTP check command" });
         expect(localHttpCheck).toHaveTextContent("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
         expect(localHttpCheck).not.toHaveTextContent(/password|private|token=/);
-        expect(disclosure).toHaveTextContent("Any HTTP status means iFileshare answered from this computer. HTTP 000 or a curl error means it did not answer. This does not test whether Atlas Core can connect.");
+        expect(disclosure).toHaveTextContent("Any HTTP status means iFileshare answered here. HTTP 000 or a curl error means no response. This does not test Atlas Core's connection.");
+        const moreChecksSummary = within(disclosure as HTMLDetailsElement).getByText("More checks on this computer");
+        const moreChecks = moreChecksSummary.closest("details");
+        expect(moreChecks).not.toHaveAttribute("open");
+        const listeningPortCommand = within(disclosure as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
+        expect(listeningPortCommand).not.toBeVisible();
+        fireEvent.click(moreChecksSummary);
+        expect(listeningPortCommand).toBeVisible();
         const dockerSummary = within(disclosure as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         const dockerSteps = within(disclosure as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
@@ -414,6 +421,7 @@ describe("MC overview evidence", () => {
         } } } } });
         const checks = within(screen.getByRole("region", { name: "Service checks" }));
         fireEvent.click(checks.getByText("Check iFileshare on the computer where it runs"));
+        fireEvent.click(checks.getByText("More checks on this computer"));
         fireEvent.click(checks.getByText("If the app runs in Docker"));
         const firstStep = within(checks.getByRole("list", { name: "Docker and Compose checks" })).getAllByRole("listitem")[0];
 

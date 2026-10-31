@@ -36,6 +36,10 @@ for (const width of [390, 1440]) {
             .getByRole("listitem")
             .nth(1);
         await down.locator("summary", { hasText: "Check Down on the computer where it runs" }).click();
+        const moreChecks = down.locator("summary", { hasText: "More checks on this computer" }).locator("xpath=ancestor::details[1]");
+        await expect(moreChecks).not.toHaveAttribute("open", "");
+        await expect(moreChecks.getByRole("group", { name: "Service computer listening-port command" })).toBeHidden();
+        await moreChecks.locator("summary").first().click();
         await expect(down.getByRole("group", { name: "Service computer listening-port command" })).toContainText("ss -ltnp 'sport = :80'");
         const dockerHelp = down.locator("summary", { hasText: "If the app runs in Docker" }).locator("xpath=ancestor::details[1]");
         await expect(dockerHelp).not.toHaveAttribute("open", "");

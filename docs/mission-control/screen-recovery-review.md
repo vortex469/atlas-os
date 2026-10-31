@@ -4568,3 +4568,14 @@ details. Approval, execution, and workflow status behavior are unchanged.
 The dashboard unit suite passes 24 tests, the workflow browser suite passes 21
 checks at phone and desktop widths, lint and the production build pass. Browser
 checks use controlled fixtures.
+
+## Service-computer check sequence — 2026-10-31
+
+The service-computer panel now leads with one simple HTTP check at Atlas's
+configured address. Port-listener and Docker checks sit under “More checks on
+this computer,” making the distinction between testing the app locally and
+testing Atlas Core's connection easier to follow. All commands remain
+read-only; no health status or network behavior changed.
+The focused health and Overview suites pass 91 tests, and the Overview and
+System health browser checks pass 35 cases at phone and desktop widths. Lint
+and the production build pass. Browser checks use controlled fixtures.

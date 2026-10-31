@@ -260,11 +260,17 @@ describe("ServiceHealthSection", () => {
         const localHttpCheck = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer HTTP check command" });
         expect(localHttpCheck).toHaveTextContent("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
         expect(localHttpCheck).not.toHaveTextContent(/operator|password|private|token=/);
+        const moreChecksSummary = within(serviceComputer as HTMLDetailsElement).getByText("More checks on this computer");
+        const moreChecks = moreChecksSummary.closest("details");
+        expect(moreChecks).not.toHaveAttribute("open");
         const listeningPortCommand = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
+        expect(listeningPortCommand).not.toBeVisible();
+        fireEvent.click(moreChecksSummary);
+        expect(listeningPortCommand).toBeVisible();
         expect(listeningPortCommand).toHaveTextContent("ss -ltnp 'sport = :8080'");
         expect(listeningPortCommand).not.toHaveTextContent(/operator|password|private|token=/);
         expect(serviceComputer).toHaveTextContent("127.0.0.1:PORT accepts connections only from this computer.");
-        expect(serviceComputer).toHaveTextContent("A LISTEN row means a program is listening; it does not prove the app responds.");
+        expect(serviceComputer).toHaveTextContent("A LISTEN row means a program is listening, not that the app responds.");
         const dockerSummary = within(serviceComputer as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         fireEvent.click(dockerSummary);
