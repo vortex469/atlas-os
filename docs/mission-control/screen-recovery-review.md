@@ -4588,3 +4588,11 @@ under the page title is removed, while the approval and run controls remain
 separate. The focused workflow and timeline suites pass 138 tests, and the
 repository journey browser checks pass 15 cases at phone and desktop widths.
 Lint and production build pass; browser checks use controlled fixtures.
+
+## Planning plan summary simplification — 2026-10-31
+
+After a plan loads, the planning page no longer repeats the approval and
+execution disclaimer beneath the plan heading. The page introduction still
+explains that implementation does not run here and requires separate approval.
+Planning and workflow behavior are unchanged. The focused Planning Session
+suite passes 37 tests, and lint, production build, and `git diff --check` pass.
