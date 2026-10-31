@@ -32,12 +32,14 @@ describe("integrated agent/provider evidence", () => {
     it("distinguishes first-load, unavailable, and missing states", () => {
         const view = show({}, true);
         const agent = within(screen.getByRole("region", { name: "Agent details" }));
-        expect(agent.getByText("Loading Agent details…")).toBeVisible();
-        expect(registry().getByText("Loading providers…")).toBeVisible();
+        expect(agent.getByRole("status")).toHaveTextContent("Loading Agent details…");
+        expect(registry().getByRole("status")).toHaveTextContent("Loading providers…");
 
         view.rerender(<MemoryRouter><Overview evidence={{ agent: { unavailable: true }, providers: { unavailable: true } }} /></MemoryRouter>);
         expect(agent.getByText("Agent details could not be loaded.")).toBeVisible();
+        expect(agent.queryByRole("status")).not.toBeInTheDocument();
         expect(registry().getByText("Atlas Core’s provider list could not be loaded.")).toBeVisible();
+        expect(registry().queryByRole("status")).not.toBeInTheDocument();
 
         view.rerender(<MemoryRouter><Overview evidence={{}} /></MemoryRouter>);
         expect(agent.getByText("Agent details are not available.")).toBeVisible();

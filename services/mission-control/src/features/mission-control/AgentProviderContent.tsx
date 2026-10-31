@@ -10,10 +10,11 @@ export function AgentOverviewContent({ evidence, loading = false }: { evidence?:
     const version = publicLabel(agent.version);
     const hasData = evidence?.data !== undefined;
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && hasData));
+    const loadingDetails = loading && !hasData && !evidence?.unavailable;
     const summary = !hasData
         ? evidence?.unavailable
             ? "Agent details could not be loaded."
-            : loading
+            : loadingDetails
                 ? "Loading Agent details…"
                 : "Agent details are not available."
         : stale
@@ -24,7 +25,9 @@ export function AgentOverviewContent({ evidence, loading = false }: { evidence?:
             <div><dt className="text-xs uppercase tracking-wider text-mc-text-muted">Agent</dt><dd>{name || "Agent name unavailable"}</dd></div>
             <div><dt className="text-xs uppercase tracking-wider text-mc-text-muted">Version</dt><dd>{version || "Not reported"}</dd></div>
         </dl>}
-        {summary && <p>{summary}</p>}
+        {summary && (loadingDetails
+            ? <p role="status" aria-live="polite">{summary}</p>
+            : <p>{summary}</p>)}
     </>;
 }
 
@@ -34,10 +37,11 @@ export function ProviderOverviewContent({ evidence, loading = false }: { evidenc
     const providersWithUnknownStatus = providers?.filter(provider => status(provider.status) === "unknown").length ?? 0;
     const hasData = evidence?.data !== undefined;
     const stale = Boolean(evidence?.stale || (evidence?.unavailable && evidence.data !== undefined));
+    const loadingProviders = loading && !hasData && !evidence?.unavailable;
     const unavailableMessage = !hasData
         ? evidence?.unavailable
             ? "Atlas Core’s provider list could not be loaded."
-            : loading
+            : loadingProviders
                 ? "Loading providers…"
                 : "Atlas Core’s provider list is not available."
         : "Provider list could not be read.";
@@ -56,7 +60,9 @@ export function ProviderOverviewContent({ evidence, loading = false }: { evidenc
                 <div className="mt-2 space-y-3">{providers.map(renderProvider)}</div>
             </details>
         </>}
-        {providers === null && <p>{unavailableMessage}</p>}
+        {providers === null && (loadingProviders
+            ? <p role="status" aria-live="polite">{unavailableMessage}</p>
+            : <p>{unavailableMessage}</p>)}
         {providers?.length === 0 && <p>{stale ? "No providers were in the last Atlas Core report; the current list is unknown." : "No providers configured."}</p>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">About provider status</summary>
