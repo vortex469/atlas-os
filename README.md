@@ -51,6 +51,38 @@ candidate evidence, approval and execution-admission records, queue and worker
 evidence, and review surfaces. Its installation workflow panels are evidence and
 review surfaces; authoritative validation remains server-side.
 
+Maintenance proposals use their own plan and exact-action review screens. The
+operator can review the target, expected disruption, expiry, and verification
+rules before a separate exact-action approval and run step. Approval controls
+require the server's current actionable approval presentation. Phone and desktop
+browser tests simulate this journey without contacting a provider or enabling
+execution; these checks do not establish production acceptance.
+Maintenance history displays lifecycle and recovery details only when their
+workflow identifiers match the request listed on the card.
+Maintenance audits show their read-only operational lifecycle rather than
+repository implementation, review, and commit stages.
+Proposal searches display only the latest requested results. Previous cards are
+hidden during loading and after a failed search, so stale proposals are not
+presented as current results.
+Preparation screens use four plain steps: Proposal, Planning, Plan, and Workflow.
+This indicator shows the current screen; it does not report approval or execution
+status. The workflow displays its server-reported stages separately.
+Workflow preparation uses plain-language next steps, with technical request
+details available in an optional disclosure beside any preparation error.
+Keyboard users can use “Skip to page content” to bypass the repeated header and
+navigation without changing the current URL.
+Forge clears previous analysis when the name or Compose document changes and
+ignores responses for older inputs. Analysis errors are announced in the editor;
+an analysis result does not execute a deployment.
+Forge's summary shows the highest risk reported by its analyzer or planner and
+keeps unknown durations distinct from zero. Planner approval flags describe the
+proposal; workflow authorization remains separate.
+Maintenance selection is locked while a request is submitted. Refreshing clears
+the previous selection and result, and the returned proposal must match the
+requested resource and action before planning is offered.
+Dashboard attention keeps decisions, blockages and their reasons visible, with
+workflow stage metadata and health interpretation guidance available on demand.
+
 Atlas Agent owns approval-gated repository workflow orchestration, verification,
 review, and local commit boundaries. The released repository execution intent
 remains exactly `update-compose-stack`.
@@ -172,21 +204,48 @@ Provider Intent activation.
 
 Local development runs components directly and is not the production topology.
 Atlas Core requires Python 3.12; Mission Control requires a supported Node.js
-and npm toolchain. Typical startup:
+and npm toolchain. Open two terminals from the repository root and leave each
+server running in its own terminal.
+
+Terminal 1 — Atlas Core:
 
 ```bash
 cd services/atlas-core
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8643
+```
 
-cd ../mission-control
+Terminal 2 — Mission Control:
+
+```bash
+cd services/mission-control
 npm ci
 npm run dev
 ```
 
-The development server proxies API requests to Core. Atlas Agent and the
-hardened execution path have their own development and test workflows.
+For access from another device on the same trusted LAN, start Vite with:
+
+```bash
+npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Open the Network URL printed by Vite or `http://<Atlas-machine-LAN-IP>:5173`;
+on Linux, `hostname -I` lists the machine's addresses. Allow inbound TCP port
+5173 through the host firewall if needed. Vite proxies API requests to Core at
+`127.0.0.1:8643` and Agent at `127.0.0.1:8090`, so start the backend needed by
+the screen you want to inspect on the Atlas machine. If Agent listens on a
+different interface, set `ATLAS_AGENT_PROXY_TARGET` to its actual address when
+starting Vite, for example:
+
+```bash
+ATLAS_AGENT_PROXY_TARGET=http://192.168.1.20:8090 npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+Replace `192.168.1.20` with the address Agent listens on. See the [Mission
+Control development guide](services/mission-control/README.md#development) for
+proxy and trusted-LAN details. The hardened execution path has its own
+development and test workflows.
 
 ## Production deployment
 

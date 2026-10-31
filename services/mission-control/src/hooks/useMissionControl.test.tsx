@@ -201,7 +201,14 @@ describe("useMissionControl", () => {
             result.current.providers.map(({ id }) => id),
         ).toEqual(["docker", "ollama"]);
         expect(result.current.lastUpdated).toBeInstanceOf(Date);
-        expect(get).toHaveBeenCalledTimes(7);
+        expect(result.current.failedSources).toEqual([]);
+        expect(result.current.providerCatalogUnavailable).toBe(false);
+        expect(result.current.summaryUnavailable).toBe(false);
+        expect(result.current.telemetryHistoryUnavailable).toBe(false);
+        let refreshSucceeded = false;
+        await act(async () => { refreshSucceeded = await result.current.refresh(); });
+        expect(refreshSucceeded).toBe(true);
+        expect(get).toHaveBeenCalledTimes(14);
     });
 
     it("normalizes malformed health API data before publishing dashboard state", async () => {
@@ -223,6 +230,28 @@ describe("useMissionControl", () => {
         expect(result.current.health?.services.broken.status).toBe("unknown");
         expect(result.current.providers[0].health.status).toBe("unknown");
         expect(result.current.providers[0].health.http_status).toBeNull();
+    });
+
+    it("does not treat a malformed provider catalog as an empty catalog", async () => {
+        vi.spyOn(atlas, "get").mockImplementation(async (url) => {
+            const data: Record<string, unknown> = {
+                "/ace/summary": summary,
+                "/health": health,
+                "/providers": [null],
+                "/policies": policies,
+                "/policies/status": policyHealth,
+                "/intelligence/telemetry/history": [],
+                "/intelligence/telemetry/history/retention": telemetryRetention,
+            };
+            return { data: data[url!] };
+        });
+
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+        expect(result.current.providers).toEqual([]);
+        expect(result.current.providerCatalogUnavailable).toBe(true);
+        expect(result.current.failedSources).toContain("provider catalog");
     });
 
     it("preserves current data when a manual refresh fails", async () => {
@@ -264,18 +293,54 @@ describe("useMissionControl", () => {
         const firstUpdatedAt = result.current.lastUpdated;
 
         get.mockRejectedValue(new Error("Atlas unavailable"));
+        let refreshResults: boolean[] = [];
         await act(async () => {
-            await result.current.refresh();
+            refreshResults = await Promise.all([
+                result.current.refresh(),
+                result.current.refresh(),
+            ]);
         });
 
+        expect(refreshResults).toEqual([false, false]);
         expect(result.current.summary).toEqual(summary);
         expect(result.current.lastUpdated).toBe(firstUpdatedAt);
         expect(result.current.isRefreshing).toBe(false);
         expect(result.current.error).toBe(
-            "Mission Control could not retrieve the latest state from Atlas Core.",
+            "Some provider information could not be refreshed. Existing information may be out of date.",
         );
+        expect(result.current.failedSources).toEqual([
+            "diagnostics", "health status", "provider catalog", "monitoring policies",
+            "policy status", "provider check history", "history retention details",
+        ]);
 
         expect(get).toHaveBeenCalledTimes(14);
+    });
+
+    it("keeps provider data available when an unrelated diagnostics read fails", async () => {
+        vi.spyOn(atlas, "get").mockImplementation(async (url) => {
+            if (url === "/ace/summary") throw new Error("Diagnostics unavailable");
+            if (url === "/health") return { data: health };
+            if (url === "/providers") return { data: [provider("docker", "Docker", "critical", "infrastructure")] };
+            if (url === "/policies") return { data: policies };
+            if (url === "/policies/status") return { data: policyHealth };
+            if (url === "/intelligence/telemetry/history") return { data: telemetryHistory };
+            return { data: telemetryRetention };
+        });
+
+        const { result } = renderHook(() => useMissionControl());
+        await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+
+        let refreshConfirmed = true;
+        await act(async () => { refreshConfirmed = await result.current.refresh(); });
+
+        expect(refreshConfirmed).toBe(false);
+        expect(result.current.summary).toBeNull();
+        expect(result.current.providers.map(({ id }) => id)).toEqual(["docker"]);
+        expect(result.current.error).toBe("Some provider information could not be refreshed. Existing information may be out of date.");
+        expect(result.current.failedSources).toEqual(["diagnostics"]);
+        expect(result.current.summaryUnavailable).toBe(true);
+        expect(result.current.providerCatalogUnavailable).toBe(false);
+        expect(result.current.isLoading).toBe(false);
     });
 
     it("keeps dashboard data available when policy reload fails", async () => {
@@ -332,6 +397,7 @@ describe("useMissionControl", () => {
         expect(result.current.policyHealth).toEqual(
             degradedHealth,
         );
-        expect(result.current.error).toBeNull();
+        expect(result.current.error).toBe("Some provider information could not be refreshed. Existing information may be out of date.");
+        expect(result.current.failedSources).toEqual(["monitoring policies"]);
     });
 });

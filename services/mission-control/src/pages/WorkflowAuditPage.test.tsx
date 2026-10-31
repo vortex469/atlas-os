@@ -1,139 +1,21 @@
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getWorkflowAudit } from "../api/atlas-agent";
+import { getWorkflowAudit, getWorkflowOperationalLifecycle } from "../api/atlas-agent";
+import { operationalLifecycle } from "../test/operationalLifecycle";
+import { workflowAudit as audit } from "../test/workflowAudit";
 import type { WorkflowAuditResponse } from "../types/atlasAgent";
 import { WorkflowAuditPage } from "./WorkflowAuditPage";
 
 vi.mock("../api/atlas-agent", () => ({
     getAtlasAgentErrorMessage: (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback,
     getWorkflowAudit: vi.fn(),
+    getWorkflowOperationalLifecycle: vi.fn(),
 }));
 
 const mockedGetWorkflowAudit = vi.mocked(getWorkflowAudit);
-
-function audit(overrides: Partial<WorkflowAuditResponse> = {}): WorkflowAuditResponse {
-    return {
-        workflow_id: "workflow-123",
-        workflow_state: "completed",
-        workflow_source: "candidate",
-        validation: {
-            valid: true,
-            failure_code: null,
-            failure_stage: null,
-        },
-        timeline: [
-            { name: "candidate", status: "completed" },
-            { name: "planning", status: "completed" },
-            { name: "plan", status: "completed" },
-            { name: "workflow", status: "completed" },
-            { name: "implementation", status: "completed" },
-            { name: "approvals", status: "completed" },
-            { name: "execution", status: "completed" },
-            { name: "verification", status: "completed" },
-            { name: "review", status: "completed" },
-            { name: "commit", status: "completed" },
-        ],
-        candidate: {
-            status: "completed",
-            candidate_id: "candidate-123",
-            candidate_fingerprint: "cand-fingerprint",
-            source_recommendation_id: "rec-123",
-            target_id: "target-1",
-            target_type: "service",
-        },
-        planning: {
-            status: "completed",
-            planning_session_id: "plan-session-123",
-            planning_state: "completed",
-            planning_status: "approved",
-            created_at: "2026-08-01T10:00:00Z",
-            planning_completed_at: "2026-08-01T10:00:30Z",
-            candidate_plan_id: "candidate-plan-123",
-            candidate_plan_fingerprint: "plan-fingerprint",
-        },
-        plan: {
-            status: "completed",
-            plan_id: "plan-123",
-            candidate_plan_fingerprint: "plan-fingerprint",
-            likely_affected_files: ["compose.yaml", "services/demo/Dockerfile"],
-        },
-        workflow: {
-            status: "completed",
-            workflow_id: "workflow-123",
-            workflow_source: "candidate",
-            workflow_state: "completed",
-        },
-        implementation: {
-            status: "completed",
-            implementation_request_id: "impl-123",
-            execution_intent: "compose up",
-            tool: "docker-compose",
-            repository_root: "/opt/atlas",
-            repository_head: "abc123",
-            repository_branch: "feature/atlas-agent",
-            working_directory: "/opt/atlas/services/demo",
-            affected_files: ["compose.yaml", "services/demo/Dockerfile"],
-            translator_version: "translator-v1",
-        },
-        approvals: {
-            status: "completed",
-            implementation: {
-                status: "approved",
-                approval_id: "approval-impl-123",
-            },
-            verification: {
-                status: "approved",
-                approval_id: "approval-verif-123",
-            },
-            commit: {
-                status: "approved",
-                approval_id: "approval-commit-123",
-            },
-        },
-        execution: {
-            status: "completed",
-            execution_request_id: "exec-123",
-            execution_status: "succeeded",
-            changed_files_count: 2,
-            changed_files: ["compose.yaml", "services/demo/Dockerfile"],
-            tool: "docker-compose",
-            repository: "/opt/atlas",
-        },
-        verification: {
-            status: "completed",
-            verification_plan_id: "ver-plan-123",
-            verification_evidence_id: "ver-evidence-123",
-            verification_status: "passed",
-            changed_files_digest: "digest-123",
-            verification_check_ids: ["check-a", "check-b"],
-            repository_head: "abc123",
-            verification_started_at: "2026-08-01T10:01:00Z",
-            verification_completed_at: "2026-08-01T10:02:00Z",
-        },
-        review: {
-            status: "completed",
-            review_result_id: "rev-123",
-            review_report_id: "rep-123",
-            review_status: "approved",
-            reviewed_content_fingerprint: "review-fingerprint",
-            changed_files: ["compose.yaml"],
-        },
-        commit: {
-            status: "completed",
-            commit_request_id: "commit-req-123",
-            reviewed_files: ["compose.yaml"],
-            reviewed_content_fingerprint: "review-fingerprint",
-            expected_branch: "feature/atlas-agent",
-            expected_head: "abc123",
-            commit_message: "feat(compose): update",
-            commit_sha: "def456",
-            committed_files: ["compose.yaml"],
-        },
-        ...overrides,
-    };
-}
 
 function renderAuditPage(path = "/workflows/workflow-123/audit") {
     return render(
@@ -146,27 +28,199 @@ function renderAuditPage(path = "/workflows/workflow-123/audit") {
 }
 
 describe("WorkflowAuditPage", () => {
+    it("clears the previous audit while a new workflow loads", async () => {
+        let resolveNext!: (value: WorkflowAuditResponse) => void;
+        mockedGetWorkflowAudit.mockResolvedValueOnce(audit()).mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/workflows/:workflowId/audit", element: <WorkflowAuditPage /> }], { initialEntries: ["/workflows/workflow-123/audit"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Workflow history" });
+        await act(() => router.navigate("/workflows/next-workflow/audit"));
+        expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow history");
+        await act(async () => resolveNext(audit({ workflow_id: "next-workflow", workflow: { ...audit().workflow, workflow_id: "next-workflow" } })));
+        expect(await screen.findByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
+    });
+
+    it.each(["outer", "nested"])("refuses an audit with a mismatched %s workflow identity", async (field) => {
+        const response = audit();
+        if (field === "outer") response.workflow_id = "other";
+        else response.workflow.workflow_id = "other";
+        mockedGetWorkflowAudit.mockResolvedValue(response);
+        renderAuditPage();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas returned a different workflow than this link requested. Try again to load the right history.");
+        expect(alert).not.toHaveTextContent("Try loading it again.");
+        expect(screen.queryByText("candidate-123")).not.toBeInTheDocument();
+    });
+
+    it("retries an unavailable audit with one read under Strict Mode", async () => {
+        mockedGetWorkflowAudit.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(audit());
+        render(<StrictMode><MemoryRouter initialEntries={["/workflows/workflow-123/audit"]}><Routes>
+            <Route path="/workflows/:workflowId/audit" element={<WorkflowAuditPage />} />
+        </Routes></MemoryRouter></StrictMode>);
+        fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+        await screen.findByRole("heading", { name: "Workflow history" });
+        expect(mockedGetWorkflowAudit).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps a late audit from an earlier workflow out of the current page", async () => {
+        let resolveOld!: (value: WorkflowAuditResponse) => void;
+        const next = audit({ workflow_id: "next-workflow", workflow: { ...audit().workflow, workflow_id: "next-workflow" } });
+        mockedGetWorkflowAudit.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; })).mockResolvedValue(next);
+        const router = createMemoryRouter([{ path: "/workflows/:workflowId/audit", element: <WorkflowAuditPage /> }], { initialEntries: ["/workflows/workflow-123/audit"] });
+        render(<RouterProvider router={router} />);
+        await waitFor(() => expect(mockedGetWorkflowAudit).toHaveBeenCalledWith("workflow-123"));
+        await act(() => router.navigate("/workflows/next-workflow/audit"));
+        await screen.findByRole("heading", { name: "Workflow history" });
+        await act(async () => resolveOld(audit()));
+        expect(screen.getByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetWorkflowAudit.mockResolvedValue(audit());
+        vi.mocked(getWorkflowOperationalLifecycle).mockReset();
     });
 
-    it("renders completed audit chain", async () => {
+    it("shows maintenance lifecycle instead of repository artifacts", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({ effect_kind: "operational_action" }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
+        expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Maintenance record" })).toBeInTheDocument();
+        expect(screen.getByText(/Maintenance status:/)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Back to workflow" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123?source=maintenance-history",
+        );
+        expect(screen.queryByRole("heading", { name: "Commit details" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Change request" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /approve|run|resume/i })).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["awaiting_implementation_approval", "pending", "Maintenance request needs approval."],
+        ["awaiting_implementation_approval", "approved", "Maintenance request is approved. Run approved maintenance when you are ready."],
+        ["awaiting_implementation_approval", "rejected", "Maintenance request approval was rejected."],
+        ["awaiting_execution", "approved", "Maintenance request is approved and ready to run."],
+        ["executing", "approved", "Maintenance is running."],
+        ["completed", "approved", "Maintenance workflow completed."],
+    ])("uses maintenance terms in the audit for %s / %s", async (workflow_state, approval, message) => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({
+            effect_kind: "operational_action",
+            workflow_state,
+            approvals: { ...audit().approvals, implementation: { status: approval, approval_id: "approval-maintenance" } },
+        }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
         renderAuditPage();
 
-        expect(await screen.findByRole("heading", { name: /Workflow workflow-123/i })).toBeInTheDocument();
-        expect(screen.getByText("Workflow Audit")).toBeInTheDocument();
-        expect(screen.getByText("candidate-123")).toBeInTheDocument();
-        expect(screen.getByText("def456")).toBeInTheDocument();
-        expect(screen.getByText("Commit SHA")).toBeInTheDocument();
-        expect(screen.getAllByText("Workflow State").length).toBe(1);
-        expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
-        expect(screen.getByText("Overall audit status")).toBeInTheDocument();
-        expect(screen.getAllByText("Audit validation").length).toBe(1);
-        expect(screen.getAllByText("Valid").length).toBeGreaterThan(0);
+        const status = await screen.findByText(/Maintenance status:/);
+        expect(status).toHaveTextContent(message);
+        expect(screen.queryByText(/Maintenance action/)).not.toBeInTheDocument();
+        expect(status).toBeVisible();
     });
 
-    it("shows in-progress stages as Not reached", async () => {
+    it("keeps invalid maintenance audit codes under technical details", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({
+            effect_kind: "operational_action",
+            validation: {
+                valid: false,
+                failure_code: "maintenance_chain_mismatch",
+                failure_stage: "verification",
+            },
+        }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValue(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderAuditPage();
+
+        expect(await screen.findByText("This maintenance record has inconsistent information. Review its technical details.")).toBeInTheDocument();
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("maintenance_chain_mismatch")).toBeInTheDocument();
+        expect(within(technicalDetails as HTMLElement).getByText("verification")).toBeInTheDocument();
+    });
+
+    it("rejects foreign maintenance evidence and permits a read-only refresh", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({ effect_kind: "operational_action" }));
+        vi.mocked(getWorkflowOperationalLifecycle).mockResolvedValueOnce(operationalLifecycle({ target_label: "Foreign target" }))
+            .mockResolvedValueOnce(operationalLifecycle({ workflow_id: "workflow-123" }));
+        renderAuditPage();
+        expect(await screen.findByText("Matching maintenance evidence is unavailable. Refresh to check again.")).toBeInTheDocument();
+        expect(screen.queryByText("Foreign target")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Refresh maintenance evidence" })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
+        expect(await screen.findByRole("heading", { name: "Verified" })).toBeInTheDocument();
+    });
+
+    it("shows a concise completed audit and keeps identifiers with their recorded details", async () => {
+        renderAuditPage();
+
+        expect(await screen.findByRole("heading", { name: "Workflow history" })).toBeInTheDocument();
+        expect(screen.getByText("Read-only record")).toBeInTheDocument();
+        expect(screen.getAllByText("Workflow status").length).toBe(1);
+        expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
+        expect(screen.queryByText("Overall audit status")).not.toBeInTheDocument();
+        expect(screen.getAllByText("Record consistency").length).toBe(1);
+        expect(screen.queryByText(/Overall chain state:/)).not.toBeInTheDocument();
+        expect(screen.getAllByText("Consistent").length).toBeGreaterThan(0);
+
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toBeNull();
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(true);
+        expect(within(technicalDetails as HTMLElement).getByText("workflow-123")).toBeInTheDocument();
+
+        const candidateStage = screen.getByRole("region", { name: "Change proposal, Completed" });
+        expect(candidateStage).not.toHaveAttribute("open");
+        fireEvent.click(within(candidateStage).getByText("Change proposal", { exact: true }));
+        expect(candidateStage).toHaveAttribute("open");
+        expect(within(candidateStage).getByText("candidate-123")).toBeVisible();
+
+        const commitStage = screen.getByRole("region", { name: "Commit result, Completed" });
+        expect(commitStage).not.toHaveAttribute("open");
+        fireEvent.click(within(commitStage).getByText("Commit result", { exact: true }));
+        expect(within(commitStage).getByText("def456")).toBeVisible();
+        expect(within(commitStage).getByText("Commit SHA")).toBeInTheDocument();
+    });
+
+    it("shows audit timestamps as local times with their exact source instants", async () => {
+        renderAuditPage();
+        await screen.findByRole("heading", { name: "Workflow history" });
+
+        const planningStage = screen.getByRole("region", { name: "Planning, Completed" });
+        fireEvent.click(within(planningStage).getByText("Planning", { exact: true }));
+        for (const [label, timestamp] of [
+            ["Created (local time)", "2026-08-01T10:00:00Z"],
+            ["Planning completed (local time)", "2026-08-01T10:00:30Z"],
+        ]) {
+            const time = within(planningStage).getByText(label).parentElement?.querySelector("time");
+            expect(time).toHaveAttribute("datetime", timestamp);
+            expect(time).toHaveTextContent(new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        }
+
+        const verificationStage = screen.getByRole("region", { name: "Checks to run, Completed" });
+        fireEvent.click(within(verificationStage).getByText("Checks to run", { exact: true }));
+        const started = within(verificationStage).getByText("Verification started (local time)").parentElement?.querySelector("time");
+        const completed = within(verificationStage).getByText("Verification completed (local time)").parentElement?.querySelector("time");
+        expect(started).toHaveAttribute("datetime", "2026-08-01T10:01:00Z");
+        expect(completed).toHaveAttribute("datetime", "2026-08-01T10:02:00Z");
+    });
+
+    it("marks malformed audit timestamps unavailable instead of exposing raw values", async () => {
+        const response = audit();
+        response.planning.created_at = "2026-02-30T10:00:00Z";
+        mockedGetWorkflowAudit.mockResolvedValue(response);
+        renderAuditPage();
+        await screen.findByRole("heading", { name: "Workflow history" });
+
+        const planningStage = screen.getByRole("region", { name: "Planning, Completed" });
+        fireEvent.click(within(planningStage).getByText("Planning", { exact: true }));
+        expect(within(planningStage).getByText("Created (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(within(planningStage).queryByText("2026-02-30T10:00:00Z")).not.toBeInTheDocument();
+    });
+
+    it("shows in-progress stages as Not started", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(audit({
             workflow_state: "awaiting_verification_approval",
             timeline: [
@@ -184,8 +238,8 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText("Stage status")).toBeInTheDocument();
-        expect(screen.getAllByText(/Not reached/i).length).toBeGreaterThan(0);
+        expect(await screen.findByRole("region", { name: "Review results, Not started" })).toBeInTheDocument();
+        expect(screen.queryByRole("region", { name: "Review results, Not reached" })).not.toBeInTheDocument();
         expect(screen.getAllByText(/Review Result/i).length).toBeGreaterThan(0);
     });
 
@@ -210,7 +264,7 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText("Required artifact is missing.")).toBeInTheDocument();
+        expect(await screen.findByText("Required information for this step is missing.")).toBeInTheDocument();
     });
 
     it("shows blocked reason in overview when workflow is blocked", async () => {
@@ -226,10 +280,14 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getByText("Blocked: safety gate open failed due to policy")).toBeInTheDocument();
     });
 
-    it("renders overall audit status and chain state from workflow_state", async () => {
+    it("shows a pending stage approval separately from audit validation", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({
                 workflow_state: "awaiting_verification_approval",
+                approvals: {
+                    ...audit().approvals,
+                    verification: { status: "pending", approval_id: null },
+                },
                 validation: {
                     valid: true,
                     failure_code: null,
@@ -239,12 +297,22 @@ describe("WorkflowAuditPage", () => {
         );
         renderAuditPage();
 
-        expect(await screen.findByText(/Overall audit status/i)).toBeInTheDocument();
-        expect(screen.getAllByText("Awaiting Verification Approval").length).toBeGreaterThan(0);
-        expect(screen.getByText("Valid")).toBeInTheDocument();
+        expect(await screen.findByText("Workflow status")).toBeInTheDocument();
+        expect(screen.getByText("Checks need approval.")).toBeInTheDocument();
+        expect(screen.getByText("Consistent")).toBeInTheDocument();
+        expect(screen.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.")).toBeInTheDocument();
     });
 
-    it("keeps audit validation separate from chain status when validation is invalid", async () => {
+    it("shows the next action after verification approval", async () => {
+        mockedGetWorkflowAudit.mockResolvedValue(
+            audit({ workflow_state: "awaiting_verification_approval" }),
+        );
+        renderAuditPage();
+
+        expect(await screen.findByText("Checks are approved. Run them when you are ready.")).toBeInTheDocument();
+    });
+
+    it("keeps workflow status separate from audit validation when validation is invalid", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({
                 workflow_state: "blocked",
@@ -257,10 +325,11 @@ describe("WorkflowAuditPage", () => {
         );
         renderAuditPage();
 
-        expect((await screen.findAllByText("Blocked")).length).toBe(2);
-        expect(screen.getByText("Overall audit status")).toBeInTheDocument();
-        expect(screen.getByText("Invalid")).toBeInTheDocument();
-        expect(screen.getByRole("alert")).toHaveTextContent("Inconsistent audit:");
+        expect(await screen.findByText("Workflow is blocked. Review the recorded stages and results below.")).toBeInTheDocument();
+        expect(screen.getByText("Workflow status")).toBeInTheDocument();
+        expect(screen.queryByText("Overall audit status")).not.toBeInTheDocument();
+        expect(screen.getByText("Needs review")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("This workflow record has inconsistent information.");
     });
 
     it("shows inconsistent alert for failed validation", async () => {
@@ -285,9 +354,13 @@ describe("WorkflowAuditPage", () => {
         }));
         renderAuditPage();
 
-        expect(await screen.findByText(/Inconsistent audit:\s*candidate_plan_mismatch/i)).toBeInTheDocument();
-        expect(screen.getByText("This stage is inconsistent with audit-chain validation.")).toBeInTheDocument();
+        expect(await screen.findByText("This workflow record has inconsistent information. Review the flagged stage and its details below.")).toBeInTheDocument();
+        expect(screen.getByText("This step does not match the recorded workflow history.")).toBeInTheDocument();
         expect((await screen.findAllByText(/Inconsistent/i)).length).toBeGreaterThan(1);
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect((technicalDetails as HTMLDetailsElement).open).toBe(false);
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("candidate_plan_mismatch")).toBeInTheDocument();
     });
 
     it("shows workflow not found", async () => {
@@ -295,28 +368,52 @@ describe("WorkflowAuditPage", () => {
         renderAuditPage("/workflows/workflow-missing/audit");
 
         expect(await screen.findByRole("alert")).toHaveTextContent("Workflow not found");
+        expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
     });
 
     it("shows agent unavailable alert", async () => {
-        mockedGetWorkflowAudit.mockRejectedValue(new Error("Atlas Agent unavailable."));
-        renderAuditPage();
+        mockedGetWorkflowAudit.mockRejectedValue(new Error("Bearer audit-canary-secret"));
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas Agent unavailable.");
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this workflow’s history. Try again to see its activity.");
+        expect(alert).toHaveTextContent("Workflow history unavailable");
+        expect(screen.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123?source=maintenance-history",
+        );
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/audit-canary-secret/)).not.toBeInTheDocument();
+        fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
 
     it("renders back to workflow link", async () => {
-        renderAuditPage();
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
 
         expect(await screen.findByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
             "href",
-            "/workflows/workflow-123",
+            "/workflows/workflow-123?source=maintenance-history",
+        );
+    });
+
+    it("keeps the workflow return link visible while audit is loading", () => {
+        mockedGetWorkflowAudit.mockImplementation(() => new Promise(() => {}));
+        renderAuditPage("/workflows/workflow-123/audit?source=maintenance-history");
+
+        expect(screen.getByRole("status")).toHaveTextContent("Loading workflow history");
+        expect(screen.getByRole("link", { name: "← Back to Workflow" })).toHaveAttribute(
+            "href",
+            "/workflows/workflow-123?source=maintenance-history",
         );
     });
 
     it("renders no mutation controls", async () => {
         renderAuditPage();
 
-        expect(await screen.findByRole("heading", { name: "Candidate" })).toBeInTheDocument();
+        expect(await screen.findByRole("region", { name: "Change proposal, Completed" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /reject/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();

@@ -4,10 +4,7 @@ import { createMemoryRouter, RouterProvider, MemoryRouter, Route, Routes } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { atlas } from "../api/atlas";
-import {
-    disabledNavigationItems,
-    primaryNavigationItems,
-} from "../app/navigation";
+import { primaryNavigationItems } from "../app/navigation";
 import { MainLayout } from "./MainLayout";
 
 vi.mock("../api/atlas", () => ({
@@ -16,8 +13,7 @@ vi.mock("../api/atlas", () => ({
     },
 }));
 
-const enabledLabels = primaryNavigationItems.map((item) => item.label);
-const disabledLabels = disabledNavigationItems.map((item) => item.label);
+const navigationLabels = primaryNavigationItems.map((item) => item.label);
 
 function renderAt(
     path = "/",
@@ -28,6 +24,7 @@ function renderAt(
             <Routes>
                 <Route path="/" element={<MainLayout />}>
                     <Route index element={page} />
+                    <Route path="operations/actions/:auditId" element={<p>Audit detail</p>} />
                     {primaryNavigationItems.filter(
                         (item) => item.path !== "/",
                     ).map((item) => (
@@ -37,6 +34,7 @@ function renderAt(
                             element={<p>{`${item.label} content`}</p>}
                         />
                     ))}
+                    <Route path="*" element={<p>Not found</p>} />
                 </Route>
             </Routes>
         </MemoryRouter>,
@@ -62,14 +60,38 @@ describe("MainLayout", () => {
     });
 
     describe("desktop shell rendering", () => {
-        it("renders branding, the primary content region, and the release", async () => {
+        it("lets keyboard users skip navigation without changing the route", async () => {
+            const user = userEvent.setup();
+            renderAt();
+            await screen.findByText("Core build: Foundry");
+            await user.tab();
+            const skip = screen.getByRole("link", { name: "Skip to page content" });
+            expect(skip).toHaveFocus();
+            await user.keyboard("{Enter}");
+            expect(screen.getByText("Dashboard content").closest("#mc-page-content")).toHaveFocus();
+        });
+
+        it("renders branding, Core status, and its configured build label", async () => {
             renderAt();
 
             expect(screen.getAllByText("ATLAS").length).toBeGreaterThan(0);
-            expect(screen.getAllByText("Mission Control 2.0").length).toBeGreaterThan(0);
+            expect(screen.getAllByText("Mission Control", { exact: true }).length).toBeGreaterThan(0);
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
-            expect(await screen.findByText("Foundry")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core API connected")).toBeInTheDocument();
+            expect(screen.getByText("Atlas Core API", { exact: true })).toBeInTheDocument();
+            expect(screen.getByText("Core build: Foundry")).toBeInTheDocument();
             expect(atlas.get).toHaveBeenCalledWith("");
+        });
+
+        it("shows the full Core build identifier instead of clipping it", async () => {
+            const build = "browser-regression-build-2026-10-31-0123456789abcdef";
+            vi.mocked(atlas.get).mockResolvedValueOnce({ data: { release: build } });
+            renderAt();
+
+            const label = await screen.findByText(`Core build: ${build}`);
+            expect(label).toHaveClass("break-words");
+            expect(label).not.toHaveClass("truncate");
+            expect(label).toHaveAttribute("title", build);
         });
 
         it("uses the MC 2.0 shared shell and navigation primitives", async () => {
@@ -81,19 +103,19 @@ describe("MainLayout", () => {
             expect(
                 container.querySelector(".mc-focusable"),
             ).not.toBeNull();
-            await screen.findByText("Foundry");
-            // StatusBadge is the Task 3 shared primitive for the release area.
+            await screen.findByText("Core build: Foundry");
+            // The shared status primitive shows API availability.
             expect(container.querySelector(".mc-status-badge")).not.toBeNull();
             expect(
                 container.querySelector(".mc-status-badge")?.getAttribute(
                     "data-mc-status",
                 ),
-            ).toBe("neutral");
+            ).toBe("success");
         });
     });
 
     describe("desktop navigation", () => {
-        it("renders every enabled destination with its existing route", async () => {
+        it("renders every working destination with its existing route", async () => {
             renderAt();
 
             const nav = screen.getAllByRole("navigation", { name: "Primary" })[0];
@@ -103,22 +125,18 @@ describe("MainLayout", () => {
             }
             // The root link is exact so nested routes do not activate it.
             expect(
-                within(nav).getByRole("link", { name: "Mission Control" }),
+                within(nav).getByRole("link", { name: "Overview" }),
             ).toHaveAttribute("aria-current", "page");
         });
 
-        it("keeps disabled future destinations visible but inert", () => {
+        it("leaves unavailable future destinations out of the menu", () => {
             renderAt();
 
-            for (const label of disabledLabels) {
-                const placeholder = screen.getByText(label);
-                expect(placeholder.closest("a")).toBeNull();
-                expect(placeholder.closest("li")).toHaveClass("mc-disabled");
-                expect(within(placeholder.closest("li")!).getByText("Soon")).toBeInTheDocument();
+            const nav = screen.getAllByRole("navigation", { name: "Primary" })[0];
+            for (const label of ["Knowledge", "Developer", "Settings"]) {
+                expect(within(nav).queryByText(label)).not.toBeInTheDocument();
             }
-            expect(screen.queryByRole("link", { name: "Knowledge" })).toBeNull();
-            expect(screen.queryByRole("link", { name: "Developer" })).toBeNull();
-            expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+            expect(within(nav).queryByText("Soon")).not.toBeInTheDocument();
         });
     });
 
@@ -126,8 +144,9 @@ describe("MainLayout", () => {
         it.each([
             ["", ["/"]],
             ["/operations", ["/operations"]],
-            ["/operations/history", ["/operations", "/operations/history"]],
-            ["/operations/request", ["/operations", "/operations/request"]],
+            ["/operations/history", ["/operations/history"]],
+            ["/operations/request", ["/operations/request"]],
+            ["/operations/actions/audit-1", ["/operations"]],
             ["/discovery", ["/discovery"]],
             ["/execution-candidates", ["/execution-candidates"]],
             ["/workflows", ["/workflows"]],
@@ -147,8 +166,8 @@ describe("MainLayout", () => {
                 const activeHrefs = links
                     .filter((link) => link.getAttribute("aria-current") === "page")
                     .map((link) => link.getAttribute("href"));
-                // Parent sections stay active on child routes (NavLink
-                // prefix matching); the leaf destination is always active.
+                // Only the most specific destination is current. Audit details
+                // still belong to Action history, rather than a separate menu.
                 expect(activeHrefs).toEqual(expectedActiveHrefs);
             },
         );
@@ -156,15 +175,46 @@ describe("MainLayout", () => {
 
     describe("current route context", () => {
         it.each([
-            ["/", "Mission Control"],
-            ["/operations", "Operations"],
-            ["/discovery", "Discovery"],
-            ["/forge", "Forge"],
+            ["/operations", "Action history"],
+            ["/operations/actions/audit-1", "Action details"],
+            ["/discovery", "Catalog"],
+            ["/discovery/items/item-1", "Catalog item details"],
+            ["/forge", "Deployment analysis"],
+            ["/providers/proxmox", "Provider details"],
+            ["/execution-candidates/proposal-1", "Proposal details"],
+            ["/workflows/workflow-1", "Workflow details"],
+            ["/workflows/workflow-1/audit", "Workflow history"],
+            ["/candidate-planning/session-1", "Plan a change"],
+            ["/candidate-planning/session-1/workflow", "Workflow setup"],
         ])("surfaces the context label for %s", (initialPath, label) => {
             renderAt(initialPath);
 
-            const context = screen.getByLabelText(`Current page: ${label}`);
-            expect(context).toHaveTextContent(label);
+            const context = screen.getByTestId("mc-context");
+            expect(context).toHaveAttribute("role", "status");
+            expect(context).toHaveTextContent(`Current page: ${label}`);
+            expect(document.title).toBe(`${label} | Atlas Mission Control`);
+        });
+
+        it("does not repeat the home screen label in the header", () => {
+            renderAt("/");
+
+            expect(screen.queryByTestId("mc-context")).not.toBeInTheDocument();
+            expect(screen.getAllByText("Mission Control", { exact: true })).toHaveLength(1);
+            expect(document.title).toBe("Overview | Atlas Mission Control");
+        });
+
+        it("identifies unknown routes as missing pages in the shell and browser title", () => {
+            renderAt("/page-that-does-not-exist");
+
+            expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Page not found");
+            expect(document.title).toBe("Page not found | Atlas Mission Control");
+        });
+
+        it("does not mistake an unknown nested route for its parent screen", () => {
+            renderAt("/workflows/workflow-1/unknown");
+
+            expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Page not found");
+            expect(document.title).toBe("Page not found | Atlas Mission Control");
         });
     });
 
@@ -199,7 +249,7 @@ describe("MainLayout", () => {
 
             const dialog = screen.getByRole("dialog");
             // Focus moved into the drawer after it opened.
-            const firstLink = within(dialog).getByRole("link", { name: "Mission Control" });
+            const firstLink = within(dialog).getByRole("link", { name: "Overview" });
             expect(firstLink).toHaveFocus();
 
             await user.keyboard("{Escape}");
@@ -232,9 +282,7 @@ describe("MainLayout", () => {
                 const link = within(dialog).getByRole("link", { name: item.label });
                 expect(link).toHaveAttribute("href", item.path);
             }
-            for (const label of disabledLabels) {
-                expect(within(dialog).queryByRole("link", { name: label })).toBeNull();
-            }
+            expect(within(dialog).queryByText("Soon")).not.toBeInTheDocument();
         });
 
         it("navigates through the drawer and closes it", async () => {
@@ -243,12 +291,13 @@ describe("MainLayout", () => {
 
             await user.click(screen.getByRole("button", { name: "Open navigation" }));
             const dialog = screen.getByRole("dialog");
-            await user.click(within(dialog).getByRole("link", { name: "Forge" }));
+            await user.click(within(dialog).getByRole("link", { name: "Deployment analysis" }));
 
             expect(screen.queryByRole("dialog")).toBeNull();
             expect(
-                screen.getByLabelText("Current page: Forge"),
+                screen.getByTestId("mc-context"),
             ).toBeInTheDocument();
+            expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Deployment analysis");
         });
     });
 
@@ -261,7 +310,7 @@ describe("MainLayout", () => {
         const dialog = screen.getByRole("dialog");
         expect(document.querySelector(".mc-shell-header")).toHaveAttribute("inert");
         const close = within(dialog).getByRole("button", { name: "Close navigation" });
-        const last = within(dialog).getByRole("link", { name: "Forge" });
+        const last = within(dialog).getByRole("link", { name: "Deployment analysis" });
         close.focus();
         await user.tab({ shift: true });
         expect(last).toHaveFocus();
@@ -296,14 +345,13 @@ describe("MainLayout", () => {
         expect(screen.queryByRole("dialog")).toBeNull();
     });
 
-    describe("release unavailable fallback", () => {
+    describe("Core connection and release-label states", () => {
         it("shows a safe unavailable state when Atlas Core does not respond", async () => {
             vi.mocked(atlas.get).mockRejectedValue(new Error("boom"));
             renderAt();
 
-            expect(await screen.findByText("Release unavailable")).toBeInTheDocument();
-            expect(screen.getAllByText("Release unavailable").length).toBeGreaterThan(0);
-            // The release badge degrades to the Task 3 unavailable treatment.
+            expect(await screen.findByText("Atlas Core API unavailable")).toBeInTheDocument();
+            expect(screen.getByText("Core build: Unavailable")).toBeInTheDocument();
             const badges = document.querySelectorAll(".mc-status-badge");
             expect(Array.from(badges).some((badge) => badge.getAttribute("data-mc-status") === "disabled")).toBe(true);
         });
@@ -312,21 +360,22 @@ describe("MainLayout", () => {
             vi.mocked(atlas.get).mockResolvedValue({ data: { release } });
             renderAt();
 
-            expect(await screen.findByText("Release unavailable")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core API connected")).toBeInTheDocument();
+            expect(screen.getByText("Core build: Not reported")).toBeInTheDocument();
         });
     });
 
     describe("route preservation", () => {
-        it("preserves the exact enabled destination set", () => {
-            expect(enabledLabels).toEqual([
-                "Mission Control",
-                "Operations",
-                "Operational History",
-                "Maintenance",
-                "Discovery",
-                "Execution Candidates",
+        it("preserves the exact working destination set", () => {
+            expect(navigationLabels).toEqual([
+                "Overview",
+                "Action history",
+                "Maintenance history",
+                "Request maintenance",
+                "Catalog",
+                "Change proposals",
                 "Workflows",
-                "Forge",
+                "Deployment analysis",
             ]);
             expect(
                 primaryNavigationItems.map((item) => item.path),

@@ -1,0 +1,193 @@
+import { expect, test } from "./mission-control-fixtures";
+
+for (const width of [320, 390, 1280]) {
+    test(`action history status filter announces selection at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/operations");
+
+        const filters = page.getByRole("group", { name: "Filter action history" });
+        const all = filters.getByRole("button", { name: "All", exact: true });
+        const succeeded = filters.getByRole("button", { name: "Succeeded", exact: true });
+        const failed = filters.getByRole("button", { name: "Failed", exact: true });
+        await expect(all).toHaveAttribute("aria-pressed", "true");
+        await expect(succeeded).toHaveAttribute("aria-pressed", "false");
+        await expect(failed).toHaveAttribute("aria-pressed", "false");
+
+        await failed.click();
+        await expect(failed).toHaveAttribute("aria-pressed", "true");
+        await expect(all).toHaveAttribute("aria-pressed", "false");
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [390, 1280]) {
+    test(`action details preserve filtered history when returning at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/providers", (route) => route.fulfill({ json: [{ id: "ollama", name: "Ollama" }] }));
+        await page.route("**/api/v1/ops/actions/page**", async (route) => {
+            const url = new URL(route.request().url());
+            const offset = Number(url.searchParams.get("offset") ?? "0");
+            await route.fulfill({
+                json: {
+                    items: [{
+                        id: "audit-context",
+                        provider_id: "ollama",
+                        provider_name: "Ollama",
+                        action_id: "restart-service",
+                        action_label: "Restart service",
+                        status: "failed",
+                        success: false,
+                        message: "The service did not restart.",
+                        confirmed: true,
+                        destructive: true,
+                        parameter_names: [],
+                        request_id: "request-context",
+                        started_at: "2026-10-20T17:00:00Z",
+                        completed_at: "2026-10-20T17:00:01Z",
+                        duration_ms: 1000,
+                    }],
+                    total: 26,
+                    offset,
+                    limit: 25,
+                    has_more: false,
+                },
+            });
+        });
+        await page.route("**/api/v1/ops/actions/audit-context", (route) => route.fulfill({ json: {
+            id: "audit-context",
+            provider_id: "ollama",
+            provider_name: "Ollama",
+            action_id: "restart-service",
+            action_label: "Restart service",
+            status: "failed",
+            success: false,
+            message: "The service did not restart.",
+            confirmed: true,
+            destructive: true,
+            parameter_names: [],
+            request_id: "request-context",
+            started_at: "2026-10-20T17:00:00Z",
+            completed_at: "2026-10-20T17:00:01Z",
+            duration_ms: 1000,
+        } }));
+
+        await page.goto("/operations?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25");
+        await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        await page.getByText("More filters").click();
+        await expect(page.getByLabel("Provider")).toHaveValue("ollama");
+        await expect(page.getByLabel("From date (UTC)")).toHaveValue("2026-10-20");
+        await expect(page.getByLabel("To date (UTC)")).toHaveValue("2026-10-21");
+        await expect(page.getByLabel("Action or request ID")).toHaveValue("request-context");
+
+        await page.getByRole("link", { name: "View action details" }).click();
+        await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+        await expect(page).toHaveURL(/\/operations\/actions\/audit-context\?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25$/);
+        await page.getByRole("link", { name: "Back to action history" }).click();
+
+        await expect(page).toHaveURL(/\/operations\?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25$/);
+        await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        await page.getByRole("link", { name: "View action details" }).click();
+        await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+        await page.goBack();
+        await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
+        await expect(page.getByLabel("Action or request ID")).toHaveValue("request-context");
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`action history explains confirmation and action risk at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/page**", (route) => route.fulfill({ json: {
+            items: [{
+                id: "audit-browser-labels",
+                provider_id: "ollama",
+                provider_name: "Ollama",
+                action_id: "unload-model",
+                action_label: "Unload Model",
+                status: "succeeded",
+                success: true,
+                message: "Model unloaded.",
+                confirmed: true,
+                destructive: true,
+                parameter_names: [],
+                request_id: "request-labels",
+                started_at: "2026-10-25T15:00:00Z",
+                completed_at: "2026-10-25T15:00:01Z",
+                duration_ms: 1000,
+            }],
+            total: 1,
+            offset: 0,
+            limit: 25,
+            has_more: false,
+        } }));
+
+        await page.goto("/operations");
+        const action = page.getByRole("article").filter({ hasText: "Unload Model" });
+        await expect(action.getByText("Operator confirmed")).toBeVisible();
+        await expect(action.getByText("Destructive action")).toBeVisible();
+    });
+}
+
+for (const width of [320, 390, 1280]) {
+    test(`action history applies typed search before paging at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/ops/actions/page**", async (route) => {
+            const url = new URL(route.request().url());
+            const offset = Number(url.searchParams.get("offset") ?? "0");
+            await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({
+                    items: [{
+                        id: "audit-browser-search",
+                        provider_id: "ollama",
+                        provider_name: "Ollama",
+                        action_id: "unload-model",
+                        action_label: "Unload Model",
+                        status: "succeeded",
+                        success: true,
+                        message: "Model unloaded.",
+                        confirmed: true,
+                        destructive: false,
+                        parameter_names: [],
+                        request_id: "request-123",
+                        started_at: "2026-07-25T17:00:00Z",
+                        completed_at: "2026-07-25T17:00:01Z",
+                        duration_ms: 12.5,
+                    }],
+                    total: 26,
+                    offset,
+                    limit: 25,
+                    has_more: offset === 0,
+                }),
+            });
+        });
+
+        await page.goto("/operations");
+        await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
+        const search = page.getByLabel("Action or request ID");
+        const previous = page.getByRole("button", { name: "Previous" });
+        const next = page.getByRole("button", { name: "Next" });
+
+        await search.fill("request-123");
+        await expect(page.getByText("Search text has changed. Select Search to update the results.")).toBeVisible();
+        await expect(next).toBeDisabled();
+        await page.getByRole("button", { name: "Search" }).click();
+        await expect(page.getByText("Search text has changed. Select Search to update the results.")).toBeHidden();
+        await expect(next).toBeEnabled();
+
+        await next.click();
+        await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
+        await search.fill("changed-query");
+        await expect(page.getByText("Search text has changed. Select Search to update the results.")).toBeVisible();
+        await expect(previous).toBeDisabled();
+        await expect(next).toBeDisabled();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}

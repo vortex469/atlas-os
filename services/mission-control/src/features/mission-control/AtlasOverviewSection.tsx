@@ -4,6 +4,7 @@ import {
     mapServiceStatusToHealthState,
     isEvidenceStale,
 } from "../../components/health/healthPresentation";
+import { healthReason } from "../../utils/healthPresentation";
 import type { ServiceHealth } from "../../types/health";
 
 type CoreHealthProps = {
@@ -26,21 +27,14 @@ export function AtlasOverviewSection({
 
     // Get critical services (sorted by importance)
     const criticalServices = Object.entries(services ?? {})
-        .filter(([, service]) => {
-            const status = service.status?.toLowerCase() ?? "";
-            return (
-                status !== "online" &&
-                status !== "healthy" &&
-                service.http_status !== 200
-            );
-        })
+        .filter(([, service]) => mapServiceStatusToHealthState(service.status) !== "healthy")
         .slice(0, 3);
 
     return (
         <section>
             <SectionHeader
-                title="Atlas State"
-                description="Atlas Core operational status and core subsystem health."
+                title="Atlas health"
+                description="See whether Atlas Core and its key services are responding."
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -53,7 +47,7 @@ export function AtlasOverviewSection({
                         criticalServices.length > 0 ? (
                             <div className="space-y-2 text-sm">
                                 <p className="font-medium text-mc-text-secondary">
-                                    Degraded Services:
+                                    Services needing attention:
                                 </p>
                                 <ul className="space-y-1">
                                     {criticalServices.map(([name, service]) => (
@@ -61,11 +55,9 @@ export function AtlasOverviewSection({
                                             key={name}
                                             className="text-xs text-mc-text-secondary"
                                         >
-                                            {name}: {service.status} (
-                                            {service.latency_ms
-                                                ? `${service.latency_ms}ms`
-                                                : "no latency"}
-                                            )
+                                            {name}: {serviceHealthLabel(service.status)} · {service.latency_ms !== null
+                                                ? `response time ${service.latency_ms} ms`
+                                                : "response time not reported"}
                                         </li>
                                     ))}
                                 </ul>
@@ -86,12 +78,12 @@ export function AtlasOverviewSection({
                                 key={name}
                                 state={healthState}
                                 title={name}
-                                reason={
-                                    service.message ||
-                                    (service.http_status === 200
+                                reason={healthReason(service.message)
+                                    ?? (service.http_status === 200
                                         ? undefined
-                                        : `HTTP ${service.http_status}`)
-                                }
+                                        : service.http_status === null
+                                            ? "Atlas Core could not confirm a healthy response."
+                                            : `Atlas Core received an HTTP ${service.http_status} response.`)}
                                 details={
                                     <div className="text-xs text-mc-text-secondary">
                                         {service.latency_ms !== null && (
@@ -105,4 +97,9 @@ export function AtlasOverviewSection({
             </div>
         </section>
     );
+}
+
+function serviceHealthLabel(status: unknown): string {
+    const state = mapServiceStatusToHealthState(status);
+    return state === "unknown" ? "Status unknown" : `${state[0].toUpperCase()}${state.slice(1)}`;
 }

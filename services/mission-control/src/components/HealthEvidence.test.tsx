@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HealthEvidence } from "./HealthEvidence";
 import { HealthEvidenceContext } from "./healthEvidenceContext";
@@ -12,38 +12,96 @@ describe("authoritative health presentation", () => {
         ["healthy", "Healthy"], ["online", "Healthy"],
         ["warning", "Degraded"], ["critical", "Degraded"], ["degraded", "Degraded"],
         ["offline", "Unavailable"], ["unavailable", "Unavailable"],
-        ["blocked", "Blocked"], ["unknown", "Unknown"],
-        [null, "Unknown"], [42, "Unknown"], [{}, "Unknown"],
-        ["success", "Unknown"], ["running", "Unknown"], ["constructor", "Unknown"],
+        ["blocked", "Blocked"], ["unknown", "Status unknown"],
+        [null, "Status unknown"], [42, "Status unknown"], [{}, "Status unknown"],
+        ["success", "Status unknown"], ["running", "Status unknown"], ["constructor", "Status unknown"],
     ])("presents %j as %s without treating operational states as health", (status, label) => {
         render(<HealthEvidence status={status} />);
         expect(screen.getByText(label)).toBeInTheDocument();
-        expect(screen.getByText(/Evidence age unknown/)).toBeInTheDocument();
+        expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
+    });
+
+    it("explains when neither a health status nor check time is available", () => {
+        render(<HealthEvidence status="unknown" />);
+        expect(screen.getByText("No status information is available.")).toBeInTheDocument();
+        expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
+    });
+
+    it("allows a service check to say that Atlas Core could not connect", () => {
+        render(<HealthEvidence status="offline" unavailableLabel="Atlas Core could not connect" />);
+        expect(screen.getByText("Atlas Core could not connect")).toBeInTheDocument();
+        expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
+    });
+
+    it("retains the specific service check label when the last report is stale", () => {
+        render(<HealthEvidenceContext.Provider value={{ stale: true }}>
+            <HealthEvidence status="offline" unavailableLabel="Atlas Core could not connect" />
+        </HealthEvidenceContext.Provider>);
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
+        expect(screen.getByText("Last known report (out of date): Atlas Core could not connect.")).toBeInTheDocument();
     });
 
     it("retains source critical severity and renders reasons as plain text", () => {
         render(<HealthEvidence status="critical" reason="<script>bad()</script>" />);
-        expect(screen.getByText("Source status: critical")).toBeInTheDocument();
+        expect(screen.getByText("Reported status: critical")).toBeInTheDocument();
         expect(screen.getByText("<script>bad()</script>")).toBeInTheDocument();
         expect(document.querySelector("script")).toBeNull();
+    });
+
+    it("withholds credential and URL text in reported health details", () => {
+        render(<HealthEvidence status="Bearer canary-token" reason="Request to https://operator:canary-password@example.invalid/?token=canary-token failed" />);
+        expect(screen.getByText("Reported status: [Sensitive text withheld]")).toBeInTheDocument();
+        expect(screen.getByText("[Sensitive text withheld]")).toBeInTheDocument();
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
+
+    it("keeps overview health summaries compact while retaining the reason and distinct severity", () => {
+        render(<>
+            <HealthEvidence compact status="offline" reason="Connection refused" />
+            <HealthEvidence compact status="critical" reason="Policy failure" />
+        </>);
+        expect(screen.getByText("Unavailable")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeInTheDocument();
+        expect(screen.queryByText("Reported status: offline")).not.toBeInTheDocument();
+        expect(screen.getByText("Reported status: critical")).toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["[Errno 111] Connection refused", "Atlas Core's connection to this address was refused."],
+        ["Connection refused", "Atlas Core's connection to this address was refused."],
+        ["[Errno 113] No route to host", "The service could not be reached over the network."],
+        ["No route to host", "The service could not be reached over the network."],
+        ["[Errno 101] Network is unreachable", "Atlas Core has no reachable network path to the service host."],
+        ["[Errno -3] Temporary failure in name resolution", "Atlas Core could not resolve the service host name."],
+        ["[Errno 110] Connection timed out", "Atlas Core got no response before the check timed out."],
+        ["timed out", "Atlas Core got no response before the check timed out."],
+    ])("explains network failures in plain language: %s", (reason, explanation) => {
+        render(<HealthEvidence compact status="offline" reason={reason} />);
+        expect(screen.getByText(explanation)).toBeInTheDocument();
+        expect(screen.queryByText(/Errno/)).not.toBeInTheDocument();
     });
 
     it("ages current timestamped evidence without changing the authoritative status", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-09-13T12:00:00Z"));
         render(<HealthEvidence status="healthy" checkedAt="2026-09-13T12:00:00Z" />);
-        expect(screen.getByText(/Current evidence/)).toBeInTheDocument();
+        expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
+        const time = document.querySelector("time");
+        expect(time).toHaveTextContent(new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(Date.parse("2026-09-13T12:00:00Z")));
+        expect(time).not.toHaveTextContent("2026-09-13T");
         act(() => vi.advanceTimersByTime(90_000));
-        expect(screen.getByText(/Stale evidence/)).toBeInTheDocument();
+        expect(screen.getByText("Last known report (out of date): Healthy.")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.queryByText("Healthy", { exact: true })).not.toBeInTheDocument();
-        expect(screen.getByText(/Last-known status: Healthy/)).toBeInTheDocument();
+        expect(screen.getByText(/Last checked \(UTC\)/)).toBeInTheDocument();
         expect(document.querySelector("time")).toHaveAttribute("dateTime", "2026-09-13T12:00:00Z");
     });
 
     it.each([null, "yesterday", "2026-09-13", {}, "2099-01-01T00:00:00Z", "2026-02-30T00:00:00Z", "2026-09-13T24:00:00Z", "2026-09-13T12:00Z"])("does not claim freshness for timestamp %j", (checkedAt) => {
         render(<HealthEvidence status="healthy" checkedAt={checkedAt} reason={{ unsafe: true }} />);
-        expect(screen.getByText(/Evidence age unknown/)).toBeInTheDocument();
-        expect(screen.queryByText(/Current evidence/)).not.toBeInTheDocument();
+        expect(screen.getByText("Check time unavailable.")).toBeInTheDocument();
+        expect(screen.queryByText(/Checked \(UTC\)/)).not.toBeInTheDocument();
     });
 
     it.each(["2024-02-29T12:00:00.123456Z", "2026-09-13T14:00:00+02:00", "2026-09-13T07:00:00-05:00"])("accepts authoritative timestamp %s", (timestamp) => {
@@ -60,16 +118,51 @@ describe("authoritative health presentation", () => {
         render(<SystemHealthSummary evidence={{ policyHealth: { data: { status: "degraded", error: "Policy validation failed", checked_at: "2026-09-13T11:59:45Z" } } }} />);
         expect(screen.getByText("Degraded")).toBeInTheDocument();
         expect(screen.getByText("Policy validation failed")).toBeInTheDocument();
-        expect(screen.getByText(/Current evidence/)).toBeInTheDocument();
+        expect(screen.getByText(/Checked \(UTC\)/)).toBeInTheDocument();
+    });
+
+    it("shows checking only for health reports that have not returned yet", () => {
+        render(<SystemHealthSummary evidence={{ health: { data: { atlas: "healthy" } } }} loading />);
+        const overall = within(screen.getByRole("article", { name: "Atlas Core health" }));
+        const findings = within(screen.getByRole("article", { name: "System findings" }));
+        const policy = within(screen.getByRole("article", { name: "Policy settings check" }));
+        expect(overall.getByText("Healthy")).toBeInTheDocument();
+        expect(findings.getByRole("status")).toHaveTextContent("Checking…");
+        expect(policy.getByRole("status")).toHaveTextContent("Checking…");
+        expect(findings.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
+    });
+
+    it("shows a single unavailable message when a health report failed without data", () => {
+        render(<SystemHealthSummary evidence={{ policyHealth: { unavailable: true } }} />);
+        const policy = within(screen.getByRole("article", { name: "Policy settings check" }));
+        expect(policy.getByText("Current information could not be loaded.")).toBeInTheDocument();
+        expect(policy.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
+        expect(policy.queryByText("No status information is available.")).not.toBeInTheDocument();
+    });
+
+    it("omits missing-time placeholders from system summaries when sources do not report check times", () => {
+        render(<SystemHealthSummary evidence={{
+            health: { data: { atlas: "healthy" } },
+            summary: { data: { status: "healthy", summary: "No findings." } },
+            policyHealth: { data: { status: "healthy" } },
+        }} />);
+        expect(screen.getAllByText("Healthy")).toHaveLength(3);
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+
+    it("omits an unavailable-time placeholder when a compact source reports no timestamp", () => {
+        render(<SystemHealthSummary evidence={{ policyHealth: { data: { status: "healthy", checked_at: null } } }} />);
+        expect(screen.getByText("Healthy")).toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
     });
 
     it("marks retained dashboard evidence stale until refresh recovers", () => {
         const { rerender } = render(<HealthEvidenceContext.Provider value={{ stale: true }}><HealthEvidence status="online" /></HealthEvidenceContext.Provider>);
-        expect(screen.getByText(/Last-known status/)).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         rerender(<HealthEvidenceContext.Provider value={{ stale: false }}><HealthEvidence status="offline" reason="Connection refused" /></HealthEvidenceContext.Provider>);
-        expect(screen.queryByText(/Last-known status/)).not.toBeInTheDocument();
+        expect(screen.queryByText("Status unknown")).not.toBeInTheDocument();
         expect(screen.getByText("Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Connection refused")).toBeInTheDocument();
+        expect(screen.getByText("Atlas Core's connection to this address was refused.")).toBeInTheDocument();
     });
 
     it.each([null, [], "healthy", { atlas: true, services: [] }, { services: { broken: null, bad: { status: {}, message: [], details: null, latency_ms: "5", http_status: {} } } }])("handles malformed API evidence %j", (payload) => {
@@ -83,12 +176,12 @@ describe("authoritative health presentation", () => {
             expect(service.details).toEqual({});
         });
         render(<SystemHealthSummary evidence={{ health: { data: payload }, policyHealth: { data: { checked_at: {}, error: [] } } }} />);
-        expect(screen.getAllByText("Unknown")).toHaveLength(3);
+        expect(screen.getAllByText("Status unknown")).toHaveLength(3);
     });
 
     it("does not manufacture an aggregate from healthy services", () => {
         render(<SystemHealthSummary evidence={{ health: { data: { services: { core: { status: "healthy" } } } } }} />);
-        expect(screen.getAllByText("Unknown")).toHaveLength(3);
+        expect(screen.getAllByText("Status unknown")).toHaveLength(3);
         expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
     });
 });

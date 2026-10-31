@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { operationalLifecycle } from "../test/operationalLifecycle";
@@ -9,36 +9,90 @@ function renderLifecycle(overrides = {}) {
 }
 
 describe("OperationalLifecyclePanel", () => {
-    it("renders verified identity, approvals, exactly-once, and verification evidence", () => {
+    it("keeps the maintenance outcome prominent and technical evidence collapsed", () => {
         renderLifecycle();
 
+        expect(screen.getByRole("heading", { name: "Maintenance status" })).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Verified" })).toBeInTheDocument();
-        expect(screen.getByText("proxmox/qemu/110")).toBeInTheDocument();
-        expect(screen.getByText(/one dispatch barrier crossing and no replay/i)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh maintenance status" })).toBeInTheDocument();
+        expect(screen.getByText(/Atlas recorded one maintenance run and no replay/i)).toBeInTheDocument();
+        const details = screen.getByText("Technical evidence").closest("details") as HTMLDetailsElement;
+        expect(details).not.toHaveAttribute("open");
+        expect(within(details).getByText("proxmox/qemu/110")).not.toBeVisible();
+        fireEvent.click(within(details).getByText("Technical evidence"));
+        expect(within(details).getByText("proxmox/qemu/110")).toBeVisible();
+        const dispatchStarted = within(details).getByText("Dispatch Started").parentElement?.querySelector("time");
+        expect(dispatchStarted).toHaveAttribute("datetime", "2026-08-16T00:02:00Z");
+        expect(dispatchStarted).toHaveTextContent("(local time)");
         expect(screen.getByText("UPID:sanitized")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
+    it("keeps the refresh control label stable while the status check is running", () => {
+        const onRefresh = vi.fn();
+        render(<OperationalLifecyclePanel lifecycle={operationalLifecycle()} isLoading={false} isRefreshing={true} error={null} onRefresh={onRefresh} />);
+
+        const refreshButton = screen.getByRole("button", { name: "Refresh maintenance status" });
+        expect(refreshButton).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Refreshing..." })).not.toBeInTheDocument();
+        fireEvent.click(refreshButton);
+        expect(onRefresh).not.toHaveBeenCalled();
+    });
+
+    it("marks impossible technical timestamps unavailable", () => {
+        renderLifecycle({ dispatch_started_at: "2026-02-30T17:00:00Z" });
+        const details = screen.getByText("Technical evidence").closest("details") as HTMLDetailsElement;
+        fireEvent.click(within(details).getByText("Technical evidence"));
+
+        const dispatchStarted = within(details).getByText("Dispatch Started").parentElement;
+        expect(dispatchStarted).toHaveTextContent("Time unavailable");
+        expect(dispatchStarted?.querySelector("time")).toBeNull();
+    });
+
     it.each([
-        [{ agent_execution_stage: "verification_pending", core_record_state: "verifying", verification_status: null, terminal: false }, "Verification pending"],
+        { provider_operation_captured: false },
+        { provider_operation_capture_count: 0 },
+        { provider_operation_capture_count: 2 },
+        { barrier_crossing_count: 2 },
+    ])("does not claim a single recorded maintenance run without matching evidence %#", (overrides) => {
+        renderLifecycle(overrides);
+
+        expect(screen.queryByText("Atlas recorded one maintenance run and no replay.")).not.toBeInTheDocument();
+    });
+
+    it.each([
+        [{ agent_execution_stage: "verification_pending", core_record_state: "verifying", verification_status: null, terminal: false }, "Verification in progress"],
         [{ controlled_reason: "verification_failed", verification_status: "verification_failed" }, "Verification failed"],
-        [{ controlled_reason: "target_replaced", verification_status: "target_replaced" }, "Target replaced"],
-        [{ controlled_reason: "outcome_unknown", verification_status: "outcome_unknown" }, "Outcome unknown"],
-        [{ agent_execution_stage: "submission_outcome_unknown", terminal: false }, "Submission outcome unknown"],
-        [{ availability: "unavailable", consistency_status: "core_unavailable", terminal: false }, "Core lifecycle unavailable"],
-        [{ availability: "agent_only", consistency_status: "agent_only", core_record_state: null, terminal: false }, "Agent-only lifecycle"],
-        [{ consistency_status: "mismatch" }, "Immutable lifecycle mismatch"],
+        [{ controlled_reason: "target_replaced", verification_status: "target_replaced" }, "Approved target changed"],
+        [{ controlled_reason: "outcome_unknown", verification_status: "outcome_unknown" }, "Run result unknown"],
+        [{ agent_execution_stage: "submission_outcome_unknown", terminal: false }, "Request result unknown"],
+        [{ availability: "unavailable", consistency_status: "core_unavailable", terminal: false }, "Maintenance status unavailable"],
+        [{ availability: "agent_only", consistency_status: "agent_only", core_record_state: null, terminal: false }, "Run status not yet recorded"],
+        [{ consistency_status: "mismatch" }, "Maintenance records do not match"],
     ] as const)("renders controlled outcome %#", (overrides, heading) => {
         renderLifecycle(overrides);
 
         expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+        expect(screen.getByText("Do not repeat this request. Check its status first.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /retry|run again/i })).not.toBeInTheDocument();
     });
 
-    it("renders a sanitized controlled network error", () => {
-        render(<OperationalLifecyclePanel lifecycle={null} isLoading={false} isRefreshing={false} error="Mission Control could not read the operational lifecycle." onRefresh={vi.fn()} />);
+    it("offers a read-only retry when lifecycle evidence is unavailable", () => {
+        const onRefresh = vi.fn();
+        render(<OperationalLifecyclePanel lifecycle={null} isLoading={false} isRefreshing={false} error="Bearer lifecycle-canary-secret" onRefresh={onRefresh} />);
 
-        expect(screen.getByRole("alert")).toHaveTextContent("A network failure is not an operational failure");
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("Maintenance status unavailable");
+        expect(alert).toHaveTextContent("the result may still be unknown");
+        expect(alert).toHaveTextContent("Checking status again does not repeat the maintenance action.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/lifecycle-canary-secret/)).not.toBeInTheDocument();
+        fireEvent.click(within(alert).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Check status again" }));
+        expect(onRefresh).toHaveBeenCalledOnce();
         expect(document.body.textContent).not.toMatch(/Authorization|Bearer|vmgenid|CSRF|cookie|command|environment/i);
     });
 });

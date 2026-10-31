@@ -4,6 +4,7 @@ import type {
     ProviderCollectionTiming,
 } from "../types/ace";
 import type { PolicySeverity } from "../types/policies";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 
 type PerformancePolicy = {
     maximum_collection_duration_ms: number;
@@ -14,12 +15,16 @@ type Props = {
     providerId: string;
     snapshots: IntelligenceTelemetrySnapshot[];
     performancePolicy?: PerformancePolicy | null;
+    performancePolicyStale?: boolean;
+    unavailable?: boolean;
 };
 
 export function ProviderTelemetryTrend({
     providerId,
     snapshots,
     performancePolicy = null,
+    performancePolicyStale = false,
+    unavailable = false,
 }: Props) {
     const points = snapshots
         .flatMap((snapshot) => {
@@ -39,19 +44,25 @@ export function ProviderTelemetryTrend({
     return (
         <section>
             <SectionHeader
-                title="Intelligence History"
-                description="Provider-specific ACE finding-collection duration and outcomes."
+                title="Provider check history"
+                description="Each bar is one check. Taller bars took longer; green bars finished and amber bars timed out or failed."
             />
+            {performancePolicy && performancePolicyStale && <p role="status" className="mb-3 text-sm text-amber-200">The check limit is from the last available monitoring settings.</p>}
             {points.length === 0 ? (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                    No intelligence collection history is available for
-                    this provider yet.
+                    {unavailable
+                        ? "Provider check history could not be loaded."
+                        : "Atlas has no check history for this provider yet."}
                 </div>
             ) : (
-                <TrendChart
-                    points={points}
-                    performancePolicy={performancePolicy}
-                />
+                <>
+                    {unavailable && <p role="status" className="mb-3 text-sm text-amber-200">Showing the last available check history; current history may have changed.</p>}
+                    <TrendChart
+                        points={points}
+                        performancePolicy={performancePolicy}
+                        performancePolicyStale={performancePolicyStale}
+                    />
+                </>
             )}
         </section>
     );
@@ -66,9 +77,11 @@ type Point = {
 function TrendChart({
     points,
     performancePolicy,
+    performancePolicyStale,
 }: {
     points: Point[];
     performancePolicy: PerformancePolicy | null;
+    performancePolicyStale: boolean;
 }) {
     const maximumDuration = Math.max(
         ...points.map(({ timing }) => timing.duration_ms),
@@ -100,13 +113,15 @@ function TrendChart({
     return (
         <div className="rounded-lg border border-slate-800 bg-slate-900 p-5">
             <div className="grid gap-4 sm:grid-cols-4">
-                <Metric label="Snapshots" value={String(points.length)} />
-                <Metric label="Average" value={duration(average)} />
+                <Metric label="Checks" value={String(points.length)} />
+                <Metric label="Average time" value={duration(average)} />
                 <Metric
                     label={
                         performancePolicy
-                            ? "Over threshold"
-                            : "Issues"
+                            ? performancePolicyStale
+                                ? "Checks over last known limit"
+                                : "Checks over limit"
+                            : "Checks with issues"
                     }
                     value={String(
                         performancePolicy
@@ -120,7 +135,7 @@ function TrendChart({
                     }
                 />
                 <Metric
-                    label="Latest"
+                    label="Latest result"
                     value={status(latest.timing.status)}
                     warning={latest.timing.status !== "completed"}
                 />
@@ -128,7 +143,7 @@ function TrendChart({
             <div className="relative mt-6">
                 {performancePolicy && (
                     <div
-                        aria-label={`Policy threshold ${duration(performancePolicy.maximum_collection_duration_ms)}`}
+                        aria-label={`Time limit ${duration(performancePolicy.maximum_collection_duration_ms)}${performancePolicyStale ? " last-known limit" : ""}`}
                         className={`absolute right-0 left-0 z-10 border-t border-dashed ${
                             performancePolicy.severity === "critical"
                                 ? "border-red-400"
@@ -142,16 +157,14 @@ function TrendChart({
                         }}
                     >
                         <span className="absolute right-0 -top-5 text-[10px] text-slate-400">
-                            {duration(
-                                performancePolicy.maximum_collection_duration_ms,
-                            )}{" "}
-                            policy
+                            {duration(performancePolicy.maximum_collection_duration_ms)}{" "}
+                            {performancePolicyStale ? "last-known limit" : "limit"}
                         </span>
                     </div>
                 )}
                 <div
                     role="img"
-                    aria-label={`${latest.timing.provider_name} intelligence duration trend`}
+                    aria-label={`${latest.timing.provider_name} check time trend. Each bar is one check; taller bars took longer, green bars finished, and amber bars timed out or failed.`}
                     className="flex h-32 items-end gap-1 border-b border-l border-slate-700 px-2 pt-2"
                 >
                     {points.map((point) => {
@@ -160,7 +173,7 @@ function TrendChart({
                         return (
                             <div
                                 key={point.id}
-                                title={`${new Date(point.collectedAt).toLocaleString()} · ${duration(point.timing.duration_ms)} · ${status(point.timing.status)}`}
+                                title={`${formatLocalTime(point.collectedAt)} · ${duration(point.timing.duration_ms)} · ${status(point.timing.status)}`}
                                 aria-label={`${duration(point.timing.duration_ms)}, ${status(point.timing.status)}`}
                                 className={`min-w-1 flex-1 rounded-t ${
                                     unhealthy
@@ -180,8 +193,53 @@ function TrendChart({
                     })}
                 </div>
             </div>
+            <details className="mt-4">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-blue-300">
+                    Check details
+                </summary>
+                <ol
+                    aria-label="Provider check details"
+                    className="mt-3 space-y-2 text-sm text-slate-300"
+                >
+                    {points.map((point) => (
+                        <li
+                            key={point.id}
+                            className="flex flex-wrap gap-x-2"
+                        >
+                            <CheckTime value={point.collectedAt} />
+                            <span>
+                                · {duration(point.timing.duration_ms)} ·{" "}
+                                {status(point.timing.status)}
+                            </span>
+                        </li>
+                    ))}
+                </ol>
+            </details>
         </div>
     );
+}
+
+function CheckTime({ value }: { value: string }) {
+    const timestamp = evidenceTimestamp(value);
+    if (timestamp === null) {
+        return <span>Time unavailable</span>;
+    }
+    return (
+        <time dateTime={value}>
+            {new Date(timestamp).toLocaleString(undefined, {
+                dateStyle: "medium",
+                timeStyle: "short",
+            })}{" "}
+            (local time)
+        </time>
+    );
+}
+
+function formatLocalTime(value: string): string {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : `${new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} (local time)`;
 }
 
 function Metric({

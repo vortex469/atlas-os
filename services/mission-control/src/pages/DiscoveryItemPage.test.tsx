@@ -1,5 +1,6 @@
-import { act, render, screen, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -98,7 +99,7 @@ function entry(overrides: Partial<DiscoveryCatalogEntry> = {}): DiscoveryCatalog
             capabilities: ["video-ingest", "object-detection"],
             requirements: {
                 capabilities: [{ id: "container-orchestration" }],
-                resources: { gpu_required: false },
+                resources: { cpu_cores_min: 2, memory_mb_min: 4096, storage_gb_min: 20, gpu_required: false },
                 platform: {
                     architectures: [],
                     operating_systems: [],
@@ -280,6 +281,11 @@ function RouteDriver() {
 }
 
 function renderNavigablePage() {
+    mockedGetDiscoveryItem.mockImplementation(async (id) => ({ ...entry(), item: { ...entry().item, id } }));
+    mockedGetDiscoveryRelationships.mockImplementation(async (item_id) => ({ ...relationships(), item_id }));
+    mockedGetDiscoveryCompatibility.mockImplementation(async (item_id) => compatibilityAssessment({ item_id }));
+    mockedGetDiscoveryItemEvidence.mockImplementation(async (catalog_item_id) => ({ ...itemEvidence(), catalog_item_id, curated: { ...entry(), item: { ...entry().item, id: catalog_item_id } } }));
+    mockedGetDiscoveryImageGrounding.mockImplementation(async (catalog_item_id) => ({ ...imageGrounding(), catalog_item_id }));
     return render(
         <MemoryRouter initialEntries={["/discovery/items/item-a"]}>
             <RouteDriver />
@@ -297,6 +303,103 @@ function httpError(status: number, detail: string) {
 }
 
 describe("DiscoveryItemPage", () => {
+    it("clears the previous item's details as soon as the URL changes", async () => {
+        const nextRequest = deferred<DiscoveryCatalogEntry>();
+        mockedGetDiscoveryItem.mockResolvedValueOnce(entry()).mockReturnValueOnce(nextRequest.promise);
+        mockedGetDiscoveryRelationships.mockImplementation(async (item_id) => ({ ...relationships(), item_id }));
+        const router = createMemoryRouter([{ path: "/discovery/items/:itemId", element: <DiscoveryItemPage /> }], { initialEntries: ["/discovery/items/frigate"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Frigate" });
+        await act(() => router.navigate("/discovery/items/next-item"));
+        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+        expect(screen.getByText("Loading catalog item…")).toBeInTheDocument();
+        await act(async () => nextRequest.resolve({ ...entry(), item: { ...entry().item, id: "next-item", name: "Next item" } }));
+        expect(await screen.findByRole("heading", { name: "Next item" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+    });
+
+    it("refuses catalog data for a different item", async () => {
+        mockedGetDiscoveryItem
+            .mockResolvedValueOnce({ ...entry(), item: { ...entry().item, id: "other" } })
+            .mockResolvedValueOnce(entry());
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas got details for a different catalog item. Try again.");
+        expect(screen.queryByRole("heading", { name: "Frigate" })).not.toBeInTheDocument();
+        await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not show relationships returned for a different catalog item", async () => {
+        mockedGetDiscoveryRelationships.mockResolvedValue({ ...relationships(), item_id: "other" });
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        const section = screen.getByRole("region", { name: "Catalog relationships" });
+        expect(await within(section).findByRole("alert")).toHaveTextContent("Relationships unavailable");
+        expect(screen.queryByRole("link", { name: "mqtt" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
+        expect(within(section).getByRole("button", { name: "Retry relationships" })).toBeInTheDocument();
+    });
+
+    it("keeps the catalog search when opening a related item", async () => {
+        renderPage("/discovery/items/frigate?q=frigate&type=application");
+
+        const section = await screen.findByRole("region", { name: "Catalog relationships" });
+        expect(await within(section).findByRole("link", { name: "mqtt" })).toHaveAttribute(
+            "href",
+            "/discovery/items/mqtt?q=frigate&type=application",
+        );
+        expect(await within(section).findByRole("link", { name: "Mission Control" })).toHaveAttribute(
+            "href",
+            "/discovery/items/mission-control?q=frigate&type=application",
+        );
+    });
+
+    it.each(["compatibility", "evidence", "grounding", "plan"])("does not display unrelated %s evidence", async (source) => {
+        if (source === "compatibility") mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment({ item_id: "other" }));
+        if (source === "evidence") mockedGetDiscoveryItemEvidence.mockResolvedValue({ ...itemEvidence(), catalog_item_id: "other" });
+        if (source === "grounding") mockedGetDiscoveryImageGrounding.mockResolvedValue({ ...imageGrounding(), catalog_item_id: "other" });
+        if (source === "plan") mockedGetDiscoveryInstallationPlan.mockResolvedValue(installationPlan("other"));
+        renderPage();
+        await screen.findByRole("heading", { name: "Frigate" });
+        const message = source === "compatibility" ? "Could not check compatibility" : source === "evidence" ? "Release information unavailable" : source === "grounding" ? "The image check is unavailable right now." : "Installation plan is currently unavailable.";
+        expect(await screen.findByText(message)).toBeInTheDocument();
+        expect(screen.queryByText(/— other/)).not.toBeInTheDocument();
+    });
+
+    it("keeps catalog details available and retries a failed relationships read", async () => {
+        mockedGetDiscoveryRelationships.mockRejectedValueOnce(httpError(404, "Relationships not found"))
+            .mockResolvedValueOnce(relationships());
+        renderPage();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
+        const section = screen.getByRole("region", { name: "Catalog relationships" });
+        expect(await within(section).findByRole("alert")).toHaveTextContent("The catalog item is available, but its related items could not be checked.");
+        expect(within(section).queryByText("No links from this item.")).not.toBeInTheDocument();
+        await userEvent.setup().click(within(section).getByRole("button", { name: "Retry relationships" }));
+        expect(await within(section).findByRole("heading", { name: "Links from this item" })).toBeInTheDocument();
+        expect(within(section).getByRole("link", { name: "mqtt" })).toBeInTheDocument();
+        expect(mockedGetDiscoveryRelationships).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not infer a missing item from error prose", async () => {
+        mockedGetDiscoveryItem.mockRejectedValue(new Error("Bearer discovery-item-canary-secret"));
+        renderPage();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this catalog item. Try again to check its details.");
+        expect(alert).toHaveTextContent("Catalog item unavailable");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        const readError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
+        expect(readError).not.toBeVisible();
+        expect(within(alert).queryByText(/discovery-item-canary-secret/)).not.toBeInTheDocument();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(readError).toBeVisible();
+        expect(screen.queryByRole("heading", { name: "Catalog item not found" })).not.toBeInTheDocument();
+    });
+
     beforeEach(() => {
         vi.resetAllMocks();
         mockedGetDiscoveryItem.mockResolvedValue(entry());
@@ -308,44 +411,113 @@ describe("DiscoveryItemPage", () => {
         mockedListDiscoveryProposals.mockResolvedValue({ proposals: [], total: 0, limit: 25 });
     });
 
-    it("renders item details, requirements, provenance, approved metadata, and compatibility", async () => {
+    it("renders item details, requirements, provenance, catalog notes, and compatibility", async () => {
+        const user = userEvent.setup();
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        const itemHeading = await screen.findByRole("heading", { name: "Frigate" });
+        const itemHeadingDetails = within(itemHeading.closest("div") as HTMLElement).getByText("Technical details").closest("details");
+        expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).not.toBeVisible();
+        await user.click(within(itemHeadingDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(itemHeadingDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).toBeVisible();
         expect(screen.getByText("Application")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
-        expect(screen.getByText("video-ingest")).toBeInTheDocument();
+        expect(screen.getByText("These are catalog requirements. Atlas checks them against your environment separately; they don’t grant permission to make changes.")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "What it supports" })).toBeInTheDocument();
+        expect(screen.getByText("Video ingest")).toBeInTheDocument();
+        expect(screen.getByText("Object detection")).toBeInTheDocument();
         expect(screen.getByText("nvr")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "What this item needs" })).toBeInTheDocument();
+        expect(screen.getByText("Container orchestration")).toBeInTheDocument();
+        expect(screen.getByText("At least 2 CPU cores")).toBeInTheDocument();
+        expect(screen.getByText("At least 4096 MB memory")).toBeInTheDocument();
+        expect(screen.getByText("At least 20 GB storage")).toBeInTheDocument();
         expect(screen.getByText("Runtime: docker")).toBeInTheDocument();
-        expect(screen.getByText(/TCP 8971 inbound optional/i)).toBeInTheDocument();
-        expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
-        expect(screen.getByText("Reviewed for D5: Yes")).toBeInTheDocument();
+        expect(screen.getByText("Optional inbound TCP port 8971 — Common Frigate web interface port.")).toBeInTheDocument();
+        const sourceDetails = screen.getByText("Catalog source details").closest("details");
+        expect(sourceDetails).not.toHaveAttribute("open");
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).not.toBeVisible();
+        await user.click(within(sourceDetails as HTMLDetailsElement).getByText("Catalog source details"));
+        expect(within(sourceDetails as HTMLDetailsElement).getByText("atlas-curated-discovery-catalog")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Catalog notes" })).toBeInTheDocument();
+        expect(screen.queryByText(/Reviewed for D5/)).not.toBeInTheDocument();
         expect(screen.getByText("Hardware acceleration is optional.")).toBeInTheDocument();
         expect(screen.queryByText("Ignored item metadata note.")).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /(?:^|\s)(?:install|approve|confirm|execute|deploy)(?:\s|$)/i })).not.toBeInTheDocument();
 
         expect(
-            await screen.findByRole("heading", { name: "Compatibility status" }),
+            await screen.findByRole("heading", { name: "Compatibility summary" }),
         ).toBeInTheDocument();
-        expect(screen.getByText("Compatible")).toBeInTheDocument();
+        const summary = screen.getByRole("heading", { name: "Compatibility summary" }).closest("section");
+        expect(within(summary as HTMLElement).getByText("Compatible")).toBeInTheDocument();
         expect(screen.getByText("Catalog item status is active.")).toBeInTheDocument();
-        expect(screen.getByText("Code: f0001")).toBeInTheDocument();
-        expect(screen.getByText("Evidence e0001")).toBeInTheDocument();
+        expect(screen.getByText("Checked against")).toBeInTheDocument();
+        expect(within(summary as HTMLElement).getByText("Atlas Environment")).toBeInTheDocument();
+        expect(screen.getByText("Last checked")).toBeInTheDocument();
+        const checkTime = screen.getByText("Last checked").parentElement?.querySelector("time");
+        expect(checkTime).toHaveAttribute("datetime", "2026-08-05T18:00:00.000Z");
+        expect(checkTime).toHaveTextContent(new Date("2026-08-05T18:00:00.000Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(screen.queryByText("2026-08-05T18:00:00.000Z")).not.toBeVisible();
+        const compatibilityDetails = within(summary as HTMLElement).getByText("Technical details").closest("details");
+        expect(compatibilityDetails).not.toHaveAttribute("open");
+        expect(within(compatibilityDetails as HTMLDetailsElement).getByText("atlas")).not.toBeVisible();
+        await user.click(within(compatibilityDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(compatibilityDetails as HTMLDetailsElement).getByText("atlas")).toBeVisible();
+        const finding = screen.getByText("Catalog item status is active.").closest("article");
+        const technicalDetails = within(finding as HTMLElement).getByText("Evidence details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).not.toBeVisible();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: f0001")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
         expect(mockedGetDiscoveryCompatibility).toHaveBeenCalledWith("frigate");
-        expect(await screen.findByRole("heading", { name: "Image grounding" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Image check" })).toBeInTheDocument();
         expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledWith("frigate");
     });
 
+    it("does not present malformed compatibility check time as verified local time", async () => {
+        mockedGetDiscoveryCompatibility.mockResolvedValue(
+            compatibilityAssessment({ checked_at: "2026-02-30T12:00:00Z" }),
+        );
+        renderPage();
+
+        expect(await screen.findByText("Last checked")).toBeInTheDocument();
+        const checkTime = screen.getByText("Last checked").parentElement;
+        expect(checkTime).toHaveTextContent("Time unavailable");
+        expect(checkTime?.querySelector("time")).toBeNull();
+    });
+
     it("shows loading and failure without plan details", async () => {
+        const user = userEvent.setup();
         const request = deferred<InstallationPlan>();
+        const retryRequest = deferred<InstallationPlan>();
         mockedGetDiscoveryInstallationPlan.mockReturnValueOnce(request.promise);
+        mockedGetDiscoveryInstallationPlan.mockReturnValueOnce(retryRequest.promise);
         renderPage();
 
         expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        await waitFor(() => expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("frigate"));
         expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
         await act(async () => request.reject(new Error("unavailable")));
         expect(await screen.findByText("Installation plan is currently unavailable.")).toBeInTheDocument();
         expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry installation plan" }));
+        expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
+        await act(async () => retryRequest.resolve(installationPlan("frigate")));
+        expect(await screen.findByText("Installation file missing")).toBeInTheDocument();
+        expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledTimes(2);
+    });
+
+    it("explains a missing plan item without suggesting a retry", async () => {
+        mockedGetDiscoveryInstallationPlan.mockRejectedValueOnce(httpError(404, "Installation plan item was not found."));
+        renderPage();
+
+        const status = await screen.findByText(/No installation plan is available for this item/);
+        expect(status).toHaveAttribute("role", "status");
+        expect(status).toHaveTextContent("Its catalog details remain available.");
+        expect(screen.queryByRole("button", { name: "Retry installation plan" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeInTheDocument();
     });
 
     it.each(["success", "failure"])(
@@ -357,11 +529,12 @@ describe("DiscoveryItemPage", () => {
                 itemId === "item-a" ? itemARequest.promise : itemBRequest.promise,
             );
             renderNavigablePage();
-            expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-a");
+            expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+            await waitFor(() => expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-a"));
 
             await act(async () => screen.getByRole("button", { name: "Show item B" }).click());
             expect(await screen.findByText("Loading installation plan…")).toBeInTheDocument();
-            expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-b");
+            await waitFor(() => expect(mockedGetDiscoveryInstallationPlan).toHaveBeenCalledWith("item-b"));
 
             await act(async () => itemARequest.resolve(installationPlan("item-a")));
             expect(screen.queryByText(/— item-a/)).not.toBeInTheDocument();
@@ -384,11 +557,15 @@ describe("DiscoveryItemPage", () => {
             total: 2,
             limit: 25,
         });
-        renderPage();
-        expect(await screen.findByRole("heading", { name: "Operator proposals" })).toBeInTheDocument();
-        expect(await screen.findByText("Advisory proposal")).toBeInTheDocument();
+        renderPage("/discovery/items/frigate?q=frigate&type=application");
+        expect(await screen.findByRole("heading", { name: "Suggestions" })).toBeInTheDocument();
+        expect(await screen.findByText("Suggestion")).toBeInTheDocument();
         expect(mockedListDiscoveryProposals).toHaveBeenCalledWith(25);
         expect(screen.queryByText("other")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "View catalog item for frigate" })).toHaveAttribute(
+            "href",
+            "/discovery/items/frigate?q=frigate&type=application",
+        );
     });
 
     it("composes read-only evidence without granting mutation or execution controls", async () => {
@@ -438,8 +615,8 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Release evaluation")).toBeInTheDocument();
-        expect(screen.getByText("Update available")).toBeInTheDocument();
+        expect(await screen.findByText("Version comparison")).toBeInTheDocument();
+        expect(screen.getByText("Newer release reported")).toBeInTheDocument();
         expect(screen.getByText("0.15.0")).toBeInTheDocument();
         expect(screen.getByText("Item version")).toBeInTheDocument();
         expect(screen.getByText("0.16.1")).toBeInTheDocument();
@@ -456,15 +633,46 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
-        expect(await screen.findByText("Dynamic evidence unavailable")).toBeInTheDocument();
-        expect(screen.getByText(/Showing the curated catalog only/i)).toBeInTheDocument();
+        expect(await screen.findByText("Release information unavailable")).toBeInTheDocument();
+        expect(screen.getByText("The catalog information is still available and unchanged.")).toBeInTheDocument();
         expect(screen.getByText("atlas-curated-discovery-catalog")).toBeInTheDocument();
     });
 
+    it("retries source evidence without reloading the catalog item", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryItemEvidence.mockRejectedValueOnce(new Error("Evidence service offline"))
+            .mockResolvedValueOnce(itemEvidence());
+
+        renderPage();
+
+        expect(await screen.findByText("Release information unavailable")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry release check" }));
+
+        expect(await screen.findByText("Only catalog information is available")).toBeInTheDocument();
+        expect(mockedGetDiscoveryItemEvidence).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
+    });
+
+    it("retries temporary image-grounding failures without reloading the catalog item", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryImageGrounding.mockRejectedValueOnce(httpError(503, "Source temporarily unavailable"))
+            .mockResolvedValueOnce(imageGrounding());
+
+        renderPage();
+
+        expect(await screen.findByText("Atlas could not finish checking the image. Try again.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Retry image check" }));
+
+        const deploymentBindingLabels = await screen.findAllByText("No deployment mapping");
+        expect(deploymentBindingLabels.some((element) => element.tagName === "P")).toBe(true);
+        expect(mockedGetDiscoveryImageGrounding).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
+    });
+
     it.each([
-        [404, "Item grounding projection unavailable or not found."],
-        [503, "Image grounding is currently unavailable due to a local source or read failure."],
-        [500, "Image grounding is currently unavailable."],
+        [404, "No image check is available for this item."],
+        [503, "Atlas could not finish checking the image. Try again."],
+        [500, "The image check is unavailable right now."],
     ])("bounds image-grounding HTTP %s without exposing backend details", async (status, copy) => {
         mockedGetDiscoveryImageGrounding.mockRejectedValue(
             httpError(status, "SECRET token=hidden /private/repository"),
@@ -480,15 +688,30 @@ describe("DiscoveryItemPage", () => {
     it("distinguishes proposal transport failure from provider state", async () => {
         mockedListDiscoveryProposals.mockRejectedValue(new Error("transport unavailable"));
         renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Proposal context is temporarily unavailable");
-        expect(screen.getByText(/provider state were not affected/i)).toBeInTheDocument();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Suggestions are temporarily unavailable");
+        expect(screen.getByText(/catalog item is still available/i)).toBeInTheDocument();
+    });
+
+    it("retries the related proposal read without reloading the catalog item", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryProposals.mockRejectedValueOnce(new Error("Proposal service unavailable"))
+            .mockResolvedValueOnce({ proposals: [], total: 0, limit: 25 });
+
+        renderPage();
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Suggestions are temporarily unavailable");
+        await user.click(screen.getByRole("button", { name: "Retry suggestions" }));
+
+        expect(await screen.findByText("No suggestions are available.")).toBeInTheDocument();
+        expect(mockedListDiscoveryProposals).toHaveBeenCalledTimes(2);
+        expect(mockedGetDiscoveryItem).toHaveBeenCalledTimes(1);
     });
 
     it.each([
         { status: "compatible", expected: "Compatible" },
-        { status: "compatible_with_warnings", expected: "Compatible With Warnings" },
-        { status: "insufficient_information", expected: "Insufficient Information" },
-        { status: "incompatible", expected: "Incompatible" },
+        { status: "compatible_with_warnings", expected: "Compatible with warnings" },
+        { status: "insufficient_information", expected: "Not enough information" },
+        { status: "incompatible", expected: "Not compatible" },
     ])("shows status presentation for %s", async ({ status, expected }) => {
         mockedGetDiscoveryCompatibility.mockResolvedValue(
             compatibilityAssessment({ status: status as DiscoveryCompatibilityAssessment["status"] }),
@@ -496,8 +719,8 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Compatibility status" })).toBeInTheDocument();
-        expect(await screen.findByText(expected)).toBeInTheDocument();
+        const summary = await screen.findByRole("heading", { name: "Compatibility summary" });
+        expect(within(summary.closest("section") as HTMLElement).getByText(expected)).toBeInTheDocument();
     });
 
     it("shows findings grouped by backend severity and unknown facts", async () => {
@@ -547,14 +770,58 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Findings Warning")).toBeInTheDocument();
-        expect(await screen.findByText("Findings Blocker")).toBeInTheDocument();
+        expect(await screen.findByText("Warnings")).toBeInTheDocument();
+        expect(await screen.findByText("Blocking issues")).toBeInTheDocument();
         expect(screen.getByText("Memory is borderline.")).toBeInTheDocument();
         expect(screen.getByText("Required port is missing.")).toBeInTheDocument();
-        expect(screen.getAllByText("Evidence e0002")).toHaveLength(2);
-        expect(screen.getAllByText((content) => content.includes("Port check"))).toHaveLength(2);
-        expect(screen.getByText("open_ports")).toBeInTheDocument();
-        expect(screen.getByText("installed_services")).toBeInTheDocument();
+        const warning = screen.getByText("Memory is borderline.").closest("article");
+        const blocker = screen.getByText("Required port is missing.").closest("article");
+        expect(within(warning as HTMLElement).getByText("Compatible with warnings")).toBeInTheDocument();
+        expect(within(blocker as HTMLElement).getByText("Not compatible")).toBeInTheDocument();
+        expect(screen.getByText("Open ports")).toBeInTheDocument();
+        expect(screen.getByText("Installed services")).toBeInTheDocument();
+        expect(screen.queryByText(/Checked field: requirements\.resources\.memory_mb_min/)).not.toBeVisible();
+        const technicalDetails = within(warning as HTMLElement).getByText("Evidence details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).queryByText("Evidence e0002")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0001")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence e0002")).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Checked field: requirements.resources.memory_mb_min")).toBeVisible();
+    });
+
+    it("withholds credentials and URLs from findings and expanded evidence", async () => {
+        const base = compatibilityAssessment();
+        mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment({
+            findings: [{
+                ...base.findings[0],
+                id: "token=finding-id-secret",
+                subject: "authorization header",
+                message: "Bearer compatibility-finding-secret",
+                evidence_ids: ["secret=evidence-id-secret"],
+            }],
+            evidence: [{
+                ...base.evidence[0],
+                id: "secret=evidence-id-secret",
+                source: "https://operator:secret@example.test/private?token=hidden",
+                message: "password=compatibility-evidence-secret",
+            }],
+        }));
+
+        renderPage();
+
+        const placeholders = await screen.findAllByText("[Sensitive text withheld]", { exact: true });
+        expect(placeholders.length).toBeGreaterThan(0);
+        expect(document.body.textContent).not.toMatch(/compatibility-finding-secret|operator:secret|token=hidden|compatibility-evidence-secret/);
+
+        const technicalDetails = screen.getByText("Evidence details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Checked field: [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Source: [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Message: [Sensitive text withheld]", { exact: true })).toBeVisible();
     });
 
     it("renders compatibility loading state independently", async () => {
@@ -569,14 +836,17 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("Loading compatibility assessment…")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Compatibility assessment" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Frigate" })).toBeInTheDocument();
+        expect(await screen.findByText("Checking compatibility…")).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Compatibility check" })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
 
-        expect(compatibilityPromise).toBeDefined();
-        expect(resolveCompatibility).toBeDefined();
+        await waitFor(() => {
+            expect(compatibilityPromise).toBeDefined();
+            expect(resolveCompatibility).toBeDefined();
+        });
         resolveCompatibility!(compatibilityAssessment());
-        expect(await screen.findByText("Compatible")).toBeInTheDocument();
+        const summary = await screen.findByRole("heading", { name: "Compatibility summary" });
+        expect(within(summary.closest("section") as HTMLElement).getByText("Compatible")).toBeInTheDocument();
     });
 
     it("shows compatibility failure without replacing the full item page", async () => {
@@ -587,8 +857,15 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         expect(await screen.findByRole("heading", { name: "Frigate" })).toBeInTheDocument();
-        expect(await screen.findByText("Compatibility unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Retry compatibility check")).toBeInTheDocument();
+        expect(await screen.findByText("Could not check compatibility")).toBeInTheDocument();
+        expect(screen.getByText("Atlas could not confirm whether this item fits the selected environment.")).toBeInTheDocument();
+        const error = screen.getByText("Could not check compatibility").closest("div");
+        const technicalDetails = within(error as HTMLElement).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Temporary compatibility backend failure")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Temporary compatibility backend failure")).toBeVisible();
+        expect(screen.getByText("Retry check")).toBeInTheDocument();
         expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -599,16 +876,19 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("No findings were reported.")).toBeInTheDocument();
-        expect(screen.getByText("Target ID")).toBeInTheDocument();
-        expect(screen.getByText("atlas_environment")).toBeInTheDocument();
+        expect(await screen.findByText("No issues or notes were found.")).toBeInTheDocument();
+        const summary = screen.getByRole("heading", { name: "Compatibility summary" }).closest("section");
+        expect(within(summary as HTMLElement).queryByText("Findings")).not.toBeInTheDocument();
+        expect(within(summary as HTMLElement).queryByText("Results")).not.toBeInTheDocument();
+        expect(screen.getByText("Atlas Environment")).toBeInTheDocument();
+        expect(screen.getByText("Unconfirmed details")).toBeInTheDocument();
     });
 
     it("renders incoming and outgoing relationships separately with links and labels", async () => {
         renderPage();
 
         const outgoing = await screen.findByRole("heading", {
-            name: "Outgoing relationships",
+            name: "Links from this item",
         });
         const outgoingPanel = outgoing.closest("section");
         expect(outgoingPanel).not.toBeNull();
@@ -620,11 +900,19 @@ describe("DiscoveryItemPage", () => {
         expect(within(outgoingPanel!).getByText("Unresolved")).toBeInTheDocument();
 
         const incoming = screen.getByRole("heading", {
-            name: "Incoming relationships",
+            name: "Items linking to this item",
         });
         const incomingPanel = incoming.closest("section");
         expect(incomingPanel).not.toBeNull();
         expect(within(incomingPanel!).getByText("Displays catalog facts.")).toBeInTheDocument();
+        expect(within(incomingPanel!).getByRole("link", { name: "Mission Control" })).toHaveAttribute(
+            "href",
+            "/discovery/items/mission-control",
+        );
+        expect(within(incomingPanel!).getByText("Frigate")).toBeInTheDocument();
+        expect(within(incomingPanel!).getByText("Integrates With")).toBeInTheDocument();
+        expect(within(incomingPanel!).queryByRole("link", { name: "Frigate" })).not.toBeInTheDocument();
+        expect(within(incomingPanel!).queryByText("Resolved")).not.toBeInTheDocument();
     });
 
     it("renders empty relationship states", async () => {
@@ -636,19 +924,33 @@ describe("DiscoveryItemPage", () => {
 
         renderPage();
 
-        expect(await screen.findByText("No outgoing relationships.")).toBeInTheDocument();
-        expect(screen.getByText("No incoming relationships.")).toBeInTheDocument();
+        expect(await screen.findByText("No links from this item.")).toBeInTheDocument();
+        expect(screen.getByText("No items link to this item.")).toBeInTheDocument();
     });
 
     it("renders not found state", async () => {
-        mockedGetDiscoveryItem.mockRejectedValue(new Error("Discovery item not found"));
+        mockedGetDiscoveryItem.mockRejectedValue(httpError(404, "Discovery item not found"));
 
-        renderPage();
+        renderPage("/discovery/items/frigate?q=frigate&type=application&draft_q=frigates");
 
         expect(
-            await screen.findByRole("heading", { name: "Discovery item not found" }),
+            await screen.findByRole("heading", { name: "Catalog item not found" }),
         ).toBeInTheDocument();
-        expect(screen.getByText(/could not find a catalog entry/i)).toBeInTheDocument();
+        expect(screen.getByText("This catalog item is no longer available. Return to the catalog and choose a current item.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "← Catalog" })).toHaveAttribute(
+            "href",
+            "/discovery?q=frigate&type=application&draft_q=frigates",
+        );
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).not.toBeVisible();
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Catalog item ID: frigate")).toBeVisible();
+        expect(mockedGetDiscoveryRelationships).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryCompatibility).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryItemEvidence).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryImageGrounding).not.toHaveBeenCalled();
+        expect(mockedGetDiscoveryInstallationPlan).not.toHaveBeenCalled();
+        expect(mockedListDiscoveryProposals).not.toHaveBeenCalled();
     });
 
     it("renders unavailable state", async () => {
@@ -657,7 +959,6 @@ describe("DiscoveryItemPage", () => {
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(within(alert).getByText("Discovery catalog unavailable")).toBeInTheDocument();
-        expect(within(alert).getByText("Catalog unavailable")).toBeInTheDocument();
+        expect(alert).toHaveTextContent("Catalog item unavailable");
     });
 });

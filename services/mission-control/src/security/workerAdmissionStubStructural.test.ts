@@ -19,18 +19,19 @@ describe("v0.38 worker admission stub presentation boundary", () => {
         expect(router).not.toMatch(/worker-admission-stubs|WorkerAdmissionStub/i);
         expect(navigation).not.toMatch(/worker admission stub|worker-admission-stubbed/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(worker|start|enqueue|queue|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).toMatch(/>Retry<\/button>/);
+        expect(component).not.toMatch(/>\s*(worker|start|enqueue|queue|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
-    it("renders simple state and keeps technical evidence under Advanced details", () => {
-        expect(component).toMatch(/preserves a non-enqueuing worker admission stub evidence record only/i);
-        expect(component).toMatch(/State: eligible evidence; bound: false; blocked: yes/i);
-        expect(component).toMatch(/Advanced details/);
+    it("renders simple state and keeps technical evidence collapsed", () => {
+        expect(component).toMatch(/This review record does not start a worker or put work on a queue/i);
+        expect(component).toMatch(/Worker setup record is current/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Worker admission fixed-false authority fields/);
         expect(component).toMatch(/Worker capability fingerprint/);
-        expect(component).toMatch(/Inherited byte-exact sandbox, resource, network, and filesystem ceilings/);
+        expect(component).toMatch(/Sandbox and resource limits/);
         expect(component).toMatch(/Blockers/);
-        expect(component).toMatch(/not worker start, queue or enqueue, execution start, runner binding, install, dispatch/i);
+        expect(component).toMatch(/No worker has been contacted or started, and no work has been put on a queue/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /worker-admission-stubs|WorkerAdmissionStub/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/workerAdmissionStub.ts",

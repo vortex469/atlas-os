@@ -6,15 +6,16 @@ import type { WorkerIntakeAdmissionV1 } from "../../types/workerIntakeAdmission"
 import { LiveEnqueueAdmissions } from "./LiveEnqueueAdmissions";
 
 const BLOCKERS: Record<string, string> = {
-    live_enqueue_not_defined: "Live enqueue is not defined",
-    dequeue_not_defined: "Dequeue is not defined",
-    worker_start_not_defined: "Worker start is not defined",
-    execution_start_boundary_not_defined: "Execution start boundary is not defined",
+    live_enqueue_not_defined: "Atlas has not set up a live queue.",
+    dequeue_not_defined: "Atlas has not set up a way to remove queued work.",
+    worker_start_not_defined: "Atlas has not set up a way to start a worker.",
+    execution_start_boundary_not_defined: "Atlas has not set up a safe way to start this installation.",
 };
 
 export function WorkerIntakeAdmissions({ candidateId, reservationId, homeAssistantBlocked }: { candidateId: string; reservationId: string; homeAssistantBlocked: boolean }) {
     const [items, setItems] = useState<WorkerIntakeAdmissionV1[] | null>(null);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         let current = true;
@@ -22,44 +23,44 @@ export function WorkerIntakeAdmissions({ candidateId, reservationId, homeAssista
             .then((value) => { if (current) setItems(value.items.filter((item) => item.linkage.queue_reservation_id === reservationId)); })
             .catch(() => { if (current) setError(true); });
         return () => { current = false; };
-    }, [candidateId, reservationId]);
+    }, [candidateId, reservationId, readAttempt]);
 
-    return <section className="mt-4 rounded border border-slate-700 p-3" aria-label="Worker intake admission evidence">
-        <h6 className="font-semibold">Worker intake admission</h6>
-        <p className="mt-2 text-sm">Mission Control shows the worker intake admission status here in the existing worker flow. It is evidence only and does not send work to a queue or start a worker.</p>
-        <p className="mt-2 text-sm">No execution controls are available here. This is not live enqueue, dequeue, worker contact, worker start, dispatch, execution, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, installation, deployment, rollback, retry, resend, or permission to mutate anything.</p>
-        {homeAssistantBlocked && <p className="mt-2 text-sm text-amber-200">For Home Assistant, worker intake admission remains blocked; it stays non-installable and non-executable.</p>}
-        {items === null && !error && <p role="status" className="mt-3">Loading worker intake admission status…</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Worker intake admission status is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No worker intake admission evidence has been recorded. Queue handoff, worker start, and execution remain blocked.</p>}
-        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Worker intake admissions">{items.map((item) => <Admission key={item.admission_id} admission={item} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
+    return <section className="mt-4 rounded border border-slate-700 p-3" aria-label="Worker intake review">
+        <h6 className="font-semibold">Worker intake review</h6>
+        <p className="mt-2 text-sm">This record is for review only. It does not send work to a queue or start a worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Checking for a saved worker intake record…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Atlas could not load the worker intake record. Retry to check its current status.</p><p className="text-xs text-slate-400">Private system details are hidden.</p><button type="button" onClick={() => { setItems(null); setError(false); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
+        {items?.length === 0 && <p role="status" className="mt-3">No worker intake review record has been saved. Atlas cannot hand work to a worker or start it.</p>}
+        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Saved worker intake records">{items.map((item) => <Admission key={item.admission_id} admission={item} homeAssistantBlocked={homeAssistantBlocked} />)}</ol>}
     </section>;
 }
 
 function Admission({ admission, homeAssistantBlocked }: { admission: WorkerIntakeAdmissionV1; homeAssistantBlocked: boolean }) {
-    const status = isExpired(admission.valid_until) ? "Expired" : "Recorded";
+    const expired = isExpired(admission.valid_until);
     const identity = admission.worker_identity;
     const intake = admission.worker_intake_reference;
     const decision = admission.admission_decision;
     const limits = admission.inherited_limits;
     const link = admission.linkage;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">{status} worker intake admission evidence</p>
-        <p className="mt-1">Status: {admission.eligibility}; lifecycle: {admission.lifecycle}; intake protocol: {intake.intake_protocol}; worker contacted: false; worker started: false; work enqueued: false.</p>
-        <p className="mt-1">Recorded {admission.recorded_at}; valid until {admission.valid_until}. Freshness is at most 30 seconds and expiry is passive.</p>
-        <ol aria-label="Ordered worker intake admission blockers" className="mt-2 list-decimal pl-5">
-            {admission.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? value} <code className="text-xs text-slate-400">{value}</code></li>)}
+        <p className="font-semibold">{expired ? "Worker intake record has expired" : "Worker intake record is current"}</p>
+        <p className="mt-1">This record has not contacted a worker or put work on a queue.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(admission.recorded_at)}; valid until {formatUtcTimestamp(admission.valid_until)}. An expired record cannot be renewed.</p>
+        <ol aria-label="What needs attention" className="mt-2 list-decimal pl-5">
+            {admission.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? "Atlas reported an issue that needs review."}</li>)}
         </ol>
-        <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Value name="Worker identity" value={identity.worker_identity_id} />
-            <Value name="Worker eligibility" value={identity.eligibility} />
-            <Value name="Intake reference" value={intake.worker_intake_reference_id} />
-            <Value name="Intake eligibility" value={intake.eligibility} />
-            <Value name="Decision" value={decision.decision} />
-            <Value name="Decision evaluated" value={decision.evaluated_at} />
-        </dl>
         <details className="mt-3">
-            <summary>Advanced details</summary>
+            <summary>Technical details</summary>
+            <p className="mt-2">Record status: {admission.eligibility}; lifecycle: {admission.lifecycle}; intake protocol: {intake.intake_protocol}.</p>
+            <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                <Value name="Worker identity" value={identity.worker_identity_id} />
+                <Value name="Worker eligibility" value={identity.eligibility} />
+                <Value name="Intake reference" value={intake.worker_intake_reference_id} />
+                <Value name="Intake eligibility" value={intake.eligibility} />
+                <Value name="Decision" value={decision.decision} />
+                <Value name="Decision evaluated" value={formatUtcTimestamp(decision.evaluated_at)} />
+            </dl>
+            <details className="mt-3"><summary>Blocker codes</summary><ul className="mt-2 list-disc pl-5">{admission.blockers.map((value) => <li key={value}><code>{value}</code></li>)}</ul></details>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Admission ID" value={admission.admission_id} />
                 <Value name="Authenticated operator" value={admission.operator_id} />
@@ -78,7 +79,7 @@ function Admission({ admission, homeAssistantBlocked }: { admission: WorkerIntak
                 <Value name="Runner binding plan fingerprint" value={link.runner_binding_plan_fingerprint.value} />
                 <Value name="Linkage fingerprint" value={link.linkage_fingerprint.value} />
             </dl>
-            <h6 className="mt-3 font-semibold">Inherited sandbox, resource, network, and filesystem ceilings</h6>
+            <h6 className="mt-3 font-semibold">Sandbox and resource limits</h6>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Sandbox profile" value={limits.sandbox.profile} />
                 <Value name="Privileged / escalation / host namespaces / devices" value="false" />
@@ -105,3 +106,7 @@ function isExpired(value: string) {
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{display(value)}</dd></div>; }
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
+}

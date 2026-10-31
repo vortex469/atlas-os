@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -51,6 +51,7 @@ def candidate(
     source_recommendation_id: str = "finding-1",
     target_id: str = "service-frigate",
     status: ExecutionCandidateStatus = ExecutionCandidateStatus.ELIGIBLE,
+    expires_at: datetime | None = None,
     category: ExecutionCategory = ExecutionCategory.RESTART,
     intent: ExecutionIntent = ExecutionIntent.RESTART_SERVICE,
     source_subsystem: str = "orion",
@@ -82,6 +83,7 @@ def candidate(
         constraints=(ExecutionConstraint.SERVICE_DISRUPTION,) if category == ExecutionCategory.RESTART else (),
         evidence_ids=("evidence-1",),
         created_at=NOW,
+        expires_at=expires_at,
     )
 
 
@@ -231,6 +233,45 @@ def test_filters_combine_with_and(monkeypatch: pytest.MonkeyPatch) -> None:
     body = response.json()
     assert body["total"] == 1
     assert body["candidates"][0]["target_id"] == "service-frigate"
+
+
+def test_expired_filter_uses_expiry_timestamp_and_keeps_status_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    expired_candidate = candidate(
+        source_recommendation_id="finding-expired",
+        status=ExecutionCandidateStatus.NOT_ELIGIBLE,
+        expires_at=NOW + timedelta(days=1),
+    )
+    current_candidate = candidate(
+        source_recommendation_id="finding-current",
+        expires_at=NOW + timedelta(days=36500),
+    )
+    no_expiry_candidate = candidate(
+        source_recommendation_id="finding-no-expiry",
+    )
+
+    async def candidates():
+        return (expired_candidate, current_candidate, no_expiry_candidate)
+
+    monkeypatch.setattr(routes, "collect_current_execution_candidates", candidates)
+
+    expired_response = client.get("/api/v1/execution-candidates", params={"expired": "true"})
+    current_response = client.get("/api/v1/execution-candidates", params={"expired": "false"})
+
+    assert expired_response.status_code == 200
+    expired_body = expired_response.json()
+    assert [item["id"] for item in expired_body["candidates"]] == [expired_candidate.id]
+    assert expired_body["candidates"][0]["status"] == "not_eligible"
+    assert current_response.status_code == 200
+    assert {item["id"] for item in current_response.json()["candidates"]} == {
+        current_candidate.id,
+        no_expiry_candidate.id,
+    }
+
+
+def test_expiry_is_not_a_candidate_eligibility_status() -> None:
+    response = client.get("/api/v1/execution-candidates", params={"status": "expired"})
+
+    assert response.status_code == 422
 
 
 def test_pagination_uses_total_before_slicing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -384,6 +425,8 @@ def test_execution_candidate_openapi_exposes_only_reviewed_methods() -> None:
         "/api/v1/execution-candidates/operator-intents/resources",
     }
     assert set(paths["/api/v1/execution-candidates"]) == {"get"}
+    list_parameters = app.openapi()["paths"]["/api/v1/execution-candidates"]["get"]["parameters"]
+    assert "expired" in {parameter["name"] for parameter in list_parameters}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}"]) == {"get"}
     assert set(paths["/api/v1/execution-candidates/{candidate_id}/planning-intake"]) == {"post"}
     assert set(paths["/api/v1/execution-candidates/operator-intents"]) == {"post"}

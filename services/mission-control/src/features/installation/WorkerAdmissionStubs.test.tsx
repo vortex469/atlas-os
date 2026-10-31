@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listWorkerAdmissionStubs } from "../../api/workerAdmissionStub";
@@ -18,34 +18,37 @@ describe("WorkerAdmissionStubs", () => {
         let resolve!: (value: typeof empty) => void;
         vi.mocked(listWorkerAdmissionStubs).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<WorkerAdmissionStubs candidateId="candidate" bindingPlan={runnerBindingPlanResultFixture} homeAssistantBlocked={false} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading worker admission stub evidence/i);
-        resolve(empty); await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker admission stub evidence/i)); unmount();
+        expect(screen.getByRole("status")).toHaveTextContent(/checking for a saved worker setup record/i);
+        resolve(empty); await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker setup record has been saved/i)); unmount();
         vi.mocked(listWorkerAdmissionStubs).mockRejectedValue(new Error("credential /internal/path 10.0.0.1"));
         render(<WorkerAdmissionStubs candidateId="candidate" bindingPlan={runnerBindingPlanResultFixture} homeAssistantBlocked={false} />);
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/error is redacted/i));
+        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/could not load the worker setup record.*retry to check its current status/i));
         expect(screen.queryByText(/10\.0\.0\.1|credential \/internal/i)).not.toBeInTheDocument();
+        vi.mocked(listWorkerAdmissionStubs).mockResolvedValueOnce(empty);
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+        expect(await screen.findByText("No worker setup record has been saved. Atlas cannot start a worker or queue work.")).toBeInTheDocument();
+        expect(listWorkerAdmissionStubs).toHaveBeenCalledTimes(3);
     });
-    it("renders compact worker state while keeping technical evidence under Advanced details", async () => {
+    it("renders a short worker status while keeping technical evidence collapsed", async () => {
         vi.mocked(listWorkerAdmissionStubs).mockResolvedValue({ ...empty, stubs: [workerAdmissionStubResultFixture] });
         render(<WorkerAdmissionStubs candidateId="candidate" bindingPlan={runnerBindingPlanResultFixture} homeAssistantBlocked={false} />);
-        expect(await screen.findByText(/active worker admission evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/state: eligible evidence; bound: false; blocked: yes/i)).toHaveTextContent(/worker contacted: false; worker started: false; work enqueued: false/i);
-        const advanced = screen.getByText("Advanced details").closest("details");
+        expect(await screen.findByText("Worker setup record is current")).toBeInTheDocument();
+        expect(screen.getByText(/no worker has been contacted or started, and no work has been put on a queue/i)).toBeInTheDocument();
+        const advanced = screen.getByText("Technical details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
         expect(screen.getByLabelText(/ordered worker admission blockers/i)).toHaveTextContent(/worker_not_started.*queue_boundary_not_defined.*execution_start_boundary_not_defined/i);
-        expect(screen.getByText(/inherited byte-exact sandbox/i)).toBeInTheDocument();
-        expect(screen.getByText(/required v0.20-v0.37 linkage/i)).toBeInTheDocument();
+        expect(screen.getByText(/sandbox and resource limits/i)).toBeInTheDocument();
+        expect(screen.getByText(/related review records/i)).toBeInTheDocument();
         expect(screen.getByText(/permanent worker-admission-subject reservation/i)).toHaveTextContent(/replay allowed: false/i);
         expect(screen.getByLabelText(/worker admission fixed-false authority fields/i)).toHaveTextContent(/worker startedfalse.*work enqueuedfalse.*execution authorizedfalse/i);
-        expect(screen.getByText(/not worker start, queue or enqueue/i)).toHaveTextContent(/not.*dispatch.*retry or resend.*Agent invocation.*deployment.*rollback.*permission to mutate/i);
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
-    it("renders expiry and Home Assistant blocked golden copy", async () => {
+    it("renders expiry without repeating the parent Home Assistant notice", async () => {
         const expired = { ...workerAdmissionStubResultFixture, status: { ...workerAdmissionStubResultFixture.status!, lifecycle: "expired" as const } };
         vi.mocked(listWorkerAdmissionStubs).mockResolvedValue({ ...empty, stubs: [expired] });
         render(<WorkerAdmissionStubs candidateId="candidate" bindingPlan={runnerBindingPlanResultFixture} homeAssistantBlocked />);
-        expect(await screen.findByText(/expired worker admission evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/For Home Assistant, worker admission remains blocked/i)).toHaveTextContent(/non-installable and non-executable/i);
+        expect(await screen.findByText("Worker setup record has expired")).toBeInTheDocument();
+        expect(screen.queryByText("Atlas cannot install or run Home Assistant yet.")).not.toBeInTheDocument();
     });
 });

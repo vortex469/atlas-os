@@ -1,4 +1,5 @@
 import type { AceRecommendation } from "../types/ace";
+import { safeText } from "../utils/safeText";
 
 type RecommendationCardProps = {
     recommendation: AceRecommendation;
@@ -41,11 +42,11 @@ export function RecommendationCard({
             <div className="flex items-start justify-between gap-5">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">
-                        Advisory recommendation
+                        Atlas suggestion
                     </p>
 
                     <h3 className="mt-2 text-base font-semibold leading-6 text-slate-100">
-                        {recommendation.title}
+                        {safeText(recommendation.title) || "Suggestion details unavailable."}
                     </h3>
                 </div>
 
@@ -61,7 +62,7 @@ export function RecommendationCard({
             </div>
 
             <p className="mt-4 text-sm leading-6 text-slate-400">
-                {recommendation.reason}
+                {safeText(recommendation.reason) || "No suggestion details were provided."}
             </p>
 
             <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-slate-800 pt-4">

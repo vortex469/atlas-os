@@ -18,7 +18,7 @@ vi.mock("../api/providerManagement", () => ({
 }));
 vi.mock("../api/resources", () => ({ getProviderResources: vi.fn(), refreshProviderResources: vi.fn() }));
 vi.mock("../components/ProviderOverview", () => ({ ProviderOverview: () => <section><h2>Provider overview</h2></section> }));
-vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Compatibility actions</h2></section> }));
+vi.mock("../components/ProviderActions", () => ({ ProviderActions: () => <section><h2>Direct provider actions</h2></section> }));
 vi.mock("../components/ProviderConnection", () => ({ ProviderConnection: () => null }));
 vi.mock("../components/ProviderTelemetryTrend", () => ({ ProviderTelemetryTrend: () => null }));
 
@@ -132,28 +132,28 @@ describe("ProviderPage monitoring and legacy authority", () => {
         });
     });
 
-    it("keeps public v2 running current and YAML stopped only as legacy evidence", async () => {
+    it("shows current monitoring separately from older VM settings", async () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
         const monitoring = screen.getByRole("heading", { name: "Resources and monitoring" }).closest("section");
-        const legacy = screen.getByRole("heading", { name: "Legacy policy evidence" }).closest("section");
+        const legacy = screen.getByRole("heading", { name: "Older VM settings" }).closest("section");
         expect(monitoring).not.toBeNull();
         expect(legacy).not.toBeNull();
         expect(await within(monitoring!).findByText("Expected running")).toBeInTheDocument();
         expect(within(monitoring!).getByText("Running")).toBeInTheDocument();
-        expect(within(monitoring!).getByText("Authoritative")).toBeInTheDocument();
+        expect(within(monitoring!).getByText("Provider verified")).toBeInTheDocument();
         expect(within(monitoring!).getByText("Configured — matches observed state")).toBeInTheDocument();
         expect(within(monitoring!).queryByText("Expected stopped")).not.toBeInTheDocument();
         expect(screen.getByText(/Advisory finding · Proxmox/)).toBeInTheDocument();
-        expect(screen.getByText("Advisory recommendation")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Compatibility actions" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Request operational maintenance" })).toHaveAttribute("href", "/operations/request");
+        expect(screen.getByText("Atlas suggestion")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Request maintenance" })).toHaveAttribute("href", "/operations/request");
         expect(within(legacy!).getByText("110: stopped")).toBeInTheDocument();
-        expect(within(legacy!).getByText(/non-authoritative review context/i)).toBeInTheDocument();
+        expect(within(legacy!).getByText(/kept for reference/i)).toBeInTheDocument();
         expect(within(legacy!).queryByText(/currently enforced|current monitoring intent/i)).not.toBeInTheDocument();
     });
 
-    it("exposes editing only for the supported live authoritative QEMU coordinate", async () => {
+    it("allows edits only for supported current QEMU resources", async () => {
         const user = userEvent.setup();
         vi.mocked(useOperatorSession).mockReturnValue({
             authenticated: true,
@@ -225,7 +225,7 @@ describe("ProviderPage monitoring and legacy authority", () => {
         expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
         expect(screen.getAllByRole("button", { name: "Save" })).toHaveLength(1);
-        expect(screen.getByText("Unsupported for identity-bound monitoring")).toBeInTheDocument();
+        expect(screen.getByText("Monitoring is not supported for this resource type")).toBeInTheDocument();
         expect(within(screen.getByTestId("resource-row-lxc-110")).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /Start|Restart|Remediate/i })).not.toBeInTheDocument();
     });

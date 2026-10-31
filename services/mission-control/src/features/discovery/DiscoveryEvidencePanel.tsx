@@ -5,29 +5,31 @@ import type {
     DiscoveryReleaseEvaluationStatus,
     DiscoverySourceHealth,
 } from "../../types/discovery";
+import { evidenceTimestamp } from "../../utils/healthPresentation";
 
 type Props = {
     evidence: DiscoveryItemEvidence | null;
     isLoading: boolean;
     error: string | null;
+    onRetry?: () => void;
 };
 
 const conflictCopy: Record<DiscoveryConflictState, { title: string; detail: string }> = {
     none: {
-        title: "No conflict",
-        detail: "No conflicting dynamic release claims are present.",
+        title: "No conflict found",
+        detail: "No release report disagrees with the catalog.",
     },
     agreement: {
-        title: "Sources agree",
-        detail: "The supplemental release evidence agrees with the curated release claim.",
+        title: "Release information agrees",
+        detail: "The release reports match the catalog version.",
     },
     dynamic_conflict: {
-        title: "Dynamic source conflict",
-        detail: "Supplemental sources report different values. No dynamic value is selected as authoritative.",
+        title: "Release sources disagree",
+        detail: "Release sources report different versions. Atlas does not choose one as correct.",
     },
     curated_conflict: {
-        title: "Curated evidence conflict",
-        detail: "Supplemental evidence differs from the curated release claim. Curated data remains authoritative.",
+        title: "Release report differs from the catalog",
+        detail: "A release report differs from the catalog. The catalog entry remains unchanged.",
     },
 };
 
@@ -45,51 +47,43 @@ const releaseEvaluationCopy: Record<
     { title: string; detail: string; tone: ReleaseEvaluationTone }
 > = {
     up_to_date: {
-        title: "Up to date",
-        detail:
-            "The freshest dynamic release evidence matches the authoritative baseline version. No change is recommended or implied.",
+        title: "Versions match",
+        detail: "The latest release report matches the catalog version. This check does not recommend a change.",
         tone: "positive",
     },
     update_available: {
-        title: "Update available",
-        detail:
-            "A newer upstream release is observed than the authoritative baseline version. Informational only; nothing is scheduled, proposed, or applied.",
+        title: "Newer release reported",
+        detail: "A release source reports a newer version than the catalog. This is information only; no change is proposed or applied.",
         tone: "positive",
     },
     baseline_ahead: {
-        title: "Baseline ahead",
-        detail:
-            "The authoritative baseline version is ahead of the freshest observed upstream release. No change is recommended or implied.",
+        title: "Catalog lists a newer version",
+        detail: "The catalog lists a newer version than the release report. This check does not recommend a change.",
         tone: "positive",
     },
     conflicted: {
-        title: "Conflicted release claims",
-        detail:
-            "Release evidence conflicts, so no latest version is selected. Curated catalog data remains authoritative. No change is recommended or implied.",
+        title: "Release information conflicts",
+        detail: "Sources disagree, so Atlas does not choose a latest version. The catalog version remains the reference.",
         tone: "conflict",
     },
     stale_evidence: {
-        title: "Stale release evidence",
-        detail:
-            "The latest dynamic release evidence is stale and may not describe the current upstream release. No positive comparison is made.",
+        title: "Release information may be out of date",
+        detail: "The latest source result is old, so Atlas cannot compare it with confidence.",
         tone: "caution",
     },
     no_baseline: {
-        title: "No baseline version",
-        detail:
-            "No authoritative baseline version is available to compare against dynamic release evidence.",
+        title: "Catalog version unavailable",
+        detail: "The catalog does not provide a version to compare with reported releases.",
         tone: "neutral",
     },
     no_dynamic_evidence: {
-        title: "No dynamic release evidence",
-        detail:
-            "No dynamic release claims are available to compare against the authoritative baseline. Curated data remains available and authoritative.",
+        title: "No release reports available",
+        detail: "No release report is available. Catalog information remains available.",
         tone: "neutral",
     },
     insufficient_information: {
-        title: "Insufficient information",
-        detail:
-            "The available release versions cannot be compared as strict numeric versions. No positive comparison is made.",
+        title: "Versions cannot be compared",
+        detail: "The available version formats cannot be compared reliably. No update is recommended.",
         tone: "caution",
     },
 };
@@ -108,7 +102,7 @@ const releaseEvaluationBadgeStyles: Record<ReleaseEvaluationTone, string> = {
     neutral: "rounded-full border border-slate-600 bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-300",
 };
 
-export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
+export function DiscoveryEvidencePanel({ evidence, isLoading, error, onRetry }: Props) {
     return (
         <section
             aria-labelledby="discovery-evidence-heading"
@@ -118,22 +112,27 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
                 Release evidence
             </h2>
             <p className="mt-1 text-sm text-slate-400">
-                Supplemental, read-only observations. Curated catalog data remains authoritative.
+                Release reports are for reference only. They don’t change this catalog item.
             </p>
 
             {isLoading && (
                 <p role="status" aria-live="polite" className="mt-4 text-sm text-slate-300">
-                    Loading source evidence…
+                    Checking release information…
                 </p>
             )}
 
             {!isLoading && error && (
                 <div role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-                    <p className="font-semibold text-amber-200">Dynamic evidence unavailable</p>
-                    <p className="mt-1 text-sm text-amber-200/90">{error}</p>
+                    <p className="font-semibold text-amber-200">Release information unavailable</p>
+                    <p className="mt-1 text-sm text-amber-200/90">Atlas could not check release information.</p>
                     <p className="mt-2 text-sm text-slate-300">
-                        Showing the curated catalog only. No authoritative Discovery data was lost or changed.
+                        The catalog information is still available and unchanged.
                     </p>
+                    <details className="mt-2">
+                        <summary className="mc-focusable cursor-pointer text-xs text-slate-400">Technical details</summary>
+                        <p className="mt-2 break-words text-xs text-slate-400">{error}</p>
+                    </details>
+                    {onRetry && <button type="button" onClick={onRetry} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-200">Retry release check</button>}
                 </div>
             )}
 
@@ -148,9 +147,9 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
                     <SourceSummary evidence={evidence} />
                     {evidence.dynamic_claims.length === 0 ? (
                         <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-                            <p className="font-medium text-slate-200">Curated catalog only</p>
+                            <p className="font-medium text-slate-200">Only catalog information is available</p>
                             <p className="mt-1 text-sm text-slate-400">
-                                No usable dynamic claims are available. Curated data remains available and authoritative.
+                                No release reports are available. Catalog information is still available.
                             </p>
                         </div>
                     ) : (
@@ -166,24 +165,29 @@ export function DiscoveryEvidencePanel({ evidence, isLoading, error }: Props) {
                                             ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-200"
                                             : "rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-200"}
                                         >
-                                            {claim.freshness === "fresh" ? "Fresh" : "Stale"}
+                                            {claim.freshness === "fresh" ? "Current report" : "May be out of date"}
                                         </span>
                                     </div>
                                     {claim.freshness === "stale" && (
                                         <p className="mt-2 text-sm font-medium text-amber-200">
-                                            Stale evidence may not describe the current upstream release.
+                                            This information may not reflect the latest release.
                                         </p>
                                     )}
                                     <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                                        <Fact label="Source" value={claim.provenance.source_id} />
-                                        <Fact label="Source type" value="GitHub latest release" />
-                                        <Fact label="Repository" value={claim.provenance.repository} />
-                                        <Fact label="Trust" value="Supplemental" />
-                                        <Fact label="Published" value={formatTimestamp(claim.published_at)} />
-                                        <Fact label="Retrieved" value={`${formatTimestamp(claim.provenance.retrieved_at)} (${formatAge(claim.provenance.retrieved_at)})`} />
-                                        <Fact label="Freshness expires" value={formatTimestamp(claim.provenance.expires_at)} />
-                                        <Fact label="Upstream release ID" value={String(claim.provenance.upstream_release_id)} />
+                                        <TimeFact label="Released" value={claim.published_at} />
+                                        <TimeFact label="Checked by Atlas" value={claim.provenance.retrieved_at} context={formatAge(claim.provenance.retrieved_at)} />
                                     </dl>
+                                    <details className="mt-3 border-t border-slate-800 pt-3">
+                                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Source details</summary>
+                                        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                                            <Fact label="Source ID" value={claim.provenance.source_id} />
+                                            <Fact label="Source type" value="GitHub release information" />
+                                            <Fact label="Repository" value={claim.provenance.repository} />
+                                            <Fact label="Source role" value="Additional report; catalog entry stays as listed" />
+                                            <TimeFact label="Source data valid until" value={claim.provenance.expires_at} />
+                                            <Fact label="Release record ID" value={String(claim.provenance.upstream_release_id)} />
+                                        </dl>
+                                    </details>
                                 </li>
                             ))}
                         </ul>
@@ -225,7 +229,7 @@ function ReleaseEvaluationNotice({
             className={releaseEvaluationToneStyles[copy.tone]}
         >
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold">Release evaluation</p>
+                <p className="font-semibold">Version comparison</p>
                 <span className={releaseEvaluationBadgeStyles[copy.tone]}>
                     {copy.title}
                 </span>
@@ -235,18 +239,18 @@ function ReleaseEvaluationNotice({
                 <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                     {baseline !== null && (
                         <Fact
-                            label="Baseline version"
+                            label="Catalog version"
                             value={baseline.version}
                         />
                     )}
                     {baseline !== null && (
                         <Fact
-                            label="Baseline source"
+                            label="Catalog version source"
                             value={label(baseline.source)}
                         />
                     )}
                     {candidate !== null && (
-                        <Fact label="Latest candidate" value={candidate} />
+                        <Fact label="Latest reported release" value={candidate} />
                     )}
                 </dl>
             )}
@@ -256,7 +260,7 @@ function ReleaseEvaluationNotice({
 
 function SourceSummary({ evidence }: { evidence: DiscoveryItemEvidence }) {
     if (evidence.source_states.length === 0) {
-        return <p className="text-sm text-slate-400">No dynamic sources are mapped to this catalog item.</p>;
+        return <p className="text-sm text-slate-400">No release sources are available for this item.</p>;
     }
     return (
         <ul aria-label="Discovery source health" className="grid gap-3 sm:grid-cols-2">
@@ -264,17 +268,20 @@ function SourceSummary({ evidence }: { evidence: DiscoveryItemEvidence }) {
                 const health = source.health ?? "unknown";
                 return (
                     <li key={source.source_id} className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-                        <p className="break-all text-sm font-medium text-slate-200">{source.source_id}</p>
+                        <p className="text-sm font-medium text-slate-200">{sourceTitle(source.source_id, evidence)}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                             <span className={`rounded-full border px-2.5 py-1 text-xs font-medium ${healthStyles[health]}`}>
-                                Health: {label(health)}
+                                Source: {sourceHealthLabel(health)}
                             </span>
                             <span className="rounded-full border border-slate-600 bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
-                                Cache: {label(source.cache_state)}
+                                Saved evidence: {cacheStateLabel(source.cache_state)}
                             </span>
                         </div>
-                        {source.cache_state === "corrupt" && <p className="mt-2 text-sm text-amber-200">Corrupt cached evidence was excluded.</p>}
-                        {source.cache_state === "absent" && <p className="mt-2 text-sm text-slate-400">No cached evidence is available.</p>}
+                        {source.cache_state === "corrupt" && <p className="mt-2 text-sm text-amber-200">Atlas ignored unreadable saved evidence.</p>}
+                        <details className="mt-2">
+                            <summary className="mc-focusable cursor-pointer text-xs text-slate-400">Technical details</summary>
+                            <p className="mt-2 break-all text-xs text-slate-400">Source ID: {source.source_id}</p>
+                        </details>
                     </li>
                 );
             })}
@@ -286,19 +293,54 @@ function Fact({ label: factLabel, value }: { label: string; value: string }) {
     return <div><dt className="text-xs uppercase tracking-wider text-slate-500">{factLabel}</dt><dd className="mt-1 break-words text-slate-300">{value}</dd></div>;
 }
 
+function TimeFact({ label: factLabel, value, context }: { label: string; value: string; context?: string }) {
+    const timestamp = evidenceTimestamp(value);
+    return <div>
+        <dt className="text-xs uppercase tracking-wider text-slate-500">{factLabel} (local time)</dt>
+        <dd className="mt-1 break-words text-slate-300">
+            {timestamp === null
+                ? "Time unavailable"
+                : <><time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>{context ? ` (${context})` : null}</>}
+        </dd>
+    </div>;
+}
+
 function label(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1).replaceAll("_", " ");
 }
 
-function formatTimestamp(value: string): string {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "Unknown" : parsed.toLocaleString();
+function sourceTitle(sourceId: string, evidence: DiscoveryItemEvidence): string {
+    const claim = evidence.dynamic_claims.find((item) => item.provenance.source_id === sourceId);
+    return claim?.provenance.source_type === "github_latest_release"
+        ? "GitHub release information"
+        : "Release source";
+}
+
+function sourceHealthLabel(health: DiscoverySourceHealth | "unknown"): string {
+    const labels: Record<DiscoverySourceHealth | "unknown", string> = {
+        healthy: "Available",
+        degraded: "Partly available",
+        unavailable: "Unavailable",
+        unknown: "Status not reported",
+    };
+    return labels[health];
+}
+
+function cacheStateLabel(state: DiscoveryItemEvidence["source_states"][number]["cache_state"]): string {
+    const labels = {
+        available: "Available",
+        absent: "None found",
+        corrupt: "Could not be read",
+    } as const;
+    return labels[state];
 }
 
 function formatAge(value: string): string {
-    const time = new Date(value).getTime();
-    if (Number.isNaN(time)) return "age unknown";
-    const elapsed = Math.max(0, Date.now() - time);
+    const time = evidenceTimestamp(value);
+    if (time === null) return "age unknown";
+    const now = Date.now();
+    if (time > now) return "reported time is in the future";
+    const elapsed = now - time;
     const hours = Math.floor(elapsed / 3_600_000);
     if (hours < 1) return "less than 1 hour ago";
     if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;

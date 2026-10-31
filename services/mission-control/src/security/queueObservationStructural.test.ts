@@ -35,13 +35,15 @@ describe("v0.43 queue observation Mission Control boundary", () => {
     });
 
     it("keeps fingerprints and receipt evidence in details and omits prohibited controls", () => {
-        expect(component).toMatch(/State: \{observed \? "Observed" : "Pending or blocked"\}/);
+        expect(component).toMatch(/This saves Core-supplied receipt evidence only\. It does not remove or process queued work/i);
+        expect(component).toMatch(/Queue receipt record is current/);
         expect(component).toMatch(/<details className="mt-3">/);
         expect(component).toMatch(/Enqueue receipt fingerprint/);
         expect(component).toMatch(/Lineage fingerprint/);
         expect(component).toMatch(/Queue observation fixed-false authority fields/);
         expect(component).toMatch(/Record bounded queue observation evidence only/);
         expect(component).not.toMatch(/queue selector|worker selector|payload editor|editable limit|raw receipt document|raw queue identity value/i);
-        expect(component).not.toMatch(/>\s*(dequeue|poll|claim|lease|ack|start worker|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(component).toMatch(/>Retry<\/button>/);
+        expect(component).not.toMatch(/>\s*(dequeue|poll|claim|lease|ack|start worker|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 });

@@ -1,4 +1,4 @@
-import { EVIDENCE_ORDER, LINKAGE_KEYS } from "../api/installationReadinessReview";
+import { EVIDENCE_ORDER, LINKAGE_KEYS } from "../types/installationReadinessReviewConstants";
 import type { FingerprintV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
 
 export const uuid4 = "00000000-0000-4000-8000-000000000001";

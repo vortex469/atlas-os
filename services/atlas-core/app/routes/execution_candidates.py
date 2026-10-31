@@ -63,6 +63,7 @@ OperatorIntentPrincipal = Annotated[OperatorPrincipal, Depends(_require_intent_c
 OperatorIntentReadPrincipal = Annotated[OperatorPrincipal, Depends(_require_intent_read)]
 
 StatusFilters = Annotated[list[ExecutionCandidateStatus] | None, Query(alias="status")]
+ExpiredFilter = Annotated[bool | None, Query(alias="expired")]
 CategoryFilters = Annotated[list[ExecutionCategory] | None, Query(alias="category")]
 IntentFilters = Annotated[list[ExecutionIntent] | None, Query(alias="intent")]
 
@@ -87,6 +88,7 @@ def _collection_unavailable(error: ExecutionCandidateCollectionError) -> HTTPExc
 async def list_execution_candidates(
     request: Request,
     statuses: StatusFilters = None,
+    expired: ExpiredFilter = None,
     categories: CategoryFilters = None,
     intents: IntentFilters = None,
     source_subsystems: Annotated[list[str] | None, Query(alias="source_subsystem")] = None,
@@ -108,6 +110,8 @@ async def list_execution_candidates(
     filtered = filter_candidates(
         candidates,
         statuses=_tuple(statuses),
+        expired=expired,
+        now=datetime.now(UTC),
         categories=_tuple(categories),
         intents=_tuple(intents),
         source_subsystems=_tuple(source_subsystems),

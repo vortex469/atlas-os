@@ -1,16 +1,20 @@
 import {
+    act,
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
+import { MemoryRouter } from "react-router-dom";
 
 import {
     getProviderActions,
     runProviderAction,
 } from "../api/atlas";
-import type { ProviderAction } from "../types/providerAction";
+import type { ProviderAction, ProviderActionResult } from "../types/providerAction";
 import { ProviderActions } from "./ProviderActions";
 
 vi.mock("../api/atlas", () => ({
@@ -62,16 +66,58 @@ function renderActions(
     onActionCompleted = vi.fn(),
 ) {
     render(
-        <ProviderActions
-            provider={{ id: "ollama", name: "Ollama" }}
-            onActionCompleted={onActionCompleted}
-        />,
+        <MemoryRouter>
+            <ProviderActions
+                provider={{ id: "ollama", name: "Ollama" }}
+                onActionCompleted={onActionCompleted}
+            />
+        </MemoryRouter>,
     );
 
     return onActionCompleted;
 }
 
 describe("ProviderActions", () => {
+    it("clears parameters immediately when switching providers", async () => {
+        mockedGetProviderActions.mockResolvedValue([unloadAction]);
+        const user = userEvent.setup();
+        const completed = vi.fn();
+        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />);
+        await user.type(await screen.findByLabelText(/model/i), "old-provider-model");
+        let resolveNext!: (value: ProviderAction[]) => void;
+        mockedGetProviderActions.mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        view.rerender(<ProviderActions provider={{ id: "other", name: "Other" }} onActionCompleted={completed} />);
+        expect(screen.queryByLabelText(/model/i)).not.toBeInTheDocument();
+        expect(screen.getByText("Loading available actions…")).toBeInTheDocument();
+        await waitFor(() => expect(mockedGetProviderActions).toHaveBeenCalledWith("other"));
+        await act(async () => resolveNext([unloadAction]));
+        expect(await screen.findByLabelText(/model/i)).toHaveValue("");
+        expect(screen.getByRole("button", { name: "Unload Model" })).toBeDisabled();
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
+    });
+
+    it("does not attach a previous provider's action result or refresh the new provider", async () => {
+        let resolveAction!: (value: ProviderActionResult) => void;
+        mockedRunProviderAction.mockImplementationOnce(() => new Promise((resolve) => { resolveAction = resolve; }));
+        const completed = vi.fn();
+        const view = render(<ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={completed} />);
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        view.rerender(<ProviderActions provider={{ id: "other", name: "Other" }} onActionCompleted={completed} />);
+        await screen.findByRole("button", { name: "Run Diagnostics" });
+        await act(async () => resolveAction({ provider_id: "ollama", action_id: "run-diagnostics", status: "succeeded", success: true, message: "Old provider result", data: {}, warnings: [] }));
+        expect(screen.queryByText("Old provider result")).not.toBeInTheDocument();
+        expect(completed).not.toHaveBeenCalled();
+        expect(mockedRunProviderAction).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads the action catalog once under Strict Mode without running an action", async () => {
+        render(<StrictMode><ProviderActions provider={{ id: "ollama", name: "Ollama" }} onActionCompleted={vi.fn()} /></StrictMode>);
+        await screen.findByRole("button", { name: "Run Diagnostics" });
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetProviderActions.mockResolvedValue([
@@ -115,11 +161,161 @@ describe("ProviderActions", () => {
         ).toBeInTheDocument();
     });
 
-    it("labels existing provider actions as compatibility mechanisms", async () => {
+    it("filters sensitive text from provider action results", async () => {
+        const user = userEvent.setup();
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Bearer provider-action-canary-secret",
+            data: {},
+            warnings: ["https://private.example/provider-action-canary"],
+        });
         renderActions();
-        expect(await screen.findByRole("heading", { name: "Compatibility actions" })).toBeInTheDocument();
-        expect(screen.getByText(/Monitoring expectations do not invoke these actions/i)).toBeInTheDocument();
-        expect(screen.getByText(/operational maintenance is a separate workflow/i)).toBeInTheDocument();
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+
+        const result = await screen.findByRole("status");
+        expect(within(result).getAllByText("[Sensitive text withheld]")).toHaveLength(2);
+        expect(result).not.toHaveTextContent("provider-action-canary-secret");
+        expect(result).not.toHaveTextContent("private.example");
+    });
+
+    it("keeps a confirmed action result separate from a failed provider refresh", async () => {
+        const user = userEvent.setup();
+        const refreshProvider = vi.fn()
+            .mockRejectedValueOnce(new Error("Bearer refresh-canary-secret"))
+            .mockResolvedValueOnce(undefined);
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Diagnostics completed.",
+            data: {},
+            warnings: [],
+        });
+        renderActions(refreshProvider);
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+
+        expect(await screen.findByText("Action completed")).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action completed, but Atlas could not confirm the latest provider information.");
+        expect(alert).toHaveTextContent("Refresh the provider information before running another action.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/refresh-canary-secret/)).not.toBeInTheDocument();
+
+        await user.click(within(alert).getByRole("button", { name: "Refresh provider information" }));
+
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeEnabled();
+        expect(refreshProvider).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+    });
+
+    it("keeps actions paused until a refresh confirms provider information", async () => {
+        const user = userEvent.setup();
+        const refreshProvider = vi.fn()
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(true);
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Diagnostics completed.",
+            data: {},
+            warnings: [],
+        });
+        renderActions(refreshProvider);
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+
+        expect(await screen.findByText("Action completed")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent("Action completed, but Atlas could not confirm the latest provider information.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh provider information" }));
+        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Atlas still could not confirm the latest provider information."));
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh provider information" }));
+        await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeEnabled();
+        expect(refreshProvider).toHaveBeenCalledTimes(3);
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+    });
+
+    it("explains when a provider refresh retry fails", async () => {
+        const user = userEvent.setup();
+        const refreshProvider = vi.fn()
+            .mockResolvedValueOnce(false)
+            .mockRejectedValueOnce(new Error("Provider refresh unavailable."));
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "run-diagnostics",
+            status: "succeeded",
+            success: true,
+            message: "Diagnostics completed.",
+            data: {},
+            warnings: [],
+        });
+        renderActions(refreshProvider);
+
+        await user.click(await screen.findByRole("button", { name: "Run Diagnostics" }));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action completed, but Atlas could not confirm the latest provider information.");
+
+        await user.click(within(alert).getByRole("button", { name: "Refresh provider information" }));
+
+        await waitFor(() => expect(alert).toHaveTextContent("Refresh failed. Atlas could not confirm the latest provider information."));
+        expect(alert).toHaveTextContent("Refresh the provider information before running another action.");
+        expect(within(alert).getByText("Technical details").closest("details")).not.toHaveAttribute("open");
+        expect(within(alert).getByText("Provider refresh unavailable.")).not.toBeVisible();
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(refreshProvider).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+    });
+
+    it("keeps provider actions separate from monitoring policy and maintenance", async () => {
+        renderActions();
+        expect(await screen.findByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();
+        expect(screen.getByText(/These buttons run actions directly on this provider/i)).toBeInTheDocument();
+        expect(screen.getByText(/planned maintenance, submit a request for review and approval/i)).toBeInTheDocument();
+    });
+
+    it("describes an empty action list in plain language", async () => {
+        mockedGetProviderActions.mockResolvedValueOnce([]);
+        renderActions();
+        expect(await screen.findByText("No actions are available for this provider.")).toBeInTheDocument();
+    });
+
+    it("retries a failed action-list read without running an action", async () => {
+        const user = userEvent.setup();
+        mockedGetProviderActions.mockRejectedValueOnce(new Error("Bearer action-list-canary-secret"));
+        renderActions();
+
+        expect(await screen.findByRole("heading", { name: "Direct provider actions are unavailable" })).toBeInTheDocument();
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("Mission Control could not load the available actions. No action was run.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/action-list-canary-secret/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Run Diagnostics" })).not.toBeInTheDocument();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Try again" }));
+        expect(await screen.findByRole("button", { name: "Run Diagnostics" })).toBeInTheDocument();
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(2);
+        expect(mockedRunProviderAction).not.toHaveBeenCalled();
     });
 
     it("requires advertised parameters before execution", async () => {
@@ -143,6 +339,45 @@ describe("ProviderActions", () => {
         expect(actionButton).toBeEnabled();
     });
 
+    it("shows readable parameter labels and preserves the original request key", async () => {
+        const user = userEvent.setup();
+        mockedGetProviderActions.mockResolvedValue([{
+            ...diagnosticsAction,
+            id: "inspect-resource",
+            label: "Inspect Resource",
+            parameters: {
+                resource_id: {
+                    type: "string",
+                    required: true,
+                    description: "Provider resource to inspect.",
+                    example: "110",
+                },
+            },
+        }]);
+        mockedRunProviderAction.mockResolvedValue({
+            provider_id: "ollama",
+            action_id: "inspect-resource",
+            status: "succeeded",
+            success: true,
+            message: "Resource inspected.",
+            data: {},
+            warnings: [],
+        });
+        renderActions();
+
+        const resourceId = await screen.findByLabelText(/Resource ID/);
+        expect(resourceId).toHaveAttribute("placeholder", "110");
+        await user.type(resourceId, "guest-110");
+        await user.click(screen.getByRole("button", { name: "Inspect Resource" }));
+
+        await waitFor(() => expect(mockedRunProviderAction).toHaveBeenCalledWith(
+            "ollama",
+            "inspect-resource",
+            { confirmed: false, parameters: { resource_id: "guest-110" } },
+        ));
+        expect(await screen.findByText("Resource inspected.")).toBeInTheDocument();
+    });
+
     it("does not execute when confirmation is declined", async () => {
         const user = userEvent.setup();
         mockedGetProviderActions.mockResolvedValue([
@@ -161,14 +396,23 @@ describe("ProviderActions", () => {
             }),
         );
 
+        expect(window.confirm).toHaveBeenCalledOnce();
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Unload Model on Ollama requires confirmation."));
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Unload a model from memory."));
+        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Model: gemma4:12b"));
         expect(mockedRunProviderAction).not.toHaveBeenCalled();
     });
 
-    it("shows API failures without refreshing state", async () => {
+    it("keeps the action list after a failed request and points to action history", async () => {
         const user = userEvent.setup();
+        mockedGetProviderActions.mockResolvedValue([
+            diagnosticsAction,
+            { ...diagnosticsAction, id: "run-healthcheck", label: "Run Healthcheck" },
+            unloadAction,
+        ]);
         const onActionCompleted = renderActions();
         mockedRunProviderAction.mockRejectedValue(
-            new Error("Provider unavailable."),
+            new Error("Bearer action-result-canary-secret"),
         );
 
         await user.click(
@@ -177,9 +421,24 @@ describe("ProviderActions", () => {
             }),
         );
 
-        expect(
-            await screen.findByText("Provider unavailable."),
-        ).toBeInTheDocument();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Action result unavailable");
+        expect(alert).toHaveTextContent("Direct provider actions are paused here to prevent a duplicate.");
+        expect(alert).toHaveTextContent("Check Action history, then reload this provider page before deciding whether to try again.");
+        expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Run Healthcheck" })).toBeDisabled();
+        expect(screen.getByLabelText(/model/i)).toBeDisabled();
+        expect(screen.getByRole("link", { name: "Open Action history →" })).toHaveAttribute("href", "/operations");
+        expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+        expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(onActionCompleted).not.toHaveBeenCalled();
+        await user.click(screen.getByRole("button", { name: "Run Diagnostics" }));
+        expect(mockedRunProviderAction).toHaveBeenCalledOnce();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(alert).queryByText(/action-result-canary-secret/)).not.toBeInTheDocument();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
 });

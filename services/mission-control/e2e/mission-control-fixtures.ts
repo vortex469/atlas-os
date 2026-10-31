@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { expect, test as base } from "@playwright/test";
 import type { Page, Route } from "@playwright/test";
+import type { ExecutionCandidate } from "../src/types/executionCandidates";
 
 type MockMode = "available" | "core-unavailable";
 
@@ -56,7 +57,7 @@ const health = {
     },
 };
 
-const providers = [
+export const providers = [
     {
         id: "proxmox",
         name: "Proxmox",
@@ -121,6 +122,11 @@ const workflows = [
         workflow_id: "workflow-browser-baseline",
         workflow_source: "candidate",
         workflow_state: "awaiting_implementation_approval",
+        last_result_summary: "Waiting for implementation approval",
+        timeline: [
+            { name: "Implementation Approval", status: "current" },
+            { name: "Execution", status: "waiting" },
+        ],
         planning_session_id: "plan-browser-baseline",
         candidate_id: "candidate-browser-baseline",
         candidate_fingerprint: "candidate-fingerprint",
@@ -143,9 +149,9 @@ const workflowPage = {
     offset: 0,
 };
 
-const executionCandidates = [
+export const executionCandidates: ExecutionCandidate[] = [
     {
-        id: "candidate-browser-baseline",
+        id: "candidate-browser-baseline", effect_kind: "repository_change",
         source_recommendation_id: "recommendation-1",
         source_subsystem: "ace",
         recommendation_class: "maintenance",
@@ -163,10 +169,11 @@ const executionCandidates = [
         compatibility_status: "compatible",
         relationship_ids: [],
         created_at: isoNow,
-        expires_at: "2026-09-07T12:00:00.000Z",
+        expires_at: "2099-09-07T12:00:00.000Z",
     },
     {
         id: "candidate-not-eligible",
+        effect_kind: "repository_change",
         source_recommendation_id: "recommendation-2",
         source_subsystem: "ace",
         recommendation_class: "maintenance",
@@ -186,6 +193,7 @@ const executionCandidates = [
     },
     {
         id: "candidate-expired",
+        effect_kind: "repository_change",
         source_recommendation_id: "recommendation-3",
         source_subsystem: "ace",
         recommendation_class: "maintenance",
@@ -193,7 +201,7 @@ const executionCandidates = [
         target_type: "service",
         execution_category: "update",
         execution_intent: "update-container-image",
-        status: "expired",
+        status: "not_eligible",
         required_approval_level: "standard",
         rationale: "Expired browser fixture candidate.",
         constraints: [],
@@ -201,7 +209,7 @@ const executionCandidates = [
         compatibility_status: "unsupported",
         relationship_ids: [],
         created_at: isoNow,
-        expires_at: isoNow,
+        expires_at: "2026-09-07T12:00:00.000Z",
     },
 ];
 
@@ -249,36 +257,29 @@ const repository = {
 };
 
 const discoveryMetadata = {
-    generated_at: isoNow,
-    total_items: 1,
-    item_types: ["application"],
-    statuses: ["active"],
-    tags: ["browser-fixture"],
-    capabilities: ["read-only"],
+    catalog_loaded: true,
+    entry_count: 1,
+    schema_version: 1,
 };
 
-const discoveryItemsPage = {
-    entries: [
-        {
-            id: "fixture-app",
-            name: "Fixture Application",
-            item_type: "application",
-            status: "active",
-            summary: "Read-only browser regression fixture item.",
-            description: "Read-only browser regression fixture item.",
-            tags: ["browser-fixture"],
-            capabilities: ["read-only"],
-            links: [],
-            evidence_ids: [],
-            relationship_ids: [],
-            created_at: isoNow,
-            updated_at: isoNow,
+export const discoveryItemsPage = {
+    entries: [{
+        schema_version: 1,
+        item: {
+            id: "fixture-app", type: "application", status: "active",
+            name: "Fixture Application", description: "Read-only browser regression fixture item.",
+            aliases: [], tags: ["browser-fixture"], capabilities: ["read-only"],
+            requirements: {
+                capabilities: [], resources: { gpu_required: false },
+                platform: { architectures: [], operating_systems: [], runtimes: [], devices: [] },
+                network: { ports: [] },
+            },
+            relationships: [], metadata: {},
         },
-    ],
-    total: 1,
-    limit: 25,
-    offset: 0,
-    has_more: false,
+        provenance: { source_type: "curated", source: "browser-fixture", trust_level: "curated" },
+        metadata: {},
+    }],
+    total: 1, limit: 25, offset: 0, has_more: false,
 };
 
 const actionHistoryPage = {
@@ -290,9 +291,8 @@ const actionHistoryPage = {
 };
 
 const actionHistorySummary = {
-    total_entries: 0,
-    succeeded_entries: 0,
-    failed_entries: 0,
+    entry_count: 0,
+    max_entries: 5000,
     oldest_entry_at: null,
     newest_entry_at: null,
     retention_days: 90,
@@ -321,6 +321,10 @@ async function mockCore(route: Route, mode: MockMode) {
 
     if (mode === "core-unavailable") {
         return json(route, { detail: "Atlas Core unavailable in browser fixture." }, 503);
+    }
+
+    if (/^\/providers\/[^/]+\/actions$/.test(path)) {
+        return json(route, []);
     }
 
     switch (path) {

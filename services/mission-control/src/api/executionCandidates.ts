@@ -29,7 +29,8 @@ export async function getExecutionCandidate(
 
 function executionCandidateParams(query: ExecutionCandidateListQuery) {
     return {
-        status: query.status || undefined,
+        status: query.status === "expired" ? undefined : query.status || undefined,
+        expired: query.status === "expired" ? true : undefined,
         category: query.category || undefined,
         intent: query.intent || undefined,
         source_subsystem: query.sourceSubsystem || undefined,

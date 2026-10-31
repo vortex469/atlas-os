@@ -456,6 +456,7 @@ class WorkflowAuditCommitResponse(BaseModel):
 
 class WorkflowAuditResponse(BaseModel):
     workflow_id: str
+    effect_kind: str
     workflow_state: str
     workflow_source: str
     blocked_reason: str | None = None
@@ -1203,6 +1204,7 @@ def _candidate_audit_detail(request: Request, workflow) -> WorkflowAuditResponse
 
     return WorkflowAuditResponse(
         workflow_id=workflow.identifier,
+        effect_kind=workflow.effect_kind.value,
         workflow_state=workflow.state.value,
         workflow_source=workflow.source.value,
         blocked_reason=workflow.blocked_reason,

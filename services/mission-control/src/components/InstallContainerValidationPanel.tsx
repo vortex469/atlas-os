@@ -3,6 +3,8 @@ import type {
     InstallContainerRedactedError,
     InstallContainerValidation,
 } from "../types/atlasAgent";
+import { formatInstallContainerValidationReason, formatInstallContainerValidationStatus } from "../utils/installContainerValidationPresentation";
+import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 
 interface Props {
     capability: InstallContainerCapability;
@@ -47,9 +49,9 @@ export function InstallContainerValidationPanel({ capability, validation, error 
             {error && (
                 <div role="alert" className="mt-4 rounded border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
                     <p className="font-semibold">Validation diagnostic unavailable (redacted)</p>
-                    <p>Reason: {error.reason_code}</p>
-                    <p>Correlation: {error.correlation_id}</p>
+                    <p>{formatInstallContainerValidationReason(error.reason_code)}</p>
                     <p>No request content, credentials, provider payload, paths, or exception details are shown.</p>
+                    <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary><p className="mt-1">Reason code: {error.reason_code}</p><p>Correlation ID: {error.correlation_id}</p></details>
                 </div>
             )}
 
@@ -59,33 +61,41 @@ export function InstallContainerValidationPanel({ capability, validation, error 
 
             {!error && validation && (
                 <div className="mt-4 space-y-4 border-t border-slate-800 pt-4 text-sm">
-                    <div>
-                        <p className="font-semibold text-slate-200">Validation status: {validation.status}</p>
+                    <section aria-label="Validation result" className="space-y-2">
+                        <p className="font-semibold text-slate-200">{formatInstallContainerValidationStatus(validation.status)}</p>
                         <p className="text-slate-400">Validated at {validation.validated_at}</p>
-                        {validation.reason_codes.length > 0 && <p className="text-red-300">Reasons: {validation.reason_codes.join(", ")}</p>}
-                    </div>
+                        <p className="text-slate-300">Validated target: {formatResourceTargetLabel(validation.evidence.subject.provider, validation.evidence.subject.resource_type, validation.evidence.subject.resource_id)}</p>
+                        {validation.reason_codes.length > 0 && <ul aria-label="Validation reasons" className="list-disc space-y-1 pl-5 text-red-300">{validation.reason_codes.map((reason) => <li key={reason}>{formatInstallContainerValidationReason(reason)}</li>)}</ul>}
+                    </section>
 
-                    <dl className="grid gap-3 md:grid-cols-2">
-                        <Fingerprint label="Request proof fingerprint" value={validation.request_fingerprint.value} />
-                        <Fingerprint label="Validation fingerprint" value={validation.validation_fingerprint.value} />
-                        <Fingerprint label="Audit evidence fingerprint" value={validation.evidence.evidence_fingerprint.value} />
-                        <Fingerprint label="Runtime/limit policy fingerprint" value={validation.evidence.runtime_limit_policy_fingerprint.value} />
-                        <Fingerprint label="Candidate envelope fingerprint" value={validation.evidence.approval.candidate_envelope_fingerprint.value} />
-                        <Fingerprint label="Approval intent fingerprint" value={validation.evidence.approval.approval_intent_fingerprint.value} />
-                    </dl>
+                    <details className="rounded border border-slate-700 px-3 py-2">
+                        <summary className="cursor-pointer font-medium text-slate-300">Technical evidence</summary>
+                        <div className="mt-3 space-y-4">
+                            <dl className="grid gap-3 md:grid-cols-2">
+                                <Fingerprint label="Request proof fingerprint" value={validation.request_fingerprint.value} />
+                                <Fingerprint label="Validation fingerprint" value={validation.validation_fingerprint.value} />
+                                <Fingerprint label="Audit evidence fingerprint" value={validation.evidence.evidence_fingerprint.value} />
+                                <Fingerprint label="Runtime/limit policy fingerprint" value={validation.evidence.runtime_limit_policy_fingerprint.value} />
+                                <Fingerprint label="Candidate envelope fingerprint" value={validation.evidence.approval.candidate_envelope_fingerprint.value} />
+                                <Fingerprint label="Approval intent fingerprint" value={validation.evidence.approval.approval_intent_fingerprint.value} />
+                            </dl>
 
-                    <div>
-                        <h4 className="font-semibold text-slate-200">Artifact reference</h4>
-                        <p className="break-all text-slate-300">{validation.evidence.source_repository_path} · {validation.evidence.source_service}</p>
-                        <p className="break-all font-mono text-xs text-slate-400">{validation.evidence.source_content_digest} · {validation.evidence.image_digest}</p>
-                    </div>
+                            <div>
+                                <h4 className="font-semibold text-slate-200">Artifact reference</h4>
+                                <p className="break-all text-slate-300">{validation.evidence.source_repository_path} · {validation.evidence.source_service}</p>
+                                <p className="break-all font-mono text-xs text-slate-400">{validation.evidence.source_content_digest} · {validation.evidence.image_digest}</p>
+                            </div>
 
-                    <div>
-                        <h4 className="font-semibold text-slate-200">Audit evidence</h4>
-                        <p className="text-slate-400">Request {validation.evidence.request_id}; candidate {validation.evidence.approval.candidate_record_id}; approval {validation.evidence.approval.approval_intent_id}</p>
-                        <p className="text-slate-400">Subject: {validation.evidence.subject.provider}/{validation.evidence.subject.resource_type}/{validation.evidence.subject.resource_id}</p>
-                        <p className="mt-2 text-amber-200">Execution supported: no · Dispatch allowed: no · Mutation allowed: no · Replay allowed: no</p>
-                    </div>
+                            <div>
+                                <h4 className="font-semibold text-slate-200">Audit evidence</h4>
+                                <p className="text-slate-400">Request {validation.evidence.request_id}; candidate {validation.evidence.approval.candidate_record_id}; approval {validation.evidence.approval.approval_intent_id}</p>
+                                <p className="text-slate-400">Subject reference: {formatResourceReference(validation.evidence.subject.provider, validation.evidence.subject.resource_type, validation.evidence.subject.resource_id)}</p>
+                                <p className="text-slate-400">Status code: {validation.status}</p>
+                                {validation.reason_codes.length > 0 && <p className="text-slate-400">Reason codes: {validation.reason_codes.join(", ")}</p>}
+                                <p className="mt-2 text-amber-200">Execution supported: no · Dispatch allowed: no · Mutation allowed: no · Replay allowed: no</p>
+                            </div>
+                        </div>
+                    </details>
                 </div>
             )}
         </section>

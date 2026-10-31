@@ -1,5 +1,5 @@
 import { healthState, normalizeServiceHealth } from "../../utils/healthPresentation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
 import { ServiceDetailsDrawer } from "../../components/ServiceDetailsDrawer";
 import { ServiceHealthCard } from "../../components/ServiceHealthCard";
@@ -28,6 +28,22 @@ export function ServiceHealthSection({
 }: ServiceHealthSectionProps) {
     const [selectedService, setSelectedService] =
         useState<SelectedService | null>(null);
+    const returnFocusRef = useRef<HTMLButtonElement | null>(null);
+    const dialogWasOpen = useRef(false);
+    const closeDrawer = useCallback(() => setSelectedService(null), []);
+
+    useEffect(() => {
+        if (selectedService) {
+            dialogWasOpen.current = true;
+            return;
+        }
+        if (dialogWasOpen.current) {
+            dialogWasOpen.current = false;
+            const trigger = returnFocusRef.current;
+            returnFocusRef.current = null;
+            if (trigger?.isConnected) trigger.focus();
+        }
+    }, [selectedService]);
 
     const entries = Object.entries(services).sort(
         ([nameA, healthA], [nameB, healthB]) => {
@@ -56,8 +72,8 @@ export function ServiceHealthSection({
         <>
             <section>
                 <SectionHeader
-                    title="Service Health"
-                    description="Source-reported reachability, response status, and latency for Atlas infrastructure. Select a service for more details."
+                    title="Service reachability"
+                    description="Shows whether Atlas Core can reach each service address. A service can be running on its computer and still be unreachable from Core. Select one to see the address Atlas checked."
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -66,12 +82,13 @@ export function ServiceHealthSection({
                             key={name}
                             name={name}
                             health={serviceHealth}
-                            onSelect={() =>
+                            onSelect={(trigger) => {
+                                returnFocusRef.current = trigger;
                                 setSelectedService({
                                     name,
                                     health: serviceHealth,
-                                })
-                            }
+                                });
+                            }}
                         />
                     ))}
                 </div>
@@ -90,7 +107,7 @@ export function ServiceHealthSection({
                     }
                     isRefreshing={isRefreshing}
                     onRefresh={onRefresh}
-                    onClose={() => setSelectedService(null)}
+                    onClose={closeDrawer}
                 />
             )}
         </>

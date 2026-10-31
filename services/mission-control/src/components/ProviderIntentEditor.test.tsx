@@ -81,7 +81,7 @@ describe("ProviderIntentEditor", () => {
             legacy_expectation: "stopped",
             intent_reason: "legacy_unbound_evidence",
         }));
-        expect(screen.getByText(/Historical legacy expectation: Stopped/)).toBeInTheDocument();
+        expect(screen.getByText(/An older monitoring setting says Stopped/)).toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
     });
 
@@ -116,16 +116,18 @@ describe("ProviderIntentEditor", () => {
             replacement_detected: true,
             expectation: "running",
         }));
-        expect(screen.getByRole("alert")).toHaveTextContent("previous expectation is historical only");
+        expect(screen.getByRole("alert")).toHaveTextContent("This VM was replaced");
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
     });
 
     it.each([
-        ["resource_type_unsupported", "unsupported for this resource type"],
-        ["resource_missing", "Missing resources cannot be edited"],
-        ["identity_unavailable", "Authoritative QEMU identity is unavailable"],
-        ["authority_unavailable", "authority is temporarily unavailable"],
-        ["store_migration_required", "awaiting a store migration"],
+        ["not_activated", "edits are not enabled for this provider"],
+        ["authority_unavailable", "cannot check monitoring settings"],
+        ["store_migration_required", "storage update before this setting can be edited"],
+        ["store_unavailable", "Monitoring settings cannot be read"],
+        ["resource_type_unsupported", "cannot edit monitoring for this resource type"],
+        ["resource_missing", "resource is missing"],
+        ["identity_unavailable", "cannot confirm this VM is the same instance"],
     ] as const)("keeps %s read-only", (readiness, message) => {
         renderEditor(resource(), vi.fn(), mutation({
             editable_in_principle: false,
@@ -138,7 +140,7 @@ describe("ProviderIntentEditor", () => {
 
     it("keeps an unauthorized ready resource read-only", () => {
         renderEditor(resource(), vi.fn(), mutation({ caller_can_mutate: false }));
-        expect(screen.getByText(/does not permit Provider Intent updates/i)).toBeInTheDocument();
+        expect(screen.getByText(/does not have permission to edit monitoring expectations/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     });
 

@@ -1,10 +1,13 @@
 import {
+    act,
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { StrictMode } from "react";
 
 import {
     getProviderConnection,
@@ -142,6 +145,88 @@ async function renderConnection(
 }
 
 describe("ProviderConnection", () => {
+    it("clears form and secret values immediately when the provider changes", async () => {
+        const first = { ...provider, capabilities: ["connection"] };
+        const next = { ...first, id: "other", name: "Other" };
+        const user = userEvent.setup();
+        const view = render(<ProviderConnection provider={first} />);
+        await user.clear(await screen.findByLabelText("Host"));
+        await user.type(screen.getByLabelText("Host"), "previous.example.invalid");
+        await user.type(screen.getByLabelText("Token Value"), "fixture-only-secret");
+        let resolveNext!: (value: ProviderConnectionSchema) => void;
+        mockedGetProviderConnection.mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        view.rerender(<ProviderConnection provider={next} />);
+        expect(screen.queryByLabelText("Host")).not.toBeInTheDocument();
+        expect(screen.queryByDisplayValue("fixture-only-secret")).not.toBeInTheDocument();
+        await waitFor(() => expect(mockedGetProviderConnection).toHaveBeenCalledWith("other"));
+        await act(async () => resolveNext(proxmoxSchema({ provider_id: "other", provider_name: "Other" })));
+        expect(await screen.findByLabelText("Host")).toHaveValue("10.10.50.10");
+        expect(screen.getByLabelText("Token Value")).toHaveValue("");
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("reads the connection schema once under Strict Mode", async () => {
+        render(<StrictMode><ProviderConnection provider={{ ...provider, capabilities: ["connection"] }} /></StrictMode>);
+        await screen.findByLabelText("Host");
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("shows unavailable settings after a failed read and recovers on refresh", async () => {
+        mockedGetProviderConnection
+            .mockRejectedValueOnce(new Error("Core unavailable"))
+            .mockResolvedValueOnce(proxmoxSchema());
+        const user = userEvent.setup();
+
+        render(<ProviderConnection provider={provider} />);
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas couldn’t load these connection settings. Refresh to try again.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable")).not.toBeVisible();
+        expect(screen.queryByText(/Saved settings:/)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh settings" })).toBeEnabled();
+
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Core unavailable")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+
+        expect(await screen.findByLabelText("Host")).toHaveValue("10.10.50.10");
+        expect(screen.getByText("Saved settings: incomplete")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedGetProviderConnection).toHaveBeenCalledTimes(2);
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("marks last loaded settings as possibly outdated and disables actions after refresh fails", async () => {
+        const user = userEvent.setup();
+        await renderConnection();
+        mockedGetProviderConnection.mockRejectedValueOnce(new Error("Core unavailable"));
+
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Atlas couldn’t refresh these connection settings. Refresh to try again.");
+        expect(alert).toHaveTextContent("These values are from the last successful read and may be out of date.");
+        expect(screen.getByText("Last loaded settings: incomplete")).toBeInTheDocument();
+        expect(screen.getByLabelText("Host")).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+
+        expect(await screen.findByText("Saved settings: incomplete")).toBeInTheDocument();
+        expect(screen.getByLabelText("Host")).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Test Connection" })).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Save Connection" })).toBeEnabled();
+        expect(mockedTestProviderConnection).not.toHaveBeenCalled();
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         mockedGetProviderConnection.mockResolvedValue(proxmoxSchema());
@@ -172,6 +257,8 @@ describe("ProviderConnection", () => {
         await renderConnection();
 
         expect(screen.getByLabelText("Host")).toHaveValue("10.10.50.10");
+        expect(screen.getAllByText("From Atlas configuration").length).toBeGreaterThan(0);
+        expect(screen.queryByText(/atlas_yaml/)).not.toBeInTheDocument();
         expect(screen.getByLabelText("Port")).toHaveValue(8006);
         expect(screen.getByLabelText("Node")).toHaveValue("vorex469");
         expect(screen.getByLabelText("Verify TLS")).not.toBeChecked();
@@ -182,6 +269,37 @@ describe("ProviderConnection", () => {
         expect(screen.queryByText("existing-secret")).not.toBeInTheDocument();
     });
 
+    it("identifies the saved connection update as local time with its UTC instant", async () => {
+        await renderConnection();
+
+        const updatedTime = screen.getByText((_, element) =>
+            element?.tagName === "TIME" && element.getAttribute("datetime") === "2026-08-01T20:00:00Z",
+        );
+        expect(updatedTime).toHaveTextContent(new Date("2026-08-01T20:00:00Z").toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(updatedTime.parentElement).toHaveTextContent("Connection settings updated (local time):");
+    });
+
+    it("describes connection sources in plain language", async () => {
+        const sourceLabels = [
+            "From saved connection settings",
+            "From an environment variable",
+            "Not configured",
+            "Source unavailable",
+        ];
+        mockedGetProviderConnection.mockResolvedValue(proxmoxSchema({
+            fields: proxmoxSchema().fields.slice(0, 4).map((candidate, index) => ({
+                ...candidate,
+                source: ["runtime", "environment", "missing", null][index],
+            })),
+        }));
+
+        await renderConnection();
+
+        for (const label of sourceLabels) {
+            expect(screen.getByText(label)).toBeInTheDocument();
+        }
+    });
+
     it("respects required and editable state and hides when capability is absent", async () => {
         await renderConnection(noConnectionProvider);
 
@@ -189,12 +307,13 @@ describe("ProviderConnection", () => {
         expect(mockedGetProviderConnection).not.toHaveBeenCalled();
     });
 
-    it("renders Docker path read-only and warning with save unavailable", async () => {
+    it("renders the Docker path read-only and explains its power in plain language", async () => {
         mockedGetProviderConnection.mockResolvedValue(dockerSchema());
         await renderConnection({ ...provider, id: "docker", name: "Docker" });
 
         expect(screen.getByLabelText("Docker socket path")).toBeDisabled();
-        expect(screen.getByText(/Privileged local runtime connection/)).toBeInTheDocument();
+        expect(screen.getByText("Atlas can still send Docker commands that change containers through this connection, even if the socket is mounted read-only.")).toBeInTheDocument();
+        expect(screen.queryByText(/Privileged local runtime/)).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save Connection" })).not.toBeInTheDocument();
         expect(screen.getByText(/Connection editing is not available/)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Test Connection" })).toBeInTheDocument();
@@ -237,7 +356,7 @@ describe("ProviderConnection", () => {
             message: "Bad token candidate-secret",
             tested_at: "2026-08-01T20:01:00Z",
             latency_ms: null,
-            diagnostics: { error: "candidate-secret rejected" },
+            diagnostics: { error: "candidate-secret rejected", "candidate-secret": "candidate-secret" },
         });
         const user = userEvent.setup();
         await renderConnection();
@@ -250,8 +369,48 @@ describe("ProviderConnection", () => {
         expect(await screen.findByText(/Test failure/)).toBeInTheDocument();
         expect(screen.getByText(/Bad token \[redacted\]/)).toBeInTheDocument();
         expect(screen.getByText(/\[redacted\] rejected/)).toBeInTheDocument();
+        expect(screen.getByText(/\[redacted\] rejected/)).not.toBeVisible();
+        await user.click(screen.getByText("Technical details"));
+        expect(screen.getByText(/\[redacted\] rejected/)).toBeVisible();
+        expect(screen.getAllByText("[redacted]", { exact: true })).toHaveLength(2);
+        expect(document.body.textContent).not.toContain("candidate-secret");
         expect(screen.queryByText("candidate-secret")).not.toBeInTheDocument();
         expect(screen.getByLabelText("Host")).toHaveValue("candidate.invalid");
+    });
+
+    it.each(["Host", "Token Value"])("invalidates test results when %s changes without revealing the tested secret", async (label) => {
+        mockedTestProviderConnection.mockResolvedValue({
+            provider_id: "proxmox", status: "failure", message: "Bad token previous-test-secret",
+            tested_at: "2026-10-26T00:00:00Z", latency_ms: null,
+            diagnostics: { error: "previous-test-secret rejected" },
+        });
+        const user = userEvent.setup();
+        await renderConnection();
+        await user.type(screen.getByLabelText("Token Value"), "previous-test-secret");
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        await screen.findByText(/Test failure/);
+        expect(document.body.textContent).not.toContain("previous-test-secret");
+        await user.clear(screen.getByLabelText(label));
+        expect(screen.queryByText(/Test failure/)).not.toBeInTheDocument();
+        expect(document.body.textContent).not.toContain("previous-test-secret");
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
+    });
+
+    it("clears the test result as soon as settings are reloaded", async () => {
+        const user = userEvent.setup();
+        await renderConnection();
+        await user.click(screen.getByRole("button", { name: "Test Connection" }));
+        await screen.findByText(/Test success/);
+        let rejectRead!: (reason: Error) => void;
+        mockedGetProviderConnection.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
+        await user.click(screen.getByRole("button", { name: "Refresh settings" }));
+        expect(screen.queryByText(/Test success/)).not.toBeInTheDocument();
+        await act(async () => { rejectRead(new Error("Settings unavailable")); });
+        expect(await screen.findByRole("alert")).toHaveTextContent("Settings unavailable");
+        expect(screen.queryByText(/Test success/)).not.toBeInTheDocument();
+        expect(mockedTestProviderConnection).toHaveBeenCalledTimes(1);
+        expect(mockedUpdateProviderConnection).not.toHaveBeenCalled();
     });
 
     it("saves only editable values and entered secret replacements", async () => {

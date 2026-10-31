@@ -20,8 +20,12 @@ describe("image-grounding presentation boundary", () => {
         expect(focusedFunction).not.toMatch(/atlas\.(post|put|patch|delete)/);
     });
 
-    it("contains no action controls or proposal/candidate/workflow navigation", () => {
-        expect(componentSource).not.toMatch(/<button|<Link|<a\s|to=|navigate\(/);
+    it("allows only read retry and no proposal/candidate/workflow navigation", () => {
+        const buttons = componentSource.match(/<button\b[\s\S]*?<\/button>/g) ?? [];
+        expect(buttons).toHaveLength(1);
+        expect(buttons[0]).toContain("onRetry");
+        expect(buttons[0]).toContain("Retry image check");
+        expect(componentSource).not.toMatch(/<Link|<a\s|to=|navigate\(/);
         expect(componentSource).not.toMatch(/>\s*(Apply|Execute|Update|Pull|Restart|Remediate|Install|Approve|Commit|Deploy)\s*</i);
     });
 });

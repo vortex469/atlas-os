@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { InstallContainerCapability, InstallContainerValidation } from "../types/atlasAgent";
@@ -44,20 +44,39 @@ describe("InstallContainerValidationPanel", () => {
 
     it("renders validation, proof, artifact, bounds, and audit evidence without controls", () => {
         render(<InstallContainerValidationPanel capability={capability} validation={validation()} error={null} />);
-        expect(screen.getByText("Validation status: valid_but_unsupported")).toBeInTheDocument();
-        expect(screen.getByText(/compose\/example.yaml · example/)).toBeInTheDocument();
-        expect(screen.getByText(/Execution supported: no · Dispatch allowed: no/)).toBeInTheDocument();
-        expect(screen.getByText("Audit evidence fingerprint")).toBeInTheDocument();
+        expect(screen.getByText("Request valid; installation remains unsupported.")).toBeInTheDocument();
+        expect(screen.getByText("Validated target: Proxmox virtual machine vm-101")).toBeInTheDocument();
+        const evidence = screen.getByText("Technical evidence").closest("details") as HTMLDetailsElement;
+        expect(evidence).not.toHaveAttribute("open");
+        expect(within(evidence).getByText("Audit evidence fingerprint")).not.toBeVisible();
+        fireEvent.click(within(evidence).getByText("Technical evidence"));
+        expect(within(evidence).getByText(/compose\/example.yaml · example/)).toBeVisible();
+        expect(within(evidence).getByText(/Execution supported: no · Dispatch allowed: no/)).toBeVisible();
+        expect(within(evidence).getByText("Audit evidence fingerprint")).toBeVisible();
+        expect(within(evidence).getByText("Status code: valid_but_unsupported")).toBeVisible();
+        expect(within(evidence).getByText("Subject reference: proxmox/qemu/vm-101")).toBeVisible();
         expect(screen.queryByRole("button", { name: /install|run|execute|deploy|dispatch|rollback|send|start/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("link")).not.toBeInTheDocument();
     });
 
     it("renders rejected reasons and only the closed redacted error vocabulary", () => {
         const { rerender } = render(<InstallContainerValidationPanel capability={capability} validation={validation("rejected")} error={null} />);
-        expect(screen.getByText("Reasons: network_boundary_violated")).toBeInTheDocument();
+        expect(screen.getByText("Validation rejected this request.")).toBeInTheDocument();
+        expect(screen.getByText("The requested network access exceeds the allowed limits.")).toBeInTheDocument();
+        const evidence = screen.getByText("Technical evidence").closest("details") as HTMLDetailsElement;
+        expect(evidence).not.toHaveAttribute("open");
+        expect(within(evidence).getByText("Reason codes: network_boundary_violated")).not.toBeVisible();
+        fireEvent.click(within(evidence).getByText("Technical evidence"));
+        expect(within(evidence).getByText("Reason codes: network_boundary_violated")).toBeVisible();
         rerender(<InstallContainerValidationPanel capability={capability} validation={null} error={{ schema: "agent-install-container-error-v1", reason_code: "validation_contract_failure", request_id: null, request_fingerprint: null, correlation_id: "corr-1", redacted: true }} />);
-        expect(screen.getByRole("alert")).toHaveTextContent("validation_contract_failure");
-        expect(screen.getByRole("alert")).toHaveTextContent("corr-1");
-        expect(screen.getByRole("alert")).toHaveTextContent("No request content, credentials, provider payload, paths, or exception details are shown.");
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("The validation contract could not verify the request.");
+        expect(alert).toHaveTextContent("No request content, credentials, provider payload, paths, or exception details are shown.");
+        const errorDetails = within(alert).getByText("Technical details").closest("details") as HTMLDetailsElement;
+        expect(errorDetails).not.toHaveAttribute("open");
+        expect(within(errorDetails).getByText("Reason code: validation_contract_failure")).not.toBeVisible();
+        fireEvent.click(within(errorDetails).getByText("Technical details"));
+        expect(within(errorDetails).getByText("Reason code: validation_contract_failure")).toBeVisible();
+        expect(within(errorDetails).getByText("Correlation ID: corr-1")).toBeVisible();
     });
 });

@@ -2,14 +2,12 @@
  * Mission Control 2.0 shared navigation metadata.
  *
  * This is the single source of truth for the shell's primary navigation
- * labels, destinations, and enabled state. The desktop sidebar and the
- * compact mobile navigation both render from `primaryNavigationItems`, so
- * the two surfaces cannot drift apart.
+ * labels and destinations. The desktop sidebar and compact mobile drawer
+ * both render from this list, so the two surfaces cannot drift apart.
  *
  * Presentation-only: this module never decides eligibility, admission, or
- * execution authority. Disabled entries are placeholders for destinations
- * that do not yet have a real route and authoritative backing
- * implementation; they are rendered inert and must not be activated here.
+ * execution authority. Only destinations with a real route belong in the
+ * visible menu; planned areas stay out until they are usable.
  *
  * Task 5 (navigation refinement) can extend `NavigationItem` with sections,
  * icons, and keyboard shortcuts without touching the shell markup.
@@ -18,10 +16,9 @@
 export type NavigationItem = {
     label: string;
     path: string;
-    enabled: boolean;
     /**
      * NavLink exact-match flag. Only the root route needs `end` so that
-     * `/operations` does not keep the Mission Control link active.
+     * `/operations` does not keep the Overview link active.
      */
     end?: boolean;
     /** Short label for compact mobile navigation, when the label is long. */
@@ -30,67 +27,47 @@ export type NavigationItem = {
 
 export const primaryNavigationItems: NavigationItem[] = [
     {
-        label: "Mission Control",
+        label: "Overview",
         path: "/",
-        enabled: true,
         end: true,
     },
     {
-        label: "Operations",
+        label: "Action history",
         path: "/operations",
-        enabled: true,
     },
     {
-        label: "Operational History",
+        label: "Maintenance history",
         path: "/operations/history",
-        enabled: true,
         shortLabel: "History",
     },
     {
-        label: "Maintenance",
+        label: "Request maintenance",
         path: "/operations/request",
-        enabled: true,
     },
     {
-        label: "Discovery",
+        label: "Catalog",
         path: "/discovery",
-        enabled: true,
     },
     {
-        label: "Execution Candidates",
+        label: "Change proposals",
         path: "/execution-candidates",
-        enabled: true,
-        shortLabel: "Candidates",
+        shortLabel: "Proposals",
     },
     {
         label: "Workflows",
         path: "/workflows",
-        enabled: true,
     },
     {
-        label: "Forge",
+        label: "Deployment analysis",
         path: "/forge",
-        enabled: true,
     },
 ];
 
 /**
- * Disabled future destinations. Kept visible but inert: no backing route or
- * authoritative implementation exists yet, so they are never rendered as
- * links. Do not move them into `primaryNavigationItems` until the route and
- * its authoritative backing implementation exist.
- */
-export const disabledNavigationItems: NavigationItem[] = [
-    { label: "Knowledge", path: "/knowledge", enabled: false },
-    { label: "Developer", path: "/developer", enabled: false },
-    { label: "Settings", path: "/settings", enabled: false },
-];
-
-/**
- * Returns the most specific enabled destination that owns the given path.
+ * Returns the most specific destination that owns the given path.
  * Used to surface the current route/page context in the shell header.
  * Longest prefix wins, so `/operations/history` resolves to
- * Operational History rather than its Operations parent.
+ * Maintenance history rather than its Action history parent.
  */
 export function navigationItemForPath(
     items: NavigationItem[],
@@ -98,9 +75,6 @@ export function navigationItemForPath(
 ): NavigationItem | undefined {
     let best: NavigationItem | undefined;
     for (const item of items) {
-        if (!item.enabled) {
-            continue;
-        }
         const matches =
             item.path === "/"
                 ? pathname === "/"
@@ -116,11 +90,33 @@ export function navigationItemForPath(
     return best;
 }
 
-// Existing detail and utility routes that are not primary destinations.
-export function routeContextForPath(pathname: string): string {
-    if (pathname.startsWith("/providers/")) return "Provider";
-    if (pathname.startsWith("/installation/")) return "Installation readiness review";
-    if (pathname.startsWith("/candidate-planning/")) return "Candidate planning";
-    if (pathname === "/operator/login") return "Operator login";
-    return "Mission Control";
+// Gives every valid route a page-specific shell and browser title. Detail
+// screens take priority over their parent navigation destination so that the
+// shell does not keep saying only "Catalog" or "Workflows" after navigation.
+export function routeContextForPath(pathname: string): string | undefined {
+    const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+
+    if (path === "/") return undefined;
+    if (path === "/operations") return "Action history";
+    if (path === "/operations/history") return "Maintenance history";
+    if (path === "/operations/request") return "Request maintenance";
+    if (/^\/operations\/actions\/[^/]+$/.test(path)) return "Action details";
+    if (path === "/providers") return "Providers";
+    if (/^\/providers\/[^/]+$/.test(path)) return "Provider details";
+    if (path === "/discovery") return "Catalog";
+    if (/^\/discovery\/items\/[^/]+$/.test(path)) return "Catalog item details";
+    if (path === "/execution-candidates") return "Change proposals";
+    if (/^\/execution-candidates\/[^/]+$/.test(path)) return "Proposal details";
+    if (/^\/installation\/candidate-records\/[^/]+\/readiness-review$/.test(path)) {
+        return "Installation readiness review";
+    }
+
+    const planningPath = path.match(/^\/candidate-planning\/[^/]+(?:\/(workflow))?$/);
+    if (planningPath) return planningPath[1] ? "Workflow setup" : "Plan a change";
+    if (path === "/workflows") return "Workflows";
+    if (/^\/workflows\/[^/]+\/audit$/.test(path)) return "Workflow history";
+    if (/^\/workflows\/[^/]+$/.test(path)) return "Workflow details";
+    if (path === "/forge") return "Deployment analysis";
+    if (path === "/operator/login") return "Operator login";
+    return "Page not found";
 }

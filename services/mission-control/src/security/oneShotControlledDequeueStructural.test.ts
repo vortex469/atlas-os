@@ -35,7 +35,7 @@ describe("v0.45 one-shot controlled dequeue Mission Control boundary", () => {
     });
 
     it("keeps technical evidence in details and omits prohibited downstream controls", () => {
-        expect(component).toMatch(/State: \{state\}/);
+        expect(component).toMatch(/Status: \{state\}/);
         expect(component).toMatch(/exact admitted inert item only/);
         expect(component).toMatch(/<details className="mt-3">/);
         expect(component).toMatch(/Queue observation receipt fingerprint/);
@@ -43,6 +43,6 @@ describe("v0.45 one-shot controlled dequeue Mission Control boundary", () => {
         expect(component).toMatch(/Permanent dequeue subject reservation: true/);
         expect(component).toMatch(/One-shot controlled dequeue fixed-false authority fields/);
         expect(component).not.toMatch(/queue selector|worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token/i);
-        expect(component).not.toMatch(/>\s*(poll|claim|lease|ack|consume|remove|start worker|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(component).not.toMatch(/>\s*(poll|claim|lease|ack|consume|remove|start worker|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 });

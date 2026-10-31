@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -15,6 +15,7 @@ import type {
     DiscoveryListQuery,
     DiscoveryMetadata,
 } from "../types/discovery";
+import { safeText } from "../utils/safeText";
 
 const PAGE_SIZE = 25;
 
@@ -42,6 +43,11 @@ type DiscoveryResult = {
     hasMore: boolean;
 };
 
+type DiscoveryRequest = {
+    filters: FilterState;
+    offset: number;
+};
+
 type FilterState = {
     query: string;
     type: "" | DiscoveryItemType;
@@ -58,96 +64,139 @@ const emptyFilters: FilterState = {
     capability: "",
 };
 
+const discoveryQueryKeys = [
+    "q",
+    "type",
+    "status",
+    "tag",
+    "capability",
+    "draft_q",
+    "draft_type",
+    "draft_status",
+    "draft_tag",
+    "draft_capability",
+    "offset",
+] as const;
+
 export function DiscoveryPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => parseDiscoveryViewState(location.search));
     const [metadata, setMetadata] = useState<DiscoveryMetadata | null>(null);
-    const [filters, setFilters] = useState<FilterState>(emptyFilters);
-    const [submittedFilters, setSubmittedFilters] =
-        useState<FilterState>(emptyFilters);
+    const [metadataError, setMetadataError] = useState<string | null>(null);
+    const [isMetadataLoading, setIsMetadataLoading] = useState(true);
+    const [filters, setFilters] = useState<FilterState>(initialViewState.filters);
+    const [submittedFilters, setSubmittedFilters] = useState<FilterState>(initialViewState.submittedFilters);
     const [result, setResult] = useState<DiscoveryResult>({
         entries: [],
         total: 0,
-        offset: 0,
+        offset: initialViewState.offset,
         hasMore: false,
     });
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [catalogError, setCatalogError] = useState<string | null>(null);
+    const requestGeneration = useRef(0);
+    const metadataGeneration = useRef(0);
+    const lastRequestedQuery = useRef<DiscoveryRequest>({
+        filters: { ...initialViewState.submittedFilters },
+        offset: initialViewState.offset,
+    });
+
+    const loadMetadata = useCallback(async () => {
+        const generation = ++metadataGeneration.current;
+        setIsMetadataLoading(true);
+        setMetadataError(null);
+
+        try {
+            const nextMetadata = await getDiscoveryMetadata();
+            if (generation === metadataGeneration.current) setMetadata(nextMetadata);
+        } catch (requestError) {
+            if (generation === metadataGeneration.current) {
+                setMetadataError(
+                    getAtlasErrorMessage(requestError, "Mission Control could not load catalog status."),
+                );
+            }
+        } finally {
+            if (generation === metadataGeneration.current) setIsMetadataLoading(false);
+        }
+    }, []);
 
     const loadCatalog = useCallback(
         async (nextFilters: FilterState, offset: number) => {
+            const generation = ++requestGeneration.current;
+            lastRequestedQuery.current = { filters: { ...nextFilters }, offset };
             setIsLoading(true);
-            setError(null);
+            setCatalogError(null);
+            setResult({ entries: [], total: 0, offset, hasMore: false });
 
             try {
-                const [nextMetadata, page] = await Promise.all([
-                    getDiscoveryMetadata(),
-                    fetchDiscoveryPage(nextFilters, offset),
-                ]);
+                const page = await fetchDiscoveryPage(nextFilters, offset);
+                if (!isDisplayableDiscoveryPage(page)) {
+                    throw new Error("The catalog response included an item that Mission Control could not display.");
+                }
 
-                setMetadata(nextMetadata);
-                setResult({
-                    entries: page.entries,
-                    total: page.total,
-                    offset: page.offset,
-                    hasMore: page.has_more,
-                });
+                if (generation === requestGeneration.current) {
+                    setResult({
+                        entries: page.entries,
+                        total: page.total,
+                        offset: page.offset,
+                        hasMore: page.has_more,
+                    });
+                }
             } catch (requestError) {
-                console.error("Unable to load Discovery catalog:", requestError);
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not load Discovery Center.",
-                    ),
-                );
+                if (generation === requestGeneration.current) {
+                    console.error("Unable to load Discovery catalog:", requestError);
+                    setCatalogError(
+                        getAtlasErrorMessage(
+                            requestError,
+                            "Mission Control could not load the catalog.",
+                        ),
+                    );
+                }
             } finally {
-                setIsLoading(false);
+                if (generation === requestGeneration.current) {
+                    setIsLoading(false);
+                }
             }
         },
         [],
     );
 
     useEffect(() => {
-        let cancelled = false;
-
-        Promise.all([
-            getDiscoveryMetadata(),
-            fetchDiscoveryPage(emptyFilters, 0),
-        ])
-            .then(([nextMetadata, page]) => {
-                if (cancelled) {
-                    return;
-                }
-                setMetadata(nextMetadata);
-                setResult({
-                    entries: page.entries,
-                    total: page.total,
-                    offset: page.offset,
-                    hasMore: page.has_more,
-                });
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                console.error("Unable to load Discovery catalog:", requestError);
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not load Discovery Center.",
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            });
-
+        let active = true;
+        void Promise.resolve().then(() => {
+            if (active) {
+                void loadMetadata();
+                void loadCatalog(initialViewState.submittedFilters, initialViewState.offset);
+            }
+        });
         return () => {
-            cancelled = true;
+            active = false;
+            requestGeneration.current += 1;
+            metadataGeneration.current += 1;
         };
-    }, []);
+    }, [initialViewState, loadCatalog, loadMetadata]);
 
-    const isSearchMode = submittedFilters.query.trim().length > 0;
+    useEffect(() => {
+        const search = serializeDiscoveryViewState(
+            location.search,
+            filters,
+            submittedFilters,
+            result.offset,
+        );
+        if (search !== location.search) {
+            navigate({ pathname: location.pathname, search }, { replace: true });
+        }
+    }, [filters, location.pathname, location.search, navigate, result.offset, submittedFilters]);
+
+    const hasSubmittedFilters = Object.values(submittedFilters).some((value) => value.trim().length > 0);
+    const hasFiltersToClear = hasSubmittedFilters || Object.values(filters).some((value) => value.trim().length > 0);
+    const hasAdvancedFilters = Boolean(submittedFilters.tag || submittedFilters.capability);
+    const hasUnappliedFilters = !filtersEqual(normalizeFilters(filters), submittedFilters);
+    const catalogIsEmpty = metadata?.catalog_loaded === true && metadata.entry_count === 0;
+    const catalogReportedItemCount = metadata?.catalog_loaded === true && metadata.entry_count > 0
+        ? metadata.entry_count
+        : null;
     function submitFilters(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const normalized = normalizeFilters(filters);
@@ -170,154 +219,174 @@ export function DiscoveryPage() {
         void loadCatalog(submittedFilters, result.offset + PAGE_SIZE);
     }
 
+    function retryLastSearch() {
+        void loadCatalog(lastRequestedQuery.current.filters, lastRequestedQuery.current.offset);
+    }
+
+    const resultSummary = `${result.total} ${hasSubmittedFilters ? "matching " : ""}item${result.total === 1 ? "" : "s"} ${hasSubmittedFilters ? "found" : "listed"}`;
+
     return (
-        <main className="mx-auto max-w-7xl space-y-8 p-8">
+        <main className="mx-auto max-w-7xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Discovery Center
-                    </p>
                     <h1 className="mt-3 text-3xl font-bold text-white">
-                        Provider-neutral catalog
+                        Browse the catalog
                     </h1>
                     <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                        Browse Atlas&apos;s read-only catalog of applications, services,
-                        integrations, hardware devices, AI models, and deployment
-                        methods. Catalog inclusion does not mean compatibility,
-                        support, installability, or approval to execute changes.
+                        Browse software, services, models, devices, integrations, and deployment options. This catalog is for reference. Atlas checks compatibility and your permission separately; browsing it doesn’t approve or apply changes.
                     </p>
                 </div>
 
-                <DiscoveryStatus metadata={metadata} isLoading={isLoading} />
+                <DiscoveryStatus
+                    metadata={metadata}
+                    error={metadataError}
+                    isLoading={isMetadataLoading}
+                    onRetry={() => void loadMetadata()}
+                />
             </header>
 
-            {error && (
+            {catalogError && (
                 <div
                     role="alert"
                     className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Discovery catalog unavailable
+                        Catalog could not be loaded
                     </p>
-                    <p className="mt-1 text-sm text-red-200/80">{error}</p>
+                    <p className="mt-1 text-sm text-red-200/80">Atlas couldn&apos;t load these results. Your search filters are still selected.</p>
+                    <button type="button" onClick={retryLastSearch} disabled={isLoading} className="mt-4 rounded-lg border border-red-300/40 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:cursor-not-allowed disabled:opacity-50">
+                        Retry search
+                    </button>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why the results couldn&apos;t load</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(catalogError) || "No additional details were returned."}</p>
+                    </details>
                 </div>
             )}
 
             <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <form
-                    className="grid gap-4 lg:grid-cols-[2fr_repeat(4,1fr)_auto]"
+                    className="space-y-4"
                     onSubmit={submitFilters}
-                    aria-label="Search Discovery catalog"
+                    aria-label="Search catalog"
                 >
-                    <label className="space-y-2 text-sm text-slate-300">
-                        <span>Keyword search</span>
-                        <input
-                            type="search"
-                            value={filters.query}
-                            onChange={(event) =>
+                    <div className="grid gap-4 lg:grid-cols-[2fr_repeat(2,1fr)_auto]">
+                        <label className="space-y-2 text-sm text-slate-300">
+                            <span>Keyword search</span>
+                            <input
+                                type="search"
+                                value={filters.query}
+                                onChange={(event) =>
+                                    setFilters((current) => ({
+                                        ...current,
+                                        query: event.target.value,
+                                    }))
+                                }
+                                placeholder="Search by name or description"
+                                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                            />
+                        </label>
+
+                        <SelectFilter
+                            label="Item type"
+                            value={filters.type}
+                            onChange={(value) =>
                                 setFilters((current) => ({
                                     ...current,
-                                    query: event.target.value,
+                                    type: value as "" | DiscoveryItemType,
                                 }))
                             }
-                            placeholder="Search by name or description"
-                            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                            options={itemTypeOptions}
                         />
-                    </label>
 
-                    <SelectFilter
-                        label="Item type"
-                        value={filters.type}
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                type: value as "" | DiscoveryItemType,
-                            }))
-                        }
-                        options={itemTypeOptions}
-                    />
+                        <SelectFilter
+                            label="Status"
+                            value={filters.status}
+                            onChange={(value) =>
+                                setFilters((current) => ({
+                                    ...current,
+                                    status: value as "" | DiscoveryItemStatus,
+                                }))
+                            }
+                            options={statusOptions}
+                        />
 
-                    <SelectFilter
-                        label="Status"
-                        value={filters.status}
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                status: value as "" | DiscoveryItemStatus,
-                            }))
-                        }
-                        options={statusOptions}
-                    />
-
-                    <TextFilter
-                        label="Tag"
-                        value={filters.tag}
-                        placeholder="ai"
-                        onChange={(value) =>
-                            setFilters((current) => ({ ...current, tag: value }))
-                        }
-                    />
-
-                    <TextFilter
-                        label="Capability"
-                        value={filters.capability}
-                        placeholder="mqtt-broker"
-                        onChange={(value) =>
-                            setFilters((current) => ({
-                                ...current,
-                                capability: value,
-                            }))
-                        }
-                    />
-
-                    <div className="flex items-end gap-2">
-                        <button
-                            type="submit"
-                            className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            disabled={isLoading}
-                        >
-                            Search
-                        </button>
-                        <button
-                            type="button"
-                            onClick={clearFilters}
-                            disabled={isLoading}
-                            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Clear Discovery filters"
-                        >
-                            Clear
-                        </button>
+                        <div className="flex items-end gap-2">
+                            <button
+                                type="submit"
+                                className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={isLoading}
+                            >
+                                Search
+                            </button>
+                            {hasFiltersToClear && (
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    disabled={isLoading}
+                                    className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
+                        </div>
                     </div>
+                    <details className="rounded-lg border border-slate-800 px-4 py-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                            More filters{hasAdvancedFilters ? " · active" : ""}
+                        </summary>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                            <TextFilter
+                                label="Tag"
+                                value={filters.tag}
+                                placeholder="ai"
+                                onChange={(value) =>
+                                    setFilters((current) => ({ ...current, tag: value }))
+                                }
+                            />
+                            <TextFilter
+                                label="Capability"
+                                value={filters.capability}
+                                placeholder="mqtt-broker"
+                                onChange={(value) =>
+                                    setFilters((current) => ({ ...current, capability: value }))
+                                }
+                            />
+                        </div>
+                    </details>
                 </form>
             </section>
 
-            <section className="space-y-4" aria-live="polite">
+            <section className="space-y-4">
+                {hasUnappliedFilters && (
+                    <p role="status" aria-label="Unapplied catalog filters" className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                        These filter changes haven&apos;t been searched yet. Select Search to update the results.
+                    </p>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="text-xl font-semibold text-white">
-                            {isSearchMode ? "Search results" : "Catalog items"}
+                            {hasSubmittedFilters ? "Search results" : "Catalog items"}
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                            {result.total} item{result.total === 1 ? "" : "s"} found
-                        </p>
+                        {!catalogError && !isLoading && result.total > 0 && <p role="status" aria-live="polite" aria-label="Catalog result count" className="mt-1 text-sm text-slate-500">{resultSummary}</p>}
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
                             onClick={goToPreviousPage}
-                            disabled={isLoading || result.offset === 0}
+                            disabled={isLoading || hasUnappliedFilters || result.offset === 0}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Previous Discovery results page"
+                            aria-label="Previous page"
                         >
                             Previous
                         </button>
                         <button
                             type="button"
                             onClick={goToNextPage}
-                            disabled={isLoading || !result.hasMore}
+                            disabled={isLoading || hasUnappliedFilters || !result.hasMore}
                             className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Next Discovery results page"
+                            aria-label="Next page"
                         >
                             Next
                         </button>
@@ -325,24 +394,39 @@ export function DiscoveryPage() {
                 </div>
 
                 {isLoading ? (
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
-                        Loading Discovery catalog…
+                    <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
+                        Loading catalog…
                     </div>
-                ) : result.entries.length === 0 && !error ? (
+                ) : catalogError ? (
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
+                        <p className="font-semibold text-slate-200">Results unavailable</p>
+                        <p className="mt-2 text-sm text-slate-500">Select Retry search above to try again.</p>
+                    </div>
+                ) : result.entries.length === 0 ? (
+                    <div role="status" aria-live="polite" className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                         <p className="font-semibold text-slate-200">
-                            {metadata?.catalog_loaded && metadata.entry_count === 0
-                                ? "The Discovery catalog is loaded but empty."
-                                : "No Discovery items matched these filters."}
+                            {catalogIsEmpty
+                                ? "No catalog items are available."
+                                : hasSubmittedFilters
+                                  ? "No items matched these filters."
+                                  : result.offset > 0
+                                    ? "No items are on this page."
+                                    : catalogReportedItemCount !== null
+                                      ? `The catalog says it has ${catalogReportedItemCount} items, but none are shown here.`
+                                      : "No catalog items are available to show."}
                         </p>
-                        <p className="mt-2 text-sm text-slate-500">
-                            Try clearing filters or using a broader keyword.
-                        </p>
+                        {!catalogIsEmpty && <p className="mt-2 text-sm text-slate-500">
+                            {hasSubmittedFilters
+                                ? "Clear filters or broaden your search."
+                                : result.offset > 0
+                                  ? "Use Previous to check earlier results."
+                                  : "Use Search to check the catalog again."}
+                        </p>}
                     </div>
                 ) : (
                     <div className="grid gap-4 lg:grid-cols-2">
                         {result.entries.map((entry) => (
-                            <DiscoveryItemCard key={entry.item.id} entry={entry} />
+                            <DiscoveryItemCard key={entry.item.id} entry={entry} returnSearch={location.search} />
                         ))}
                     </div>
                 )}
@@ -369,6 +453,35 @@ async function fetchDiscoveryPage(filters: FilterState, offset: number) {
     return listDiscoveryItems(query);
 }
 
+function isDisplayableDiscoveryPage(value: unknown): value is {
+    entries: DiscoveryCatalogEntry[];
+    total: number;
+    offset: number;
+    has_more: boolean;
+} {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const page = value as Record<string, unknown>;
+    return Array.isArray(page.entries)
+        && page.entries.every(isDisplayableDiscoveryEntry)
+        && typeof page.total === "number" && Number.isInteger(page.total) && page.total >= 0
+        && typeof page.offset === "number" && Number.isInteger(page.offset) && page.offset >= 0
+        && typeof page.has_more === "boolean";
+}
+
+function isDisplayableDiscoveryEntry(value: unknown): value is DiscoveryCatalogEntry {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+    const entry = value as Record<string, unknown>;
+    if (typeof entry.item !== "object" || entry.item === null || Array.isArray(entry.item)) return false;
+    const item = entry.item as Record<string, unknown>;
+    return typeof item.id === "string"
+        && typeof item.name === "string"
+        && typeof item.type === "string"
+        && typeof item.status === "string"
+        && typeof item.description === "string"
+        && Array.isArray(item.capabilities) && item.capabilities.every((value) => typeof value === "string")
+        && Array.isArray(item.tags) && item.tags.every((value) => typeof value === "string");
+}
+
 function toDiscoveryQuery(filters: FilterState, offset: number): DiscoveryListQuery {
     return {
         limit: PAGE_SIZE,
@@ -378,6 +491,81 @@ function toDiscoveryQuery(filters: FilterState, offset: number): DiscoveryListQu
         tag: filters.tag.trim() || undefined,
         capability: filters.capability.trim() || undefined,
     };
+}
+
+function parseDiscoveryViewState(search: string): {
+    filters: FilterState;
+    submittedFilters: FilterState;
+    offset: number;
+} {
+    const params = new URLSearchParams(search);
+    const submittedFilters = normalizeFilters({
+        query: params.get("q") ?? "",
+        type: parseItemType(params.get("type")),
+        status: parseItemStatus(params.get("status")),
+        tag: params.get("tag") ?? "",
+        capability: params.get("capability") ?? "",
+    });
+    const filters: FilterState = {
+        query: params.get("draft_q") ?? submittedFilters.query,
+        type: params.has("draft_type") ? parseItemType(params.get("draft_type")) : submittedFilters.type,
+        status: params.has("draft_status") ? parseItemStatus(params.get("draft_status")) : submittedFilters.status,
+        tag: params.get("draft_tag") ?? submittedFilters.tag,
+        capability: params.get("draft_capability") ?? submittedFilters.capability,
+    };
+    const parsedOffset = Number(params.get("offset"));
+    const offset = Number.isSafeInteger(parsedOffset) && parsedOffset >= 0 && parsedOffset % PAGE_SIZE === 0
+        ? parsedOffset
+        : 0;
+
+    return {
+        filters,
+        submittedFilters,
+        offset,
+    };
+}
+
+function parseItemType(value: string | null): FilterState["type"] {
+    return itemTypeOptions.some((option) => option.value === value)
+        ? value as DiscoveryItemType
+        : "";
+}
+
+function parseItemStatus(value: string | null): FilterState["status"] {
+    return statusOptions.some((option) => option.value === value)
+        ? value as DiscoveryItemStatus
+        : "";
+}
+
+function serializeDiscoveryViewState(
+    currentSearch: string,
+    filters: FilterState,
+    submittedFilters: FilterState,
+    offset: number,
+): string {
+    const params = new URLSearchParams(currentSearch);
+    for (const key of discoveryQueryKeys) params.delete(key);
+
+    const applied = normalizeFilters(submittedFilters);
+    setQueryValue(params, "q", applied.query);
+    setQueryValue(params, "type", applied.type);
+    setQueryValue(params, "status", applied.status);
+    setQueryValue(params, "tag", applied.tag);
+    setQueryValue(params, "capability", applied.capability);
+
+    if (filters.query !== applied.query) params.set("draft_q", filters.query);
+    if (filters.type !== applied.type) params.set("draft_type", filters.type);
+    if (filters.status !== applied.status) params.set("draft_status", filters.status);
+    if (filters.tag !== applied.tag) params.set("draft_tag", filters.tag);
+    if (filters.capability !== applied.capability) params.set("draft_capability", filters.capability);
+    if (offset > 0) params.set("offset", String(offset));
+
+    const nextSearch = params.toString();
+    return nextSearch ? `?${nextSearch}` : "";
+}
+
+function setQueryValue(params: URLSearchParams, key: string, value: string) {
+    if (value) params.set(key, value);
 }
 
 function normalizeFilters(filters: FilterState): FilterState {
@@ -390,12 +578,24 @@ function normalizeFilters(filters: FilterState): FilterState {
     };
 }
 
+function filtersEqual(left: FilterState, right: FilterState): boolean {
+    return left.query === right.query
+        && left.type === right.type
+        && left.status === right.status
+        && left.tag === right.tag
+        && left.capability === right.capability;
+}
+
 function DiscoveryStatus({
     metadata,
+    error,
     isLoading,
+    onRetry,
 }: {
     metadata: DiscoveryMetadata | null;
+    error: string | null;
     isLoading: boolean;
+    onRetry: () => void;
 }) {
     const label = metadata
         ? metadata.catalog_loaded
@@ -404,21 +604,44 @@ function DiscoveryStatus({
                 : "Catalog empty"
             : "Catalog unavailable"
         : isLoading
-          ? "Loading catalog"
-          : "Catalog status unknown";
+          ? "Checking catalog status"
+          : error
+            ? "Catalog status unavailable"
+            : "Catalog status unknown";
+    const catalogTotal = metadata?.catalog_loaded && metadata.entry_count > 0
+        ? metadata.entry_count
+        : null;
 
     return (
-        <div className="grid gap-3 sm:grid-cols-3">
-            <StatusTile label="Status" value={label} />
-            <StatusTile
-                label="Entries"
-                value={metadata ? String(metadata.entry_count) : "…"}
-            />
-            <StatusTile
-                label="Schema"
-                value={metadata ? `v${metadata.schema_version}` : "…"}
-            />
-        </div>
+        <>
+            <div className={`grid gap-3${catalogTotal !== null ? " sm:grid-cols-2" : ""}`}>
+                <StatusTile label="Status" value={label} />
+                {catalogTotal !== null && <StatusTile
+                    label="Catalog total"
+                    value={String(catalogTotal)}
+                />}
+            </div>
+            {error && (
+                <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                    <p className="text-sm text-amber-100">Atlas couldn&apos;t check the catalog status.</p>
+                    <button type="button" onClick={onRetry} disabled={isLoading} className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 disabled:cursor-not-allowed disabled:opacity-50">
+                        Retry status check
+                    </button>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Why the status check failed</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(error) || "No additional details were returned."}</p>
+                    </details>
+                </div>
+            )}
+            {metadata && <details className="mt-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <summary className="cursor-pointer text-sm font-medium text-slate-300">
+                    Catalog format information
+                </summary>
+                <p className="mt-3 text-sm text-slate-400">
+                    Catalog format version: v{metadata.schema_version}
+                </p>
+            </details>}
+        </>
     );
 }
 
@@ -486,7 +709,7 @@ function TextFilter({
     );
 }
 
-function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
+function DiscoveryItemCard({ entry, returnSearch }: { entry: DiscoveryCatalogEntry; returnSearch: string }) {
     const item = entry.item;
 
     return (
@@ -494,12 +717,14 @@ function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                     <Link
-                        to={`/discovery/items/${encodeURIComponent(item.id)}`}
+                        to={{
+                            pathname: `/discovery/items/${encodeURIComponent(item.id)}`,
+                            search: returnSearch,
+                        }}
                         className="text-lg font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                     >
                         {item.name}
                     </Link>
-                    <p className="mt-1 text-xs text-slate-500">{item.id}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Badge>{formatLabel(item.type)}</Badge>
@@ -511,13 +736,17 @@ function DiscoveryItemCard({ entry }: { entry: DiscoveryCatalogEntry }) {
                 {item.description}
             </p>
 
-            <ChipList label="Capabilities" values={item.capabilities} />
-            <ChipList label="Tags" values={item.tags} />
+            <ChipList label="Capabilities" values={item.capabilities} formatValue={formatCapability} />
+            <ChipList label="Tags" values={item.tags} formatValue={formatCapability} />
+            <details className="mt-4 border-t border-slate-800 pt-3">
+                <summary className="cursor-pointer text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                <p className="mt-2 break-all text-sm text-slate-400">Catalog item ID: {item.id}</p>
+            </details>
         </article>
     );
 }
 
-function ChipList({ label, values }: { label: string; values: string[] }) {
+function ChipList({ label, values, formatValue }: { label: string; values: string[]; formatValue: (value: string) => string }) {
     if (values.length === 0) {
         return null;
     }
@@ -533,7 +762,7 @@ function ChipList({ label, values }: { label: string; values: string[] }) {
                         key={value}
                         className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300"
                     >
-                        {value}
+                        {formatValue(value)}
                     </span>
                 ))}
             </div>
@@ -551,7 +780,12 @@ function Badge({ children }: { children: string }) {
 
 function formatLabel(value: string): string {
     return value
-        .split("_")
+        .split(/[_-]+/)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
+}
+
+function formatCapability(value: string): string {
+    const words = value.replace(/[_-]+/g, " ").trim();
+    return words ? words.charAt(0).toUpperCase() + words.slice(1) : value;
 }

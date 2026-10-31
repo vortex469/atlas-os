@@ -38,18 +38,18 @@ export function PlanPanel({
 
                 <div className="text-right text-sm">
                     <p className="font-medium text-slate-200">
-                        {proposal.estimated_duration_minutes ?? 0} minutes
+                        {proposal.estimated_duration_minutes === null ? "Not estimated" : `${proposal.estimated_duration_minutes} minutes`}
                     </p>
 
                     <p className="mt-1 text-slate-500">
-                        Approval{" "}
                         {proposal.approval_required
-                            ? "required"
-                            : "not required"}
+                            ? "Planner requests approval"
+                            : "Planner does not request approval"}
                     </p>
                 </div>
             </div>
 
+            <p className="mt-4 text-sm text-slate-400">This is a proposed plan. Workflow permissions and exact approvals are checked separately.</p>
             <ol className="mt-6 space-y-3">
                 {proposal.steps.map((step) => (
                     <li

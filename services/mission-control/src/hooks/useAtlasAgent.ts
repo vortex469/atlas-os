@@ -31,6 +31,10 @@ interface AtlasAgentState {
     error: string | null;
 }
 
+interface AtlasAgentResult extends AtlasAgentState {
+    retry: () => void;
+}
+
 const initialState: AtlasAgentState = {
     info: null,
     repository: null,
@@ -75,9 +79,14 @@ function getAtlasUnavailableMessage(error: unknown): string {
     return getAtlasAgentErrorMessage(error, "Atlas Agent unavailable");
 }
 
-export function useAtlasAgent(): AtlasAgentState {
+export function useAtlasAgent(): AtlasAgentResult {
     const [state, setState] =
         useState<AtlasAgentState>(initialState);
+    const [loadAttempt, setLoadAttempt] = useState(0);
+    const retry = () => {
+        setState(initialState);
+        setLoadAttempt((attempt) => attempt + 1);
+    };
 
     useEffect(() => {
         let isCancelled = false;
@@ -128,7 +137,7 @@ export function useAtlasAgent(): AtlasAgentState {
         return () => {
             isCancelled = true;
         };
-    }, []);
+    }, [loadAttempt]);
 
-    return state;
+    return { ...state, retry };
 }

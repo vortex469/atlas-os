@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import {
     getWorkflowOperationalLifecycle,
@@ -7,7 +7,10 @@ import {
     listWorkflows,
 } from "../api/atlas-agent";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
-import { recoveryPresentation } from "../utils/recoveryDiagnostic";
+import { isUnavailableDiagnosticStatus, recoveryPresentation } from "../utils/recoveryDiagnostic";
+import { formatResourceTypeLabel } from "../utils/resourceLabels";
+import { formatWorkflowLabel } from "../utils/workflowState";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import type {
     WorkflowOperationalLifecycle,
     WorkflowRecoveryDiagnostic,
@@ -15,33 +18,117 @@ import type {
 } from "../types/atlasAgent";
 
 const PAGE_SIZE = 10;
+const DIAGNOSTIC_FILTERS = ["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"];
+const COMPLETION_FILTERS = ["all", "terminal", "non_terminal"];
+
+type OperationalHistoryViewState = {
+    diagnosticFilter: string;
+    terminalFilter: string;
+    intentFilter: string;
+    providerFilter: string;
+    resourceTypeFilter: string;
+    offset: number;
+};
+
+function operationalHistoryViewState(search: string): OperationalHistoryViewState {
+    const params = new URLSearchParams(search);
+    const diagnostic = params.get("status") ?? "all";
+    const completion = params.get("completion") ?? "all";
+    const rawOffset = Number(params.get("offset"));
+    return {
+        diagnosticFilter: DIAGNOSTIC_FILTERS.includes(diagnostic) ? diagnostic : "all",
+        terminalFilter: COMPLETION_FILTERS.includes(completion) ? completion : "all",
+        intentFilter: (params.get("action") ?? "all").slice(0, 200) || "all",
+        providerFilter: (params.get("provider") ?? "all").slice(0, 200) || "all",
+        resourceTypeFilter: (params.get("resource") ?? "all").slice(0, 200) || "all",
+        offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset % PAGE_SIZE === 0 ? rawOffset : 0,
+    };
+}
+
+function operationalHistorySearch(currentSearch: string, state: OperationalHistoryViewState): string {
+    const params = new URLSearchParams(currentSearch);
+    const values: Array<[string, string]> = [
+        ["status", state.diagnosticFilter],
+        ["completion", state.terminalFilter],
+        ["action", state.intentFilter],
+        ["provider", state.providerFilter],
+        ["resource", state.resourceTypeFilter],
+        ["offset", state.offset === 0 ? "" : String(state.offset)],
+    ];
+    for (const [key, value] of values) {
+        if (value && value !== "all") params.set(key, value);
+        else params.delete(key);
+    }
+    const serialized = params.toString();
+    return serialized ? `?${serialized}` : "";
+}
+
+function operationalHistoryDetailSearch(search: string): string {
+    const params = new URLSearchParams(search);
+    params.set("returnTo", "/operations/history");
+    return `?${params.toString()}`;
+}
 
 interface HistoryItem {
     workflow: WorkflowSummary;
     lifecycle: WorkflowOperationalLifecycle | null;
+    lifecycleUnavailable: boolean;
     diagnostic: WorkflowRecoveryDiagnostic | null;
     diagnosticUnavailable: boolean;
 }
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(value: string | null): ReactNode {
     if (!value) return "Not reported";
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "Unknown time" : parsed.toLocaleString();
+    const parsed = evidenceTimestamp(value);
+    return parsed === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(parsed).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
+}
+
+function historyTargetName(workflow: WorkflowSummary, lifecycle: WorkflowOperationalLifecycle | null): string {
+    const targetParts = lifecycle?.target_label?.split("/");
+    const isStructuredTarget = targetParts?.length === 3
+        && targetParts[0] === lifecycle?.provider_id
+        && targetParts[1] === lifecycle?.resource_type
+        && targetParts[2] === lifecycle?.resource_id;
+    if (isStructuredTarget && lifecycle?.resource_id) {
+        return `${formatResourceTypeLabel(lifecycle.resource_type)} ${lifecycle.resource_id}`;
+    }
+    if (lifecycle?.target_label) return lifecycle.target_label;
+    if (!workflow.target_id) return "Maintenance target";
+    return /^(VM|Virtual machine|Container)\b/i.test(workflow.target_id)
+        ? workflow.target_id
+        : "Maintenance target " + workflow.target_id;
 }
 
 export function OperationalHistoryPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => operationalHistoryViewState(location.search));
     const [items, setItems] = useState<HistoryItem[]>([]);
-    const [offset, setOffset] = useState(0);
+    const [offset, setOffset] = useState(initialViewState.offset);
     const [total, setTotal] = useState(0);
+    const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [diagnosticFilter, setDiagnosticFilter] = useState("all");
-    const [terminalFilter, setTerminalFilter] = useState("all");
-    const [intentFilter, setIntentFilter] = useState("all");
-    const [providerFilter, setProviderFilter] = useState("all");
-    const [resourceTypeFilter, setResourceTypeFilter] = useState("all");
+    const [diagnosticFilter, setDiagnosticFilter] = useState(initialViewState.diagnosticFilter);
+    const [terminalFilter, setTerminalFilter] = useState(initialViewState.terminalFilter);
+    const [intentFilter, setIntentFilter] = useState(initialViewState.intentFilter);
+    const [providerFilter, setProviderFilter] = useState(initialViewState.providerFilter);
+    const [resourceTypeFilter, setResourceTypeFilter] = useState(initialViewState.resourceTypeFilter);
+    const returnSearch = operationalHistorySearch(location.search, {
+        diagnosticFilter,
+        terminalFilter,
+        intentFilter,
+        providerFilter,
+        resourceTypeFilter,
+        offset,
+    });
 
+    const requestGeneration = useRef(0);
+    const loadedOffsetRef = useRef<number | null>(null);
     const load = useCallback(async () => {
+        const generation = ++requestGeneration.current;
         setIsLoading(true);
         setError(null);
         try {
@@ -50,64 +137,214 @@ export function OperationalHistoryPage() {
                 limit: PAGE_SIZE,
                 offset,
             });
+            if (generation !== requestGeneration.current) return;
             const evidence = await Promise.all(
                 page.items.map(async (workflow) => {
                     const [lifecycle, diagnostic] = await Promise.all([
-                        getWorkflowOperationalLifecycle(workflow.workflow_id).catch(() => null),
+                        getWorkflowOperationalLifecycle(workflow.workflow_id)
+                            .then((value) => ({ value, unavailable: false }))
+                            .catch(() => ({ value: null, unavailable: true })),
                         getWorkflowRecoveryDiagnostic(workflow.workflow_id)
                             .then((value) => ({ value, unavailable: false }))
                             .catch(() => ({ value: null, unavailable: true })),
                     ]);
-                    return { lifecycle, diagnostic: diagnostic.value, diagnosticUnavailable: diagnostic.unavailable };
+                    const matchingLifecycle = lifecycle.value?.workflow_id === workflow.workflow_id ? lifecycle.value : null;
+                    const matchingDiagnostic = diagnostic.value?.correlation?.workflow_id === workflow.workflow_id ? diagnostic.value : null;
+                    return { lifecycle: matchingLifecycle,
+                        lifecycleUnavailable: lifecycle.unavailable || (lifecycle.value !== null && matchingLifecycle === null),
+                        diagnostic: matchingDiagnostic,
+                        diagnosticUnavailable: diagnostic.unavailable || (diagnostic.value !== null && matchingDiagnostic === null) };
                 }),
             );
+            if (generation !== requestGeneration.current) return;
             setItems(page.items.map((workflow, index) => ({ workflow, ...evidence[index] })));
             setTotal(page.total);
+            loadedOffsetRef.current = offset;
+            setLoadedOffset(offset);
         } catch {
-            setError("Mission Control could not load operational workflow history.");
+            if (generation === requestGeneration.current) {
+                setError(loadedOffsetRef.current === offset
+                    ? "Atlas couldn’t refresh maintenance history."
+                    : "Atlas couldn’t load maintenance history.");
+            }
         } finally {
-            setIsLoading(false);
+            if (generation === requestGeneration.current) setIsLoading(false);
         }
     }, [offset]);
 
     useEffect(() => {
-        void Promise.resolve().then(load);
+        let active = true;
+        void Promise.resolve().then(() => { if (active) return load(); });
+        return () => { active = false; requestGeneration.current += 1; };
     }, [load]);
 
-    const visibleItems = items.filter(({ workflow, lifecycle, diagnostic }) =>
-        (diagnosticFilter === "all" || diagnostic?.diagnostic_status === diagnosticFilter)
+    useEffect(() => {
+        if (returnSearch !== location.search) {
+            navigate({ pathname: location.pathname, search: returnSearch }, { replace: true });
+        }
+    }, [location.pathname, location.search, navigate, returnSearch]);
+
+    const visibleItems = items.filter(({ workflow, lifecycle, diagnostic, diagnosticUnavailable }) =>
+        (diagnosticFilter === "all" || diagnostic?.diagnostic_status === diagnosticFilter
+            || (diagnosticFilter === "unavailable" && (diagnosticUnavailable || diagnostic === null
+                || isUnavailableDiagnosticStatus(diagnostic.diagnostic_status))))
         && (terminalFilter === "all" || (terminalFilter === "terminal") === lifecycle?.terminal)
         && (intentFilter === "all" || workflow.execution_intent === intentFilter)
         && (providerFilter === "all" || lifecycle?.provider_id === providerFilter)
         && (resourceTypeFilter === "all" || lifecycle?.resource_type === resourceTypeFilter));
+    const hasActiveMoreFilters = terminalFilter !== "all" || intentFilter !== "all"
+        || providerFilter !== "all" || resourceTypeFilter !== "all";
+    const hasActiveFilters = diagnosticFilter !== "all" || hasActiveMoreFilters;
+    const hasCurrentPage = loadedOffset === offset;
+    const intentOptions = distinctFilterOptions(items.map(({ workflow }) => workflow.execution_intent), intentFilter);
+    const providerOptions = distinctFilterOptions(items.map(({ lifecycle }) => lifecycle?.provider_id ?? null), providerFilter);
+    const resourceTypeOptions = distinctFilterOptions(items.map(({ lifecycle }) => lifecycle?.resource_type ?? null), resourceTypeFilter);
+
+    function clearFilters() {
+        setDiagnosticFilter("all");
+        setTerminalFilter("all");
+        setIntentFilter("all");
+        setProviderFilter("all");
+        setResourceTypeFilter("all");
+    }
 
     return (
-        <main className="mx-auto max-w-7xl space-y-6 p-8">
+        <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
             <header className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-6">
-                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Operations</p><h1 className="mt-2 text-3xl font-semibold text-white">Operational workflow history</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">Bounded, read-only lifecycle history from persisted Agent workflows and sanitized Core evidence. Maintenance requests remain a separate workflow.</p></div>
+                <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Maintenance</p><h1 className="mt-2 text-3xl font-semibold text-white">Maintenance history</h1><p className="mt-2 max-w-3xl text-sm text-slate-400">Past requests and each request&apos;s latest maintenance status. This is not a live service check.</p></div>
                 <div className="flex gap-3"><Link to="/operations/request" className="rounded-lg border border-cyan-400/60 px-3 py-2 text-sm font-semibold text-cyan-100">Request maintenance</Link><button type="button" onClick={() => void load()} disabled={isLoading} className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50">Refresh history</button></div>
             </header>
-            {isLoading && <p role="status" className="text-slate-300">Loading operational history...</p>}
-            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} A network failure is not an operational failure.</p>}
-            {!isLoading && !error && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">No operational workflows are persisted.</p>}
-            {!isLoading && !error && items.length > 0 && <section aria-label="Operational history filters" className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4 sm:grid-cols-2 xl:grid-cols-5"><Filter label="Diagnostic" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} /><Filter label="Lifecycle" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} /><Filter label="Intent" value={intentFilter} onChange={setIntentFilter} options={["all", "restart-service"]} /><Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={["all", "proxmox"]} /><Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={["all", "qemu"]} /></section>}
-            {!isLoading && !error && items.length > 0 && visibleItems.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">No workflows on this bounded page match the selected filters.</p>}
-            {!isLoading && !error && <section aria-label="Operational workflow history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} />)}</section>}
-            {!isLoading && !error && total > PAGE_SIZE && <nav aria-label="Operational history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} disabled={offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}</span><button type="button" onClick={() => setOffset((current) => current + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
+            {isLoading && !hasCurrentPage && <p role="status" className="text-slate-300">Loading maintenance history…</p>}
+            {isLoading && hasCurrentPage && <p role="status" className="text-slate-300">Refreshing maintenance history. The last loaded requests remain visible until this finishes.</p>}
+            {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-100">{error} {hasCurrentPage ? "The requests below are from the last successful load; their status may have changed." : "The latest maintenance status could not be confirmed. Use Refresh history to check again."}</p>}
+            {hasCurrentPage && !isLoading && items.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300">{error ? "No maintenance requests were listed in the last successful load." : offset === 0 ? "No maintenance requests yet." : "No requests on this page. Go back to an earlier page."}</p>}
+            {hasCurrentPage && items.length > 0 && <section aria-label="Maintenance history filters" className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                <p className="text-sm text-slate-400">Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <Filter label="Latest maintenance status" value={diagnosticFilter} onChange={setDiagnosticFilter} options={["all", "healthy", "pending", "recovery_in_progress", "attention_required", "outcome_uncertain", "unavailable"]} />
+                </div>
+                <details className="rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-200">
+                        More filters
+                        {hasActiveMoreFilters && <span className="ml-2 text-xs font-normal text-amber-200">Additional filters are applied</span>}
+                    </summary>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <Filter label="Completion" value={terminalFilter} onChange={setTerminalFilter} options={["all", "terminal", "non_terminal"]} />
+                        {intentOptions && <Filter label="Requested action" value={intentFilter} onChange={setIntentFilter} options={intentOptions} />}
+                        {providerOptions && <Filter label="Provider" value={providerFilter} onChange={setProviderFilter} options={providerOptions} />}
+                        {resourceTypeOptions && <Filter label="Resource type" value={resourceTypeFilter} onChange={setResourceTypeFilter} options={resourceTypeOptions} />}
+                    </div>
+                </details>
+                {hasActiveFilters && <div className="flex justify-end"><button type="button" onClick={clearFilters} className="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold text-slate-100">Clear filters</button></div>}
+            </section>}
+            {hasCurrentPage && items.length > 0 && visibleItems.length === 0 && <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-slate-300"><p>No requests on this page match your filters.</p></section>}
+            {hasCurrentPage && <section aria-label="Maintenance history" className="space-y-4">{visibleItems.map((item) => <OperationalHistoryCard key={item.workflow.workflow_id} {...item} returnSearch={returnSearch} />)}</section>}
+            {!hasCurrentPage && offset > 0 && <nav aria-label="Maintenance history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100">Previous</button></nav>}
+            {hasCurrentPage && (offset > 0 || total > PAGE_SIZE) && <nav aria-label="Maintenance history pagination" className="flex items-center gap-3"><button type="button" onClick={() => setOffset((current) => Math.max(0, current - PAGE_SIZE))} disabled={offset === 0} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Previous</button><span className="text-sm text-slate-400">{items.length > 0 ? `Showing ${offset + 1}–${Math.min(offset + PAGE_SIZE, total)} of ${total}` : `${total} request${total === 1 ? "" : "s"} total`}</span><button type="button" onClick={() => setOffset((current) => current + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-100 disabled:opacity-50">Next</button></nav>}
         </main>
     );
 }
 
-function OperationalHistoryCard({ workflow, lifecycle, diagnostic, diagnosticUnavailable }: HistoryItem) {
+function OperationalHistoryCard({ workflow, lifecycle, lifecycleUnavailable, diagnostic, diagnosticUnavailable, returnSearch }: HistoryItem & { returnSearch: string }) {
     const outcome = diagnostic ? recoveryPresentation(diagnostic) : null;
-    const terminalTimestamp = lifecycle?.verification_completed_at ?? lifecycle?.dispatch_completed_at ?? null;
-    return <article className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="break-all text-lg font-semibold text-white">{lifecycle?.target_label ?? workflow.target_id ?? "Operational target"}</h2><p className="mt-1 text-sm text-slate-400">{workflow.execution_intent ?? "Operational action"} · {outcome?.title ?? "Diagnostic unavailable"}</p></div><Link to={`/workflows/${encodeURIComponent(workflow.workflow_id)}`} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Open lifecycle</Link></div><dl className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4"><HistoryDetail label="Workflow State" value={workflow.workflow_state} /><HistoryDetail label="Consistency" value={diagnostic?.consistency ?? "unavailable"} /><HistoryDetail label="Verification" value={lifecycle?.verification_status ?? "Not reported"} /><HistoryDetail label="Support Evidence" value={diagnostic ? "Available" : "Unavailable"} /><HistoryDetail label="Created" value={formatTimestamp(lifecycle?.request_created_at ?? null)} /><HistoryDetail label="Terminal" value={formatTimestamp(terminalTimestamp)} /></dl><OperationalRecoverySummary diagnostic={diagnostic} error={diagnosticUnavailable ? "Mission Control could not read this workflow diagnostic." : null} supportEvidenceAvailable={diagnostic !== null} compact /></article>;
+    const resultTimestamp = lifecycle?.verification_completed_at ?? lifecycle?.dispatch_completed_at ?? null;
+    const action = workflow.execution_intent
+        ? formatWorkflowLabel(workflow.execution_intent)
+        : "Maintenance request";
+    return (
+        <article className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h2 className="break-all text-lg font-semibold text-white">{historyTargetName(workflow, lifecycle)}</h2>
+                    <p className="mt-1 text-sm text-slate-400">Requested action: {action}{!outcome && " · Latest maintenance status: Unavailable"}</p>
+                    <p className="mt-1 text-sm text-slate-400">Requested (local time): {formatTimestamp(lifecycle?.request_created_at ?? null)}</p>
+                </div>
+                <Link to={{ pathname: `/workflows/${encodeURIComponent(workflow.workflow_id)}`, search: operationalHistoryDetailSearch(returnSearch) }} state={{ returnTo: "/operations/history" }} className="rounded-lg border border-blue-400/60 px-3 py-2 text-sm font-semibold text-blue-100">Review maintenance request</Link>
+            </div>
+            {lifecycleUnavailable && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">Could not load request details. Target and timing information may be incomplete. Use Refresh history to try again.</p>}
+            <OperationalRecoverySummary diagnostic={diagnostic} error={diagnosticUnavailable ? "Could not load the latest status for this request." : null} supportEvidenceAvailable={diagnostic !== null} compact />
+            <details className="rounded-lg border border-slate-800 p-3">
+                <summary className="cursor-pointer text-sm font-medium text-slate-200">Request details</summary>
+                <dl className="mt-3 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    <HistoryDetail label="Request stage" value={maintenanceStageLabel(workflow.workflow_state)} />
+                    <HistoryDetail label="Status record check" value={diagnostic ? consistencyLabel(diagnostic.consistency) : "Not available"} />
+                    <HistoryDetail label="Verification result" value={verificationLabel(lifecycle?.verification_status ?? null)} />
+                    <HistoryDetail label="Support evidence" value={diagnostic ? "Available" : "Unavailable"} />
+                    <HistoryDetail label="Result recorded (local time)" value={formatTimestamp(resultTimestamp)} />
+                    <HistoryDetail label="Target reference" value={lifecycle?.target_label ?? workflow.target_id ?? "Not reported"} />
+                </dl>
+            </details>
+        </article>
+    );
 }
 
-function HistoryDetail({ label, value }: { label: string; value: string }) {
-    return <div><dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{value.replaceAll("_", " ")}</dd></div>;
+function consistencyLabel(value: WorkflowRecoveryDiagnostic["consistency"]): string {
+    const labels: Record<WorkflowRecoveryDiagnostic["consistency"], string> = {
+        consistent: "Records match",
+        agent_only: "Matching service record not found",
+        core_unavailable: "Status service unavailable",
+        immutable_mismatch: "Request details differ",
+        transition_mismatch: "Status history is out of order",
+        terminal_mismatch: "Completion status differs",
+    };
+    return labels[value];
 }
+
+function verificationLabel(value: string | null): string {
+    if (value === null) return "Not reported";
+    const labels: Record<string, string> = {
+        failed: "Did not pass",
+        not_applicable: "Not applicable",
+        not_started: "Not started",
+        passed: "Passed",
+        pending: "In progress",
+        succeeded: "Passed",
+    };
+    return labels[value] ?? "Result unavailable";
+}
+
+function HistoryDetail({ label, value }: { label: string; value: ReactNode }) {
+    return <div><dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-all text-slate-200">{typeof value === "string" ? value.replaceAll("_", " ") : value}</dd></div>;
+}
+
+function maintenanceStageLabel(value: string): string {
+    const labels: Record<string, string> = {
+        planned: "Ready for review",
+        awaiting_approval: "Waiting for review",
+        awaiting_implementation_approval: "Waiting for maintenance approval",
+        awaiting_execution: "Approved and ready to run",
+        executing: "Running",
+        patch_applied_pending_verification: "Maintenance ran. Result check is next.",
+        awaiting_verification_approval: "Waiting for verification approval",
+        verifying: "Checking the result",
+        awaiting_commit_approval: "Waiting for commit approval",
+        committing: "Recording commit",
+        blocked: "Blocked",
+        implementation_rejected: "Request rejected",
+        completed: "Completed",
+    };
+    return labels[value] ?? "Status unavailable";
+}
+
+const FILTER_LABELS: Record<string, string> = {
+    all: "Any", healthy: "Healthy", pending: "Pending", recovery_in_progress: "Recovering",
+    attention_required: "Needs attention", outcome_uncertain: "Result unknown", unavailable: "Unavailable",
+    terminal: "Finished", non_terminal: "In progress", "restart-service": "Restart Service",
+    proxmox: "Proxmox", qemu: "Virtual machine", lxc: "Container",
+};
 
 function Filter({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) {
-    return <label className="text-sm text-slate-300">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">{options.map((option) => <option key={option} value={option}>{option.replaceAll("_", " ")}</option>)}</select></label>;
+    return <label className="text-sm text-slate-300">{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">{options.map((option) => <option key={option} value={option}>{filterOptionLabel(option)}</option>)}</select></label>;
+}
+
+function distinctFilterOptions(values: Array<string | null | undefined>, selected: string): string[] | null {
+    const distinct = [...new Set(values.filter((value): value is string => Boolean(value)))].sort();
+    if (distinct.length < 2 && selected === "all") return null;
+    if (selected !== "all" && !distinct.includes(selected)) distinct.push(selected);
+    return ["all", ...distinct.sort()];
+}
+
+function filterOptionLabel(value: string): string {
+    if (FILTER_LABELS[value]) return FILTER_LABELS[value];
+    return value.replaceAll(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

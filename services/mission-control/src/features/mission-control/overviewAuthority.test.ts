@@ -10,7 +10,9 @@ describe('overview authority boundary', () => {
         const paths = [...hook.matchAll(/atlas\.get<unknown>\("([^"]+)"/g)].map(match => match[1]);
         expect(paths).toEqual(['/health', '/ace/summary', '/policies/status', '/providers', '/ai/status', '/ops/actions/page']);
         expect(view).not.toContain('JSON.stringify');
-        expect(view).not.toMatch(/dangerouslySetInnerHTML|\.details\b|\.repository_root\b/);
+        expect(view).not.toMatch(/dangerouslySetInnerHTML|\.repository_root\b/);
+        expect(view.match(/\.details\b/g)).toEqual(['.details']);
+        expect(view).toContain('record(evidence.details).url');
     });
 });
 

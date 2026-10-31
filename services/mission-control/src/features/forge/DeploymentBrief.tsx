@@ -10,39 +10,14 @@ export function DeploymentBrief({
     const plan = analysis.result.analysis.plan;
     const proposal = analysis.result.planning.proposal;
 
-    let status = "";
-    let recommendation = "";
-    let statusColor = "";
-
-    switch (plan.risk) {
-        case "low":
-            status = "Ready for Review";
-            recommendation =
-                "Atlas recommends proceeding to review and approval.";
-            statusColor = "text-emerald-400";
-            break;
-
-        case "medium":
-            status = "Review Required";
-            recommendation =
-                "Atlas recommends reviewing diagnostics before approval.";
-            statusColor = "text-yellow-400";
-            break;
-
-        case "high":
-            status = "High Risk";
-            recommendation =
-                "Atlas recommends resolving identified risks before deployment.";
-            statusColor = "text-orange-400";
-            break;
-
-        case "critical":
-            status = "Deployment Blocked";
-            recommendation =
-                "Atlas recommends resolving critical issues before continuing.";
-            statusColor = "text-red-400";
-            break;
-    }
+    const risks = ["low", "medium", "high", "critical"];
+    const knownRisks = risks.includes(plan.risk) && risks.includes(proposal.risk);
+    const highestRisk = knownRisks ? risks[Math.max(risks.indexOf(plan.risk), risks.indexOf(proposal.risk))] : null;
+    const status = highestRisk ? `Highest reported risk: ${highestRisk}` : "Risk unavailable";
+    const statusColor = highestRisk === "critical" ? "text-red-400" : highestRisk === "high" ? "text-orange-400" : "text-slate-200";
+    const recommendation = highestRisk === "critical" || highestRisk === "high"
+        ? "Review the diagnostics and address the reported risks before using this plan."
+        : "Review the analysis and proposed steps. Workflow permissions and exact approvals are checked separately.";
 
     return (
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
@@ -68,15 +43,17 @@ export function DeploymentBrief({
                 </li>
 
                 <li>
-                    • Overall risk:{" "}
+                    • Analysis risk:{" "}
                     <span className="font-semibold uppercase">
                         {plan.risk}
                     </span>
                 </li>
 
+                <li>• Proposed plan risk: <span className="font-semibold uppercase">{proposal.risk}</span></li>
+
                 <li>
                     • Estimated deployment:{" "}
-                    {proposal.estimated_duration_minutes ?? "Unknown"} minutes
+                    {proposal.estimated_duration_minutes === null ? "Not estimated" : `${proposal.estimated_duration_minutes} minutes`}
                 </li>
             </ul>
 

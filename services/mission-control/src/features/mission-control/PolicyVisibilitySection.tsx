@@ -1,5 +1,6 @@
 import { HealthEvidence } from "../../components/HealthEvidence";
-import { evidenceRecord, evidenceText, healthState } from "../../utils/healthPresentation";
+import { evidenceRecord, healthState } from "../../utils/healthPresentation";
+import { safeText } from "../../utils/safeText";
 import { SectionHeader } from "../../components/SectionHeader";
 import type {
     AtlasPolicies,
@@ -39,10 +40,10 @@ export function PolicyVisibilitySection({
             <section>
                 <SectionHeader
                     title="Provider Policies"
-                    description="Live validated operational expectations currently enforced by ACE."
+                    description="This page shows the rules Atlas uses to check connected providers and their resources."
                 />
 
-                <PolicyReloadStatus health={health} />
+                <PolicyReloadStatus health={health} hasPolicyData={false} />
             </section>
         );
     }
@@ -147,10 +148,10 @@ export function PolicyVisibilitySection({
         <section>
             <SectionHeader
                 title="Provider Policies"
-                description="Live validated operational expectations currently enforced by ACE."
+                description="This page shows the rules Atlas uses to check connected providers and their resources."
             />
 
-            <PolicyReloadStatus health={health} />
+            <PolicyReloadStatus health={health} hasPolicyData />
 
             <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900">
                 <table className="w-full min-w-[620px] text-left text-sm">
@@ -200,8 +201,10 @@ export function PolicyVisibilitySection({
 
 function PolicyReloadStatus({
     health: payload,
+    hasPolicyData,
 }: {
     health: unknown;
+    hasPolicyData: boolean;
 }) {
     const health = evidenceRecord(payload);
     const state = healthState(health.status);
@@ -218,7 +221,7 @@ function PolicyReloadStatus({
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <p className="text-sm font-semibold text-mc-text-primary">
-                        {`Policy reload ${state.toLowerCase()}`}
+                        Policy file check
                     </p>
                     <p className="mt-1 text-xs text-slate-400">
                         {duration === null ? "Validation duration unknown" : `Validated in ${duration} ms`}
@@ -229,49 +232,63 @@ function PolicyReloadStatus({
                     </p>
                 </div>
 
-                <HealthEvidence status={health.status} reason={health.error} checkedAt={health.checked_at} />
+                <HealthEvidence
+                    status={health.status}
+                    reason={diagnostics.length > 0 ? null : health.error}
+                    checkedAt={health.checked_at}
+                />
             </div>
 
-            {diagnostics.length > 0 && (
-                <ul className="mt-3 space-y-2">
-                    {diagnostics.map(
-                        (diagnostic, index) => (
-                            <li
-                                key={index}
-                                className="rounded border border-red-500/20 bg-slate-950/30 p-3"
-                            >
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <code className="text-xs font-semibold text-red-200">
-                                        {evidenceText(diagnostic.path) ?? "Unknown path"}
-                                    </code>
-                                    <span className="text-xs text-slate-500">
-                                        {evidenceText(diagnostic.error_type) ?? "Unknown diagnostic type"}
-                                    </span>
-                                    {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
-                                        <span className="text-xs text-slate-500">
-                                            Line {diagnostic.line}
-                                            {typeof diagnostic.column === "number" && Number.isInteger(diagnostic.column) && diagnostic.column > 0 &&
-                                                `, column ${diagnostic.column}`}
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="mt-1 text-sm text-red-200/80">
-                                    {evidenceText(diagnostic.message) ?? "No diagnostic message provided."}
-                                </p>
-                            </li>
-                        ),
-                    )}
-                </ul>
+            {state === "Degraded" && diagnostics.length > 0 && (
+                <p className="mt-3 text-sm text-red-200/80">
+                    The policy file has {diagnostics.length} issue{diagnostics.length === 1 ? "" : "s"} to fix. Open Technical details to review {diagnostics.length === 1 ? "it" : "them"}.
+                </p>
             )}
 
-            {state === "Degraded" && policiesUnavailableMessage}
+            {diagnostics.length > 0 && (
+                <details className="mt-3 rounded-lg border border-slate-700 bg-slate-950/30 p-3">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">
+                        Technical details ({diagnostics.length})
+                    </summary>
+                    <ul className="mt-3 space-y-2">
+                        {diagnostics.map(
+                            (diagnostic, index) => (
+                                <li
+                                    key={index}
+                                    className="rounded border border-red-500/20 bg-slate-950/30 p-3"
+                                >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <code className="text-xs font-semibold text-red-200">
+                                            {safeText(diagnostic.path) || "Path unavailable"}
+                                        </code>
+                                        <span className="text-xs text-slate-500">
+                                            {safeText(diagnostic.error_type) || "Issue type unavailable"}
+                                        </span>
+                                        {typeof diagnostic.line === "number" && Number.isInteger(diagnostic.line) && diagnostic.line > 0 && (
+                                            <span className="text-xs text-slate-500">
+                                                Line {diagnostic.line}
+                                                {typeof diagnostic.column === "number" && Number.isInteger(diagnostic.column) && diagnostic.column > 0 &&
+                                                    `, column ${diagnostic.column}`}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-1 text-sm text-red-200/80">
+                                        {safeText(diagnostic.message) || "No diagnostic message provided."}
+                                    </p>
+                                </li>
+                            ),
+                        )}
+                    </ul>
+                </details>
+            )}
+
+            {state === "Degraded" && (
+                <p className="mt-3 text-sm text-red-200/80">
+                    {hasPolicyData
+                        ? "The last loaded policy settings remain visible."
+                        : "Policy settings are unavailable."} After correcting the policy file, refresh Mission Control to check it again.
+                </p>
+            )}
         </div>
     );
 }
-
-const policiesUnavailableMessage = (
-    <p className="mt-3 text-sm text-red-200/80">
-        The last policy snapshot remains in place when available.
-        Correct the policy file and refresh to resume live visibility.
-    </p>
-);

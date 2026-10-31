@@ -1,5 +1,6 @@
 type StatusBadgeProps = {
     status: string;
+    label?: string;
 };
 
 type StatusStyle = {
@@ -25,7 +26,7 @@ const statusStyles: Record<string, StatusStyle> = {
     unknown: { variant: "mc-status-neutral" },
 };
 
-export function StatusBadge({ status }: StatusBadgeProps) {
+export function StatusBadge({ status, label = status }: StatusBadgeProps) {
     const normalizedStatus = status.trim().toLowerCase();
 
     const style =
@@ -45,7 +46,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
                 aria-hidden="true"
             />
 
-            {status}
+            {label}
         </span>
     );
 }

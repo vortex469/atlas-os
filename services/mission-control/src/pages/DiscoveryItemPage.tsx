@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { isAxiosError } from "axios";
+import type { ReactNode } from "react";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -21,8 +22,10 @@ import type {
     DiscoveryRequirements,
     DiscoveryProposalNavigation,
 } from "../types/discovery";
+import { safeText } from "../utils/safeText";
 import type { InstallationPlan } from "../types/installationPlan";
 import { DiscoveryProposalCard } from "../features/discovery/DiscoveryProposalCard";
+import { evidenceTimestamp } from "../utils/healthPresentation";
 import { DiscoveryEvidencePanel } from "../features/discovery/DiscoveryEvidencePanel";
 import {
     DiscoveryImageGroundingPanel,
@@ -30,6 +33,7 @@ import {
 } from "../features/discovery/DiscoveryImageGroundingPanel";
 import { InstallationPlanReview } from "../features/discovery/InstallationPlanReview";
 import { useOptionalOperatorSession } from "../hooks/operatorSessionContext";
+import { compatibilityStatusLabel } from "../utils/operatorLanguage";
 
 type DetailState = {
     entry: DiscoveryCatalogEntry | null;
@@ -38,8 +42,14 @@ type DetailState = {
 };
 
 export function DiscoveryItemPage() {
-    const operatorSession = useOptionalOperatorSession();
     const { itemId = "" } = useParams<{ itemId: string }>();
+    return <DiscoveryItem key={itemId} itemId={itemId} />;
+}
+
+function DiscoveryItem({ itemId }: { itemId: string }) {
+    const location = useLocation();
+    const catalogReturnTo = { pathname: "/discovery", search: location.search };
+    const operatorSession = useOptionalOperatorSession();
     const [state, setState] = useState<DetailState>({
         entry: null,
         incoming: [],
@@ -48,29 +58,48 @@ export function DiscoveryItemPage() {
     const [compatibility, setCompatibility] =
         useState<DiscoveryCompatibilityAssessment | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [itemLoadAttempt, setItemLoadAttempt] = useState(0);
     const [compatibilityLoading, setCompatibilityLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [notFound, setNotFound] = useState(false);
+    const [relationshipsLoading, setRelationshipsLoading] = useState(true);
+    const [relationshipsUnavailable, setRelationshipsUnavailable] = useState(false);
+    const [relationshipsLoadAttempt, setRelationshipsLoadAttempt] = useState(0);
     const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
     const [evidence, setEvidence] = useState<DiscoveryItemEvidence | null>(null);
     const [evidenceLoading, setEvidenceLoading] = useState(true);
     const [evidenceError, setEvidenceError] = useState<string | null>(null);
+    const [evidenceLoadAttempt, setEvidenceLoadAttempt] = useState(0);
     const [imageGrounding, setImageGrounding] =
         useState<DiscoveryImageGroundingProjection | null>(null);
     const [imageGroundingLoading, setImageGroundingLoading] = useState(true);
     const [imageGroundingError, setImageGroundingError] =
         useState<ImageGroundingErrorKind | null>(null);
+    const [groundingLoadAttempt, setGroundingLoadAttempt] = useState(0);
     const [installationPlanState, setInstallationPlanState] = useState<{
         itemId: string;
         plan: InstallationPlan | null;
         loading: boolean;
         unavailable: boolean;
-    }>({ itemId, plan: null, loading: true, unavailable: false });
+        notFound: boolean;
+    }>({ itemId, plan: null, loading: true, unavailable: false, notFound: false });
+    const [installationPlanLoadAttempt, setInstallationPlanLoadAttempt] = useState(0);
     const [proposals, setProposals] = useState<DiscoveryProposalNavigation[]>([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
     const [proposalsError, setProposalsError] = useState<string | null>(null);
+    const [proposalLoadAttempt, setProposalLoadAttempt] = useState(0);
     const compatibilityRequestId = useRef(0);
-    const compatibilityLoadHandle = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+    const compatibilityLoadHandle = useRef<number | null>(null);
+    const hasCatalogItem = state.entry?.item.id === itemId;
+
+    function retryItem() {
+        setIsLoading(true);
+        setError(null);
+        setErrorDetails(null);
+        setNotFound(false);
+        setItemLoadAttempt((attempt) => attempt + 1);
+    }
 
     const loadCompatibility = useCallback(() => {
         const requestId = ++compatibilityRequestId.current;
@@ -84,6 +113,7 @@ export function DiscoveryItemPage() {
                 if (requestId !== compatibilityRequestId.current) {
                     return;
                 }
+                if (nextCompatibility.item_id !== itemId) throw new Error("The compatibility result does not match this catalog item.");
                 setCompatibility(nextCompatibility);
             })
             .catch((requestError: unknown) => {
@@ -107,31 +137,35 @@ export function DiscoveryItemPage() {
     }, [itemId]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
-                setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false });
+                setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false, notFound: false });
             }
         });
         getDiscoveryInstallationPlan(itemId)
             .then((plan) => {
                 if (!cancelled) {
-                    setInstallationPlanState({ itemId, plan, loading: false, unavailable: false });
+                    if (plan.application.item_id !== itemId) throw new Error("The installation plan does not match this catalog item.");
+                    setInstallationPlanState({ itemId, plan, loading: false, unavailable: false, notFound: false });
                 }
             })
-            .catch(() => {
+            .catch((requestError: unknown) => {
                 if (!cancelled) {
-                    setInstallationPlanState({ itemId, plan: null, loading: false, unavailable: true });
+                    const notFound = isAxiosError(requestError) && requestError.response?.status === 404;
+                    setInstallationPlanState({ itemId, plan: null, loading: false, unavailable: !notFound, notFound });
                 }
             });
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, installationPlanLoadAttempt, hasCatalogItem]);
 
     const currentInstallationPlan = installationPlanState.itemId === itemId
         ? installationPlanState
-        : { itemId, plan: null, loading: true, unavailable: false };
+        : { itemId, plan: null, loading: true, unavailable: false, notFound: false };
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -143,7 +177,10 @@ export function DiscoveryItemPage() {
 
         getDiscoveryImageGrounding(itemId)
             .then((projection) => {
-                if (!cancelled) setImageGrounding(projection);
+                if (!cancelled) {
+                    if (projection.catalog_item_id !== itemId) throw new Error("The image grounding does not match this catalog item.");
+                    setImageGrounding(projection);
+                }
             })
             .catch((requestError: unknown) => {
                 if (cancelled) return;
@@ -162,35 +199,34 @@ export function DiscoveryItemPage() {
             });
 
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, groundingLoadAttempt, hasCatalogItem]);
 
     useEffect(() => {
         let cancelled = false;
 
-        Promise.all([getDiscoveryItem(itemId), getDiscoveryRelationships(itemId)])
-            .then(([entry, relationships]) => {
+        getDiscoveryItem(itemId)
+            .then((entry) => {
                 if (cancelled) {
                     return;
                 }
-                setState({
-                    entry,
-                    incoming: relationships.incoming,
-                    outgoing: relationships.outgoing,
-                });
+                if (entry.item.id !== itemId) {
+                    setError("Atlas got details for a different catalog item. Try again.");
+                    return;
+                }
+                setState((current) => ({ ...current, entry }));
             })
             .catch((requestError: unknown) => {
                 if (cancelled) {
                     return;
                 }
+                if (isAxiosError(requestError) && requestError.response?.status === 404) setNotFound(true);
                 console.error(`Unable to load Discovery item ${itemId}:`, requestError);
                 const message = getAtlasErrorMessage(
                     requestError,
-                    "Mission Control could not load this Discovery item.",
+                    "Atlas couldn’t load this catalog item.",
                 );
-                if (message.toLowerCase().includes("not found")) {
-                    setNotFound(true);
-                }
-                setError(message);
+                setError("Atlas couldn’t load this catalog item. Try again to check its details.");
+                setErrorDetails(message);
             })
             .finally(() => {
                 if (!cancelled) {
@@ -201,9 +237,44 @@ export function DiscoveryItemPage() {
         return () => {
             cancelled = true;
         };
-    }, [itemId]);
+    }, [itemId, itemLoadAttempt]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
+        let cancelled = false;
+        queueMicrotask(() => {
+            if (!cancelled) {
+                setRelationshipsLoading(true);
+                setRelationshipsUnavailable(false);
+                setState((current) => ({ ...current, incoming: [], outgoing: [] }));
+            }
+        });
+
+        getDiscoveryRelationships(itemId)
+            .then((relationships) => {
+                if (cancelled) return;
+                if (relationships.item_id !== itemId) throw new Error("The relationships do not match this catalog item.");
+                setState((current) => ({
+                    ...current,
+                    incoming: relationships.incoming,
+                    outgoing: relationships.outgoing,
+                }));
+            })
+            .catch((requestError: unknown) => {
+                if (cancelled) return;
+                console.error(`Unable to load Discovery relationships for ${itemId}:`, requestError);
+                setState((current) => ({ ...current, incoming: [], outgoing: [] }));
+                setRelationshipsUnavailable(true);
+            })
+            .finally(() => {
+                if (!cancelled) setRelationshipsLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [itemId, relationshipsLoadAttempt, hasCatalogItem]);
+
+    useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -215,7 +286,10 @@ export function DiscoveryItemPage() {
 
         getDiscoveryItemEvidence(itemId)
             .then((nextEvidence) => {
-                if (!cancelled) setEvidence(nextEvidence);
+                if (!cancelled) {
+                    if (nextEvidence.catalog_item_id !== itemId || nextEvidence.curated.item.id !== itemId) throw new Error("The source evidence does not match this catalog item.");
+                    setEvidence(nextEvidence);
+                }
             })
             .catch((requestError: unknown) => {
                 if (cancelled) return;
@@ -232,9 +306,10 @@ export function DiscoveryItemPage() {
             });
 
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, evidenceLoadAttempt, hasCatalogItem]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         const handle = window.setTimeout(() => {
             loadCompatibility();
         }, 0);
@@ -247,9 +322,10 @@ export function DiscoveryItemPage() {
                 compatibilityLoadHandle.current = null;
             }
         };
-    }, [itemId, loadCompatibility]);
+    }, [itemId, loadCompatibility, hasCatalogItem]);
 
     useEffect(() => {
+        if (!hasCatalogItem) return;
         let cancelled = false;
         queueMicrotask(() => {
             if (!cancelled) {
@@ -266,26 +342,59 @@ export function DiscoveryItemPage() {
             .catch((requestError: unknown) => {
                 if (!cancelled) {
                     console.error(`Unable to load Discovery proposals for ${itemId}:`, requestError);
-                    setProposalsError("Proposal context is temporarily unavailable. Discovery and provider state were not affected.");
+                    setProposalsError("Suggestions are temporarily unavailable. The catalog item is still available.");
                 }
             })
             .finally(() => {
                 if (!cancelled) setProposalsLoading(false);
             });
         return () => { cancelled = true; };
-    }, [itemId]);
+    }, [itemId, proposalLoadAttempt, hasCatalogItem]);
+
+    function retryRelatedProposals() {
+        setProposals([]);
+        setProposalsLoading(true);
+        setProposalsError(null);
+        setProposalLoadAttempt((attempt) => attempt + 1);
+    }
+
+    function retryRelationships() {
+        setState((current) => ({ ...current, incoming: [], outgoing: [] }));
+        setRelationshipsLoading(true);
+        setRelationshipsUnavailable(false);
+        setRelationshipsLoadAttempt((attempt) => attempt + 1);
+    }
+
+    function retrySourceEvidence() {
+        setEvidence(null);
+        setEvidenceLoading(true);
+        setEvidenceError(null);
+        setEvidenceLoadAttempt((attempt) => attempt + 1);
+    }
+
+    function retryImageGrounding() {
+        setImageGrounding(null);
+        setImageGroundingLoading(true);
+        setImageGroundingError(null);
+        setGroundingLoadAttempt((attempt) => attempt + 1);
+    }
+
+    function retryInstallationPlan() {
+        setInstallationPlanState({ itemId, plan: null, loading: true, unavailable: false, notFound: false });
+        setInstallationPlanLoadAttempt((attempt) => attempt + 1);
+    }
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-5xl p-8">
+            <main className="mx-auto max-w-5xl p-4 sm:p-8">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">
-                    Loading Discovery item…
+                    Loading catalog item…
                 </div>
             </main>
         );
@@ -293,20 +402,24 @@ export function DiscoveryItemPage() {
 
     if (notFound) {
         return (
-            <main className="mx-auto max-w-5xl space-y-6 p-8">
+            <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
                     <h1 className="text-2xl font-bold text-white">
-                        Discovery item not found
+                        Catalog item not found
                     </h1>
                     <p className="mt-2 text-sm text-slate-400">
-                        Atlas could not find a catalog entry for {itemId}.
+                        This catalog item is no longer available. Return to the catalog and choose a current item.
                     </p>
+                    <details className="mt-4 border-t border-slate-800 pt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-all text-sm text-slate-400">Catalog item ID: {itemId}</p>
+                    </details>
                 </section>
             </main>
         );
@@ -314,23 +427,25 @@ export function DiscoveryItemPage() {
 
     if (error || state.entry === null) {
         return (
-            <main className="mx-auto max-w-5xl space-y-6 p-8">
+            <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <div
                     role="alert"
                     className="rounded-xl border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Discovery catalog unavailable
+                        Catalog item unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error ?? "Mission Control could not load this Discovery item."}
+                        {error ?? "Atlas couldn’t load this catalog item. Try again to check its details."}
                     </p>
+                    {errorDetails && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary><p className="mt-2 break-words text-sm text-slate-400">{safeText(errorDetails) || "No additional details were returned."}</p></details>}
+                    <button type="button" onClick={retryItem} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
                 </div>
             </main>
         );
@@ -340,24 +455,27 @@ export function DiscoveryItemPage() {
     const { item } = entry;
 
     return (
-        <main className="mx-auto max-w-5xl space-y-8 p-8">
+        <main className="mx-auto max-w-5xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
                 <Link
-                    to="/discovery"
+                    to={catalogReturnTo}
                     className="text-sm font-medium text-blue-400 transition hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
-                    ← Discovery Center
+                    ← Catalog
                 </Link>
                 <div>
                     <p className="text-xs uppercase tracking-[0.3em] text-blue-300">
-                        Discovery item
+                        Catalog item
                     </p>
                     <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
                         <div>
                             <h1 className="text-3xl font-bold text-white">
                                 {item.name}
                             </h1>
-                            <p className="mt-1 text-sm text-slate-500">{item.id}</p>
+                            <details className="mt-2">
+                                <summary className="mc-focusable cursor-pointer text-xs text-slate-500">Technical details</summary>
+                                <p className="mt-1 break-all text-xs text-slate-500">Catalog item ID: {item.id}</p>
+                            </details>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Badge>{formatLabel(item.type)}</Badge>
@@ -368,40 +486,19 @@ export function DiscoveryItemPage() {
                         {item.description}
                     </p>
                     <p className="mt-3 text-xs text-slate-500">
-                        Read-only catalog information. This entry does not imply
-                        compatibility, support, installability, or authorization to
-                        execute changes.
+                        These are catalog requirements. Atlas checks them against your environment separately; they don’t grant permission to make changes.
                     </p>
                 </div>
             </header>
 
             <section className="grid gap-4 lg:grid-cols-2">
-                <InfoPanel title="Capabilities">
-                    <ChipList values={item.capabilities} empty="No capabilities listed." />
+                <InfoPanel title="What it supports">
+                    <ChipList values={item.capabilities} empty="No support details are listed." formatValue={formatCapability} />
                 </InfoPanel>
                 <InfoPanel title="Tags">
                     <ChipList values={item.tags} empty="No tags listed." />
                 </InfoPanel>
             </section>
-
-            <DiscoveryEvidencePanel
-                evidence={evidence}
-                isLoading={evidenceLoading}
-                error={evidenceError}
-            />
-
-            <DiscoveryImageGroundingPanel
-                projection={imageGrounding}
-                isLoading={imageGroundingLoading}
-                errorKind={imageGroundingError}
-            />
-
-            <InstallationPlanReview
-                plan={currentInstallationPlan.plan}
-                isLoading={currentInstallationPlan.loading}
-                unavailable={currentInstallationPlan.unavailable}
-                csrfToken={operatorSession?.csrfToken ?? null}
-            />
 
             <CompatibilityPanel
                 compatibility={compatibility}
@@ -411,30 +508,63 @@ export function DiscoveryItemPage() {
                 onRetry={loadCompatibility}
             />
 
-            <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
-                <div>
-                    <h2 id="discovery-proposals-heading" className="text-xl font-semibold text-white">Operator proposals</h2>
-                    <p className="mt-1 text-sm text-slate-400">Read-only Discovery guidance. Proposals do not grant operational authority.</p>
-                </div>
-                {proposalsLoading && <p className="text-sm text-slate-400">Loading bounded proposal context…</p>}
-                {proposalsError && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{proposalsError}</p>}
-                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No current or observed proposals relate to this item.</p>}
-                {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} />)}
-            </section>
-
             <RequirementsPanel requirements={item.requirements} />
 
-            <section className="grid gap-4 lg:grid-cols-2">
-                <RelationshipsPanel
-                    title="Outgoing relationships"
-                    empty="No outgoing relationships."
-                    relationships={state.outgoing}
-                />
-                <RelationshipsPanel
-                    title="Incoming relationships"
-                    empty="No incoming relationships."
-                    relationships={state.incoming}
-                />
+            <InstallationPlanReview
+                plan={currentInstallationPlan.plan}
+                isLoading={currentInstallationPlan.loading}
+                unavailable={currentInstallationPlan.unavailable}
+                notFound={currentInstallationPlan.notFound}
+                onRetry={retryInstallationPlan}
+                csrfToken={operatorSession?.csrfToken ?? null}
+            />
+
+            <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
+                <div>
+                    <h2 id="discovery-proposals-heading" className="text-xl font-semibold text-white">Suggestions</h2>
+                    <p className="mt-1 text-sm text-slate-400">Suggestions based on this item. They don’t authorize changes.</p>
+                </div>
+                {proposalsLoading && <p className="text-sm text-slate-400">Loading suggestions…</p>}
+                {proposalsError && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"><p>{proposalsError}</p><button type="button" onClick={retryRelatedProposals} className="mt-3 rounded-lg border border-red-300/40 px-3 py-2 font-semibold text-red-100 focus:outline-none focus:ring-2 focus:ring-red-200">Retry suggestions</button></div>}
+                {!proposalsLoading && !proposalsError && proposals.length === 0 && <p className="text-sm text-slate-500">No suggestions are available.</p>}
+                {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} returnSearch={location.search} />)}
+            </section>
+
+            <DiscoveryEvidencePanel
+                evidence={evidence}
+                isLoading={evidenceLoading}
+                error={evidenceError}
+                onRetry={retrySourceEvidence}
+            />
+
+            <DiscoveryImageGroundingPanel
+                projection={imageGrounding}
+                isLoading={imageGroundingLoading}
+                errorKind={imageGroundingError}
+                onRetry={retryImageGrounding}
+            />
+
+            <section aria-label="Catalog relationships">
+                {relationshipsLoading && <p role="status" className="text-sm text-slate-400">Loading catalog relationships…</p>}
+                {relationshipsUnavailable && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200"><p className="font-semibold">Relationships unavailable</p><p className="mt-1">The catalog item is available, but its related items could not be checked.</p><button type="button" onClick={retryRelationships} className="mt-3 rounded-lg border border-amber-400/50 px-3 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-amber-200">Retry relationships</button></div>}
+                {!relationshipsLoading && !relationshipsUnavailable && <div className="grid gap-4 lg:grid-cols-2">
+                    <RelationshipsPanel
+                        direction="outgoing"
+                        itemName={item.name}
+                        title="Links from this item"
+                        empty="No links from this item."
+                        relationships={state.outgoing}
+                        returnSearch={location.search}
+                    />
+                    <RelationshipsPanel
+                        direction="incoming"
+                        itemName={item.name}
+                        title="Items linking to this item"
+                        empty="No items link to this item."
+                        relationships={state.incoming}
+                        returnSearch={location.search}
+                    />
+                </div>}
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">
@@ -475,66 +605,71 @@ function CompatibilityPanel({
     );
 
     if (compatibilityLoading) {
-        return (
-            <InfoPanel title="Compatibility assessment">
-                <p className="text-sm text-slate-400">Loading compatibility assessment…</p>
-            </InfoPanel>
-        );
+        return <InfoPanel title="Compatibility check">
+            <p className="text-sm text-slate-400">Checking compatibility…</p>
+        </InfoPanel>;
     }
 
     if (compatibilityError) {
-        return (
-            <InfoPanel title="Compatibility assessment">
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-                    <p className="font-semibold">Compatibility unavailable</p>
-                    <p className="mt-1 text-sm text-amber-200/90">{compatibilityError}</p>
-                    <button
-                        type="button"
-                        className="mt-3 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300 hover:text-amber-100"
-                        onClick={onRetry}
-                    >
-                        Retry compatibility check
-                    </button>
-                </div>
-            </InfoPanel>
-        );
+        return <InfoPanel title="Compatibility check">
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+                <p className="font-semibold">Could not check compatibility</p>
+                <p className="mt-1 text-sm text-amber-200/90">Atlas could not confirm whether this item fits the selected environment.</p>
+                <details className="mt-2">
+                    <summary className="mc-focusable cursor-pointer text-xs text-amber-100/80">Technical details</summary>
+                    <p className="mt-2 break-words text-xs text-amber-100/80">{compatibilityError}</p>
+                </details>
+                <button
+                    type="button"
+                    className="mt-3 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:border-amber-300 hover:text-amber-100"
+                    onClick={onRetry}
+                >
+                    Retry check
+                </button>
+            </div>
+        </InfoPanel>;
     }
 
     if (!compatibility) {
-        return (
-            <InfoPanel title="Compatibility assessment">
-                <p className="text-sm text-slate-400">Compatibility assessment not available.</p>
-            </InfoPanel>
-        );
+        return <InfoPanel title="Compatibility check">
+            <p className="text-sm text-slate-400">No compatibility result is available.</p>
+        </InfoPanel>;
     }
 
     return (
         <section className="grid gap-4 lg:grid-cols-2">
-            <InfoPanel title="Compatibility status">
+            <InfoPanel title="Compatibility summary">
                 <dl className="grid gap-2 text-sm">
-                    <KeyValue label="Item" value={compatibility.item_id} />
-                    <KeyValue label="Target" value={compatibility.target_type} />
-                    <KeyValue label="Target ID" value={compatibility.target_id} />
-                    <KeyValue label="Status" value={formatCompatibilityStatus(compatibility.status)} />
-                    <KeyValue label="Checked at" value={compatibility.checked_at} />
-                    <KeyValue label="Findings" value={String(compatibility.findings.length)} />
-                    <KeyValue label="Evidence" value={String(compatibility.evidence.length)} />
+                    <KeyValue label="Checked against" value={formatLabel(compatibility.target_type)} />
+                    <KeyValue label="Result" value={compatibilityStatusLabel(compatibility.status)} />
+                    <KeyValue label="Last checked" value={formatLocalTimestamp(compatibility.checked_at)} />
+                    {compatibility.findings.length > 0 && <KeyValue label="Findings" value={String(compatibility.findings.length)} />}
                     <KeyValue
-                        label="Unknown facts"
-                        value={compatibility.unknown_facts.length === 0 ? "None" : `${compatibility.unknown_facts.length}`}
+                        label="Unconfirmed details"
+                        value={compatibility.unknown_facts.length === 0 ? "None" : String(compatibility.unknown_facts.length)}
                     />
                 </dl>
+                <details className="mt-4 border-t border-slate-800 pt-3">
+                    <summary className="mc-focusable cursor-pointer text-sm text-slate-300">Technical details</summary>
+                    <dl className="mt-3 grid gap-2 text-sm">
+                        <KeyValue label="Catalog item ID" value={compatibility.item_id} />
+                        <KeyValue label="Target ID" value={compatibility.target_id} />
+                        <KeyValue label="Target type" value={compatibility.target_type} />
+                        <KeyValue label="Evidence records" value={String(compatibility.evidence.length)} />
+                        <KeyValue label="Recorded check time (UTC)" value={compatibility.checked_at} />
+                    </dl>
+                </details>
             </InfoPanel>
 
-            <InfoPanel title="Compatibility details">
+            <InfoPanel title="What Atlas found">
                 <div className="space-y-4">
                     {compatibility.findings.length === 0 ? (
-                        <p className="text-sm text-slate-500">No findings were reported.</p>
+                        <p className="text-sm text-slate-500">No issues or notes were found.</p>
                     ) : (
                         Object.entries(findingsBySeverity).map(([severity, findings]) => (
                             <div key={`${targetItemId}-${severity}`}>
-                                <p className="text-xs uppercase tracking-wider text-slate-500">
-                                    {formatLabel(`findings_${severity}`)}
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                    {severityHeading(severity)}
                                 </p>
                                 <div className="mt-2 space-y-3">
                                     {findings.map((finding) => (
@@ -544,45 +679,48 @@ function CompatibilityPanel({
                                         >
                                             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-wide text-slate-400">
                                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
-                                                    {finding.severity}
+                                                    {formatLabel(finding.severity)}
                                                 </span>
                                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
                                                     {formatLabel(finding.check_type)}
                                                 </span>
                                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-slate-300">
-                                                    {finding.status}
+                                                    {compatibilityStatusLabel(finding.status)}
                                                 </span>
                                             </div>
-                                            <p className="mt-2 text-sm text-slate-300">{finding.message}</p>
-                                            <p className="mt-1 text-xs text-slate-500">Code: {finding.id}</p>
-                                            <p className="mt-1 text-xs text-slate-500">Subject: {finding.subject}</p>
-                                            {finding.evidence_ids.length > 0 ? (
-                                                <ul className="mt-3 space-y-2 text-xs text-slate-400">
-                                                    {finding.evidence_ids.map((evidenceId) => {
-                                                        const evidence = evidenceById.get(evidenceId);
-                                                        return (
-                                                            <li
-                                                                key={`${finding.id}-${evidenceId}`}
-                                                                className="rounded-md border border-slate-800 bg-slate-900 p-2"
-                                                            >
-                                                                {evidence ? (
-                                                                    <div>
-                                                                        <p>Evidence {evidence.id}</p>
-                                                                        <p>Source: {evidence.source}</p>
-                                                                        <p>Message: {evidence.message}</p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <p>Evidence {evidenceId}</p>
-                                                                )}
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-                                            ) : (
-                                                <p className="mt-2 text-xs text-slate-500">
-                                                    No evidence IDs were attached.
-                                                </p>
-                                            )}
+                                            <p className="mt-2 text-sm text-slate-300">{safeText(finding.message) || "No additional details were returned."}</p>
+                                            <details className="mt-3 border-t border-slate-800 pt-2">
+                                                <summary className="mc-focusable cursor-pointer text-xs font-medium text-slate-400">Evidence details</summary>
+                                                <div className="mt-2 space-y-2 text-xs text-slate-400">
+                                                    <p>Finding code: {safeText(finding.id) || "Not reported"}</p>
+                                                    <p>Checked field: {safeText(finding.subject) || "Not reported"}</p>
+                                                    {finding.evidence_ids.length > 0 ? (
+                                                        <ul className="space-y-2">
+                                                            {finding.evidence_ids.map((evidenceId) => {
+                                                                const evidence = evidenceById.get(evidenceId);
+                                                                return (
+                                                                    <li
+                                                                        key={`${finding.id}-${evidenceId}`}
+                                                                        className="rounded-md border border-slate-800 bg-slate-900 p-2"
+                                                                    >
+                                                                        {evidence ? (
+                                                                            <div>
+                                                                                <p>Evidence {safeText(evidence.id) || "record"}</p>
+                                                                                <p>Source: {safeText(evidence.source) || "Not reported"}</p>
+                                                                                <p>Message: {safeText(evidence.message) || "No additional details were returned."}</p>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <p>Evidence {safeText(evidenceId) || "record"}</p>
+                                                                        )}
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    ) : (
+                                                        <p>No supporting evidence was attached.</p>
+                                                    )}
+                                                </div>
+                                            </details>
                                         </article>
                                     ))}
                                 </div>
@@ -592,10 +730,10 @@ function CompatibilityPanel({
 
                     {compatibility.unknown_facts.length > 0 && (
                         <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-500">Unknown facts</p>
+                            <p className="text-xs uppercase tracking-wider text-slate-500">What Atlas could not confirm</p>
                             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-400">
                                 {compatibility.unknown_facts.map((item) => (
-                                    <li key={item}>{item}</li>
+                                    <li key={item}>{formatUnknownFact(item)}</li>
                                 ))}
                             </ul>
                         </div>
@@ -609,35 +747,34 @@ function CompatibilityPanel({
 function RequirementsPanel({ requirements }: { requirements: DiscoveryRequirements }) {
     const resourceRequirements = [
         requirements.resources.cpu_cores_min
-            ? `CPU cores: ${requirements.resources.cpu_cores_min}`
+            ? `At least ${requirements.resources.cpu_cores_min} CPU cores`
             : null,
         requirements.resources.memory_mb_min
-            ? `Memory: ${requirements.resources.memory_mb_min} MB`
+            ? `At least ${requirements.resources.memory_mb_min} MB memory`
             : null,
         requirements.resources.storage_gb_min
-            ? `Storage: ${requirements.resources.storage_gb_min} GB`
+            ? `At least ${requirements.resources.storage_gb_min} GB storage`
             : null,
-        requirements.resources.gpu_required ? "GPU required" : null,
+        requirements.resources.gpu_required ? "A GPU is required" : null,
         requirements.resources.gpu_memory_gb_min
-            ? `GPU memory: ${requirements.resources.gpu_memory_gb_min} GB`
+            ? `At least ${requirements.resources.gpu_memory_gb_min} GB GPU memory`
             : null,
     ].filter(Boolean) as string[];
     const platformRequirements = [
         ...requirements.platform.architectures.map((item) => `Architecture: ${item}`),
-        ...requirements.platform.operating_systems.map((item) => `OS: ${item}`),
+        ...requirements.platform.operating_systems.map((item) => `Operating system: ${item}`),
         ...requirements.platform.runtimes.map((item) => `Runtime: ${item}`),
         ...requirements.platform.devices.map((item) => `Device: ${item}`),
     ];
-    const capabilityRequirements = requirements.capabilities.map((item) => item.id);
+    const capabilityRequirements = requirements.capabilities.map((item) => formatCapability(item.id));
     const networkRequirements = [
         ...requirements.network.ports.map(
-            (port) =>
-                `${port.protocol.toUpperCase()} ${port.port} ${port.direction}${
-                    port.required ? " required" : " optional"
-                }${port.description ? `: ${port.description}` : ""}`,
+            (port) => `${port.required ? "Required" : "Optional"} ${port.direction} ${port.protocol.toUpperCase()} port ${port.port}${
+                port.description ? ` — ${port.description}` : ""
+            }`,
         ),
-        requirements.network.requires_internet === true ? "Internet access" : null,
-        requirements.network.requires_lan === true ? "LAN access" : null,
+        requirements.network.requires_internet === true ? "Internet connection required" : null,
+        requirements.network.requires_lan === true ? "Local network connection required" : null,
         requirements.network.notes ?? null,
     ].filter(Boolean) as string[];
 
@@ -652,11 +789,11 @@ function RequirementsPanel({ requirements }: { requirements: DiscoveryRequiremen
     }
 
     return (
-        <InfoPanel title="Requirements">
+        <InfoPanel title="What this item needs">
             <RequirementGroup title="Capabilities" values={capabilityRequirements} />
-            <RequirementGroup title="Resources" values={resourceRequirements} />
-            <RequirementGroup title="Platform" values={platformRequirements} />
-            <RequirementGroup title="Network" values={networkRequirements} />
+            <RequirementGroup title="Computer resources" values={resourceRequirements} />
+            <RequirementGroup title="Supported platform" values={platformRequirements} />
+            <RequirementGroup title="Network access" values={networkRequirements} />
         </InfoPanel>
     );
 }
@@ -679,13 +816,19 @@ function RequirementGroup({ title, values }: { title: string; values: string[] }
 }
 
 function RelationshipsPanel({
+    direction,
+    itemName,
     title,
     empty,
     relationships,
+    returnSearch,
 }: {
+    direction: "incoming" | "outgoing";
+    itemName: string;
     title: string;
     empty: string;
     relationships: DiscoveryRelationshipReference[];
+    returnSearch: string;
 }) {
     return (
         <InfoPanel title={title}>
@@ -699,28 +842,52 @@ function RelationshipsPanel({
                             className="rounded-lg border border-slate-800 bg-slate-950 p-3"
                         >
                             <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <span className="font-medium text-slate-200">
-                                    {formatLabel(reference.relationship.type)}
-                                </span>
-                                <span className="text-slate-600">→</span>
-                                {reference.resolved_target_item_id ? (
-                                    <Link
-                                        to={`/discovery/items/${encodeURIComponent(
-                                            reference.resolved_target_item_id,
-                                        )}`}
-                                        className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                                    >
-                                        {reference.target}
-                                    </Link>
+                                {direction === "incoming" ? (
+                                    <>
+                                        <Link
+                                            to={{
+                                                pathname: `/discovery/items/${encodeURIComponent(reference.source_item_id)}`,
+                                                search: returnSearch,
+                                            }}
+                                            className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                        >
+                                            {formatLabel(reference.source_item_id)}
+                                        </Link>
+                                        <span className="font-medium text-slate-200">
+                                            {formatLabel(reference.relationship.type)}
+                                        </span>
+                                        <span className="text-slate-600">→</span>
+                                        <span className="text-slate-300">{itemName}</span>
+                                    </>
                                 ) : (
-                                    <span className="text-slate-300">{reference.target}</span>
+                                    <>
+                                        <span className="font-medium text-slate-200">
+                                            {formatLabel(reference.relationship.type)}
+                                        </span>
+                                        <span className="text-slate-600">→</span>
+                                        {reference.resolved_target_item_id ? (
+                                            <Link
+                                                to={{
+                                                    pathname: `/discovery/items/${encodeURIComponent(reference.resolved_target_item_id)}`,
+                                                    search: returnSearch,
+                                                }}
+                                                className="text-blue-300 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                            >
+                                                {reference.target}
+                                            </Link>
+                                        ) : (
+                                            <span className="text-slate-300">{reference.target}</span>
+                                        )}
+                                    </>
                                 )}
                                 <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
                                     {reference.relationship.required ? "Required" : "Optional"}
                                 </span>
-                                <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
-                                    {reference.resolved ? "Resolved" : "Unresolved"}
-                                </span>
+                                {direction === "outgoing" && (
+                                    <span className="rounded-full border border-slate-700 px-2 py-0.5 text-xs text-slate-300">
+                                        {reference.resolved ? "Resolved" : "Unresolved"}
+                                    </span>
+                                )}
                             </div>
                             {reference.relationship.description && (
                                 <p className="mt-2 text-sm text-slate-500">
@@ -737,8 +904,9 @@ function RelationshipsPanel({
 
 function ProvenancePanel({ entry }: { entry: DiscoveryCatalogEntry }) {
     return (
-        <InfoPanel title="Provenance">
-            <dl className="space-y-2 text-sm">
+        <details className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+            <summary className="mc-focusable cursor-pointer text-lg font-semibold text-white">Catalog source details</summary>
+            <dl className="mt-4 space-y-2 text-sm">
                 <KeyValue label="Source type" value={formatLabel(entry.provenance.source_type)} />
                 <KeyValue label="Source" value={entry.provenance.source} />
                 <KeyValue label="Trust" value={formatLabel(entry.provenance.trust_level)} />
@@ -747,21 +915,15 @@ function ProvenancePanel({ entry }: { entry: DiscoveryCatalogEntry }) {
                 )}
                 <KeyValue label="Schema" value={`v${entry.schema_version}`} />
             </dl>
-        </InfoPanel>
+        </details>
     );
 }
 
 function ApprovedMetadataPanel({ entry }: { entry: DiscoveryCatalogEntry }) {
     const notes = entry.metadata.catalog_notes ?? entry.item.metadata.catalog_notes ?? [];
-    const reviewed = entry.metadata.reviewed_for_d5 ?? entry.item.metadata.reviewed_for_d5;
 
     return (
-        <InfoPanel title="Catalog review">
-            {reviewed !== undefined && (
-                <p className="text-sm text-slate-300">
-                    Reviewed for D5: {reviewed ? "Yes" : "No"}
-                </p>
-            )}
+        <InfoPanel title="Catalog notes">
             {notes.length > 0 ? (
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-400">
                     {notes.map((note) => (
@@ -784,7 +946,7 @@ function InfoPanel({ title, children }: { title: string; children: React.ReactNo
     );
 }
 
-function ChipList({ values, empty }: { values: string[]; empty: string }) {
+function ChipList({ values, empty, formatValue = (value) => value }: { values: string[]; empty: string; formatValue?: (value: string) => string }) {
     if (values.length === 0) {
         return <p className="text-sm text-slate-500">{empty}</p>;
     }
@@ -796,7 +958,7 @@ function ChipList({ values, empty }: { values: string[]; empty: string }) {
                     key={value}
                     className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300"
                 >
-                    {value}
+                    {formatValue(value)}
                 </span>
             ))}
         </div>
@@ -811,7 +973,7 @@ function Badge({ children }: { children: string }) {
     );
 }
 
-function KeyValue({ label, value }: { label: string; value: string }) {
+function KeyValue({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div className="grid gap-1 sm:grid-cols-[8rem_1fr]">
             <dt className="text-slate-500">{label}</dt>
@@ -822,11 +984,44 @@ function KeyValue({ label, value }: { label: string; value: string }) {
 
 function formatLabel(value: string): string {
     return value
-        .split("_")
+        .split(/[_-]+/)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(" ");
 }
 
-function formatCompatibilityStatus(status: string): string {
-    return formatLabel(status);
+function formatCapability(value: string): string {
+    const words = value.replace(/[_-]+/g, " ").trim();
+    return words ? words.charAt(0).toUpperCase() + words.slice(1) : value;
+}
+
+function severityHeading(severity: string): string {
+    switch (severity) {
+        case "blocker": return "Blocking issues";
+        case "warning": return "Warnings";
+        case "info": return "Other notes";
+        case "unknown": return "Priority not reported";
+        default: return `${formatLabel(severity)} results`;
+    }
+}
+
+function formatUnknownFact(value: string): string {
+    const separator = value.indexOf(":");
+    const field = separator < 0 ? value : value.slice(0, separator);
+    const labels: Record<string, string> = {
+        capabilities: "Capabilities",
+        gpu_available: "GPU availability",
+        installed_services: "Installed services",
+        installed_version: "Installed version",
+        memory_mb: "Memory",
+        open_ports: "Open ports",
+    };
+    const label = labels[field] ?? formatLabel(field);
+    return separator < 0 ? label : `${label}: ${formatLabel(value.slice(separator + 1))}`;
+}
+
+function formatLocalTimestamp(value: string): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }

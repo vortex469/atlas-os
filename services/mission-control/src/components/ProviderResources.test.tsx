@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import {
     getProviderManagement,
     putProviderMonitoringIntent,
 } from "../api/providerManagement";
+import { getAtlasErrorMessage } from "../api/atlas";
 import { getProviderMonitoringIntentSuggestions } from "../api/providerIntentSuggestions";
 import { getProviderResources, refreshProviderResources } from "../api/resources";
 import { useOperatorSession } from "../hooks/operatorSessionContext";
@@ -34,7 +35,7 @@ vi.mock("../api/providerIntentSuggestions", () => ({
 }));
 vi.mock("../hooks/operatorSessionContext", () => ({ useOperatorSession: vi.fn() }));
 vi.mock("../api/atlas", () => ({
-    getAtlasErrorMessage: (_error: unknown, fallback: string) => fallback,
+    getAtlasErrorMessage: vi.fn((_error: unknown, fallback: string) => fallback),
 }));
 
 const fingerprint: ProviderMonitoringIntentSuggestionV1["management_fingerprint"] = `provider-management-fingerprint-v1:${"a".repeat(64)}`;
@@ -183,6 +184,97 @@ async function renderResources() {
 }
 
 describe("ProviderResources Provider Intent flow", () => {
+    it("labels the initial inventory and monitoring read as loading", async () => {
+        let resolveInventory!: (value: ProviderResourceCollection) => void;
+        let resolveManagement!: (value: ProviderManagementV2) => void;
+        vi.mocked(getProviderResources).mockReturnValueOnce(new Promise((resolve) => { resolveInventory = resolve; }));
+        vi.mocked(getProviderManagement).mockReturnValueOnce(new Promise((resolve) => { resolveManagement = resolve; }));
+
+        render(<ProviderResources provider={provider} />);
+
+        expect(screen.getByRole("button", { name: "Refresh resources" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Loading resources…" })).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading provider resources and monitoring settings...");
+        expect(screen.getByText("See the resources this provider reports, their current state, and what Atlas expects to monitor.")).toBeInTheDocument();
+
+        await act(async () => {
+            resolveInventory(inventory);
+            resolveManagement(publicManagement());
+        });
+        expect(await screen.findByText("Frigate")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Refresh resources" })).toBeEnabled();
+    });
+
+    it("labels the inventory refresh time as local and preserves its UTC instant", async () => {
+        await renderResources();
+
+        const time = screen.getByText(new Date(inventory.refreshed_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(time.tagName).toBe("TIME");
+        expect(time).toHaveAttribute("datetime", inventory.refreshed_at);
+        expect(time.parentElement).toHaveTextContent("Provider resources last checked (local time):");
+    });
+
+    it("keeps the refresh label stable and announces when resources are updating", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        let resolveRefresh!: (value: ProviderResourceCollection) => void;
+        vi.mocked(refreshProviderResources).mockReturnValueOnce(new Promise((resolve) => { resolveRefresh = resolve; }));
+
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+
+        const refreshButton = screen.getByRole("button", { name: "Refresh resources" });
+        expect(refreshButton).toBeDisabled();
+        expect(screen.getByText("Refreshing provider resources and monitoring settings...", { exact: true })).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Refreshing resources…" })).not.toBeInTheDocument();
+
+        await act(async () => resolveRefresh(inventory));
+
+        await waitFor(() => expect(refreshButton).toBeEnabled());
+        expect(screen.queryByText("Refreshing provider resources and monitoring settings...", { exact: true })).not.toBeInTheDocument();
+    });
+
+    it("explains provider-verified identity in plain language", async () => {
+        await renderResources();
+
+        expect(screen.getByText("See the resources this provider reports, their current state, and what Atlas expects to monitor.")).toBeVisible();
+        expect(screen.getByText("Virtual machine 110")).toBeVisible();
+        expect(screen.getByText("Provider verified")).toBeVisible();
+        expect(screen.getByText("Atlas can detect if this provider instance is replaced.")).toBeVisible();
+    });
+
+    it("shows when a resource name is missing while retaining its type and ID", async () => {
+        const missingName = undefined as unknown as string;
+        vi.mocked(getProviderResources).mockResolvedValue({
+            ...inventory,
+            resources: [{ ...inventory.resources[0], display_name: missingName }],
+        });
+        vi.mocked(getProviderManagement).mockResolvedValue(publicManagement({ display_name: missingName }));
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ display_name: missingName }));
+
+        render(<ProviderResources provider={provider} />);
+
+        expect(await screen.findByRole("heading", { name: "Name not reported" })).toBeVisible();
+        expect(screen.getByText("Virtual machine 110")).toBeVisible();
+    });
+
+    it("clears the previous provider's monitoring selection before the next inventory arrives", async () => {
+        const user = userEvent.setup();
+        const view = render(<ProviderResources provider={provider} />);
+        await user.selectOptions(await screen.findByLabelText(/monitoring expectation/i), "running");
+        let resolveInventory!: (value: ProviderResourceCollection) => void;
+        vi.mocked(getProviderResources).mockImplementationOnce(() => new Promise((resolve) => { resolveInventory = resolve; }));
+        vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), provider_id: "docker", resources: [] });
+        vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue({ ...management(), provider_id: "docker", resources: [] });
+        view.rerender(<ProviderResources provider={{ ...provider, id: "docker", name: "Docker" }} />);
+        expect(screen.queryByText("Frigate")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/monitoring expectation/i)).not.toBeInTheDocument();
+        await waitFor(() => expect(getProviderResources).toHaveBeenCalledWith("docker"));
+        await act(async () => resolveInventory({ ...inventory, provider_id: "docker", provider_name: "Docker", resources: [] }));
+        expect(await screen.findByText("This provider has not reported any resources.")).toBeInTheDocument();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+        expect(refreshProviderResources).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(useOperatorSession).mockReturnValue({
@@ -212,6 +304,54 @@ describe("ProviderResources Provider Intent flow", () => {
             superseded_previous_incarnation: false,
         });
         vi.stubGlobal("crypto", { randomUUID: () => "12345678-1234-1234-1234-123456789abc" });
+    });
+
+    it("does not describe failed inventory as an empty provider", async () => {
+        vi.mocked(getProviderResources).mockRejectedValue(new Error("offline"));
+        vi.mocked(getProviderManagement).mockResolvedValue({ ...publicManagement(), resources: [] });
+        vi.mocked(getAtlasErrorMessage).mockReturnValueOnce("inventory service returned 503");
+
+        render(<ProviderResources provider={provider} />);
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Could not load resources from this provider. Refresh resources to try again.");
+        const inventoryDetails = within(alert).getByText("Why the provider's resources couldn't load").closest("details");
+        expect(inventoryDetails).not.toHaveAttribute("open");
+        expect(within(inventoryDetails as HTMLDetailsElement).getByText("inventory service returned 503")).not.toBeVisible();
+        await userEvent.setup().click(within(inventoryDetails as HTMLDetailsElement).getByText("Why the provider's resources couldn't load"));
+        expect(within(inventoryDetails as HTMLDetailsElement).getByText("inventory service returned 503")).toBeVisible();
+        expect(screen.queryByText("This provider has not reported any resources.")).not.toBeInTheDocument();
+    });
+
+    it("shows the resource matching problem without an empty-inventory claim", async () => {
+        vi.mocked(getProviderResources).mockResolvedValue({
+            ...inventory,
+            resources: [inventory.resources[0], inventory.resources[0]],
+        });
+
+        render(<ProviderResources provider={provider} />);
+
+        expect(await screen.findByText(/Atlas found conflicting resource records/i)).toBeInTheDocument();
+        expect(screen.queryByText("This provider has not reported any resources.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    });
+
+    it("shows a single edit-access check while operator capability is loading", async () => {
+        let resolveOperator!: (value: ProviderManagementV3) => void;
+        vi.mocked(getAuthenticatedProviderManagement).mockImplementationOnce(
+            () => new Promise((resolve) => { resolveOperator = resolve; }),
+        );
+
+        render(<ProviderResources provider={provider} />);
+
+        expect(await screen.findByText("Checking monitoring settings and edit access...")).toBeInTheDocument();
+        expect(screen.queryByText(/Atlas could not check your edit access/i)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+
+        await act(async () => resolveOperator(management()));
+
+        expect(await screen.findByRole("button", { name: "Save" })).toBeDisabled();
+        expect(screen.queryByText("Checking monitoring settings and edit access...")).not.toBeInTheDocument();
     });
 
     it("saves through only the P3b API and reloads server projections", async () => {
@@ -252,18 +392,21 @@ describe("ProviderResources Provider Intent flow", () => {
         await renderResources();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
         expect(screen.getByText("Running", { selector: "dd" })).toBeInTheDocument();
+        expect(screen.getByText("Atlas observed this VM running and found no saved monitoring expectation.")).toBeInTheDocument();
+        expect(screen.queryByText("Provider intelligence rule")).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole("button", { name: "Review suggestion" }));
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
+        expect(screen.getByText("Added to the form. Nothing has been saved.")).toBeInTheDocument();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
 
         await user.click(screen.getByRole("button", { name: "Save" }));
         await waitFor(() => expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1));
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.queryByText("Atlas suggestion")).not.toBeInTheDocument();
     });
 
     it("allows manual override after review", async () => {
@@ -286,7 +429,7 @@ describe("ProviderResources Provider Intent flow", () => {
             suggestion({ management_fingerprint: replacementFingerprint }),
         ]);
         await renderResources();
-        expect(screen.getByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(screen.getByText(/suggestion no longer matches/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
@@ -307,7 +450,7 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(screen.getByRole("button", { name: "Review suggestion" }));
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("running");
         await user.click(screen.getByRole("button", { name: "Refresh resources" }));
-        expect(await screen.findByText(/different resource incarnation/i)).toBeInTheDocument();
+        expect(await screen.findByText(/suggestion no longer matches/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -362,7 +505,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ caller_can_mutate: false }));
         render(<ProviderResources provider={provider} />);
         await user.click(await screen.findByRole("button", { name: "Review suggestion" }));
-        expect(screen.getByText(/selected for local review/i)).toBeInTheDocument();
+        expect(screen.getByText("Added to the form. Nothing has been saved.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -371,9 +514,9 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getProviderMonitoringIntentSuggestions).mockResolvedValue([suggestion()]);
         vi.mocked(getAuthenticatedProviderManagement).mockRejectedValue(new Error("offline"));
         render(<ProviderResources provider={provider} />);
-        expect(await screen.findByText("Advisory suggestion")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas suggestion")).toBeInTheDocument();
         expect(screen.getByText("Not configured")).toBeInTheDocument();
-        expect(screen.getByText(/operator capability could not be loaded/i)).toBeInTheDocument();
+        expect(screen.getByText(/Atlas could not check your edit access/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -382,8 +525,8 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getProviderMonitoringIntentSuggestions).mockRejectedValue(new Error("offline"));
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Not configured")).toBeInTheDocument();
-        expect(screen.getByText(/suggestions could not be loaded/i)).toBeInTheDocument();
-        expect(screen.queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(screen.getByText(/Suggested monitoring choices could not be loaded/i)).toBeInTheDocument();
+        expect(screen.queryByText("Atlas suggestion")).not.toBeInTheDocument();
         expect(screen.getByLabelText(/monitoring expectation/i)).toHaveValue("");
     });
 
@@ -406,7 +549,7 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(await screen.findByText(/saved and confirmed.*suggestions could not be refreshed/i)).toBeInTheDocument();
         expect(screen.queryByText(/could not save the monitoring expectation/i)).not.toBeInTheDocument();
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.getByText(/different resource incarnation or monitoring state/i)).toBeInTheDocument();
+        expect(screen.getByText(/suggestion no longer matches/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Review suggestion" })).not.toBeInTheDocument();
     });
 
@@ -433,8 +576,10 @@ describe("ProviderResources Provider Intent flow", () => {
         render(<ProviderResources provider={provider} />);
         const qemu = await screen.findByTestId("resource-row-qemu-110");
         const lxc = screen.getByTestId("resource-row-lxc-110");
-        expect(within(qemu).getByText("Advisory suggestion")).toBeInTheDocument();
-        expect(within(lxc).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(within(qemu).getByText("Virtual machine 110")).toBeVisible();
+        expect(within(lxc).getByText("Container 110")).toBeVisible();
+        expect(within(qemu).getByText("Atlas suggestion")).toBeInTheDocument();
+        expect(within(lxc).queryByText("Atlas suggestion")).not.toBeInTheDocument();
     });
 
     it("keeps reviewed selection local to its exact QEMU coordinate", async () => {
@@ -452,18 +597,18 @@ describe("ProviderResources Provider Intent flow", () => {
         await user.click(within(qemu110).getByRole("button", { name: "Review suggestion" }));
         expect(within(qemu110).getByLabelText(/monitoring expectation/i)).toHaveValue("running");
         expect(within(qemu200).getByLabelText(/monitoring expectation/i)).toHaveValue("");
-        expect(within(qemu200).queryByText("Advisory suggestion")).not.toBeInTheDocument();
+        expect(within(qemu200).queryByText("Atlas suggestion")).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
 
     it.each([
-        [409, "cas_conflict", "intent changed"],
+        [409, "cas_conflict", "Monitoring settings changed"],
         [409, "fingerprint_mismatch", "identity changed"],
-        [409, "request_conflict", "save request is stale"],
-        [403, "permission_missing", "does not permit"],
-        [422, "invalid_request", "request is invalid"],
-        [429, "rate_limited", "rate limited"],
-        [503, "store_migration_required", "awaiting migration"],
+        [409, "request_conflict", "out of date"],
+        [403, "permission_missing", "does not have permission"],
+        [422, "invalid_request", "could not accept this monitoring change"],
+        [429, "rate_limited", "Too many monitoring updates"],
+        [503, "store_migration_required", "temporarily unavailable"],
     ] as const)("handles %s %s without retry", async (status, detail, message) => {
         const user = userEvent.setup();
         vi.mocked(putProviderMonitoringIntent).mockRejectedValue(httpError(status, detail));
@@ -496,7 +641,7 @@ describe("ProviderResources Provider Intent flow", () => {
             caller_can_mutate: false,
         }));
         render(<ProviderResources provider={provider} />);
-        expect(await screen.findByText(/awaiting a store migration/i)).toBeInTheDocument();
+        expect(await screen.findByText(/storage update before this setting can be edited/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
     });
@@ -509,17 +654,57 @@ describe("ProviderResources Provider Intent flow", () => {
         await renderResources();
         await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "running");
         await user.click(screen.getByRole("button", { name: "Save" }));
-        expect(await screen.findByText(/was saved, but refreshed server state/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Monitoring expectation saved, but Atlas could not reload/i)).toBeInTheDocument();
         expect(putProviderMonitoringIntent).toHaveBeenCalledTimes(1);
     });
 
     it("refreshes inventory and authenticated management together", async () => {
         const user = userEvent.setup();
         await renderResources();
+        await user.selectOptions(screen.getByLabelText(/monitoring expectation/i), "ignored");
+        await user.click(screen.getByRole("checkbox"));
+        let resolveOperator!: (value: ProviderManagementV3) => void;
+        vi.mocked(getAuthenticatedProviderManagement).mockImplementationOnce(
+            () => new Promise((resolve) => { resolveOperator = resolve; }),
+        );
         await user.click(screen.getByRole("button", { name: "Refresh resources" }));
         await waitFor(() => expect(refreshProviderResources).toHaveBeenCalledWith("proxmox"));
         expect(getProviderManagement).toHaveBeenCalledTimes(2);
         expect(getAuthenticatedProviderManagement).toHaveBeenCalledTimes(2);
+        expect(screen.getByLabelText(/monitoring expectation/i)).toBeDisabled();
+        expect(screen.getByRole("checkbox")).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+        expect(screen.getByText("Checking monitoring settings and edit access...")).toBeInTheDocument();
+        await act(async () => resolveOperator(management()));
+        expect(screen.getByLabelText(/monitoring expectation/i)).toBeEnabled();
+        expect(screen.getByRole("checkbox")).toBeChecked();
+        expect(screen.getByRole("checkbox")).toBeEnabled();
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+        expect(putProviderMonitoringIntent).not.toHaveBeenCalled();
+    });
+
+    it("marks the last inventory as possibly outdated when its refresh fails", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        vi.mocked(refreshProviderResources).mockRejectedValueOnce(new Error("Inventory refresh failed"));
+
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+
+        expect(await screen.findByText("Atlas couldn’t refresh this provider’s resources. Showing the last results; their status may have changed.")).toBeVisible();
+        expect(screen.getByText("Provider-reported state; separate from monitoring policy.")).toBeVisible();
+        expect(screen.queryByText("Live provider inventory; not monitoring policy.")).not.toBeInTheDocument();
+        expect(screen.getByText("Frigate")).toBeVisible();
+    });
+
+    it("marks the last monitoring settings as possibly outdated when their refresh fails", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        vi.mocked(getProviderManagement).mockRejectedValueOnce(new Error("Monitoring refresh failed"));
+
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+
+        expect(await screen.findByText("Atlas couldn’t refresh monitoring settings. Showing the last loaded settings; they may have changed.")).toBeVisible();
+        expect(screen.getByText("Frigate")).toBeVisible();
     });
 
     it("uses public v2 instead of the legacy inventory expectation", async () => {
@@ -567,7 +752,7 @@ describe("ProviderResources Provider Intent flow", () => {
         }));
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.getByText(/Sign in with Provider Intent permission/)).toBeInTheDocument();
+        expect(screen.getByText(/Sign in with permission to edit monitoring expectations/)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(getAuthenticatedProviderManagement).not.toHaveBeenCalled();
         expect(getProviderMonitoringIntentSuggestions).not.toHaveBeenCalled();
@@ -583,7 +768,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getAuthenticatedProviderManagement).mockRejectedValue(new Error("offline"));
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.getByText(/operator capability could not be loaded/i)).toBeInTheDocument();
+        expect(screen.getByText(/Atlas could not check your edit access/i)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     });
 
@@ -603,10 +788,39 @@ describe("ProviderResources Provider Intent flow", () => {
 
     it("preserves inventory and does not fall back to its expectation when v2 fails", async () => {
         vi.mocked(getProviderManagement).mockRejectedValue(new Error("offline"));
+        vi.mocked(getAtlasErrorMessage).mockReturnValueOnce("monitoring backend unavailable");
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Frigate")).toBeInTheDocument();
-        expect(screen.getByText("Monitoring unavailable", { selector: "p.font-semibold" })).toBeInTheDocument();
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent("Monitoring settings could not be loaded.");
+        expect(alert).not.toHaveTextContent("Observed inventory remains visible.");
+        const monitoringDetails = within(alert).getByText("Why monitoring settings couldn't load").closest("details");
+        expect(monitoringDetails).not.toHaveAttribute("open");
+        expect(within(monitoringDetails as HTMLDetailsElement).getByText("monitoring backend unavailable")).not.toBeVisible();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+    });
+
+    it("distinguishes inventory and monitoring read failures when both occur", async () => {
+        vi.mocked(getProviderResources).mockRejectedValue(new Error("inventory read failed"));
+        vi.mocked(getProviderManagement).mockRejectedValue(new Error("monitoring read failed"));
+        vi.mocked(getAtlasErrorMessage)
+            .mockReturnValueOnce("inventory backend unavailable")
+            .mockReturnValueOnce("monitoring backend unavailable");
+
+        render(<ProviderResources provider={provider} />);
+
+        const inventoryAlert = await screen.findByText("Could not load resources from this provider. Refresh resources to try again.")
+            .then(message => message.closest("[role='alert']"));
+        const monitoringAlert = await screen.findByText("Monitoring settings could not be loaded.")
+            .then(message => message.closest("[role='alert']"));
+        expect(inventoryAlert).not.toBeNull();
+        expect(monitoringAlert).not.toBeNull();
+        expect(within(inventoryAlert as HTMLElement).getByText("Why the provider's resources couldn't load")).toBeInTheDocument();
+        expect(within(monitoringAlert as HTMLElement).getByText("Why monitoring settings couldn't load")).toBeInTheDocument();
+        expect(within(inventoryAlert as HTMLElement).queryByText("Why monitoring settings couldn't load")).not.toBeInTheDocument();
+        expect(within(monitoringAlert as HTMLElement).queryByText("Why the provider's resources couldn't load")).not.toBeInTheDocument();
+        expect(screen.queryByText("Observed inventory remains visible.")).not.toBeInTheDocument();
+        expect(screen.queryByText("This provider has not reported any resources.")).not.toBeInTheDocument();
     });
 
     it("does not present management current_state as observed when inventory fails", async () => {
@@ -634,7 +848,7 @@ describe("ProviderResources Provider Intent flow", () => {
         vi.mocked(getAuthenticatedProviderManagement).mockResolvedValue(management({ caller_can_mutate: false }));
         render(<ProviderResources provider={provider} />);
         expect(await screen.findByText("Expected running")).toBeInTheDocument();
-        expect(screen.getByText(/does not permit Provider Intent updates/)).toBeInTheDocument();
+        expect(screen.getByText(/Your account does not have permission to edit monitoring expectations/)).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     });
 });
@@ -683,6 +897,15 @@ describe("ProviderResources exact-coordinate composition", () => {
 
 describe("ProviderResources bounded monitoring presentation", () => {
     it.each([
+        ["authoritative", "Provider verified"],
+        ["unavailable", "Unable to verify"],
+        ["unsupported", "Not supported"],
+    ] as const)("explains %s identity assurance as %s", (assurance, label) => {
+        const resource = publicManagement({ identity_assurance: assurance }).resources[0];
+        expect(monitoringPresentation(resource, "running", false).identity).toBe(label);
+    });
+
+    it.each([
         ["running", "running", "Configured — matches observed state"],
         ["stopped", "stopped", "Configured — matches observed state"],
         ["running", "stopped", "Configured — does not match observed state"],
@@ -699,13 +922,13 @@ describe("ProviderResources bounded monitoring presentation", () => {
     });
 
     it.each([
-        ["no_active_intent", "Needs Review — monitoring expectation not configured"],
-        ["legacy_unbound_evidence", "Needs Review — historical expectation available for review"],
-        ["incarnation_mismatch", "Needs Review — resource incarnation changed"],
-        ["identity_unavailable", "Needs Review — authoritative identity unavailable"],
-        ["authority_store_unavailable", "Monitoring unavailable — Provider Intent authority could not be read"],
-        ["resource_missing", "Resource missing — retained expectation does not describe a current live identity"],
-        ["resource_type_unsupported", "Unsupported for identity-bound monitoring"],
+        ["no_active_intent", "Needs review — no monitoring expectation is set"],
+        ["legacy_unbound_evidence", "Needs review — an older monitoring setting is available for reference"],
+        ["incarnation_mismatch", "Needs review — this VM was replaced"],
+        ["identity_unavailable", "Needs review — Atlas cannot verify this VM's identity"],
+        ["authority_store_unavailable", "Monitoring unavailable — Atlas could not load monitoring settings"],
+        ["resource_missing", "Resource missing — its saved monitoring setting does not apply to a current instance"],
+        ["resource_type_unsupported", "Monitoring is not supported for this resource type"],
     ] as const)("maps %s to bounded operator text", (reason, status) => {
         const resource = publicManagement({
             intent_status: reason === "resource_missing" ? "missing" : reason === "resource_type_unsupported" ? "unsupported" : reason === "authority_store_unavailable" ? "unavailable" : "needs_review",

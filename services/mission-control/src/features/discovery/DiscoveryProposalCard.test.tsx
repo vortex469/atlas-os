@@ -32,26 +32,48 @@ function renderCard(value: DiscoveryProposalNavigation) {
 }
 
 describe("DiscoveryProposalCard", () => {
-    it("renders sanitized current proposal context and advisory authority warning", () => {
+    it("keeps the suggestion summary visible and optional details collapsed", () => {
         renderCard(proposal());
-        expect(screen.getByText("Status: Current")).toBeInTheDocument();
-        expect(screen.getByText("1")).toBeInTheDocument();
-        expect(screen.getByText("2")).toBeInTheDocument();
-        expect(screen.getByText("atlas / proxmox / qemu")).toBeInTheDocument();
-        expect(screen.getByText(/re-check your permission/i)).toBeInTheDocument();
+        expect(screen.getByText("Suggestion")).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Frigate" })).toBeVisible();
+        expect(screen.getByText("Suggestion status: Current")).toBeInTheDocument();
+        expect(screen.getByText("Compatibility").parentElement).toHaveTextContent("Compatible");
+        expect(screen.getByText("Compatibility").parentElement).toBeVisible();
+        expect(screen.getByText(/Atlas checks your permission and the current VM details/i)).toBeVisible();
+        const details = screen.getByText("More about this suggestion").closest("details");
+        expect(details).not.toHaveAttribute("open");
+        expect(screen.getByText(/atlas \/ proxmox \/ qemu/)).not.toBeVisible();
+        expect(screen.getByText(/Suggestion ID:/)).not.toBeVisible();
         expect(screen.getByRole("link", { name: /Continue to maintenance selection/i })).toHaveAttribute("href", "/operations/request");
         expect(screen.queryByText(/vmgenid|provider action|target fingerprint/i)).not.toBeInTheDocument();
     });
 
+    it("labels proposal timestamps as local time and keeps the exact source values", () => {
+        renderCard(proposal());
+        const generated = screen.getByText("Generated (local time)").parentElement?.querySelector("time");
+        const expires = screen.getByText("Expires (local time)").parentElement?.querySelector("time");
+        expect(generated).toHaveAttribute("dateTime", "2026-08-15T00:00:00Z");
+        expect(expires).toHaveAttribute("dateTime", "2026-08-15T00:30:00Z");
+        expect(generated).not.toHaveTextContent("T00:00:00Z");
+    });
+
+    it("shows unavailable time when proposal timestamps are malformed", () => {
+        renderCard(proposal({ generated_at: "not-a-time", expires_at: "2026-02-30T00:30:00Z" }));
+        expect(screen.getByText("Generated (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.getByText("Expires (local time)").parentElement).toHaveTextContent("Time unavailable");
+        expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    });
+
     it.each([
-        ["stale", "source_changed"],
-        ["expired", "expired"],
-        ["not_actionable", "unsupported_resource"],
-        ["not_actionable", "evidence_missing"],
-    ] as const)("renders %s/%s as review only", (status, reason) => {
+        ["stale", "source_changed", "Out of date"],
+        ["expired", "expired", "Expired"],
+        ["not_actionable", "unsupported_resource", "Review only"],
+        ["not_actionable", "evidence_missing", "Review only"],
+    ] as const)("renders %s/%s as review only", (status, reason, expectedStatus) => {
         renderCard(proposal({ status, reason, actionable_navigation: false }));
-        expect(screen.getByText(/Review only: operational navigation is disabled/i)).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /Review Discovery item/i })).toBeInTheDocument();
+        expect(screen.getByText(`Suggestion status: ${expectedStatus}`)).toBeInTheDocument();
+        expect(screen.getByText(/This suggestion can’t be used to request maintenance/i)).toBeVisible();
+        expect(screen.getByRole("link", { name: /View catalog item/i })).toBeInTheDocument();
         expect(screen.queryByRole("link", { name: /maintenance selection/i })).not.toBeInTheDocument();
     });
 

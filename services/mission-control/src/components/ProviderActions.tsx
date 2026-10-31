@@ -1,8 +1,10 @@
 import {
     useCallback,
     useEffect,
+    useRef,
     useState,
 } from "react";
+import { Link } from "react-router-dom";
 
 import {
     getAtlasErrorMessage,
@@ -15,11 +17,12 @@ import type {
     ProviderActionParameters,
     ProviderActionResult,
 } from "../types/providerAction";
+import { safeText } from "../utils/safeText";
 import { SectionHeader } from "./SectionHeader";
 
 type ProviderActionsProps = {
     provider: Pick<Provider, "id" | "name">;
-    onActionCompleted: () => Promise<void> | void;
+    onActionCompleted: () => Promise<boolean | void> | void;
     compact?: boolean;
 };
 
@@ -29,6 +32,26 @@ type ActionParameterDefinition = {
     description?: string;
     example?: string;
 };
+
+const parameterLabelTerms = new Map([
+    ["api", "API"],
+    ["id", "ID"],
+    ["ip", "IP"],
+    ["mac", "MAC"],
+    ["ssh", "SSH"],
+    ["url", "URL"],
+    ["vm", "VM"],
+    ["vmid", "VM ID"],
+]);
+
+function formatParameterLabel(value: string): string {
+    return value
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .split(/[_-]+/)
+        .filter(Boolean)
+        .map((part) => parameterLabelTerms.get(part.toLowerCase()) ?? `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+        .join(" ");
+}
 
 function getParameterDefinition(
     value: unknown,
@@ -49,6 +72,15 @@ export function ProviderActions({
     onActionCompleted,
     compact = false,
 }: ProviderActionsProps) {
+    return <ProviderActionPanel key={provider.id} provider={provider} onActionCompleted={onActionCompleted} compact={compact} />;
+}
+
+function ProviderActionPanel({ provider, onActionCompleted, compact = false }: ProviderActionsProps) {
+    const active = useRef(true);
+    useEffect(() => {
+        active.current = true;
+        return () => { active.current = false; };
+    }, []);
     const [actions, setActions] = useState<ProviderAction[]>(
         [],
     );
@@ -56,7 +88,12 @@ export function ProviderActions({
     const [runningActionId, setRunningActionId] = useState<
         string | null
     >(null);
-    const [error, setError] = useState<string | null>(null);
+    const [catalogError, setCatalogError] = useState<string | null>(null);
+    const [catalogErrorDetails, setCatalogErrorDetails] = useState<string | null>(null);
+    const [executionError, setExecutionError] = useState<string | null>(null);
+    const [providerRefreshError, setProviderRefreshError] = useState<string | null>(null);
+    const [providerRefreshErrorDetails, setProviderRefreshErrorDetails] = useState<string | null>(null);
+    const [isRefreshingProvider, setIsRefreshingProvider] = useState(false);
     const [result, setResult] =
         useState<ProviderActionResult | null>(null);
     const [parameters, setParameters] = useState<
@@ -65,7 +102,8 @@ export function ProviderActions({
 
     const loadActions = useCallback(async () => {
         setIsLoading(true);
-        setError(null);
+        setCatalogError(null);
+        setCatalogErrorDetails(null);
 
         try {
             const providerActions = await getProviderActions(
@@ -77,12 +115,8 @@ export function ProviderActions({
                 `Unable to load actions for ${provider.id}:`,
                 requestError,
             );
-            setError(
-                getAtlasErrorMessage(
-                    requestError,
-                    `Mission Control could not load actions for ${provider.name}.`,
-                ),
-            );
+            setCatalogError("Mission Control could not load the available actions. No action was run.");
+            setCatalogErrorDetails(actionCatalogErrorDetails(requestError, provider.name));
         } finally {
             setIsLoading(false);
         }
@@ -91,36 +125,36 @@ export function ProviderActions({
     useEffect(() => {
         let cancelled = false;
 
-        getProviderActions(provider.id)
-            .then((providerActions) => {
-                if (cancelled) {
-                    return;
-                }
+        void Promise.resolve().then(() => {
+            if (cancelled) return;
+            return getProviderActions(provider.id)
+                .then((providerActions) => {
+                    if (cancelled) {
+                        return;
+                    }
 
-                setActions(providerActions);
-                setError(null);
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
+                    setActions(providerActions);
+                    setCatalogError(null);
+                    setCatalogErrorDetails(null);
+                })
+                .catch((requestError: unknown) => {
+                    if (cancelled) {
+                        return;
+                    }
 
-                console.error(
-                    `Unable to load actions for ${provider.id}:`,
-                    requestError,
-                );
-                setError(
-                    getAtlasErrorMessage(
+                    console.error(
+                        `Unable to load actions for ${provider.id}:`,
                         requestError,
-                        `Mission Control could not load actions for ${provider.name}.`,
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            });
+                    );
+                    setCatalogError("Mission Control could not load the available actions. No action was run.");
+                    setCatalogErrorDetails(actionCatalogErrorDetails(requestError, provider.name));
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setIsLoading(false);
+                    }
+                });
+        });
 
         return () => {
             cancelled = true;
@@ -137,9 +171,22 @@ export function ProviderActions({
         let confirmed = false;
 
         if (action.requires_confirmation) {
-            const confirmationMessage = action.destructive
-                ? `${action.label} is marked as destructive. Continue?`
-                : `${action.label} requires confirmation. Continue?`;
+            const actionParameters = parameters[action.id] ?? {};
+            const parameterSummary = Object.entries(actionParameters)
+                .flatMap(([name, value]) => {
+                    if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") {
+                        return [];
+                    }
+                    const displayValue = String(value).replace(/\s+/g, " ").trim();
+                    return displayValue ? [`${formatParameterLabel(name)}: ${displayValue}`] : [];
+                });
+            const confirmationMessage = [
+                `${action.label} on ${provider.name} requires confirmation.`,
+                action.description.trim().replace(/\s+/g, " "),
+                parameterSummary.length > 0 ? `Parameters:\n${parameterSummary.join("\n")}` : null,
+                action.destructive ? "This action is marked as destructive." : null,
+                "Continue?",
+            ].filter((line): line is string => Boolean(line)).join("\n\n");
 
             confirmed = window.confirm(confirmationMessage);
 
@@ -149,7 +196,9 @@ export function ProviderActions({
         }
 
         setRunningActionId(action.id);
-        setError(null);
+        setExecutionError(null);
+        setProviderRefreshError(null);
+        setProviderRefreshErrorDetails(null);
         setResult(null);
 
         try {
@@ -163,24 +212,65 @@ export function ProviderActions({
                 },
             );
 
+            if (!active.current) return;
+
             setResult(actionResult);
 
             if (actionResult.success) {
-                await onActionCompleted();
+                try {
+                    const refreshConfirmed = await onActionCompleted();
+                    if (refreshConfirmed === false) {
+                        setProviderRefreshError("Action completed, but Atlas could not confirm the latest provider information. The details shown here may be out of date.");
+                    }
+                } catch (refreshError) {
+                    if (!active.current) return;
+                    console.error(`Unable to refresh ${provider.id} after a provider action:`, refreshError);
+                    setProviderRefreshError("Action completed, but Atlas could not confirm the latest provider information. The details shown here may be out of date.");
+                    setProviderRefreshErrorDetails(getAtlasErrorMessage(
+                        refreshError,
+                        "Provider information could not be refreshed.",
+                    ));
+                }
             }
         } catch (requestError) {
+            if (!active.current) return;
             console.error(
                 `Unable to run ${action.id} for ${provider.id}:`,
                 requestError,
             );
-            setError(
+            setExecutionError(
                 getAtlasErrorMessage(
                     requestError,
-                    `Atlas Core could not run ${action.label}.`,
+                    "Mission Control could not confirm the action result.",
                 ),
             );
         } finally {
-            setRunningActionId(null);
+            if (active.current) setRunningActionId(null);
+        }
+    }
+
+    async function retryProviderRefresh(): Promise<void> {
+        setIsRefreshingProvider(true);
+        try {
+            const refreshConfirmed = await onActionCompleted();
+            if (!active.current) return;
+            if (refreshConfirmed === false) {
+                setProviderRefreshError("Atlas still could not confirm the latest provider information. The details shown here may be out of date.");
+                setProviderRefreshErrorDetails(null);
+                return;
+            }
+            setProviderRefreshError(null);
+            setProviderRefreshErrorDetails(null);
+        } catch (refreshError) {
+            if (!active.current) return;
+            console.error(`Unable to refresh ${provider.id} after a provider action:`, refreshError);
+            setProviderRefreshError("Refresh failed. Atlas could not confirm the latest provider information. The details shown here may be out of date.");
+            setProviderRefreshErrorDetails(getAtlasErrorMessage(
+                refreshError,
+                "Provider information could not be refreshed.",
+            ));
+        } finally {
+            if (active.current) setIsRefreshingProvider(false);
         }
     }
 
@@ -189,38 +279,42 @@ export function ProviderActions({
             {compact ? (
                 <div className="mb-3">
                     <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                        Compatibility actions
+                        Direct provider actions
                     </h3>
                     <p className="mt-1 text-xs text-slate-500">
-                        Existing provider-specific mechanisms, separate from monitoring policy and operational maintenance.
+                        These buttons run actions directly on this provider. Monitoring settings never run them. For planned maintenance, submit a request for review and approval.
                     </p>
                 </div>
             ) : (
                 <SectionHeader
-                    title="Compatibility actions"
-                    description="Existing provider-specific action mechanisms. Monitoring expectations do not invoke these actions, and hardened operational maintenance is a separate workflow."
+                    title="Direct provider actions"
+                    description="These buttons run actions directly on this provider. Monitoring settings never run them. For planned maintenance, submit a request for review and approval."
                 />
             )}
 
             {isLoading && (
                 <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                     <p className="text-sm text-slate-400">
-                        Loading provider actions...
+                        Loading available actions…
                     </p>
                 </div>
             )}
 
-            {!isLoading && error && (
+            {!isLoading && catalogError && (
                 <div
                     role="alert"
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
-                    <p className="font-semibold text-red-300">
-                        Action unavailable
-                    </p>
+                    <h3 className="font-semibold text-red-300">
+                        Direct provider actions are unavailable
+                    </h3>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error}
+                        {catalogError}
                     </p>
+                    {catalogErrorDetails && <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(catalogErrorDetails) || "No additional details were returned."}</p>
+                    </details>}
                     <button
                         type="button"
                         onClick={() => void loadActions()}
@@ -232,16 +326,15 @@ export function ProviderActions({
             )}
 
             {!isLoading &&
-                !error &&
+                !catalogError &&
                 actions.length === 0 && (
                     <div className="rounded-lg border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-                        This provider does not advertise any
-                        actions.
+                        No actions are available for this provider.
                     </div>
                 )}
 
             {!isLoading &&
-                !error &&
+                !catalogError &&
                 actions.length > 0 && (
                     <div
                         className={
@@ -280,6 +373,8 @@ export function ProviderActions({
                                 );
                             const isBlocked =
                                 runningActionId !== null ||
+                                executionError !== null ||
+                                providerRefreshError !== null ||
                                 !action.enabled ||
                                 hasMissingRequiredParameter;
 
@@ -352,9 +447,7 @@ export function ProviderActions({
                                                                 }
                                                                 className="text-sm font-medium text-slate-300"
                                                             >
-                                                                {
-                                                                    parameterName
-                                                                }
+                                                                {formatParameterLabel(parameterName)}
                                                                 {definition.required && (
                                                                     <span className="text-red-300">
                                                                         {" "}
@@ -384,7 +477,9 @@ export function ProviderActions({
                                                                 }
                                                                 disabled={
                                                                     runningActionId !==
-                                                                    null
+                                                                    null ||
+                                                                    executionError !== null ||
+                                                                    providerRefreshError !== null
                                                                 }
                                                                 onChange={(
                                                                     event,
@@ -445,6 +540,38 @@ export function ProviderActions({
                     </div>
                 )}
 
+            {executionError && (
+                <div role="alert" className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-5">
+                    <h3 className="font-semibold text-red-300">Action result unavailable</h3>
+                    <p className="mt-1 text-sm text-red-200/80">The action may have completed, but Mission Control did not receive a final result. Direct provider actions are paused here to prevent a duplicate.</p>
+                    <p className="mt-2 text-sm text-slate-300">Check Action history, then reload this provider page before deciding whether to try again.</p>
+                    <Link to="/operations" className="mt-3 inline-flex text-sm font-semibold text-blue-300 underline underline-offset-4">Open Action history →</Link>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(executionError) || "No additional details were returned."}</p>
+                    </details>
+                </div>
+            )}
+
+            {providerRefreshError && (
+                <div role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+                    <h3 className="font-semibold text-amber-200">Provider information needs a refresh</h3>
+                    <p className="mt-1 text-sm text-amber-100/80">{providerRefreshError} Refresh the provider information before running another action.</p>
+                    <button
+                        type="button"
+                        onClick={() => void retryProviderRefresh()}
+                        disabled={isRefreshingProvider}
+                        className="mt-3 rounded-lg border border-amber-300/40 px-3 py-2 text-sm font-semibold text-amber-100 disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isRefreshingProvider ? "Refreshing provider information…" : "Refresh provider information"}
+                    </button>
+                    {providerRefreshErrorDetails && <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(providerRefreshErrorDetails) || "No additional details were returned."}</p>
+                    </details>}
+                </div>
+            )}
+
             {result && (
                 <div
                     role="status"
@@ -467,7 +594,7 @@ export function ProviderActions({
                     </p>
 
                     <p className="mt-1 text-sm text-slate-200">
-                        {result.message}
+                        {safeText(result.message) || "No result message was returned."}
                     </p>
 
                     {result.warnings.length > 0 && (
@@ -477,7 +604,7 @@ export function ProviderActions({
                                     <li
                                         key={`${warning}-${index}`}
                                     >
-                                        {warning}
+                                        {safeText(warning) || "No additional details were returned."}
                                     </li>
                                 ),
                             )}
@@ -487,4 +614,10 @@ export function ProviderActions({
             )}
         </section>
     );
+}
+
+function actionCatalogErrorDetails(error: unknown, providerName: string): string | null {
+    const fallback = `Mission Control could not load actions for ${providerName}.`;
+    const details = getAtlasErrorMessage(error, fallback);
+    return details === fallback ? null : details;
 }

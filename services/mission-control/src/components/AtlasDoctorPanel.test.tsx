@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -22,7 +22,7 @@ describe("AtlasDoctorPanel", () => {
         vi.clearAllMocks();
     });
 
-    it("runs Doctor and displays its structured report", async () => {
+    it("runs health checks and displays their report in plain language", async () => {
         const user = userEvent.setup();
         mockedGetAtlasDoctorReport.mockResolvedValue({
             status: "degraded",
@@ -47,14 +47,16 @@ describe("AtlasDoctorPanel", () => {
         });
         render(<AtlasDoctorPanel />);
 
+        expect(screen.getByRole("region", { name: "Additional health checks" })).toBeVisible();
         await user.click(
-            screen.getByRole("button", { name: "Run Doctor" }),
+            screen.getByRole("button", { name: "Run health checks" }),
         );
 
         expect(
-            await screen.findByText("95/100"),
+            await screen.findByText("Health score: 95/100"),
         ).toBeInTheDocument();
-        expect(screen.getByText("degraded")).toBeInTheDocument();
+        expect(screen.getByText("Degraded")).toBeInTheDocument();
+        expect(screen.getByText("1 of 2 checks passed")).toBeInTheDocument();
         expect(
             screen.getByText("Optional service offline."),
         ).toBeInTheDocument();
@@ -66,16 +68,68 @@ describe("AtlasDoctorPanel", () => {
     it("shows a diagnostic request failure", async () => {
         const user = userEvent.setup();
         mockedGetAtlasDoctorReport.mockRejectedValue(
-            new Error("Doctor unavailable."),
+            new Error("Doctor unavailable: Bearer canary-secret-value"),
         );
         render(<AtlasDoctorPanel />);
 
         await user.click(
-            screen.getByRole("button", { name: "Run Doctor" }),
+            screen.getByRole("button", { name: "Run health checks" }),
         );
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-            "Doctor unavailable.",
-        );
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Health checks could not finish");
+        expect(alert).toHaveTextContent("No new health report is available. Run the checks again to get current results.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        const safeError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
+        expect(safeError).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(safeError).toBeVisible();
+    });
+
+    it("withholds credential and URL text from reported health findings", async () => {
+        const user = userEvent.setup();
+        mockedGetAtlasDoctorReport.mockResolvedValue({
+            status: "critical",
+            score: 40,
+            checked_at: "2026-10-30T00:00:00Z",
+            configuration_ok: true,
+            checks: [],
+            critical: ["Request to https://operator:canary-password@example.invalid/?token=canary-token failed"],
+            warnings: [],
+            information: [],
+        });
+        render(<AtlasDoctorPanel />);
+
+        await user.click(screen.getByRole("button", { name: "Run health checks" }));
+
+        const finding = await screen.findByText("[Sensitive text withheld]");
+        expect(finding).toBeInTheDocument();
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
+
+    it("clears the previous health report while rerunning and after failure", async () => {
+        const user = userEvent.setup();
+        mockedGetAtlasDoctorReport.mockResolvedValueOnce({
+            status: "healthy", score: 100, checked_at: "2026-10-26T00:00:00Z",
+            configuration_ok: true, checks: [], critical: [], warnings: [], information: [],
+        });
+        render(<AtlasDoctorPanel />);
+        await user.click(screen.getByRole("button", { name: "Run health checks" }));
+        await screen.findByText("Health score: 100/100");
+        let rejectRead!: (reason: Error) => void;
+        mockedGetAtlasDoctorReport.mockReturnValueOnce(new Promise((_, reject) => { rejectRead = reject; }));
+        await user.click(screen.getByRole("button", { name: "Run health checks" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Checking current health");
+        expect(screen.queryByText("Health score: 100/100")).not.toBeInTheDocument();
+        expect(screen.queryByText("Healthy")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Checking health…" })).toBeDisabled();
+        await act(async () => { rejectRead(new Error("Doctor unavailable.")); });
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Health checks could not finish");
+        expect(alert).toHaveTextContent("No new health report is available.");
+        expect(screen.queryByText("No critical issues or warnings detected.")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Run health checks" })).toBeEnabled();
     });
 });

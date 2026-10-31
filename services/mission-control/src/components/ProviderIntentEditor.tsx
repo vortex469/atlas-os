@@ -13,13 +13,13 @@ const labels: Record<ProviderMonitoringExpectation, string> = {
 };
 
 const readOnlyReasons: Record<string, string> = {
-    not_activated: "Provider Intent authority is not activated.",
-    authority_unavailable: "Provider Intent authority is temporarily unavailable.",
-    store_migration_required: "Provider Intent editing is awaiting a store migration.",
-    store_unavailable: "Provider Intent storage is temporarily unavailable.",
-    resource_missing: "Missing resources cannot be edited.",
-    identity_unavailable: "Authoritative QEMU identity is unavailable.",
-    resource_type_unsupported: "Provider Intent editing is unsupported for this resource type.",
+    not_activated: "Monitoring edits are not enabled for this provider.",
+    authority_unavailable: "Atlas cannot check monitoring settings right now. Editing is unavailable.",
+    store_migration_required: "Atlas needs a storage update before this setting can be edited.",
+    store_unavailable: "Monitoring settings cannot be read right now.",
+    resource_missing: "This resource is missing, so its monitoring setting cannot be changed.",
+    identity_unavailable: "Atlas cannot confirm this VM is the same instance, so its monitoring setting cannot be changed safely.",
+    resource_type_unsupported: "Atlas cannot edit monitoring for this resource type.",
 };
 
 function parseExpectationSelection(
@@ -46,7 +46,7 @@ export function ProviderIntentEditor({
 }: {
     resource: ManagedProviderResourceV2;
     mutationResource: ManagedProviderResourceV3 | null;
-    operatorState: "anonymous" | "available" | "unavailable";
+    operatorState: "anonymous" | "loading" | "available" | "unavailable";
     saving: boolean;
     initialSelection?: ProviderMonitoringExpectation;
     requireExplicitSelection?: boolean;
@@ -63,7 +63,9 @@ export function ProviderIntentEditor({
     );
     const [acknowledged, setAcknowledged] = useState(false);
 
-    const canEdit = mutationResource !== null
+    const canEdit = operatorState !== "anonymous"
+        && operatorState !== "unavailable"
+        && mutationResource !== null
         && mutationResource.caller_can_mutate
         && mutationResource.provider_intent_mutation_supported
         && mutationResource.editable_in_principle
@@ -74,19 +76,27 @@ export function ProviderIntentEditor({
         && resource.identity_assurance === "authoritative"
         && mutationResource.management_fingerprint !== null;
     const canSave = canEdit
+        && operatorState === "available"
         && selected !== ""
         && (selected !== "ignored" || acknowledged);
+    const readOnlyMessage = operatorState === "anonymous"
+        ? "Sign in with permission to edit monitoring expectations."
+        : operatorState !== "available"
+          ? null
+          : mutationResource?.mutation_readiness === "ready"
+            ? "Your account does not have permission to edit monitoring expectations."
+            : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"];
 
     return (
-        <div className="min-w-64 space-y-2">
+        <div className="min-w-0 space-y-2">
             {resource.replacement_detected && (
                 <p role="alert" className="text-xs text-amber-300">
-                    This resource incarnation changed. The previous expectation is historical only and does not apply to the current identity. Choose a new value explicitly.
+                    This VM was replaced. Its previous monitoring expectation does not apply to this instance. Choose a new value.
                 </p>
             )}
             {resource.legacy_review_available && resource.legacy_expectation && (
                 <p className="text-xs text-slate-400">
-                    Historical legacy expectation: {labels[resource.legacy_expectation]} — review context only; it will not be selected automatically.
+                    An older monitoring setting says {labels[resource.legacy_expectation]}. Review it if useful; Atlas will not select it automatically.
                 </p>
             )}
             {canEdit ? (
@@ -96,7 +106,7 @@ export function ProviderIntentEditor({
                         <select
                             aria-label={`Monitoring expectation for ${resource.display_name}`}
                             value={selected}
-                            disabled={saving}
+                            disabled={saving || operatorState !== "available"}
                             onChange={(event) => {
                                 setSelected(
                                     parseExpectationSelection(event.target.value),
@@ -116,7 +126,7 @@ export function ProviderIntentEditor({
                             <input
                                 type="checkbox"
                                 checked={acknowledged}
-                                disabled={saving}
+                                disabled={saving || operatorState !== "available"}
                                 onChange={(event) => setAcknowledged(event.target.checked)}
                             />
                             I understand monitoring findings for this expectation will be suppressed.
@@ -132,15 +142,7 @@ export function ProviderIntentEditor({
                     </button>
                 </>
             ) : (
-                <p className="text-xs text-slate-500">
-                    {operatorState === "anonymous"
-                        ? "Sign in with Provider Intent permission to edit this public monitoring state."
-                        : operatorState === "unavailable"
-                          ? "Editing is unavailable because operator capability could not be loaded."
-                          : mutationResource?.mutation_readiness === "ready"
-                            ? "Your operator session does not permit Provider Intent updates."
-                            : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"]}
-                </p>
+                readOnlyMessage && <p className="text-xs text-slate-500">{readOnlyMessage}</p>
             )}
         </div>
     );

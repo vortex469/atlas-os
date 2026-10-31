@@ -30,7 +30,7 @@ describe("v0.25 Agent intake simulation presentation boundary", () => {
         ]));
         expect(source).not.toMatch(/agent[-_ ]installation[-_ ]intake[-_ ]simulation/i);
         expect(source).not.toMatch(/agent[-_ ]intake[-_ ]simulation/i);
-        expect(source).not.toMatch(/intake[-_ ]record/i);
+        expect(source).not.toMatch(/agent[-_ ]intake[-_ ]record/i);
         expect(router).not.toMatch(/intake|simulation/i);
         expect(navigation).not.toMatch(/intake|simulation/i);
     });

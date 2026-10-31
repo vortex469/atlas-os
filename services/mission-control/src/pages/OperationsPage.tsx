@@ -5,9 +5,9 @@ import {
     useRef,
     useState,
 } from "react";
-import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { AtlasDoctorPanel } from "../components/AtlasDoctorPanel";
 import {
     exportProviderActionHistory,
     getAtlasErrorMessage,
@@ -24,18 +24,90 @@ import type {
     ProviderActionHistorySummary,
     ProviderActionHistoryProvider,
 } from "../types/actionHistory";
+import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 
 type HistoryFilter = "all" | ActionHistoryStatus;
+type OperationError = {
+    kind: "export" | "prune";
+    message: string;
+    details: string | null;
+};
 const PAGE_SIZE = 25;
 
-function formatTimestamp(timestamp: string): string {
-    const date = new Date(timestamp);
+type ActionHistoryViewState = {
+    filter: HistoryFilter;
+    providerId: string;
+    search: string;
+    searchInput: string;
+    completedFrom: string;
+    completedTo: string;
+    offset: number;
+};
 
-    if (Number.isNaN(date.getTime())) {
-        return "Unknown time";
+function validDateFilter(value: string | null): string {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+    const parsed = Date.parse(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value
+        ? value
+        : "";
+}
+
+function actionHistoryViewState(search: string): ActionHistoryViewState {
+    const params = new URLSearchParams(search);
+    const rawFilter = params.get("status");
+    const filter: HistoryFilter = rawFilter === "succeeded" || rawFilter === "failed"
+        ? rawFilter
+        : "all";
+    const appliedSearch = (params.get("q") ?? "").slice(0, 200).trim();
+    const rawOffset = Number(params.get("offset"));
+    let completedFrom = validDateFilter(params.get("from"));
+    let completedTo = validDateFilter(params.get("to"));
+    if (completedFrom && completedTo && completedFrom > completedTo) {
+        completedFrom = "";
+        completedTo = "";
     }
 
-    return date.toLocaleString();
+    return {
+        filter,
+        providerId: (params.get("provider") ?? "all").slice(0, 200) || "all",
+        search: appliedSearch,
+        searchInput: (params.get("draft") ?? appliedSearch).slice(0, 200),
+        completedFrom,
+        completedTo,
+        offset: Number.isSafeInteger(rawOffset) && rawOffset >= 0 && rawOffset % PAGE_SIZE === 0
+            ? rawOffset
+            : 0,
+    };
+}
+
+function actionHistorySearch(
+    currentSearch: string,
+    state: ActionHistoryViewState,
+): string {
+    const params = new URLSearchParams(currentSearch);
+    const values: Array<[string, string]> = [
+        ["status", state.filter === "all" ? "" : state.filter],
+        ["provider", state.providerId === "all" ? "" : state.providerId],
+        ["q", state.search],
+        ["draft", state.searchInput.trim() === state.search ? "" : state.searchInput],
+        ["from", state.completedFrom],
+        ["to", state.completedTo],
+        ["offset", state.offset === 0 ? "" : String(state.offset)],
+    ];
+    for (const [key, value] of values) {
+        if (value) params.set(key, value);
+        else params.delete(key);
+    }
+    const serialized = params.toString();
+    return serialized ? `?${serialized}` : "";
+}
+
+function formatTimestamp(value: string): ReactNode {
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value} className="text-xs text-slate-500">{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function statusClasses(status: ActionHistoryStatus): string {
@@ -57,27 +129,34 @@ function endOfUtcDay(date: string): string | undefined {
 }
 
 export function OperationsPage() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [initialViewState] = useState(() => actionHistoryViewState(location.search));
     const [entries, setEntries] = useState<
         ProviderActionAuditEntry[]
     >([]);
-    const [filter, setFilter] = useState<HistoryFilter>("all");
-    const [providerId, setProviderId] = useState("all");
-    const [searchInput, setSearchInput] = useState("");
-    const [search, setSearch] = useState("");
-    const [completedFrom, setCompletedFrom] = useState("");
-    const [completedTo, setCompletedTo] = useState("");
-    const [offset, setOffset] = useState(0);
+    const [filter, setFilter] = useState<HistoryFilter>(initialViewState.filter);
+    const [providerId, setProviderId] = useState(initialViewState.providerId);
+    const [searchInput, setSearchInput] = useState(initialViewState.searchInput);
+    const [search, setSearch] = useState(initialViewState.search);
+    const [completedFrom, setCompletedFrom] = useState(initialViewState.completedFrom);
+    const [completedTo, setCompletedTo] = useState(initialViewState.completedTo);
+    const [offset, setOffset] = useState(initialViewState.offset);
     const [total, setTotal] = useState(0);
     const [hasMore, setHasMore] = useState(false);
     const [providers, setProviders] = useState<
         ProviderActionHistoryProvider[]
     >([]);
+    const [providerOptionsUnavailable, setProviderOptionsUnavailable] = useState(false);
     const [summary, setSummary] =
         useState<ProviderActionHistorySummary | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasLoaded, setHasLoaded] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isPruning, setIsPruning] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [pruneNeedsRefresh, setPruneNeedsRefresh] = useState(false);
+    const [historyError, setHistoryError] = useState<string | null>(null);
+    const [operationError, setOperationError] = useState<OperationError | null>(null);
     const [operationMessage, setOperationMessage] = useState<
         string | null
     >(null);
@@ -103,31 +182,74 @@ export function OperationsPage() {
             search,
         ],
     );
+    const hasActiveMoreFilters = providerId !== "all" || Boolean(completedFrom || completedTo);
+    const hasUnappliedSearch = searchInput.trim() !== search;
+    const hasActiveFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search || searchInput.trim());
+    const hasAppliedFilters = filter !== "all" || hasActiveMoreFilters || Boolean(search);
+    const returnSearch = useMemo(() => actionHistorySearch(location.search, {
+        filter,
+        providerId,
+        search,
+        searchInput,
+        completedFrom,
+        completedTo,
+        offset,
+    }), [completedFrom, completedTo, filter, location.search, offset, providerId, search, searchInput]);
+
+    useEffect(() => {
+        if (returnSearch !== location.search) {
+            navigate({ pathname: location.pathname, search: returnSearch }, { replace: true });
+        }
+    }, [location.pathname, location.search, navigate, returnSearch]);
 
     const loadHistory = useCallback(async () => {
         const requestId = requestSequence.current + 1;
         requestSequence.current = requestId;
         setIsLoading(true);
-        setError(null);
+        setHistoryError(null);
+        setEntries([]);
+        setSummary(null);
+        setProviderOptionsUnavailable(false);
 
         try {
-            const [
-                historyPage,
-                historySummary,
-                historyProviders,
-            ] = await Promise.all([
+            const [historyResult, summaryResult, providersResult] = await Promise.allSettled([
                 getProviderActionHistory(historyQuery),
                 getProviderActionHistorySummary(),
                 getProviderActionHistoryProviders(),
             ]);
 
-            if (requestSequence.current === requestId) {
-                setEntries(historyPage.items);
-                setTotal(historyPage.total);
-                setHasMore(historyPage.has_more);
-                setSummary(historySummary);
-                setProviders(historyProviders);
+            if (requestSequence.current !== requestId) return;
+            if (summaryResult.status === "fulfilled") {
+                setSummary(summaryResult.value);
+            } else {
+                console.error("Unable to load provider action history retention details:", summaryResult.reason);
             }
+
+            if (summaryResult.status === "fulfilled" && historyResult.status === "fulfilled") {
+                setPruneNeedsRefresh(false);
+                setOperationError((current) => current?.kind === "prune" ? null : current);
+            }
+
+            if (providersResult.status === "fulfilled") {
+                setProviders(providersResult.value);
+                setProviderOptionsUnavailable(false);
+            } else {
+                console.error("Unable to load provider action history filters:", providersResult.reason);
+                setProviderOptionsUnavailable(true);
+            }
+
+            if (historyResult.status === "rejected") {
+                console.error("Unable to load provider action history:", historyResult.reason);
+                setHistoryError(getAtlasErrorMessage(
+                    historyResult.reason,
+                    "Mission Control could not load action history.",
+                ));
+                return;
+            }
+
+            setEntries(historyResult.value.items);
+            setTotal(historyResult.value.total);
+            setHasMore(historyResult.value.has_more);
         } catch (requestError) {
             if (requestSequence.current !== requestId) {
                 return;
@@ -137,7 +259,7 @@ export function OperationsPage() {
                 "Unable to load provider action history:",
                 requestError,
             );
-            setError(
+            setHistoryError(
                 getAtlasErrorMessage(
                     requestError,
                     "Mission Control could not load action history.",
@@ -146,6 +268,7 @@ export function OperationsPage() {
         } finally {
             if (requestSequence.current === requestId) {
                 setIsLoading(false);
+                setHasLoaded(true);
             }
         }
     }, [historyQuery]);
@@ -153,7 +276,7 @@ export function OperationsPage() {
     const exportHistory = useCallback(
         async (format: ActionHistoryExportFormat) => {
             setIsExporting(true);
-            setError(null);
+            setOperationError(null);
             setOperationMessage(null);
 
             try {
@@ -166,7 +289,7 @@ export function OperationsPage() {
                     URL.createObjectURL(exportBlob);
                 const anchor = document.createElement("a");
                 anchor.href = downloadUrl;
-                anchor.download = `atlas-action-history.${format}`;
+                anchor.download = `atlas-provider-action-history.${format}`;
                 document.body.appendChild(anchor);
                 anchor.click();
                 anchor.remove();
@@ -179,12 +302,13 @@ export function OperationsPage() {
                     "Unable to export provider action history:",
                     requestError,
                 );
-                setError(
-                    getAtlasErrorMessage(
-                        requestError,
-                        "Mission Control could not export action history.",
-                    ),
-                );
+                const fallback = "Mission Control could not export action history.";
+                const details = getAtlasErrorMessage(requestError, fallback);
+                setOperationError({
+                    kind: "export",
+                    message: "Action history could not be exported. Try exporting again.",
+                    details: details === fallback ? null : details,
+                });
             } finally {
                 setIsExporting(false);
             }
@@ -193,9 +317,10 @@ export function OperationsPage() {
     );
 
     const pruneHistory = useCallback(async () => {
-        const retentionDays = summary?.retention_days ?? 90;
+        if (!summary || historyError || pruneNeedsRefresh) return;
+        const retentionDays = summary.retention_days;
         const confirmed = window.confirm(
-            `Delete audit entries older than ${retentionDays} days?`,
+            `Delete history records older than ${retentionDays} days? This does not undo provider actions.`,
         );
 
         if (!confirmed) {
@@ -203,17 +328,15 @@ export function OperationsPage() {
         }
 
         setIsPruning(true);
-        setError(null);
+        setOperationError(null);
         setOperationMessage(null);
 
         try {
             const result = await pruneProviderActionHistory();
             setOperationMessage(
-                `${result.deleted_entries} expired audit ${
-                    result.deleted_entries === 1
-                        ? "entry"
-                        : "entries"
-                } pruned.`,
+                `${result.deleted_entries} expired history ${
+                    result.deleted_entries === 1 ? "entry" : "entries"
+                } deleted.`,
             );
             if (offset === 0) {
                 await loadHistory();
@@ -225,16 +348,18 @@ export function OperationsPage() {
                 "Unable to prune provider action history:",
                 requestError,
             );
-            setError(
-                getAtlasErrorMessage(
-                    requestError,
-                    "Mission Control could not prune action history.",
-                ),
-            );
+            const fallback = "Mission Control could not delete expired history entries.";
+            const details = getAtlasErrorMessage(requestError, fallback);
+            setPruneNeedsRefresh(true);
+            setOperationError({
+                kind: "prune",
+                message: "Atlas could not confirm whether expired entries were deleted. Refresh history before trying again.",
+                details: details === fallback ? null : details,
+            });
         } finally {
             setIsPruning(false);
         }
-    }, [loadHistory, offset, summary?.retention_days]);
+    }, [historyError, loadHistory, offset, pruneNeedsRefresh, summary]);
 
     useEffect(() => {
         const timeoutId = window.setTimeout(() => {
@@ -243,22 +368,23 @@ export function OperationsPage() {
 
         return () => {
             window.clearTimeout(timeoutId);
+            requestSequence.current += 1;
         };
     }, [loadHistory]);
 
     return (
-        <main className="mx-auto max-w-7xl space-y-6 p-8">
+        <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
             <header className="flex flex-col justify-between gap-4 border-b border-slate-800 pb-6 sm:flex-row sm:items-end">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
                         Operations
                     </p>
                     <h1 className="mt-2 text-3xl font-semibold text-slate-100">
-                        Action History
+                        Action history
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                        Recent provider operations, outcomes, and request
-                        correlation from Atlas Core.
+                        Completed actions and their results. Times use your
+                        local time.
                     </p>
                 </div>
 
@@ -268,13 +394,14 @@ export function OperationsPage() {
                     disabled={isLoading}
                     className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    {isLoading ? "Refreshing..." : "Refresh history"}
+                    Refresh history
                 </button>
             </header>
 
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div
                     className="flex rounded-lg border border-slate-800 bg-slate-900 p-1"
+                    role="group"
                     aria-label="Filter action history"
                 >
                     {(
@@ -287,6 +414,7 @@ export function OperationsPage() {
                         <button
                             key={value}
                             type="button"
+                            aria-pressed={filter === value}
                             onClick={() => {
                                 setFilter(value);
                                 setOffset(0);
@@ -301,15 +429,11 @@ export function OperationsPage() {
                         </button>
                     ))}
                 </div>
-
-                <p className="text-xs text-slate-500">
-                    Persistent audit history · retention managed by Atlas Core
-                </p>
             </div>
 
-            <section className="grid gap-4 rounded-lg border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 xl:grid-cols-5">
+            <section aria-label="Action history filters" className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <form
-                    className="sm:col-span-2 xl:col-span-1"
+                    className="max-w-2xl"
                     onSubmit={(event) => {
                         event.preventDefault();
                         setSearch(searchInput.trim());
@@ -341,117 +465,135 @@ export function OperationsPage() {
                             Search
                         </button>
                     </div>
+                    {hasUnappliedSearch && <p role="status" className="mt-2 text-sm text-blue-200">Search text has changed. Select Search to update the results.</p>}
                 </form>
 
-                <div>
-                    <label
-                        htmlFor="audit-provider-filter"
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                    >
-                        Provider
-                    </label>
-                    <select
-                        id="audit-provider-filter"
-                        value={providerId}
-                        onChange={(event) => {
-                            setProviderId(event.target.value);
-                            setOffset(0);
-                        }}
-                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
-                    >
-                        <option value="all">All providers</option>
-                        {providers.map((provider) => (
-                            <option
-                                key={provider.id}
-                                value={provider.id}
+                <details className="rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-300">
+                        More filters
+                        {hasActiveMoreFilters && <span className="ml-2 text-xs font-normal text-amber-200">Additional filters are applied</span>}
+                    </summary>
+                    {providerOptionsUnavailable && <p role="status" className="mt-4 text-sm text-amber-200">{providers.length > 0 ? "Provider options could not be refreshed. Showing the last available list." : "Provider options could not be loaded. Date filters are still available."}</p>}
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div>
+                            <label
+                                htmlFor="audit-provider-filter"
+                                className="text-xs font-medium uppercase tracking-wider text-slate-500"
                             >
-                                {provider.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div>
-                    <label
-                        htmlFor="audit-from-filter"
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                    >
-                        From date
-                    </label>
-                    <input
-                        id="audit-from-filter"
-                        type="date"
-                        value={completedFrom}
-                        max={completedTo || undefined}
-                        onChange={(event) => {
-                            setCompletedFrom(event.target.value);
-                            setOffset(0);
-                        }}
-                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
-                    />
-                </div>
-
-                <div>
-                    <label
-                        htmlFor="audit-to-filter"
-                        className="text-xs font-medium uppercase tracking-wider text-slate-500"
-                    >
-                        To date
-                    </label>
-                    <input
-                        id="audit-to-filter"
-                        type="date"
-                        value={completedTo}
-                        min={completedFrom || undefined}
-                        onChange={(event) => {
-                            setCompletedTo(event.target.value);
-                            setOffset(0);
-                        }}
-                        className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
-                    />
-                </div>
-
-                <div className="flex items-end">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setFilter("all");
-                            setProviderId("all");
-                            setSearchInput("");
-                            setSearch("");
-                            setCompletedFrom("");
-                            setCompletedTo("");
-                            setOffset(0);
-                        }}
-                        disabled={
-                            filter === "all" &&
-                            providerId === "all" &&
-                            !search &&
-                            !searchInput &&
-                            !completedFrom &&
-                            !completedTo
-                        }
-                        className="w-full rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                        Clear filters
-                    </button>
-                </div>
+                                Provider
+                            </label>
+                            <select
+                                id="audit-provider-filter"
+                                value={providerId}
+                                onChange={(event) => {
+                                    setProviderId(event.target.value);
+                                    setOffset(0);
+                                }}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                            >
+                                <option value="all">All providers</option>
+                                {providers.map((provider) => (
+                                    <option key={provider.id} value={provider.id}>{provider.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="audit-from-filter"
+                                className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                            >
+                                From date (UTC)
+                            </label>
+                            <input
+                                id="audit-from-filter"
+                                type="date"
+                                aria-describedby="audit-date-filter-help"
+                                value={completedFrom}
+                                max={completedTo || undefined}
+                                onChange={(event) => {
+                                    setCompletedFrom(event.target.value);
+                                    setOffset(0);
+                                }}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                            />
+                        </div>
+                        <div>
+                            <label
+                                htmlFor="audit-to-filter"
+                                className="text-xs font-medium uppercase tracking-wider text-slate-500"
+                            >
+                                To date (UTC)
+                            </label>
+                            <input
+                                id="audit-to-filter"
+                                type="date"
+                                aria-describedby="audit-date-filter-help"
+                                value={completedTo}
+                                min={completedFrom || undefined}
+                                onChange={(event) => {
+                                    setCompletedTo(event.target.value);
+                                    setOffset(0);
+                                }}
+                                className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500"
+                            />
+                        </div>
+                        <p id="audit-date-filter-help" className="text-xs text-slate-500 sm:col-span-2 xl:col-span-3">
+                            Date filters use full UTC days; action times use your local time.
+                        </p>
+                    </div>
+                </details>
+                {hasActiveFilters && (
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFilter("all");
+                                setProviderId("all");
+                                setSearchInput("");
+                                setSearch("");
+                                setCompletedFrom("");
+                                setCompletedTo("");
+                                setOffset(0);
+                            }}
+                            className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-800 hover:text-white"
+                        >
+                            Clear filters
+                        </button>
+                    </div>
+                )}
             </section>
 
-            <section className="rounded-lg border border-slate-800 bg-slate-900 p-5">
+            <section className="space-y-4 rounded-lg border border-slate-800 bg-slate-900 p-5">
                 <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                     <div>
                         <h2 className="font-semibold text-slate-100">
-                            Audit administration
+                            Manage history
                         </h2>
                         <p className="mt-1 text-sm text-slate-400">
                             {summary
-                                ? `${summary.entry_count} of ${summary.max_entries} entries retained for ${summary.retention_days} days.`
-                                : "Loading retention policy..."}
+                                ? `Atlas is keeping ${summary.entry_count} of ${summary.max_entries} entries for up to ${summary.retention_days} days.`
+                                : isLoading ? "Loading retention details…" : "Retention details are unavailable."}
                         </p>
                     </div>
-
-                    <div className="flex flex-wrap gap-2">
+                </div>
+                {historyError && <p role="status" className="text-sm text-amber-200">Expired entries cannot be deleted until action history loads successfully.</p>}
+                {operationError && (
+                    <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
+                        <p>{operationError.message}</p>
+                        {operationError.details && <details className="mt-2">
+                            <summary className="cursor-pointer text-sm font-medium text-slate-300">
+                                {operationError.kind === "export" ? "Why the export failed" : "Why deletion could not be confirmed"}
+                            </summary>
+                            <p className="mt-1 break-words text-slate-400">
+                                {safeText(operationError.details) || "No additional details were returned."}
+                            </p>
+                        </details>}
+                    </div>
+                )}
+                <details className="rounded-lg border border-slate-800 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-300">Export or delete history</summary>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <p className="w-full text-sm text-slate-400">Removing expired records only clears the history. It does not undo provider actions.</p>
                         <button
                             type="button"
                             onClick={() =>
@@ -475,15 +617,13 @@ export function OperationsPage() {
                         <button
                             type="button"
                             onClick={() => void pruneHistory()}
-                            disabled={isPruning || !summary}
+                            disabled={isPruning || !summary || Boolean(historyError) || pruneNeedsRefresh}
                             className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {isPruning
-                                ? "Pruning..."
-                                : "Prune expired"}
+                            {isPruning ? "Deleting..." : "Delete expired entries"}
                         </button>
                     </div>
-                </div>
+                </details>
 
                 {operationMessage && (
                     <p
@@ -495,41 +635,46 @@ export function OperationsPage() {
                 )}
             </section>
 
-            <AtlasDoctorPanel />
-
-            {error && (
+            {historyError && (
                 <div
                     role="alert"
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        History unavailable
+                        Action history unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
-                        {error}
+                        Atlas couldn’t load action history. Refresh history to try again; this won’t run any actions.
                     </p>
+                    <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-slate-300">Why action history couldn&apos;t load</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">
+                            {safeText(historyError) || "No additional details were returned."}
+                        </p>
+                    </details>
                 </div>
             )}
 
-            {!error && isLoading && entries.length === 0 && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-sm text-slate-400">
-                    Loading action history...
+            {!historyError && isLoading && entries.length === 0 && (
+                <div role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
+                    {hasLoaded ? "Refreshing action history…" : "Loading action history…"}
                 </div>
             )}
 
-            {!error && !isLoading && entries.length === 0 && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-8">
+            {!historyError && !isLoading && entries.length === 0 && (
+                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 sm:p-8">
                     <p className="font-semibold text-slate-200">
-                        No actions recorded
+                        {hasAppliedFilters ? "No matching actions" : "No actions recorded"}
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
-                        Provider actions executed through Atlas Core will
-                        appear here.
+                        {hasAppliedFilters
+                            ? "No actions match the filters you applied. Change or clear filters to see other history."
+                            : "Atlas has not recorded any actions yet."}
                     </p>
                 </div>
             )}
 
-            {entries.length > 0 && (
+            {!historyError && !isLoading && entries.length > 0 && (
                 <>
                     <div className="space-y-3">
                         {entries.map((entry) => (
@@ -548,76 +693,69 @@ export function OperationsPage() {
                                                 entry.status,
                                             )}`}
                                         >
-                                            {entry.status}
+                                            {entry.status === "succeeded" ? "Succeeded" : "Failed"}
                                         </span>
                                         {entry.confirmed && (
                                             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
-                                                Confirmed
+                                                Operator confirmed
                                             </span>
                                         )}
                                         {entry.destructive && (
                                             <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs text-red-300">
-                                                Destructive
+                                                Destructive action
                                             </span>
                                         )}
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-300">
-                                        {entry.message}
+                                    {entry.status === "failed" ? (
+                                        <details className="mt-2 text-sm text-slate-400">
+                                            <summary className="cursor-pointer font-medium text-slate-300">Failure details</summary>
+                                            <p className="mt-2 break-words">
+                                                {safeText(entry.message) || "No failure message was recorded."}
+                                            </p>
+                                        </details>
+                                    ) : (
+                                        <p className="mt-2 text-sm text-slate-300">
+                                            {safeText(entry.message) || "No result message was recorded."}
+                                        </p>
+                                    )}
+                                    <p className="mt-1 text-sm text-slate-400">
+                                        Provider: {entry.provider_name}
                                     </p>
                                     <Link
-                                        to={`/operations/actions/${encodeURIComponent(
-                                            entry.id,
-                                        )}`}
+                                        to={{
+                                            pathname: `/operations/actions/${encodeURIComponent(entry.id)}`,
+                                            search: returnSearch,
+                                        }}
                                         className="mt-3 inline-flex text-sm font-medium text-blue-400 transition hover:text-blue-300"
                                     >
-                                        View audit details
+                                        View action details
                                     </Link>
                                 </div>
 
-                                <time
-                                    dateTime={entry.completed_at}
-                                    className="text-xs text-slate-500"
-                                >
-                                    {formatTimestamp(entry.completed_at)}
-                                </time>
+                                {formatTimestamp(entry.completed_at)}
                             </div>
 
-                            <dl className="mt-4 grid gap-3 border-t border-slate-800 pt-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Provider
-                                    </dt>
-                                    <dd className="mt-1 text-slate-300">
-                                        {entry.provider_name}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Duration
-                                    </dt>
-                                    <dd className="mt-1 text-slate-300">
-                                        {entry.duration_ms.toFixed(2)} ms
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Parameters
-                                    </dt>
-                                    <dd className="mt-1 text-slate-300">
-                                        {entry.parameter_names.length > 0
-                                            ? entry.parameter_names.join(", ")
-                                            : "None"}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-slate-500">
-                                        Request ID
-                                    </dt>
-                                    <dd className="mt-1 break-all font-mono text-slate-300">
-                                        {entry.request_id ?? "Unavailable"}
-                                    </dd>
-                                </div>
-                            </dl>
+                            <details className="mt-4 border-t border-slate-800 pt-4">
+                                <summary className="cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                                <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                                    <div>
+                                        <dt className="text-slate-500">Duration</dt>
+                                        <dd className="mt-1 text-slate-300">{entry.duration_ms.toFixed(2)} ms</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500">Parameters</dt>
+                                        <dd className="mt-1 text-slate-300">
+                                            {entry.parameter_names.length > 0
+                                                ? entry.parameter_names.join(", ")
+                                                : "None"}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-slate-500">Request ID</dt>
+                                        <dd className="mt-1 break-all font-mono text-slate-300">{entry.request_id ?? "Unavailable"}</dd>
+                                    </div>
+                                </dl>
+                            </details>
                             </article>
                         ))}
                     </div>
@@ -642,7 +780,7 @@ export function OperationsPage() {
                                         ),
                                     )
                                 }
-                                disabled={offset === 0}
+                                disabled={offset === 0 || hasUnappliedSearch}
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Previous
@@ -655,7 +793,7 @@ export function OperationsPage() {
                                             current + PAGE_SIZE,
                                     )
                                 }
-                                disabled={!hasMore}
+                                disabled={!hasMore || hasUnappliedSearch}
                                 className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                                 Next

@@ -1,24 +1,29 @@
-import { Link, useParams } from "react-router-dom";
+import type { ReactNode } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import {
     getAtlasAgentErrorMessage,
     getWorkflowAudit,
+    getWorkflowOperationalLifecycle,
 } from "../api/atlas-agent";
-import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageStatus } from "../types/atlasAgent";
-import { useCallback, useEffect, useState } from "react";
+import type { WorkflowAuditResponse, WorkflowAuditStageName, WorkflowAuditStageStatus, WorkflowOperationalLifecycle } from "../types/atlasAgent";
+import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { evidenceTimestamp } from "../utils/healthPresentation";
+import { safeText } from "../utils/safeText";
 
 interface AuditStageDefinition {
     stage: WorkflowAuditStageName;
     title: string;
-    details: (audit: WorkflowAuditResponse) => { label: string; value: string }[];
+    details: (audit: WorkflowAuditResponse) => { label: string; value: ReactNode }[];
 }
 
 const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "candidate",
-        title: "Candidate",
+        title: "Change proposal",
         details: (audit) => [
-            { label: "Candidate ID", value: audit.candidate.candidate_id ?? "Not reached" },
+            { label: "Candidate ID", value: audit.candidate.candidate_id ?? "Not started" },
             { label: "Candidate fingerprint", value: audit.candidate.candidate_fingerprint ?? "Not exposed" },
             { label: "Source recommendation ID", value: audit.candidate.source_recommendation_id ?? "Not exposed" },
             { label: "Target ID", value: audit.candidate.target_id ?? "Not exposed" },
@@ -27,27 +32,27 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "planning",
-        title: "Planning Session",
+        title: "Planning",
         details: (audit) => [
-            { label: "Planning session ID", value: audit.planning.planning_session_id ?? "Not reached" },
+            { label: "Planning session ID", value: audit.planning.planning_session_id ?? "Not started" },
             { label: "Planning state", value: audit.planning.planning_state ?? "Not exposed" },
             { label: "Planning status", value: audit.planning.planning_status ?? "Not exposed" },
-            { label: "Created at", value: audit.planning.created_at ?? "Not available" },
-            { label: "Planning completed at", value: audit.planning.planning_completed_at ?? "Not available" },
+            { label: "Created (local time)", value: formatAuditTimestamp(audit.planning.created_at) },
+            { label: "Planning completed (local time)", value: formatAuditTimestamp(audit.planning.planning_completed_at) },
         ],
     },
     {
         stage: "plan",
-        title: "Candidate Plan",
+        title: "Change plan",
         details: (audit) => [
-            { label: "Plan ID", value: audit.plan.plan_id ?? "Not reached" },
+            { label: "Plan ID", value: audit.plan.plan_id ?? "Not started" },
             { label: "Candidate plan fingerprint", value: audit.plan.candidate_plan_fingerprint ?? "Not exposed" },
             { label: "Likely affected files", value: audit.plan.likely_affected_files.length > 0 ? audit.plan.likely_affected_files.join(", ") : "None reported" },
         ],
     },
     {
         stage: "workflow",
-        title: "Workflow",
+        title: "Workflow setup",
         details: (audit) => [
             { label: "Workflow ID", value: audit.workflow.workflow_id },
             { label: "Workflow state", value: formatStatusLabel(audit.workflow.workflow_state) },
@@ -56,9 +61,9 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "implementation",
-        title: "Implementation Request",
+        title: "Change request",
         details: (audit) => [
-            { label: "Implementation request ID", value: audit.implementation.implementation_request_id ?? "Not reached" },
+            { label: "Implementation request ID", value: audit.implementation.implementation_request_id ?? "Not started" },
             { label: "Execution intent", value: audit.implementation.execution_intent ?? "Not exposed" },
             { label: "Tool", value: audit.implementation.tool ?? "Not exposed" },
             { label: "Repository root", value: audit.implementation.repository_root ?? "Not exposed" },
@@ -71,19 +76,19 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "approvals",
-        title: "Implementation Approval",
+        title: "Change approval",
         details: (audit) => [
             { label: "Workflow approval status", value: formatStatusLabel(audit.approvals.implementation.status) },
-            { label: "Implementation approval ID", value: audit.approvals.implementation.approval_id ?? "Not reached" },
+            { label: "Implementation approval ID", value: audit.approvals.implementation.approval_id ?? "Not started" },
             { label: "Overall approval decision", value: formatStatusLabel(audit.approvals.status) },
         ],
     },
     {
         stage: "execution",
-        title: "Execution Result",
+        title: "Apply change",
         details: (audit) => [
             { label: "Execution status", value: formatStatusLabel(audit.execution.execution_status ?? "not_reached") },
-            { label: "Execution request ID", value: audit.execution.execution_request_id ?? "Not reached" },
+            { label: "Execution request ID", value: audit.execution.execution_request_id ?? "Not started" },
             { label: "Changed files count", value: String(audit.execution.changed_files_count) },
             { label: "Changed files", value: audit.execution.changed_files.length > 0 ? audit.execution.changed_files.join(", ") : "None reported" },
             { label: "Tool", value: audit.execution.tool ?? "Not exposed" },
@@ -92,53 +97,53 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "verification",
-        title: "Verification Plan",
+        title: "Checks to run",
         details: (audit) => [
-            { label: "Verification plan ID", value: audit.verification.verification_plan_id ?? "Not reached" },
+            { label: "Verification plan ID", value: audit.verification.verification_plan_id ?? "Not started" },
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not exposed" },
             { label: "Verification check IDs", value: audit.verification.verification_check_ids.length > 0 ? audit.verification.verification_check_ids.join(", ") : "None reported" },
             { label: "Repository head", value: audit.verification.repository_head ?? "Not exposed" },
-            { label: "Verification started at", value: audit.verification.verification_started_at ?? "Not available" },
-            { label: "Verification completed at", value: audit.verification.verification_completed_at ?? "Not available" },
+            { label: "Verification started (local time)", value: formatAuditTimestamp(audit.verification.verification_started_at) },
+            { label: "Verification completed (local time)", value: formatAuditTimestamp(audit.verification.verification_completed_at) },
         ],
     },
     {
         stage: "verification",
-        title: "Verification Approval",
+        title: "Check approval",
         details: (audit) => [
-            { label: "Verification approval status", value: formatStatusLabel(audit.approvals.verification.status) },
-            { label: "Verification approval ID", value: audit.approvals.verification.approval_id ?? "Not reached" },
-            { label: "Verification evidence ID", value: audit.verification.verification_evidence_id ?? "Not reached" },
+            { label: "Check approval status", value: formatStatusLabel(audit.approvals.verification.status) },
+            { label: "Check approval ID", value: audit.approvals.verification.approval_id ?? "Not started" },
+            { label: "Verification evidence ID", value: audit.verification.verification_evidence_id ?? "Not started" },
         ],
     },
     {
         stage: "verification",
-        title: "Verification Evidence",
+        title: "Check results",
         details: (audit) => [
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not available" },
             { label: "Repository head", value: audit.verification.repository_head ?? "Not available" },
-            { label: "Verification started at", value: audit.verification.verification_started_at ?? "Not available" },
-            { label: "Verification completed at", value: audit.verification.verification_completed_at ?? "Not available" },
+            { label: "Verification started (local time)", value: formatAuditTimestamp(audit.verification.verification_started_at) },
+            { label: "Verification completed (local time)", value: formatAuditTimestamp(audit.verification.verification_completed_at) },
         ],
     },
     {
         stage: "review",
-        title: "Review Result",
+        title: "Review results",
         details: (audit) => [
             { label: "Review status", value: formatStatusLabel(audit.review.review_status ?? "not_reached") },
-            { label: "Review result ID", value: audit.review.review_result_id ?? "Not reached" },
-            { label: "Review report ID", value: audit.review.review_report_id ?? "Not reached" },
+            { label: "Review result ID", value: audit.review.review_result_id ?? "Not started" },
+            { label: "Review report ID", value: audit.review.review_report_id ?? "Not started" },
             { label: "Reviewed content fingerprint", value: audit.review.reviewed_content_fingerprint ?? "Not exposed" },
             { label: "Changed files", value: audit.review.changed_files.length > 0 ? audit.review.changed_files.join(", ") : "None reported" },
         ],
     },
     {
         stage: "commit",
-        title: "Commit Request",
+        title: "Commit details",
         details: (audit) => [
-            { label: "Commit request ID", value: audit.commit.commit_request_id ?? "Not reached" },
+            { label: "Commit request ID", value: audit.commit.commit_request_id ?? "Not started" },
             { label: "Expected branch", value: audit.commit.expected_branch ?? "Not exposed" },
             { label: "Expected HEAD", value: audit.commit.expected_head ?? "Not exposed" },
             { label: "Commit message", value: audit.commit.commit_message ?? "Not exposed" },
@@ -148,17 +153,17 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     },
     {
         stage: "commit",
-        title: "Commit Approval",
+        title: "Commit approval",
         details: (audit) => [
             { label: "Commit approval status", value: formatStatusLabel(audit.approvals.commit.status) },
-            { label: "Commit approval ID", value: audit.approvals.commit.approval_id ?? "Not reached" },
+            { label: "Commit approval ID", value: audit.approvals.commit.approval_id ?? "Not started" },
         ],
     },
     {
         stage: "commit",
-        title: "Commit Result",
+        title: "Commit result",
         details: (audit) => [
-            { label: "Commit SHA", value: audit.commit.commit_sha ?? "Not reached" },
+            { label: "Commit SHA", value: audit.commit.commit_sha ?? "Not started" },
             { label: "Commit message", value: audit.commit.commit_message ?? "Not available" },
             { label: "Committed files", value: audit.commit.committed_files.length > 0 ? audit.commit.committed_files.join(", ") : "None reported" },
         ],
@@ -167,42 +172,65 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
 
 export function WorkflowAuditPage() {
     const { workflowId = "" } = useParams<{ workflowId: string }>();
+    return <WorkflowAudit key={workflowId} workflowId={workflowId} />;
+}
+
+function WorkflowAudit({ workflowId }: { workflowId: string }) {
+    const location = useLocation();
+    const workflowReturnTo = { pathname: `/workflows/${workflowId}`, search: location.search };
+    const dashboardReturnTo = { pathname: "/workflows", search: location.search };
     const [audit, setAudit] = useState<WorkflowAuditResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [loadError, setLoadError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<{ message: string; details?: string } | null>(null);
 
     const loadAudit = useCallback(async () => {
         setIsLoading(true);
         setLoadError(null);
         try {
             const detail = await getWorkflowAudit(workflowId);
+            if (detail && (detail.workflow_id !== workflowId || detail.workflow.workflow_id !== workflowId)) {
+                setAudit(null);
+                setLoadError({ message: "Atlas returned a different workflow than this link requested. Try again to load the right history." });
+                return;
+            }
             setAudit(detail);
         } catch (error) {
-            setLoadError(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
+            setLoadError({
+                message: "Atlas couldn’t load this workflow’s history. Try again to see its activity.",
+                details: getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."),
+            });
         } finally {
             setIsLoading(false);
         }
     }, [workflowId]);
 
     useEffect(() => {
-        void Promise.resolve().then(() => loadAudit());
+        let cancelled = false;
+        void Promise.resolve().then(() => { if (!cancelled) void loadAudit(); });
+        return () => { cancelled = true; };
     }, [loadAudit]);
 
     if (isLoading) {
         return (
-            <main className="mx-auto max-w-6xl space-y-8 p-8">
-                <p role="status" className="text-blue-200">Loading workflow audit...</p>
+            <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
+                <Link to={workflowReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
+                <p role="status" className="text-blue-200">Loading workflow history…</p>
             </main>
         );
     }
 
     if (loadError) {
         return (
-            <main className="mx-auto max-w-6xl space-y-4 p-8">
-                <Link to={`/workflows/${workflowId}`} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
+                <Link to={workflowReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow</Link>
                 <section role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-5">
-                    <h1 className="text-lg font-semibold text-red-100">Workflow audit unavailable</h1>
-                    <p className="mt-2 text-sm text-red-100">{loadError}</p>
+                    <h1 className="text-lg font-semibold text-red-100">Workflow history unavailable</h1>
+                    <p className="mt-2 text-sm text-red-100">{loadError.message}</p>
+                    <button type="button" onClick={() => void loadAudit()} className="mc-control mc-focusable mt-4 px-4 py-2 text-sm font-semibold">Try again</button>
+                    {loadError.details && <details className="mt-3">
+                        <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                        <p className="mt-2 break-words text-sm text-slate-400">{safeText(loadError.details) || "No additional details were returned."}</p>
+                    </details>}
                 </section>
             </main>
         );
@@ -210,100 +238,139 @@ export function WorkflowAuditPage() {
 
     if (!audit) {
         return (
-            <main className="mx-auto max-w-6xl space-y-4 p-8">
-                <Link to="/workflows" className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← Back to Workflow Dashboard</Link>
+            <main className="mx-auto max-w-6xl space-y-4 p-4 sm:p-8">
+                <Link to={dashboardReturnTo} className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300">← All workflows</Link>
                 <section role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
                     <h1 className="text-lg font-semibold text-amber-100">Workflow not found</h1>
-                    <p className="mt-2 text-sm text-slate-300">Atlas Agent did not find workflow {workflowId}.</p>
+                    <p className="mt-2 text-sm text-slate-300">This workflow could not be found. Check the link or return to the workflow list.</p>
                 </section>
             </main>
         );
     }
 
     const timeline = audit.timeline;
-    const overallLifecycleLabel = formatStatusLabel(audit.workflow_state);
+
+    if (audit.effect_kind === "operational_action") return <MaintenanceAudit audit={audit} returnSearch={location.search} />;
 
     return (
-        <main className="mx-auto max-w-6xl space-y-8 p-8">
+        <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-8">
             <header className="space-y-4">
-                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Workflow Audit</p>
-                <h1 className="text-3xl font-bold text-white">Workflow {audit.workflow_id}</h1>
+                <p className="text-xs uppercase tracking-[0.3em] text-blue-300">Read-only record</p>
+                <h1 className="text-3xl font-bold text-white">Workflow history</h1>
                 <p className="max-w-3xl text-sm leading-6 text-slate-400">
-                    Read-only audit explorer for the candidate workflow chain. Mission Control renders only server-provided
-                    fields and does not expose approval mutation, resume, execution, or commit controls.
+                    Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.
                 </p>
             </header>
 
             <section aria-labelledby="audit-overview-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="audit-overview-heading" className="text-lg font-semibold text-white">Overview</h2>
                 <dl className="mt-4 grid gap-4 text-sm md:grid-cols-3">
-                    <Detail label="Workflow ID" value={audit.workflow_id} />
-                    <Detail label="Workflow State" value={formatStatusLabel(audit.workflow_state)} />
-                    <Detail label="Workflow Source" value={audit.workflow_source} />
+                    <Detail label="Workflow status" value={formatWorkflowAuditStatus(audit)} />
                     {audit.blocked_reason ? <Detail label="Blocked reason" value={audit.blocked_reason} /> : null}
-                    <Detail label="Overall audit status" value={overallLifecycleLabel} />
-                    <Detail label="Audit validation" value={audit.validation.valid ? "Valid" : "Invalid"} />
-                    <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
+                    <Detail label="Record consistency" value={audit.validation.valid ? "Consistent" : "Needs review"} />
                 </dl>
                 {audit.validation.failure_code !== null && (
                     <p role="alert" className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-                        Inconsistent audit: {audit.validation.failure_code}
-                        {audit.validation.failure_stage ? ` at ${audit.validation.failure_stage}` : ""}
+                        This workflow record has inconsistent information. Review the flagged stage and its details below.
                     </p>
                 )}
-            </section>
-
-            <section aria-labelledby="audit-stage-list-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 id="audit-stage-list-heading" className="text-lg font-semibold text-white">Stage status</h2>
-                <ol className="mt-4 grid gap-2 text-sm md:grid-cols-3 lg:grid-cols-4">
-                    {AUDIT_STAGE_ORDER.map(({ title, stage }) => (
-                        <TimelineStage
-                            key={title}
-                            label={title}
-                            status={normalizeStageStatus(findStageStatus(timeline, stage))}
-                        />
-                    ))}
-                </ol>
+                <details className="mt-4 border-t border-slate-800 pt-4">
+                    <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                    <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <Detail label="Workflow ID" value={audit.workflow_id} />
+                        <Detail label="Recorded workflow state" value={formatStatusLabel(audit.workflow_state)} />
+                        <Detail label="Workflow source" value={audit.workflow_source} />
+                        <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
+                        <Detail label="Audit failure stage" value={audit.validation.failure_stage ?? "None"} />
+                    </dl>
+                </details>
             </section>
 
             {AUDIT_STAGE_ORDER.map(({ stage, title, details }) => {
                 const status = normalizeStageStatus(findStageStatus(timeline, stage));
                 const isIssue = status === "missing" || status === "inconsistent";
+                const headingId = `audit-stage-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
                 return (
-                    <section key={title} aria-labelledby={`audit-${title}-heading`} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                        <h2 id={`audit-${title}-heading`} className="text-lg font-semibold text-white">{title}</h2>
-                        <p className="mt-2 text-sm text-slate-300">Status: {formatStatusLabel(status)}</p>
+                    <details key={title} role="region" aria-labelledby={headingId} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                        <summary id={headingId} aria-label={`${title}, ${formatStatusLabel(status)}`} className="mc-focusable flex cursor-pointer list-none items-center justify-between gap-3 rounded text-lg font-semibold text-white">
+                            <span>{title}</span>
+                            <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium ${timelineClass(status)}`}>
+                                {formatStatusLabel(status)}
+                            </span>
+                        </summary>
                         {isIssue && (
                             <p role="alert" className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
-                                {status === "missing" ? "Required artifact is missing." : "This stage is inconsistent with audit-chain validation."}
+                                {status === "missing" ? "Required information for this step is missing." : "This step does not match the recorded workflow history."}
                             </p>
                         )}
-                        <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                        <dl className="mt-4 grid gap-4 border-t border-slate-800 pt-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                             {details(audit).map((detail) => (
                                 <Detail key={detail.label} label={detail.label} value={detail.value} />
                             ))}
                         </dl>
-                    </section>
+                    </details>
                 );
             })}
 
-            <section className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                <h2 className="text-lg font-semibold text-white">Audit trust boundary</h2>
-                <p className="mt-2 text-sm text-slate-300">Stage statuses are derived from the server-provided audit timeline and validation result. Read-only fields below are not reconstructed.</p>
-                <p className={`mt-4 rounded-lg p-3 text-sm ${overallLifecycleLabel === "Completed" ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-100" : "border border-amber-500/30 bg-amber-500/10 text-amber-100"}`}>
-                    Overall chain state: {overallLifecycleLabel}
-                </p>
-                <p className="mt-3 text-xs uppercase tracking-[0.3em] text-slate-500">No mutation controls are available in this explorer.</p>
-            </section>
-
             <Link
-                to={`/workflows/${audit.workflow_id}`}
+                to={workflowReturnTo}
                 className="inline-flex text-sm font-semibold text-blue-300 transition hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
                 ← Back to Workflow
             </Link>
         </main>
     );
+}
+
+function MaintenanceAudit({ audit, returnSearch }: { audit: WorkflowAuditResponse; returnSearch: string }) {
+    const [lifecycle, setLifecycle] = useState<WorkflowOperationalLifecycle | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const generation = useRef(0);
+    const load = useCallback(async () => {
+        const attempt = ++generation.current;
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await getWorkflowOperationalLifecycle(audit.workflow_id);
+            if (attempt !== generation.current) return;
+            if (!result || result.workflow_id !== audit.workflow_id || !result.applicable) {
+                setLifecycle(null);
+                setError("Matching maintenance evidence is unavailable. Refresh to check again.");
+            } else setLifecycle(result);
+        } catch {
+            if (attempt === generation.current) setError("Could not load maintenance evidence. Refresh to check again.");
+        } finally { if (attempt === generation.current) setLoading(false); }
+    }, [audit.workflow_id]);
+    useEffect(() => {
+        let active = true;
+        void Promise.resolve().then(() => { if (active) void load(); });
+        return () => { active = false; generation.current += 1; };
+    }, [load]);
+    return <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
+        <header>
+            <h1 className="break-all text-3xl font-bold text-white">Maintenance record</h1>
+            <p className="mt-3 text-sm text-slate-300">Review approvals, whether the maintenance ran, and its latest check. This page is read-only.</p>
+            <Link to={{ pathname: `/workflows/${encodeURIComponent(audit.workflow_id)}`, search: returnSearch }} className="mt-4 inline-flex text-sm text-blue-300">Back to workflow</Link>
+        </header>
+        <section aria-label="Record consistency" className="rounded-xl border border-slate-800 p-5 text-slate-300">
+            <p>Maintenance status: {formatWorkflowAuditStatus(audit)}</p>
+            <p>Record consistency: {audit.validation.valid ? "Consistent" : "Needs review"}</p>
+            {audit.blocked_reason && <p>Blocked reason: {audit.blocked_reason}</p>}
+            {audit.validation.failure_code && <p role="alert">This maintenance record has inconsistent information. Review its technical details.</p>}
+            <details className="mt-4 border-t border-slate-800 pt-4">
+                <summary className="mc-focusable cursor-pointer text-sm font-medium text-slate-300">Technical details</summary>
+                <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                    <Detail label="Workflow ID" value={audit.workflow_id} />
+                    <Detail label="Recorded workflow state" value={formatStatusLabel(audit.workflow_state)} />
+                    <Detail label="Workflow source" value={audit.workflow_source} />
+                    <Detail label="Audit failure code" value={audit.validation.failure_code ?? "None"} />
+                    <Detail label="Audit failure stage" value={audit.validation.failure_stage ?? "None"} />
+                </dl>
+            </details>
+        </section>
+        <OperationalLifecyclePanel lifecycle={lifecycle} isLoading={loading && !lifecycle} isRefreshing={loading} error={error} onRefresh={() => void load()} />
+    </main>;
 }
 
 function normalizeStageStatus(status: string | undefined): "completed" | "current" | "not_reached" | "missing" | "inconsistent" {
@@ -335,17 +402,15 @@ function normalizeStageNameStatus(status: WorkflowAuditStageStatus): WorkflowAud
     return status;
 }
 
-function TimelineStage({ label, status }: { label: string; status: WorkflowAuditStageStatus }) {
-    const displayStatus = normalizeStageStatus(status);
-    return (
-        <li className={"rounded-lg border px-3 py-2 " + timelineClass(displayStatus)}>
-            <span className="block font-medium">{label}</span>
-            <span className="text-xs">{formatStatusLabel(displayStatus)}</span>
-        </li>
-    );
+function formatAuditTimestamp(value: string | null): ReactNode {
+    if (value === null) return "Not available";
+    const timestamp = evidenceTimestamp(value);
+    return timestamp === null
+        ? "Time unavailable"
+        : <time dateTime={value}>{new Date(timestamp).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
-function Detail({ label, value }: { label: string; value: string }) {
+function Detail({ label, value }: { label: string; value: ReactNode }) {
     return (
         <div>
             <dt className="text-xs uppercase tracking-wider text-slate-500">{label}</dt>
@@ -363,11 +428,62 @@ function timelineClass(status: "completed" | "current" | "not_reached" | "missin
 }
 
 function formatStatusLabel(value: string): string {
-    return value
-        .replaceAll("_", " ")
-        .replaceAll("-", " ")
-        .replace("not_reached", "Not reached")
-        .replace("invalid", "Inconsistent")
-        .replace("inconsistent", "Inconsistent")
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    const normalized = value.replaceAll("_", " ").replaceAll("-", " ");
+    if (normalized === "not reached") return "Not started";
+    if (normalized === "invalid" || normalized === "inconsistent") return "Inconsistent";
+    return normalized.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatWorkflowAuditStatus(audit: WorkflowAuditResponse): string {
+    const isMaintenance = audit.effect_kind === "operational_action";
+    switch (audit.workflow_state) {
+        case "planned":
+            return isMaintenance ? "Maintenance request is ready for review." : "Workflow is ready for review.";
+        case "awaiting_approval":
+            return isMaintenance ? "Maintenance workflow is waiting for review." : "Workflow is waiting for review.";
+        case "awaiting_implementation_approval":
+            if (isMaintenance) return approvalStatusMessage("Maintenance request", audit.approvals.implementation.status, "Run approved maintenance when you are ready.");
+            if (audit.approvals.implementation.status === "approved") return "The change is approved. Run it when you are ready.";
+            if (audit.approvals.implementation.status === "rejected") return "Change approval was rejected.";
+            if (audit.approvals.implementation.status === "pending") return "Change needs approval.";
+            return "Change approval status is unavailable.";
+        case "awaiting_execution":
+            return isMaintenance ? "Maintenance request is approved and ready to run." : "The change is approved and ready to run.";
+        case "executing":
+            return isMaintenance ? "Maintenance is running." : "The change is running.";
+        case "patch_applied_pending_verification":
+            return "The change is applied. Review and approve the checks before they run.";
+        case "awaiting_verification_approval":
+            return checksApprovalStatusMessage(audit.approvals.verification.status);
+        case "verifying":
+            return "The checks are running.";
+        case "awaiting_commit_approval":
+            return approvalStatusMessage("Commit", audit.approvals.commit.status, "Record the approved commit when you are ready.");
+        case "committing":
+            return "The commit is being recorded.";
+        case "blocked":
+            return isMaintenance
+                ? "Maintenance workflow is blocked. Review the recorded stages and results below."
+                : "Workflow is blocked. Review the recorded stages and results below.";
+        case "implementation_rejected":
+            return isMaintenance ? "Maintenance request approval was rejected." : "Change approval was rejected.";
+        case "completed":
+            return isMaintenance ? "Maintenance workflow completed." : "Workflow completed.";
+        default:
+            return "Workflow status is unavailable.";
+    }
+}
+
+function approvalStatusMessage(action: string, status: string, approvedNextStep: string): string {
+    if (status === "approved") return action + " is approved. " + approvedNextStep;
+    if (status === "rejected") return action + " approval was rejected.";
+    if (status === "pending") return action + " needs approval.";
+    return action + " approval status is unavailable.";
+}
+
+function checksApprovalStatusMessage(status: string): string {
+    if (status === "approved") return "Checks are approved. Run them when you are ready.";
+    if (status === "rejected") return "Check approval was rejected.";
+    if (status === "pending") return "Checks need approval.";
+    return "Check approval status is unavailable.";
 }

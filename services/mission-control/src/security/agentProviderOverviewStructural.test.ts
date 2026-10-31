@@ -10,8 +10,8 @@ describe("agent/provider overview authority boundaries", () => {
             expect(source).not.toMatch(/<(button|form|input|select|textarea)\b/);
         }
         expect(dashboard).toContain("useOverviewEvidence()");
-        expect(dashboard).toContain("<AgentOverviewContent evidence={evidence.agent}");
-        expect(dashboard).toContain("<ProviderOverviewContent evidence={evidence.providers}");
+        expect(dashboard).toContain("<AgentOverviewContent evidence={evidence.agent} loading={loading}");
+        expect(dashboard).toContain("<ProviderOverviewContent evidence={evidence.providers} loading={loading}");
         expect(dashboard).toContain("<SystemHealthSummary");
         expect(dashboard).toContain("<WorkerExecutionSection");
         expect(dashboard).not.toMatch(/useMissionControl|AtlasAgentPanel|ProviderCard|AgentProviderSection/);

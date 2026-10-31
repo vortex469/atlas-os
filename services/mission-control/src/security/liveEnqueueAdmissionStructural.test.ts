@@ -21,15 +21,16 @@ describe("v0.41 live enqueue admission Mission Control boundary", () => {
         expect(workerIntakeComponent).toMatch(/LiveEnqueueAdmissions/);
         expect(router).not.toMatch(/live-enqueue-admissions|LiveEnqueueAdmission/i);
         expect(navigation).not.toMatch(/live enqueue admission|live_enqueue_admission/i);
-        expect(component.match(/<(button|form|input|select|textarea)\b/gi) ?? []).toHaveLength(0);
+        expect(component.match(/<(button|form|input|select|textarea)\b/gi) ?? []).toHaveLength(1);
+        expect(component).toMatch(/>Retry<\/button>/);
         expect(component).not.toMatch(/queue selector|worker selector|payload editor|editable queue|editable limit/i);
-        expect(component).not.toMatch(/>\s*(enqueue|dequeue|claim|lease|poll|start|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(component).not.toMatch(/>\s*(enqueue|dequeue|claim|lease|poll|start|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("presents evidence without sensitive values or operational authority", () => {
-        expect(component).toMatch(/inside the worker-intake hierarchy/i);
-        expect(component).toMatch(/does not enqueue, dequeue, poll, contact or start a worker, dispatch, install, or execute anything/i);
-        expect(component).toMatch(/Advanced live enqueue evidence/);
+        expect(component).toMatch(/This review is read-only\. It does not add work to the queue or start a worker/i);
+        expect(component).toMatch(/Atlas cannot save this review until Core provides the required queue records/i);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Live enqueue admission fixed-false authority fields/);
         expect(component).toMatch(/Permanent live-enqueue subject reservation: true/);
         expect(component).not.toMatch(/process\.env|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/i);

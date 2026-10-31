@@ -11,12 +11,13 @@ describe("v0.52 read-only Mission Control isolation", () => {
         expect(api.match(/atlas\.get/g)).toHaveLength(1);
         expect(api).toContain("withCredentials: true");
         expect(api + component).not.toMatch(/atlas\.(post|put|patch|delete)|setInterval|setTimeout|WebSocket|EventSource|Worker\(|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/);
-        expect(component).not.toMatch(/<(button|form|input|select|textarea)\b/i);
+        expect(component.match(/<(button|form|input|select|textarea)\b/gi) ?? []).toHaveLength(1);
+        expect(component).toMatch(/unavailable && .*Retry/s);
     });
     it("stays under the existing admission with no route or navigation", () => {
         expect(parent).toContain("<ControlledWorkerQueueReceipt candidateId={item.candidate_record_id} admissionId={item.admission_id} operatorId={item.operator_id}");
         expect(router + navigation).not.toMatch(/ControlledWorkerQueueReceipt|controlled-worker-queue-claim-lease-acknowledgements/);
-        expect(component).toContain("Advanced v0.52 evidence");
+        expect(component).toContain("Technical details");
         expect(component).not.toMatch(/<details[^>]*\bopen/);
         const consumers = Object.entries(modules).filter(([, source]) => /controlledWorkerQueueReceipt|ControlledWorkerQueueReceipt/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([

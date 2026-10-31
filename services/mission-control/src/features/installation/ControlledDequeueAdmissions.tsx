@@ -11,42 +11,43 @@ import { OneShotControlledDequeues } from "./OneShotControlledDequeues";
 const CONFIRMATION = "Record controlled dequeue admission evidence only. This does not dequeue, poll, claim, lease, acknowledge, consume, remove, contact or start a worker, invoke Agent or a workflow, dispatch, retry, resend, install, deploy, roll back, mutate, or execute anything.";
 
 const BLOCKERS: Record<string, string> = {
-    installation_capability_unsupported: "Installation capability unsupported",
-    evidence_not_found: "Evidence not found",
-    ownership_mismatch: "Ownership mismatch",
-    permission_scope_missing: "Permission scope missing",
-    v043_observation_not_active: "v0.43 observation is not active",
-    v043_observation_not_recorded: "v0.43 observation is not recorded",
-    v043_receipt_not_contract_eligible: "v0.43 receipt is not contract eligible",
-    v042_enqueue_not_active: "v0.42 enqueue is not active",
-    v042_enqueue_not_recorded: "v0.42 enqueue is not recorded",
-    linkage_mismatch: "Linkage mismatch",
-    queue_identity_mismatch: "Queue identity mismatch",
-    item_identity_mismatch: "Item identity mismatch",
-    observation_receipt_mismatch: "Observation receipt mismatch",
-    fingerprint_mismatch: "Fingerprint mismatch",
-    inherited_limits_mismatch: "Inherited limits mismatch",
-    evidence_stale: "Evidence stale",
-    evidence_expired: "Evidence expired",
-    ambiguous_state: "Ambiguous state",
-    executable_payload: "Executable payload",
-    unsupported_authority: "Unsupported authority",
-    permanent_subject_reserved: "Permanent subject already reserved",
-    idempotency_conflict: "Idempotency conflict",
-    append_indeterminate: "Append indeterminate",
-    dequeue_not_defined: "Dequeue is not defined",
-    queue_polling_not_defined: "Queue polling is not defined",
-    queue_claim_not_defined: "Queue claim is not defined",
-    queue_lease_not_defined: "Queue lease is not defined",
-    queue_ack_not_defined: "Queue acknowledgement is not defined",
-    worker_start_not_defined: "Worker start is not defined",
-    execution_start_boundary_not_defined: "Execution start boundary is not defined",
+    installation_capability_unsupported: "This type of installation is not supported.",
+    evidence_not_found: "Required review information is missing.",
+    ownership_mismatch: "This record belongs to a different owner.",
+    permission_scope_missing: "The required permission is missing.",
+    v043_observation_not_active: "The queue receipt review is no longer current.",
+    v043_observation_not_recorded: "The queue receipt review record is missing.",
+    v043_receipt_not_contract_eligible: "The queue receipt could not be verified.",
+    v042_enqueue_not_active: "The queue item is no longer current.",
+    v042_enqueue_not_recorded: "The queue item record is missing.",
+    linkage_mismatch: "The linked records do not match.",
+    queue_identity_mismatch: "The queue reference does not match.",
+    item_identity_mismatch: "The item reference does not match.",
+    observation_receipt_mismatch: "The queue receipt does not match the saved observation.",
+    fingerprint_mismatch: "A record integrity check did not pass.",
+    inherited_limits_mismatch: "The worker limits do not match the reviewed limits.",
+    evidence_stale: "Some review information is out of date.",
+    evidence_expired: "Some review information has expired.",
+    ambiguous_state: "Atlas cannot confirm the current status.",
+    executable_payload: "This item is not a supported inert reference.",
+    unsupported_authority: "This request asks for more access than review permits.",
+    permanent_subject_reserved: "A review record already exists for this request.",
+    idempotency_conflict: "This request conflicts with a saved record.",
+    append_indeterminate: "Atlas could not confirm the record outcome.",
+    dequeue_not_defined: "Atlas has not set up a way to remove queued work.",
+    queue_polling_not_defined: "Atlas has not set up a way to read work from a queue.",
+    queue_claim_not_defined: "Atlas has not set up a way to claim queued work.",
+    queue_lease_not_defined: "Atlas has not set up a way to reserve queued work.",
+    queue_ack_not_defined: "Atlas has not set up a way to acknowledge queued work.",
+    worker_start_not_defined: "Atlas has not set up a way to start a worker.",
+    execution_start_boundary_not_defined: "Atlas has not set up a safe way to start this installation.",
 };
 
 export function ControlledDequeueAdmissions({ candidateId, observation }: { candidateId: string; observation: QueueObservationReceiptV1 }) {
     const session = useOperatorSession();
     const [items, setItems] = useState<ControlledDequeueAdmissionV1[] | null>(null);
-    const [error, setError] = useState(false);
+    const [error, setError] = useState<"load" | "create" | null>(null);
+    const [readAttempt, setReadAttempt] = useState(0);
     const [confirming, setConfirming] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [blockedResult, setBlockedResult] = useState<ControlledDequeueAdmissionResultV1 | null>(null);
@@ -54,21 +55,23 @@ export function ControlledDequeueAdmissions({ candidateId, observation }: { cand
     useEffect(() => {
         let current = true;
         listControlledDequeueAdmissions(candidateId)
-            .then((value) => { if (current) setItems(value.items.filter((item) => item.queue_observation_receipt.receipt_id === observation.receipt_id)); })
-            .catch(() => { if (current) setError(true); });
+            .then((value) => { if (current) { setItems(value.items.filter((item) => item.queue_observation_receipt.receipt_id === observation.receipt_id)); setError(null); } })
+            .catch(() => { if (current) setError("load"); });
         return () => { current = false; };
-    }, [candidateId, observation.receipt_id]);
+    }, [candidateId, observation.receipt_id, readAttempt]);
 
     const permissions = session.principal?.permissions ?? [];
     const mayCreate = observation.lifecycle === "active"
+        && items !== null && items.length === 0 && !error && blockedResult === null
         && session.authenticated
         && permissions.includes("installation.execution.controlled_dequeue_admission.record")
         && permissions.includes("installation.execution.controlled_dequeue_admission.read")
-        && permissions.includes("installation.execution.queue_observation.read");
+        && permissions.includes("installation.execution.queue_observation.read")
+        && Boolean(session.csrfToken);
 
     const record = async () => {
         if (!session.csrfToken || submitting) return;
-        setSubmitting(true); setError(false); setBlockedResult(null);
+        setSubmitting(true); setError(null); setBlockedResult(null);
         try {
             const source = await getQueueObservation(candidateId, observation.receipt_id);
             if (!source.record || !source.status) throw new Error("missing v0.43 observation readback");
@@ -77,43 +80,45 @@ export function ControlledDequeueAdmissions({ candidateId, observation }: { cand
                 setItems((current) => [result.record!, ...(current ?? [])]);
                 setConfirming(false);
             } else {
-                setBlockedResult(result);
+                setBlockedResult(result); setConfirming(false);
             }
-        } catch { setError(true); }
+        } catch { setError("create"); setConfirming(false); }
         finally { setSubmitting(false); }
     };
 
     const admitted = (items?.length ?? 0) > 0;
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Controlled dequeue admission evidence">
-        <h6 className="font-semibold">Controlled dequeue admission</h6>
-        <p className="mt-2 text-sm">Readiness: {admitted ? "Ready for later dequeue consideration" : "Blocked or not yet admitted"}. This is evidence for a future boundary only.</p>
-        <p className="mt-1 text-sm">No dequeue, queue polling, claim, lease, acknowledgement, consume, remove, worker start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading controlled dequeue admission evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Controlled dequeue admission evidence is unavailable or blocked.</p><p className="text-xs text-slate-400">The error is redacted; no credential, payload, command, log, address, endpoint, worker address, queue detail, broker, queue-control secret, or internal path is shown.</p></div>}
-        {blockedResult?.error && <div role="alert" className="mt-3 rounded border border-amber-400/40 p-3"><p>Controlled dequeue admission remains blocked.</p><p className="mt-1 text-xs">Disposition: {blockedResult.outcome}; blocker: {BLOCKERS[blockedResult.error.error_code] ?? blockedResult.error.error_code}. Dequeue and worker execution remain unavailable.</p></div>}
-        {items?.length === 0 && !error && <p role="status" className="mt-3">No controlled dequeue admission evidence has been recorded for this queue observation.</p>}
-        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Controlled dequeue admissions">{items.map((item) => <Admission key={item.admission_id} item={item} />)}</ol>}
-        {mayCreate && !confirming && <button type="button" onClick={() => setConfirming(true)} className="mt-3 rounded border border-blue-400 px-3 py-2 text-sm">Review controlled dequeue admission statement</button>}
+        <h6 className="font-semibold">Queue removal review</h6>
+        <p className="mt-2 text-sm">This saves a review record only. It does not remove work from the queue or start a worker.</p>
+        {admitted && <p role="status" className="mt-2">A queue removal review record has been saved.</p>}
+        {items === null && !error && <p role="status" className="mt-3">Checking for a saved queue removal review…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>{error === "load" ? "Atlas could not load the queue removal review. Retry to check its current status." : "Atlas could not confirm whether it saved the review record. This screen will not resend the request."}</p><p className="text-xs text-slate-400">Private system details are hidden.</p>{error === "load" && <button type="button" onClick={() => { setItems(null); setError(null); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button>}</div>}
+        {blockedResult?.error && <div role="alert" className="mt-3 rounded border border-amber-400/40 p-3"><p>The queue removal review remains blocked.</p><p className="mt-1 text-sm">{BLOCKERS[blockedResult.error.error_code] ?? "Atlas reported an issue that needs review."}</p><details className="mt-2"><summary>Technical details</summary><p className="mt-2">Result: {blockedResult.outcome}; blocker code: <code>{blockedResult.error.error_code}</code>.</p></details></div>}
+        {items?.length === 0 && !error && <p role="status" className="mt-3">No queue removal review has been saved for this receipt.</p>}
+        {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Saved queue removal reviews">{items.map((item) => <Admission key={item.admission_id} item={item} />)}</ol>}
+        {mayCreate && !confirming && <button type="button" onClick={() => setConfirming(true)} className="mt-3 rounded border border-blue-400 px-3 py-2 text-sm">Review queue removal statement</button>}
         {mayCreate && confirming && <div aria-label="Controlled dequeue admission confirmation" className="mt-3 rounded border border-amber-400/40 p-3">
-            <p className="font-semibold">Step 2 of 2 - explicitly record controlled dequeue admission evidence</p>
+            <p className="font-semibold">Step 2 of 2 — save the review record</p>
             <p className="mt-2 text-sm">{CONFIRMATION}</p>
-            <p className="mt-2 text-xs">Core binds the authenticated operator, exact v0.43 observation receipt and status, exact inert v0.42 queue item, inherited limits, freshness, and permanent no-replay reservations.</p>
-            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Record admission evidence</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
+            <p className="mt-2 text-xs">Core ties this record to your account and the exact queue receipt. It cannot be replayed.</p>
+            <div className="mt-3 flex gap-2"><button type="button" disabled={submitting} onClick={record} className="rounded border border-amber-300 px-3 py-2 text-sm">Save review record</button><button type="button" disabled={submitting} onClick={() => setConfirming(false)} className="rounded border border-slate-500 px-3 py-2 text-sm">Cancel</button></div>
         </div>}
-        {!mayCreate && <p className="mt-3 text-sm text-amber-200">Recording remains blocked. An active v0.43 observation, authenticated owner, dedicated controlled dequeue admission permissions, queue observation read permission, and valid CSRF session are required.</p>}
+        {items?.length === 0 && !error && !blockedResult && !mayCreate && <p className="mt-3 text-sm text-amber-200">Saving this review needs a current queue receipt, a signed-in operator with permission, and a valid session.</p>}
     </section>;
 }
 
 function Admission({ item }: { item: ControlledDequeueAdmissionV1 }) {
-    const status = isExpired(item.valid_until) ? "Expired readiness evidence" : "Ready for later dequeue consideration";
+    const expired = isExpired(item.valid_until);
     const receipt = item.queue_observation_receipt;
     const queueItem = receipt.v042_enqueue.queue_item;
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">{status}</p>
-        <p className="mt-1">Admission state: {item.admission_state}; eligibility: {item.eligibility}; disposition: {item.disposition}.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Freshness is passive and does not dequeue, poll, claim, lease, acknowledge, consume, remove, retry, resend, or start work.</p>
+        <p className="font-semibold">{expired ? "Queue removal review has expired" : "Queue removal review is current"}</p>
+        <p className="mt-1">This record does not remove queued work or start a worker.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(item.recorded_at)}; valid until {formatUtcTimestamp(item.valid_until)}. An expired record cannot be renewed.</p>
+        <ol aria-label="What needs attention" className="mt-2 list-decimal pl-5">{item.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? "Atlas reported an issue that needs review."}</li>)}</ol>
         <details className="mt-3">
-            <summary>Advanced controlled dequeue admission details</summary>
+            <summary>Technical details</summary>
+            <p className="mt-2">Record state: {item.admission_state}; eligibility: {item.eligibility}; result: {item.disposition}.</p>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Admission ID" value={item.admission_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -131,9 +136,7 @@ function Admission({ item }: { item: ControlledDequeueAdmissionV1 }) {
                 <Value name="Admission decision fingerprint" value={item.admission_decision.decision_fingerprint.value} />
                 <Value name="Inherited limits fingerprint" value={item.inherited_limits.limits_fingerprint.value} />
             </dl>
-            <ol aria-label="Ordered controlled dequeue admission blockers" className="mt-3 list-decimal pl-5">
-                {item.blockers.map((value) => <li key={value}>{BLOCKERS[value] ?? value} <code className="text-xs text-slate-400">{value}</code></li>)}
-            </ol>
+            <details className="mt-3"><summary>Blocker codes</summary><ul className="mt-2 list-disc pl-5">{item.blockers.map((value) => <li key={value}><code>{value}</code></li>)}</ul></details>
             <p className="mt-3 text-xs">Audit events are bounded to controlled_dequeue_admission_recorded, controlled_dequeue_admission_read, and controlled_dequeue_admission_indeterminate. Permanent subject reservation: true · permanent idempotency reservation: true · raw idempotency key persisted: false.</p>
             <p className="mt-2 text-xs">Mission Control shows only Core-supplied lineage, identifiers, fingerprints, ownership, freshness, blockers, admission status, and audit details; raw queue, broker, lease, acknowledgement, worker, command, and payload details are not displayed.</p>
             <dl aria-label="Controlled dequeue admission fixed-false authority fields" className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -151,3 +154,7 @@ function isExpired(value: string) {
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }
 function Value({ name, value }: { name: string; value: string }) { return <div><dt className="break-all text-xs uppercase tracking-wide text-slate-500">{name}</dt><dd className="mt-1 break-all text-slate-300">{display(value)}</dd></div>; }
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
+}

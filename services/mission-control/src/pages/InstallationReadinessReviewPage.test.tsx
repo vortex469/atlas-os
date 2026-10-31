@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
+import { StrictMode } from "react";
+import type { InstallationReadinessBlockerV1, InstallationReadinessReviewResponseV1 } from "../types/installationReadinessReview";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationReadinessReview } from "../api/installationReadinessReview";
@@ -35,25 +37,93 @@ function renderPage(path = `/installation/candidate-records/${uuid4}/readiness-r
 }
 
 describe("InstallationReadinessReviewPage", () => {
+    it.each(["review", "audit_evidence"] as const)("refuses a mismatched %s candidate identity before reading permission evidence", async (field) => {
+        const response = structuredClone(readinessGatedFixture);
+        response[field].candidate_record_id = "00000000-0000-4000-8000-000000000002";
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
+        renderPage();
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Review unavailable");
+        expect(alert).toHaveTextContent("Atlas couldn't load this review. Try again.");
+        expect(alert).toHaveTextContent("Technical error details aren't shown here.");
+        expect(listExecutionPermissionGrants).not.toHaveBeenCalled();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+        expect(screen.queryByText("operator-a")).not.toBeInTheDocument();
+    });
+
+    it("retries only the review read and avoids duplicate initial reads under Strict Mode", async () => {
+        vi.mocked(getInstallationReadinessReview).mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(readinessGatedFixture);
+        render(<StrictMode><MemoryRouter initialEntries={[`/installation/candidate-records/${uuid4}/readiness-review`]}><Routes>
+            <Route path="/installation/candidate-records/:candidateRecordId/readiness-review" element={<InstallationReadinessReviewPage />} />
+        </Routes></MemoryRouter></StrictMode>);
+        fireEvent.click(await screen.findByRole("button", { name: "Reload review" }));
+        await screen.findByRole("heading", { name: "Evidence is current, but installation cannot start" });
+        expect(getInstallationReadinessReview).toHaveBeenCalledTimes(2);
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
+    it("clears the previous candidate's review and permission confirmation when navigating", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        let resolveNext!: (value: InstallationReadinessReviewResponseV1) => void;
+        vi.mocked(getInstallationReadinessReview).mockResolvedValueOnce(readinessGatedFixture)
+            .mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/installation/candidate-records/:candidateRecordId/readiness-review", element: <InstallationReadinessReviewPage /> }], { initialEntries: [`/installation/candidate-records/${uuid4}/readiness-review`] });
+        render(<RouterProvider router={router} />);
+        fireEvent.click(await screen.findByRole("button", { name: "Review confirmation statement" }));
+        expect(screen.getByLabelText("Operator confirmation")).toBeInTheDocument();
+        const nextId = "00000000-0000-4000-8000-000000000002";
+        await act(() => router.navigate(`/installation/candidate-records/${nextId}/readiness-review`));
+        expect(screen.queryByLabelText("Operator confirmation")).not.toBeInTheDocument();
+        expect(screen.queryByText("operator-a")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading readiness review");
+        const next = structuredClone(readinessGatedFixture);
+        next.review.candidate_record_id = nextId; next.audit_evidence.candidate_record_id = nextId;
+        await act(async () => resolveNext(next));
+        await screen.findByRole("button", { name: "Review confirmation statement" });
+        expect(screen.queryByLabelText("Operator confirmation")).not.toBeInTheDocument();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => { vi.resetAllMocks(); session.value = { authenticated: false, principal: null, csrfToken: null }; vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listInstallationExecutionAdmissions).mockResolvedValue({ admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false, execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false }); vi.mocked(listRunnerBindingPlans).mockResolvedValue({ schema: "runner-binding-plan-collection-v1", plans: [], evidence_only: true, execution_authorized: false, mutation_allowed: false }); });
 
     it("renders loading then the readiness-gated evidence, linkage, audit, and authority boundary", async () => {
         let resolve!: (value: typeof readinessGatedFixture) => void;
         vi.mocked(getInstallationReadinessReview).mockReturnValue(new Promise((done) => { resolve = done; }));
         renderPage();
-        expect(screen.getByRole("status")).toHaveTextContent(/loading installation readiness review/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/loading readiness review/i);
         resolve(readinessGatedFixture);
-        expect(await screen.findByRole("heading", { name: /readiness gated — execution admission is not defined/i })).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Evidence is current, but installation cannot start" })).toBeInTheDocument();
+        expect(screen.getByText("Atlas has not defined a way to start this installation yet.")).toBeVisible();
+        expect(screen.queryByRole("list", { name: "Ordered readiness blockers" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Evidence reviewed" })).toBeInTheDocument();
+        const evidenceDetails = screen.getByText("View evidence records (14)").closest("details");
+        expect(evidenceDetails).not.toHaveAttribute("open");
+        expect(evidenceDetails?.querySelector('ol[aria-label="Installation evidence chain"]')).not.toBeVisible();
+        fireEvent.click(screen.getByText("View evidence records (14)"));
+        expect(screen.getByText("Review record details").closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Review record details"));
         expect(screen.getByText("Authenticated operator").nextSibling).toHaveTextContent("operator-a");
         const chain = screen.getByRole("list", { name: "Installation evidence chain" });
         expect(within(chain).getAllByRole("listitem")).toHaveLength(14);
-        expect(within(chain).getByText(/v0.20 · candidate_record · current/i)).toBeInTheDocument();
-        expect(within(chain).getByText(/v0.33 · inert_delivery_receipt · current/i)).toBeInTheDocument();
+        expect(within(chain).getByText(/v0.20 · Candidate Record · Current/i)).toBeInTheDocument();
+        expect(within(chain).getByText(/v0.33 · Inert Delivery Receipt · Current/i)).toBeInTheDocument();
         expect(screen.getAllByText("a".repeat(64)).length).toBeGreaterThan(10);
+        expect(screen.getByText("Technical review details").closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Technical review details"));
         expect(screen.getByRole("heading", { name: /required linkage and fingerprints/i })).toBeInTheDocument();
         expect(screen.getByText("v033_verification_fingerprint")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: /read-only audit evidence/i })).toBeInTheDocument();
         expect(screen.getByText("Mutation attempted").nextSibling).toHaveTextContent("false");
+    });
+
+    it("explains when a readiness review has no evidence records", async () => {
+        const response = structuredClone(readinessGatedFixture);
+        response.review.evidence = [];
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
+        renderPage();
+
+        expect(await screen.findByText("No evidence records were returned for this review.")).toBeVisible();
+        expect(screen.queryByText(/View evidence records/)).not.toBeInTheDocument();
     });
 
     it("renders ordered blocked and Home Assistant golden state", async () => {
@@ -62,48 +132,136 @@ describe("InstallationReadinessReviewPage", () => {
         expect(await screen.findByRole("heading", { name: "Blocked" })).toBeInTheDocument();
         const blockers = screen.getByRole("list", { name: "Ordered readiness blockers" });
         const items = within(blockers).getAllByRole("listitem");
-        expect(items[0]).toHaveTextContent("Stale evidence");
-        expect(items[1]).toHaveTextContent("Installation capability unsupported");
-        expect(screen.getByText(/expired or stale evidence remains evidence only and blocks readiness/i)).toBeInTheDocument();
+        expect(items[0]).toHaveTextContent("Some evidence is out of date.");
+        expect(items[1]).toHaveTextContent("Atlas cannot install this type of item yet.");
+        expect(screen.getByText("This review is blocked by the evidence issues listed below.")).toBeInTheDocument();
+        expect(screen.getByRole("list", { name: "Ordered readiness blockers" })).toBeInTheDocument();
+    });
+
+    it.each([
+        ["missing_evidence", "Required evidence is missing."],
+        ["ownership_mismatch", "The evidence belongs to a different operator."],
+        ["linkage_mismatch", "The evidence does not match the linked installation records."],
+        ["fingerprint_mismatch", "The recorded evidence does not pass its integrity check."],
+        ["invalid_evidence", "Required evidence is incomplete or could not be verified."],
+        ["stale_evidence", "Some evidence is out of date."],
+        ["expired_evidence", "Some evidence has expired."],
+        ["terminal_ambiguity", "A previous step has an unclear final status."],
+        ["agent_evidence_unavailable", "Atlas could not check evidence from the Agent."],
+        ["source_unavailable", "Atlas could not check one of the required evidence sources."],
+        ["installation_capability_unsupported", "Atlas cannot install this type of item yet."],
+        ["execution_admission_not_defined", "Atlas has not defined how to start this installation yet."],
+    ] as const satisfies readonly (readonly [InstallationReadinessBlockerV1, string])[])("explains the %s blocker in plain language", async (blocker, explanation) => {
+        const response = structuredClone(blockedFixture);
+        response.review.blockers = [blocker];
+        response.audit_evidence.blocker_codes = [blocker];
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(response);
+
+        renderPage();
+
+        const blockers = await screen.findByRole("list", { name: "Ordered readiness blockers" });
+        expect(within(blockers).getByText(explanation)).toBeVisible();
     });
 
     it("renders redacted error and empty states without leaked details", async () => {
         vi.mocked(getInstallationReadinessReview).mockRejectedValue(new Error("secret token at /internal/path 10.0.0.1"));
         const { unmount } = renderPage();
-        expect(await screen.findByRole("alert")).toHaveTextContent("Installation readiness review is unavailable.");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas couldn't load this review. Try again.");
         expect(document.body).not.toHaveTextContent(/secret token|internal\/path|10\.0\.0\.1/i);
         unmount();
         renderPage("/empty");
-        expect(screen.getByRole("status")).toHaveTextContent("No candidate record selected.");
+        expect(screen.getByRole("status")).toHaveTextContent("No saved review record was selected.");
+    });
+
+    it("offers a read-only retry after a permission-evidence read failure", async () => {
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(listExecutionPermissionGrants)
+            .mockRejectedValueOnce(new Error("private response"))
+            .mockResolvedValueOnce({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        renderPage();
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas could not load the confirmation record.");
+        expect(screen.getByRole("alert")).not.toHaveTextContent("could not save your confirmation");
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+        expect(await screen.findByText("No confirmation record has been saved.")).toBeInTheDocument();
+        expect(listExecutionPermissionGrants).toHaveBeenCalledTimes(2);
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
     });
 
     it("contains explicit non-authorizing copy and no effect controls or action navigation", async () => {
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
         renderPage();
-        await waitFor(() => expect(screen.getByRole("heading", { name: /readiness gated/i })).toBeInTheDocument());
-        const boundary = screen.getByLabelText("Read-only authority boundary");
+        await waitFor(() => expect(screen.getByRole("heading", { name: "Evidence is current, but installation cannot start" })).toBeInTheDocument());
+        const boundary = screen.getByLabelText("Review and permission boundary");
+        expect(boundary).toHaveTextContent("Reviewing evidence is read-only. It does not install or run anything.");
+        expect(boundary).toHaveTextContent("An authorized operator can save a permanent record of their confirmation below. It does not allow Atlas to install, run, or change anything.");
         expect(boundary).toHaveTextContent(/not installation, execution, dispatch, retry or resend, Agent invocation, workflow start, provider mutation, repository mutation, in-guest mutation, deployment, rollback, or permission to mutate anything/i);
         expect(boundary).toHaveTextContent(/not approval, admission, authorization, installability, or executability/i);
         expect(screen.queryAllByRole("button")).toHaveLength(0);
         const links = screen.getAllByRole("link");
         expect(links).toHaveLength(1);
-        expect(links[0]).toHaveTextContent("Discovery");
+        expect(links[0]).toHaveTextContent("Catalog");
         expect(document.body.textContent).not.toMatch(/install now|execute now|run now|deploy now|dispatch now|retry now|resend now|send to agent|start workflow|roll back now/i);
     });
 
     it("uses a two-step exact evidence-only confirmation and renders create/readback", async () => {
         session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
         vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
-        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
         vi.mocked(createExecutionPermissionGrant).mockResolvedValue(grantResultFixture);
         renderPage();
-        expect(await screen.findByRole("heading", { name: "Active permission evidence" })).toBeInTheDocument();
-        expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
-        expect(screen.getByText(/permanent reservation: true/i)).toHaveTextContent(/retry allowed: false · replay allowed: false/i);
-        fireEvent.click(screen.getByRole("button", { name: "Review permission evidence statement" }));
-        expect(screen.getByLabelText("Permission evidence confirmation")).toHaveTextContent(/creates durable permission evidence only/i);
-        fireEvent.click(screen.getByRole("button", { name: "Record permission evidence" }));
+        expect(screen.queryByRole("button", { name: "Review confirmation statement" })).not.toBeInTheDocument();
+        expect(await screen.findByText("No confirmation record has been saved.")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Review confirmation statement" }));
+        expect(screen.getByLabelText("Operator confirmation")).toHaveTextContent(/saves a record only and gives atlas no ability to install or run anything/i);
+        fireEvent.click(screen.getByRole("button", { name: "Save confirmation record" }));
         await waitFor(() => expect(createExecutionPermissionGrant).toHaveBeenCalled());
         expect(createExecutionPermissionGrant).toHaveBeenCalledWith(uuid4, expect.objectContaining({ confirmation_text: expect.stringContaining("This does not install or execute anything."), execution_authorized: false, mutation_allowed: false }), "csrf", "stable-key");
+        const recordHeading = await screen.findByRole("heading", { name: "Current confirmation record" });
+        const recordRow = recordHeading.closest("li");
+        const recordTimes = within(recordRow!).getByText(/^Recorded /);
+        expect(recordTimes).toHaveTextContent(/UTC; valid until .* UTC; status checked .* UTC\./);
+        expect(recordTimes).not.toHaveTextContent(/2026-08-27T/);
+        expect(screen.getByText("Technical IDs and audit details").closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(screen.getByText("Technical IDs and audit details"));
+        expect(screen.getByText("v0.20–v0.34 linkage fingerprint").nextSibling).toHaveTextContent("a".repeat(64));
+        expect(screen.getByText(/permanent reservation: true/i)).toHaveTextContent(/retry allowed: false · replay allowed: false/i);
+        await waitFor(() => expect(screen.queryByRole("button", { name: "Review confirmation statement" })).not.toBeInTheDocument());
+    });
+
+    it("does not offer another permission-evidence request when a record already exists", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(listExecutionPermissionGrants).mockResolvedValue({ grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false });
+        renderPage();
+
+        expect(await screen.findByRole("heading", { name: "Current confirmation record" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review confirmation statement" })).not.toBeInTheDocument();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
+    });
+
+    it("hides permission-evidence controls after a failed recording attempt", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: "csrf" };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        vi.mocked(createExecutionPermissionGrant).mockRejectedValue(new Error("private response"));
+        renderPage();
+
+        expect(await screen.findByText("No confirmation record has been saved.")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Review confirmation statement" }));
+        fireEvent.click(screen.getByRole("button", { name: "Save confirmation record" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Atlas could not save your confirmation.");
+        expect(screen.queryByRole("button", { name: "Review confirmation statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Operator confirmation")).not.toBeInTheDocument();
+    });
+
+    it("withholds permission-evidence controls when the signed-in session has no CSRF token", async () => {
+        session.value = { authenticated: true, principal: { operator_id: "operator-a", permissions: ["installation.execution.permission.grant"] }, csrfToken: null };
+        vi.mocked(getInstallationReadinessReview).mockResolvedValue(readinessGatedFixture);
+        renderPage();
+
+        expect(await screen.findByText(/current review and an operator account with permission are needed/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review confirmation statement" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Operator confirmation")).not.toBeInTheDocument();
+        expect(createExecutionPermissionGrant).not.toHaveBeenCalled();
     });
 });

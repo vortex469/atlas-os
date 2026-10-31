@@ -3,7 +3,6 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { atlas } from "../api/atlas";
 import {
-    disabledNavigationItems,
     navigationItemForPath,
     primaryNavigationItems,
     routeContextForPath,
@@ -17,14 +16,15 @@ import { StatusBadge } from "../components/StatusBadge";
  * - Compact mobile top bar with an openable navigation drawer that never
  *   consumes desktop-sidebar width at narrow viewports.
  * - Shared branding header with the current route/page context and the
- *   Atlas Core release status.
+ *   Atlas Core connection status.
  * - A single `NavigationList` renders both the desktop sidebar and the
  *   mobile drawer from the shared metadata in `app/navigation.ts`, so the
  *   two surfaces cannot drift apart.
  *
  * Presentation-only: no authority, admission, or execution semantics are
- * decided here. The release value comes from the existing authoritative
- * Atlas Core API and degrades to "Release unavailable" when it is missing.
+ * decided here. API discovery supplies the configured Core build label. A
+ * successful response means the API is responding, not that GitHub published
+ * a release.
  */
 
 type NavigationListProps = {
@@ -33,7 +33,8 @@ type NavigationListProps = {
 };
 
 function NavigationList({ onNavigate }: NavigationListProps) {
-    const enabledItems = primaryNavigationItems.filter((item) => item.enabled);
+    const { pathname } = useLocation();
+    const owner = navigationItemForPath(primaryNavigationItems, pathname)?.path;
 
     return (
         <ul
@@ -42,11 +43,11 @@ function NavigationList({ onNavigate }: NavigationListProps) {
                 onNavigate ? "min-h-full" : "",
             ].join(" ")}
         >
-            {enabledItems.map((item) => (
+            {primaryNavigationItems.map((item) => (
                 <li key={item.path}>
                     <NavLink
                         to={item.path}
-                        end={item.end}
+                        end={item.end || owner !== item.path}
                         onClick={onNavigate}
                         className={({ isActive }) =>
                             [
@@ -76,21 +77,6 @@ function NavigationList({ onNavigate }: NavigationListProps) {
                     </NavLink>
                 </li>
             ))}
-            {disabledNavigationItems.map((item) => (
-                <li
-                    key={item.path}
-                    className="mc-disabled flex items-center gap-3 rounded-mc-md px-3 py-3 text-sm font-medium lg:py-2.5"
-                >
-                    <span
-                        aria-hidden="true"
-                        className="h-2 w-2 shrink-0 rounded-full bg-mc-disabled-muted"
-                    />
-                    <span className="min-w-0 truncate">{item.label}</span>
-                    <span className="ml-auto text-[10px] uppercase tracking-wider text-mc-text-disabled">
-                        Soon
-                    </span>
-                </li>
-            ))}
         </ul>
     );
 }
@@ -109,31 +95,62 @@ function Brand() {
                     ATLAS
                 </p>
                 <p className="truncate text-[11px] text-mc-text-muted">
-                    Mission Control 2.0
+                    Mission Control
                 </p>
             </div>
         </div>
     );
 }
 
-function ReleaseFooter({ release }: { release: string | null }) {
+type ApiAvailability = "checking" | "online" | "unavailable";
+
+const API_STATUS_TEXT: Record<ApiAvailability, string> = {
+    checking: "Checking",
+    online: "Online",
+    unavailable: "Unavailable",
+};
+const API_STATUS_KEY: Record<ApiAvailability, string> = {
+    checking: "pending",
+    online: "online",
+    unavailable: "unavailable",
+};
+const API_HEADER_TEXT: Record<ApiAvailability, string> = {
+    checking: "Checking Atlas Core API",
+    online: "Atlas Core API connected",
+    unavailable: "Atlas Core API unavailable",
+};
+
+function ApiStatusBadge({ availability, header = false }: { availability: ApiAvailability; header?: boolean }) {
+    const label = header ? API_HEADER_TEXT[availability] : API_STATUS_TEXT[availability];
+    return <StatusBadge status={API_STATUS_KEY[availability]} label={label} />;
+}
+
+function CoreApiFooter({ availability, releaseLabel }: { availability: ApiAvailability; releaseLabel: string | null }) {
+    const missingReleaseText: Record<ApiAvailability, string> = {
+        checking: "Checking…",
+        online: "Not reported",
+        unavailable: "Unavailable",
+    };
+    const releaseText = releaseLabel ?? missingReleaseText[availability];
     return (
         <div className="border-t border-mc-divider px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col items-start gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-mc-text-muted">
-                    Atlas Core
+                    Atlas Core API
                 </span>
-                <StatusBadge status={release ? "Release available" : "unavailable"} />
+                <ApiStatusBadge availability={availability} />
             </div>
-            <p className="mt-2 truncate text-xs text-mc-text-secondary">
-                {release ?? "Release unavailable"}
+            <p className="mt-2 break-words text-xs text-mc-text-secondary" title={releaseLabel ?? undefined}>
+                Core build: {releaseText}
             </p>
         </div>
     );
 }
 
-export function MainLayout() {
-    const [release, setRelease] = useState<string | null>(null);
+export function MainLayout({ navigationPending = false }: { navigationPending?: boolean }) {
+    const pageContentRef = useRef<HTMLDivElement>(null);
+    const [apiAvailability, setApiAvailability] = useState<ApiAvailability>("checking");
+    const [releaseLabel, setReleaseLabel] = useState<string | null>(null);
     const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
     const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -161,13 +178,14 @@ export function MainLayout() {
         let active = true;
 
         void atlas
-            .get<{ release: string }>("")
+            .get<{ release?: unknown }>("")
             .then((response) => {
                 if (!active) {
                     return;
                 }
+                setApiAvailability("online");
                 const candidate = response.data?.release;
-                setRelease(
+                setReleaseLabel(
                     typeof candidate === "string" && candidate.trim().length > 0
                         ? candidate
                         : null,
@@ -175,7 +193,8 @@ export function MainLayout() {
             })
             .catch(() => {
                 if (active) {
-                    setRelease(null);
+                    setApiAvailability("unavailable");
+                    setReleaseLabel(null);
                 }
             });
 
@@ -248,13 +267,19 @@ export function MainLayout() {
         }
     };
 
-    const contextLabel = navigationItemForPath(
-        primaryNavigationItems,
-        location.pathname,
-    )?.label ?? routeContextForPath(location.pathname);
+    const contextLabel = routeContextForPath(location.pathname);
+
+    useEffect(() => {
+        document.title = `${contextLabel ?? "Overview"} | Atlas Mission Control`;
+    }, [contextLabel]);
 
     return (
         <div className="mc-app-shell">
+            <a href="#mc-page-content" inert={mobileNavOpen || navigationPending}
+                onClick={(event) => { event.preventDefault(); pageContentRef.current?.focus(); }}
+                className="mc-focusable sr-only fixed left-3 top-3 z-[100] rounded-lg bg-slate-950 px-4 py-3 text-sm font-semibold text-blue-200 focus:not-sr-only">
+                Skip to page content
+            </a>
             <header inert={mobileNavOpen} className="mc-shell-header sticky top-0 z-40 backdrop-blur">
                 <div className="flex min-h-14 min-w-0 flex-wrap items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4">
                     <button
@@ -285,17 +310,16 @@ export function MainLayout() {
                     {contextLabel && (
                         <span
                             data-testid="mc-context"
-                            aria-label={`Current page: ${contextLabel}`}
+                            role="status"
                             className="order-last w-full min-w-0 truncate rounded-mc-sm sm:order-none sm:w-auto border border-mc-border-subtle bg-mc-surface-muted px-2 py-1 text-xs font-medium text-mc-text-secondary"
                         >
+                            <span className="sr-only">Current page: </span>
                             {contextLabel}
                         </span>
                     )}
 
                     <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex sm:gap-3">
-                        <StatusBadge
-                            status={release ? "Release available" : "unavailable"}
-                        />
+                        <ApiStatusBadge availability={apiAvailability} header />
                     </div>
                 </div>
             </header>
@@ -350,7 +374,7 @@ export function MainLayout() {
                             />
                         </nav>
 
-                        <ReleaseFooter release={release} />
+                        <CoreApiFooter availability={apiAvailability} releaseLabel={releaseLabel} />
                     </div>
                 </div>
             )}
@@ -367,11 +391,12 @@ export function MainLayout() {
                         >
                             <NavigationList />
                         </nav>
-                        <ReleaseFooter release={release} />
+                        <CoreApiFooter availability={apiAvailability} releaseLabel={releaseLabel} />
                     </div>
                 </aside>
 
-                <div className="mc-main-content min-w-0">
+                {navigationPending && <p role="status" className="fixed right-4 top-16 z-50 rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200">Loading page...</p>}
+                <div ref={pageContentRef} id="mc-page-content" tabIndex={-1} inert={navigationPending} className="mc-main-content mc-focusable min-w-0">
                     <Outlet />
                 </div>
             </div>

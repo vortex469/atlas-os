@@ -9,7 +9,7 @@ describe("Local AI overview authority boundaries", () => {
         expect(content).not.toMatch(/<(button|form|input|select|textarea)\b/);
         expect(hook.match(/"\/ai\/status"/g)).toHaveLength(1);
         expect(dashboard.match(/<LocalAiContent /g)).toHaveLength(1);
-        expect(dashboard).toContain('<LocalAiContent evidence={evidence.ai} />');
+        expect(dashboard).toContain('<LocalAiContent evidence={evidence.ai} loading={loading} />');
         expect(dashboard).toContain('useOverviewEvidence()');
         expect(dashboard).not.toMatch(/useMissionControl|LocalAiSection|LocalAIRuntimeOverviewSection|refreshKey/);
         for (const section of ['SystemHealthSummary', 'WorkerExecutionSection', 'AgentOverviewContent', 'ProviderOverviewContent']) expect(dashboard).toContain(`<${section}`);
