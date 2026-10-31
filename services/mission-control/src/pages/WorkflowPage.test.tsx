@@ -338,31 +338,37 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("button", { name })).toBeEnabled();
     });
 
-    it("waits for a slow automatic read before checking again", async () => {
-        vi.useFakeTimers();
-        const running = workflow({ workflow_state: "executing", implementation_approval_status: "approved" });
-        let resolveRead!: (value: WorkflowDetailResponse) => void;
-        mockedGetWorkflowDetail.mockResolvedValueOnce(running)
-            .mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }))
-            .mockResolvedValue(workflowAwaitingVerification({ implementation_approval_status: "approved", verification_approval_status: "pending" }));
-        const view = renderPage();
-        try {
-            await act(async () => {});
-            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
-            await act(async () => vi.advanceTimersByTime(5_000));
-            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
-            await act(async () => vi.advanceTimersByTime(10_000));
-            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
-            await act(async () => resolveRead(running));
-            await act(async () => vi.advanceTimersByTime(5_000));
-            expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(3);
-            expect(screen.getByRole("button", { name: "Approve Verification" })).toBeEnabled();
-            expect(mockedResumeWorkflow).not.toHaveBeenCalled();
-        } finally {
-            view.unmount();
-            vi.useRealTimers();
-        }
-    });
+    it.each(["executing", "patch_applied_pending_verification", "verifying", "committing"] as const)(
+        "waits for a slow automatic read before checking again during %s",
+        async workflowState => {
+            vi.useFakeTimers();
+            const running = workflow({ workflow_state: workflowState, implementation_approval_status: "approved" });
+            let resolveRead!: (value: WorkflowDetailResponse) => void;
+            mockedGetWorkflowDetail.mockResolvedValueOnce(running)
+                .mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }))
+                .mockResolvedValue(workflowAwaitingVerification({ implementation_approval_status: "approved", verification_approval_status: "pending" }));
+            const view = renderPage();
+            try {
+                await act(async () => {});
+                expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
+                expect(screen.getByText("When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.")).toBeVisible();
+                await act(async () => vi.advanceTimersByTime(5_000));
+                expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+                expect(screen.getByText("Checking current workflow status. Approval and action buttons are unavailable until this check finishes.")).toBeVisible();
+                await act(async () => vi.advanceTimersByTime(10_000));
+                expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
+                await act(async () => resolveRead(running));
+                await act(async () => vi.advanceTimersByTime(5_000));
+                expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(3);
+                expect(screen.getByRole("button", { name: "Approve Verification" })).toBeEnabled();
+                expect(screen.queryByText("When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.")).not.toBeInTheDocument();
+                expect(mockedResumeWorkflow).not.toHaveBeenCalled();
+            } finally {
+                view.unmount();
+                vi.useRealTimers();
+            }
+        },
+    );
 
     it("does not announce resumable execution when the refreshed workflow still reports pending approval", async () => {
         mockedSubmitWorkflowImplementationApproval.mockResolvedValue({

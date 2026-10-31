@@ -4190,6 +4190,14 @@ refresh behavior and approval boundaries are unchanged. The focused workflow
 directory suite passes 22 tests, and five responsive browser cases pass at
 320px, 390px, and 1280px. Mission Control lint and production build pass.
 
+The workflow detail page now explains five-second status checks during every
+active workflow phase, including execution, verification, commit, and
+post-change verification. Actions pause while each check finishes; the existing
+live-status message remains visible during a check, and controls still require
+a current status before approval or resume. The full Mission Control unit suite
+passes 3,071 tests across 188 files. Two responsive browser cases pass at
+320px and 1280px, and Mission Control lint and production build pass.
+
 ## Atlas Core connection-check guidance — 2026-10-31
 
 The service-check instructions now first ask the operator to confirm that

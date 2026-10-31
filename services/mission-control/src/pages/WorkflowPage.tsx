@@ -32,7 +32,7 @@ import { operationalRequest } from "../utils/operationalRequest";
 import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 import { evidenceTimestamp } from "../utils/healthPresentation";
 import { safeText } from "../utils/safeText";
-import { workflowRailStages } from "../utils/workflowState";
+import { isActiveWorkflowState, workflowRailStages } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
 
@@ -131,6 +131,8 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     const [supportBundleError, setSupportBundleError] = useState<string | null>(null);
     const readSequence = useRef(0);
     const readPending = useRef(false);
+    const autoRefreshEnabled = Boolean(workflow && isActiveWorkflowState(workflow.workflow_state))
+        || operationalLifecycle?.terminal === false;
     const controlsBusy = isLoading || isRefreshing || isSubmitting || isSubmittingVerification || isSubmittingCommit || isResuming;
 
     const loadWorkflow = useCallback(async (mode: LoadMode = "initial") => {
@@ -205,13 +207,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
     }, [loadWorkflow]);
 
     useEffect(() => {
-        if (controlsBusy) return undefined;
-        if (workflow?.workflow_state !== "executing" && operationalLifecycle?.terminal !== false) return undefined;
+        if (controlsBusy || !autoRefreshEnabled) return undefined;
         const interval = window.setInterval(() => {
             void loadWorkflow("refresh");
         }, 5_000);
         return () => window.clearInterval(interval);
-    }, [controlsBusy, loadWorkflow, operationalLifecycle?.terminal, workflow?.workflow_state]);
+    }, [autoRefreshEnabled, controlsBusy, loadWorkflow]);
 
     function refreshWorkflow() {
         if (controlsBusy || readPending.current) return;
@@ -488,6 +489,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                             ? "Review the exact maintenance request below. Approval and running it are separate steps."
                             : "Each change, check and commit needs its own approval. After approval, choose the matching action to continue."}
                     </p>
+                    {autoRefreshEnabled && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.</p>}
                 </div>
                 {isRepository && <WorkflowRail workflow={workflow} />}
             </header>
