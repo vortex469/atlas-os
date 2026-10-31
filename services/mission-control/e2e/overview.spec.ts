@@ -371,7 +371,7 @@ for (const width of [320, 1280]) {
         expect(copiedCommand).toContain('http://10.10.60.30:8080/');
         expect(copiedCommand).not.toMatch(/password|private|token=/);
         await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
-        await expect(nextStep).toContainText("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. On the Atlas Core computer, docker ps --all should list its container. If not, you're on a different host. Run the check from Atlas's Compose folder, or pass the file's full path with --file.");
+        await expect(nextStep).toContainText("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. On the computer running Atlas, docker ps --all should list a container whose name includes atlas-core. If not, this is not the Atlas host. Run the check from Atlas's Compose folder, or pass the file's full path with --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'Check the service computer' });

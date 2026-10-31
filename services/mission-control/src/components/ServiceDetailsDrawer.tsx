@@ -193,7 +193,7 @@ export function ServiceDetailsDrawer({
                                 )}
                                 <details className="mt-2">
                                     <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
-                                    <p className="mt-2 text-sm text-slate-400">“No such file” means Compose did not run the check; it says nothing about service reachability. On the Atlas Core computer, <code>docker ps --all</code> should list its container. If not, you&apos;re on a different host. Run the check from Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
+                                    <p className="mt-2 text-sm text-slate-400">“No such file” means Compose did not run the check; it says nothing about service reachability. On the computer running Atlas, <code>docker ps --all</code> should list a container whose name includes <code>atlas-core</code>. If not, this is not the Atlas host. Run the check from Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
                                 </details>
                             </div>
                         </details>

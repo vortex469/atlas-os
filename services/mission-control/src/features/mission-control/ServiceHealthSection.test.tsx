@@ -125,7 +125,7 @@ describe("ServiceHealthSection", () => {
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
-        expect(composeHelpText).toHaveTextContent("“No such file” means Compose did not run the check; it says nothing about service reachability. On the Atlas Core computer, docker ps --all should list its container. If not, you're on a different host. Run the check from Atlas's Compose folder, or pass the file's full path with --file.");
+        expect(composeHelpText).toHaveTextContent("“No such file” means Compose did not run the check; it says nothing about service reachability. On the computer running Atlas, docker ps --all should list a container whose name includes atlas-core. If not, this is not the Atlas host. Run the check from Atlas's Compose folder, or pass the file's full path with --file.");
         expect(composeHelpText).not.toBeVisible();
         await user.click(screen.getByText("If Compose says the file is missing"));
         expect(composeHelpText).toBeVisible();

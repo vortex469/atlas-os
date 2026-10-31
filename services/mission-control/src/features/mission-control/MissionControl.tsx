@@ -96,7 +96,7 @@ function ServiceCheckLocation({ service }: { service: unknown }) {
                             </div>
                         </div>
                         <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
-                        <p className="mt-2 text-sm"><strong>File not found?</strong> “No such file” means Compose did not run the check; it says nothing about service reachability. On the Atlas Core computer, <code>docker ps --all</code> should list its container. If not, you&apos;re on a different host. Run the check from Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
+                        <p className="mt-2 text-sm"><strong>File not found?</strong> “No such file” means Compose did not run the check; it says nothing about service reachability. On the computer running Atlas, <code>docker ps --all</code> should list a container whose name includes <code>atlas-core</code>. If not, this is not the Atlas host. Run the check from Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
                     </>}
                 </div>
             </details>
