@@ -85,6 +85,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "approvals",
         title: "Change approval",
+        summary: (audit, timelineStatus) => approvalSummary(audit.approvals.implementation.status, timelineStatus),
         details: (audit) => [
             { label: "Workflow approval status", value: formatStatusLabel(audit.approvals.implementation.status) },
             { label: "Implementation approval ID", value: audit.approvals.implementation.approval_id ?? "Not started" },
@@ -153,6 +154,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "commit",
         title: "Commit details",
+        summary: (audit, timelineStatus) => commitDetailsSummary(audit, timelineStatus),
         details: (audit) => [
             { label: "Commit request ID", value: audit.commit.commit_request_id ?? "Not started" },
             { label: "Expected branch", value: audit.commit.expected_branch ?? "Not exposed" },
@@ -165,6 +167,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "commit",
         title: "Commit approval",
+        summary: (audit, timelineStatus) => approvalSummary(audit.approvals.commit.status, timelineStatus),
         details: (audit) => [
             { label: "Commit approval status", value: formatStatusLabel(audit.approvals.commit.status) },
             { label: "Commit approval ID", value: audit.approvals.commit.approval_id ?? "Not started" },
@@ -173,6 +176,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "commit",
         title: "Commit result",
+        summary: (audit, timelineStatus) => commitResultSummary(audit, timelineStatus),
         details: (audit) => [
             { label: "Commit SHA", value: audit.commit.commit_sha ?? "Not started" },
             { label: "Commit message", value: audit.commit.commit_message ?? "Not available" },
@@ -419,15 +423,49 @@ function verificationPlanSummary(audit: WorkflowAuditResponse, timelineStatus: A
 }
 
 function verificationApprovalSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {
+    return approvalSummary(audit.approvals.verification.status, timelineStatus);
+}
+
+function approvalSummary(approvalStatus: string, timelineStatus: AuditStageStatus): AuditStageSummary {
     const issue = preserveTimelineIssue(timelineStatus);
     if (issue) return issue;
-    switch (audit.approvals.verification.status) {
+    switch (approvalStatus) {
         case "approved": return { label: "Approved", status: "completed" };
         case "pending": return { label: "Needs approval", status: "current" };
         case "rejected": return { label: "Rejected", status: "failed" };
         case "not_requested": return { label: "Not requested", status: "not_reached" };
         default: return { label: "Status unavailable", status: "not_reached" };
     }
+}
+
+function commitDetailsSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {
+    const issue = preserveTimelineIssue(timelineStatus);
+    if (issue) return issue;
+    if (audit.workflow_state === "completed" && audit.commit.commit_sha) {
+        return { label: "Completed", status: "completed" };
+    }
+    if (audit.workflow_state === "awaiting_commit_approval" && audit.commit.commit_request_id) {
+        return { label: "Ready for approval", status: "current" };
+    }
+    if (audit.workflow_state === "committing" && audit.commit.commit_request_id) {
+        return { label: "Recording", status: "current" };
+    }
+    return { label: formatStatusLabel(timelineStatus), status: timelineStatus };
+}
+
+function commitResultSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {
+    const issue = preserveTimelineIssue(timelineStatus);
+    if (issue) return issue;
+    if (audit.workflow_state === "completed" && audit.commit.commit_sha) {
+        return { label: "Completed", status: "completed" };
+    }
+    if (audit.workflow_state === "awaiting_commit_approval") {
+        return { label: "Waiting for approval", status: "current" };
+    }
+    if (audit.workflow_state === "committing") {
+        return { label: "Recording", status: "current" };
+    }
+    return { label: formatStatusLabel(timelineStatus), status: timelineStatus };
 }
 
 function verificationResultsSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {

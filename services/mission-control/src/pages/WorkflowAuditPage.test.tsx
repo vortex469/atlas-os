@@ -323,6 +323,44 @@ describe("WorkflowAuditPage", () => {
         expect(screen.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.")).toBeInTheDocument();
     });
 
+    it("shows change approval status from the implementation approval record", async () => {
+        const response = audit({
+            workflow_state: "awaiting_implementation_approval",
+            approvals: {
+                ...audit().approvals,
+                status: "pending",
+                implementation: { status: "pending", approval_id: "approval-impl-pending" },
+            },
+            timeline: audit().timeline.map((stage) => {
+                if (stage.name === "approvals") return { ...stage, status: "current" };
+                if (["execution", "verification", "review", "commit"].includes(stage.name)) return { ...stage, status: "not_reached" };
+                return stage;
+            }),
+        });
+        mockedGetWorkflowAudit.mockResolvedValue(response);
+        renderAuditPage();
+
+        expect(await screen.findByRole("region", { name: "Change approval, Needs approval" })).toBeInTheDocument();
+    });
+
+    it("distinguishes a pending commit approval from a completed commit result", async () => {
+        const response = audit({
+            workflow_state: "awaiting_commit_approval",
+            approvals: {
+                ...audit().approvals,
+                commit: { status: "pending", approval_id: null },
+            },
+            commit: { ...audit().commit, commit_sha: null, committed_files: [] },
+            timeline: audit().timeline.map((stage) => stage.name === "commit" ? { ...stage, status: "current" } : stage),
+        });
+        mockedGetWorkflowAudit.mockResolvedValue(response);
+        renderAuditPage();
+
+        expect(await screen.findByRole("region", { name: "Commit details, Ready for approval" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Commit approval, Needs approval" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Commit result, Waiting for approval" })).toBeInTheDocument();
+    });
+
     it("shows the next action after verification approval", async () => {
         mockedGetWorkflowAudit.mockResolvedValue(
             audit({ workflow_state: "awaiting_verification_approval" }),
