@@ -56,8 +56,8 @@ export function AtlasAgentPanel() {
             </div>
 
             {isLoading && (
-                <p className="mt-5 text-sm text-slate-500">
-                    Loading Atlas Agent status...
+                <p role="status" aria-live="polite" className="mt-5 text-sm text-slate-500">
+                    Loading Atlas Agent status…
                 </p>
             )}
 

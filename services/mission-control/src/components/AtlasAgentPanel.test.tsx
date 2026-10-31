@@ -41,6 +41,24 @@ describe("AtlasAgentPanel", () => {
         vi.clearAllMocks();
     });
 
+    it("announces when repository and workflow status is loading", () => {
+        mockedUseAtlasAgent.mockReturnValue({
+            info: null,
+            repository: null,
+            sprint: null,
+            verification: null,
+            review: null,
+            approvals: [],
+            isLoading: true,
+            error: null,
+            retry: vi.fn(),
+        });
+
+        render(<AtlasAgentPanel />);
+
+        expect(screen.getByRole("status")).toHaveTextContent("Loading Atlas Agent status…");
+    });
+
     it("displays published repository and workflow status", () => {
         mockedUseAtlasAgent.mockReturnValue({
             info: agentInfo,
