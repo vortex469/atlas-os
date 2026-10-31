@@ -122,18 +122,18 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
                     <ol aria-label="Docker and Compose checks" className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-mc-text-secondary">
                         <li>
                             <div className="space-y-1">
-                                <p>On the service computer, run <code>{serviceContainerCheckCommand}</code> to show running and stopped containers, networks, and published ports.</p>
+                                <p>On the service computer, run <code>{serviceContainerCheckCommand}</code>. It lists running and stopped containers, networks, and published ports.</p>
                                 <CopyCommandButton command={serviceContainerCheckCommand} />
                             </div>
                         </li>
                         <li>
-                            Find the service container. <code>Up</code> means the container is running; <code>Exited</code> means it stopped. If the expected app is missing, this Docker engine does not manage it; check whether it runs directly on the computer or in another VM. A running container does not prove its web app is responding. If <code>Networks</code> says <code>host</code>, a blank <code>PORTS</code> field is expected. Otherwise, a blank field means no host port is published. A mapping starting with <code>127.0.0.1:</code> is reachable only from that computer.
+                            Find the app&apos;s container. <code>Up</code> means it is running; <code>Exited</code> means it stopped. If it is missing, this Docker engine does not manage it. Check another engine or VM, or whether the app runs directly on the computer. A running container does not prove its web app responds.
                         </li>
                         <li>
-                            To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. In <code>HOST_PORT:CONTAINER_PORT</code>, the number before the colon must match the port in Atlas&apos;s configured address. The number after it must match the app&apos;s listening port. Recreate the container after changing its ports.
+                            Check <code>PORTS</code>. With host networking, a blank value is expected because the app listens on the service computer&apos;s port. Otherwise, blank means no host port is published. A mapping starting with <code>127.0.0.1:</code> works only on that computer.
                         </li>
                         <li>
-                            With Docker host networking, no published-port mapping is expected; the app listens directly on the service computer&apos;s port.
+                            To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. For <code>HOST_PORT:CONTAINER_PORT</code>, use <code>HOST_PORT</code> in Atlas&apos;s address and match <code>CONTAINER_PORT</code> to the app&apos;s listening port. Recreate the container after changing the ports.
                         </li>
                     </ol>
                 </details>
