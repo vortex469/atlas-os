@@ -33,7 +33,7 @@ describe("integrated Local AI runtime observations", () => {
         expect(card.getByText("1.2")).toBeVisible();
         expect(card.getByRole("link")).toHaveAttribute("href", "/providers/runtime");
         expect(card.queryByRole("button")).not.toBeInTheDocument();
-        expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
+        expect(screen.getByTestId("overview-grid").children).toHaveLength(5);
     });
     it("shows a clear empty state when no provider report is available", () => {
         const card = show({ data: undefined });

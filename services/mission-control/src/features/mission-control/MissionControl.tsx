@@ -320,6 +320,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
             <Card id="system-health" title="System health" showSourceNote={false}>
                 <SystemHealthSummary evidence={evidence} loading={loading} />
                 <details>
+                    <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Agent name and version</summary>
+                    <div className="mt-3"><AgentOverviewContent evidence={evidence.agent} loading={loading} /></div>
+                </details>
+                <details>
                     <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">Run additional health checks</summary>
                     <div className="mt-3"><AtlasDoctorPanel /></div>
                 </details>
@@ -349,9 +353,6 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 </details>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
-            <Card title="Agent details" showSourceNote={false}>
-                <AgentOverviewContent evidence={evidence.agent} loading={loading} />
-            </Card>
             <Card id="ai-provider" title="AI provider" evidence={evidence.ai} showSourceNote={evidence.ai?.data !== undefined} loading={loading}>
                 <LocalAiContent evidence={evidence.ai} loading={loading} />
             </Card>

@@ -503,9 +503,12 @@ describe("MC overview evidence", () => {
     });
 
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
-    it("keeps all six cards and unknown evidence visible", () => {
+    it("keeps five operational cards and unknown evidence visible", () => {
         show();
-        for (const name of ['System health','Service checks','Work activity','Agent details','AI provider','Providers','Needs attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System health','Service checks','Work activity','AI provider','Providers','Needs attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        const health = within(screen.getByRole('region', { name: 'System health' }));
+        const agentDetails = health.getByText('Agent name and version', { exact: true });
+        expect(agentDetails.parentElement).not.toHaveAttribute('open');
         expect(screen.queryByText('Healthy')).not.toBeInTheDocument();
         expect(screen.getByTestId('overview-grid')).toHaveClass('grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3');
         expect(screen.getByText("Couldn't load all workflows, so the execution and blocked counts aren't shown.")).toBeInTheDocument();
@@ -660,7 +663,9 @@ describe("MC overview evidence", () => {
         expect(screen.getByText('No providers configured.')).toBeInTheDocument();
         expect(screen.getByText('No recent provider actions recorded.')).toBeInTheDocument();
         for (const [name, href] of [['Review workflows →','/workflows'], ['Open action history →','/operations']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
-        expect(within(screen.getByRole('region', { name: 'Agent details' })).queryByRole('link')).not.toBeInTheDocument();
+        const health = within(screen.getByRole('region', { name: 'System health' }));
+        fireEvent.click(health.getByText('Agent name and version', { exact: true }));
+        expect(health.queryByRole('link')).not.toBeInTheDocument();
     });
     it("rejects bad timestamps, unsafe paths and sensitive free text", () => {
         expect(timestamp('bad')).toBeNull();
@@ -840,7 +845,7 @@ it('integrates one health summary with independent source freshness and safe rea
         policyHealth: { unavailable: true },
     });
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
-    expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
+    expect(screen.getByTestId('overview-grid').children).toHaveLength(5);
     const core = within(screen.getByRole('article', { name: 'Atlas Core health' }));
     expect(core.getByText('Healthy')).toBeInTheDocument();
     const ace = within(screen.getByRole('article', { name: 'System findings' }));
@@ -878,5 +883,5 @@ it('integrates execution outcomes and stale attention without duplicating health
     expect(attention.getByText('Last report: this workflow was blocked. Atlas could not confirm its current status.')).toBeVisible();
     expect(attention.queryByText(/Last-known condition|current state unknown/)).not.toBeInTheDocument();
     expect(screen.getAllByRole('region', { name: 'System health' })).toHaveLength(1);
-    expect(screen.getByTestId('overview-grid').children).toHaveLength(6);
+    expect(screen.getByTestId('overview-grid').children).toHaveLength(5);
 });

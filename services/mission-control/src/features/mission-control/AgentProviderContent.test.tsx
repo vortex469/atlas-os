@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -10,6 +10,12 @@ function show(evidence: OverviewEvidence, loading = false) {
     return render(<MemoryRouter><Overview evidence={evidence} loading={loading} /></MemoryRouter>);
 }
 const registry = () => within(screen.getByRole("region", { name: "Providers" }));
+function openAgentDetails() {
+    const health = within(screen.getByRole("region", { name: "System health" }));
+    const summary = health.getByText("Agent name and version", { exact: true });
+    if (!summary.parentElement?.hasAttribute("open")) fireEvent.click(summary);
+    return health;
+}
 
 describe("integrated agent/provider evidence", () => {
     it("summarizes provider health and keeps the full status list collapsed", async () => {
@@ -31,13 +37,17 @@ describe("integrated agent/provider evidence", () => {
 
     it("distinguishes first-load, unavailable, and missing states", () => {
         const view = show({}, true);
-        const agent = within(screen.getByRole("region", { name: "Agent details" }));
-        expect(agent.getByRole("status")).toHaveTextContent("Loading Agent details…");
+        const agent = within(screen.getByRole("region", { name: "System health" }));
+        const disclosure = agent.getByText("Agent name and version", { exact: true });
+        expect(disclosure.parentElement).not.toHaveAttribute("open");
+        expect(agent.getByText("Loading Agent details…")).not.toBeVisible();
+        fireEvent.click(disclosure);
+        expect(agent.getByText("Loading Agent details…")).toHaveAttribute("role", "status");
         expect(registry().getByRole("status")).toHaveTextContent("Loading providers…");
 
         view.rerender(<MemoryRouter><Overview evidence={{ agent: { unavailable: true }, providers: { unavailable: true } }} /></MemoryRouter>);
         expect(agent.getByText("Agent details could not be loaded.")).toBeVisible();
-        expect(agent.queryByRole("status")).not.toBeInTheDocument();
+        expect(agent.queryByText("Loading Agent details…")).not.toBeInTheDocument();
         expect(registry().getByText("Atlas Core’s provider list could not be loaded.")).toBeVisible();
         expect(registry().queryByRole("status")).not.toBeInTheDocument();
 
@@ -51,7 +61,7 @@ describe("integrated agent/provider evidence", () => {
     it("keeps Agent identity separate from health and workflow navigation", async () => {
         const user = userEvent.setup();
         show({ agent: { data: { app_name: "Development Agent", token: "private-canary" } }, providers: { data: [provider("alpha", "healthy"), provider("beta", "failed"), provider("gamma", "offline"), provider("delta", "degraded"), provider("epsilon", "configured")] } });
-        const agent = within(screen.getByRole("region", { name: "Agent details" }));
+        const agent = openAgentDetails();
         expect(agent.getByText("Development Agent")).toBeInTheDocument();
         expect(agent.getByText("Agent", { exact: true }).tagName).toBe("DT");
         expect(agent.getByText("Version", { exact: true }).tagName).toBe("DT");
@@ -78,11 +88,11 @@ describe("integrated agent/provider evidence", () => {
         await user.click(registry().getByText("About provider status"));
         expect(registry().getByText(/does not allow provider actions/)).toBeVisible();
         expect(screen.queryByText(/private-canary/)).not.toBeInTheDocument();
-        expect(screen.getByTestId("overview-grid").children).toHaveLength(6);
+        expect(screen.getByTestId("overview-grid").children).toHaveLength(5);
     });
     it("uses the product name for the known service identifier and labels its version", () => {
         show({ agent: { data: { app_name: "atlas-agent", version: "0.22.0" } } });
-        const agent = within(screen.getByRole("region", { name: "Agent details" }));
+        const agent = openAgentDetails();
 
         const agentField = agent.getByText("Agent", { exact: true }).parentElement;
         const versionField = agent.getByText("Version", { exact: true }).parentElement;
@@ -93,7 +103,7 @@ describe("integrated agent/provider evidence", () => {
     });
     it("explains unavailable Agent details without inventing a health state", () => {
         show({ agent: { unavailable: true } });
-        const agent = within(screen.getByRole("region", { name: "Agent details" }));
+        const agent = openAgentDetails();
         expect(agent.getByText("Agent details could not be loaded.")).toBeInTheDocument();
         expect(agent.queryByText(/workflow availability/i)).not.toBeInTheDocument();
         expect(agent.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
@@ -102,7 +112,7 @@ describe("integrated agent/provider evidence", () => {
     });
     it("explains when the latest Agent report could not be loaded", () => {
         show({ agent: { data: { app_name: "Development Agent" }, unavailable: true, stale: true } });
-        const agent = within(screen.getByRole("region", { name: "Agent details" }));
+        const agent = openAgentDetails();
         expect(agent.getByText("Development Agent")).toBeInTheDocument();
         expect(agent.getByText("Showing the last Agent report; current details could not be loaded.")).toBeInTheDocument();
         expect(agent.queryByText(/workflow availability/i)).not.toBeInTheDocument();

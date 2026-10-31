@@ -4538,3 +4538,13 @@ offers every kind of maintenance request. The focused component tests pass
 (110 tests), and the application-shell/navigation browser checks pass (27
 tests); lint, production build, and `git diff --check` pass. Request, review,
 approval, and execution behavior are unchanged.
+
+## Dashboard Agent metadata disclosure — 2026-10-31
+
+Agent name and version now sit in a closed disclosure inside System health,
+reducing the overview grid from six cards to five while keeping the metadata
+available when an operator needs it. Loading, unavailable, and stale Agent
+details remain visible after opening the disclosure. No API, health, provider,
+approval, or execution behavior changed. All 3,109 Mission Control component
+tests and 51 selected browser checks pass; lint and the production build pass.
+Browser checks use controlled fixtures and do not validate a live backend.
