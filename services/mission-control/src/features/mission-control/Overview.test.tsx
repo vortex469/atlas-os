@@ -229,7 +229,7 @@ describe("MC overview evidence", () => {
         expect(command).toHaveTextContent('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toHaveTextContent(/password|private|token=/);
         expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
-        expect(nextStep).toHaveTextContent("File not found? “No such file” means the check did not run, so it says nothing about service reachability. Run it on the computer running Atlas Core, from the folder containing compose.production.yaml—not on the service computer. If the file is elsewhere, pass its full path with --file.");
+        expect(nextStep).toHaveTextContent("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. On the Atlas Core computer, docker ps --all should list its container. If not, you're on a different host. Run the check from Atlas's Compose folder, or pass the file's full path with --file.");
         expect(nextStep).not.toHaveTextContent("blank PORTS field");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);

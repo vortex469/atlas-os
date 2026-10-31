@@ -4111,9 +4111,9 @@ acceptance gaps in the review remain open.
 
 The service connection guidance now says that a “no such file” result means
 Compose never ran the check and does not report whether the service is
-reachable. It directs the operator to the computer running Atlas Core and its
-Compose folder, and says to use `--file` with the full path when needed. The
-focused Overview and service-details suites pass 87 tests; the iFileshare
-browser journey passes at 320px and 1280px. Mission Control lint and build
-pass. This is guidance-only; it does not alter health probes, backend behavior,
-or production acceptance.
+reachable. It explains how to identify the Atlas Core computer with
+`docker ps --all`, then directs the operator to Atlas's Compose folder or the
+full file path when needed. The focused Overview and service-details suites
+pass 87 tests; the iFileshare browser journey passes at 320px and 1280px.
+Mission Control lint and build pass. This is guidance-only; it does not alter
+health probes, backend behavior, or production acceptance.
