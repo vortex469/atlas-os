@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { AtlasDoctorPanel } from "../../components/AtlasDoctorPanel";
-import { CopyCommandButton } from "../../components/CopyCommandButton";
+import { AtlasComputerConnectionChecks } from "../../components/AtlasComputerConnectionChecks";
 import { HealthEvidence } from "../../components/HealthEvidence";
 import { ServiceComputerChecks } from "../../components/ServiceComputerChecks";
 import { healthNextCheck } from "../../utils/healthPresentation";
-import { serviceContainerCheckCommand, serviceReachabilityCommand } from "../../utils/serviceReachabilityCommand";
+import { formatServiceCheckAddress } from "../../utils/serviceReachabilityCommand";
 import { SystemHealthSummary } from "./SystemHealthSummary";
 import { formatWorkflowLabel, WORKFLOW_STATES, workflowActionRequired, workflowNextStepLabel } from "../../utils/workflowState";
 import { conditionKey, detailPath, healthPriority, record, rows, safeText, status } from "./overviewEvidence";
@@ -72,9 +72,8 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
     const evidence = record(service);
     const url = record(evidence.details).url;
     const serviceName = safeText(name) || "this service";
-    const address = formatHealthCheckAddress(url);
+    const address = formatServiceCheckAddress(url);
     const unavailable = status(evidence.status) === "unavailable";
-    const command = unavailable ? serviceReachabilityCommand(url) : null;
     const nextCheck = healthNextCheck(evidence.message);
     const httpStatus = formatHttpStatus(evidence.http_status);
     const response = httpStatus ?? (status(evidence.status) === "unavailable" ? "No response received" : "Not reported");
@@ -84,35 +83,7 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
     return <div className="mt-2">
         {unavailable && <>
             <p className="text-sm">Atlas Core could not reach this service. That does not tell whether its app is running on its own computer.</p>
-            <details className="mt-2 text-xs text-mc-text-muted">
-                <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Test from the Atlas computer</summary>
-                <div role="group" aria-label="Next connection check" className="mt-2 rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
-                    <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm">
-                        <li>
-                            <p>On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.</p>
-                            <div role="group" aria-label="Atlas container status command" className="mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2">
-                                <div className="flex flex-wrap items-start gap-2">
-                                    <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{serviceContainerCheckCommand}</pre>
-                                    <CopyCommandButton command={serviceContainerCheckCommand} />
-                                </div>
-                            </div>
-                        </li>
-                        <li>On that same computer, open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}. Running it on the service computer checks a different connection.</li>
-                    </ol>
-                    <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
-                    {command && <>
-                        <p className="mt-2 text-xs text-mc-text-muted">Read-only connection check:</p>
-                        <div role="group" aria-label="Read-only Core connection check command" className="mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2">
-                            <div className="flex flex-wrap items-start gap-2">
-                                <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{command}</pre>
-                                <CopyCommandButton command={command} />
-                            </div>
-                        </div>
-                        <p className="mt-2 text-xs">An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.</p>
-                        <p className="mt-2 text-sm"><strong>File not found?</strong> “No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
-                    </>}
-                </div>
-            </details>
+            <AtlasComputerConnectionChecks serviceName={serviceName} address={url} surface="overview" />
         </>}
         <details className="mt-2 text-xs text-mc-text-muted">
             <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Check the service computer</summary>
@@ -140,16 +111,6 @@ function serviceStatusReason(service: unknown): string {
         return `The service answered HTTP ${httpStatus}, but Atlas Core does not count that response as healthy.`;
     }
     return safeText(evidence.message);
-}
-
-function formatHealthCheckAddress(value: unknown): string | null {
-    if (typeof value !== "string" || !value.trim()) return null;
-    try {
-        const url = new URL(value);
-        return `${url.protocol}//${url.host}${url.pathname}${url.search ? "?…" : ""}`;
-    } catch {
-        return null;
-    }
 }
 
 function attentionPriority(value: unknown, actionRequired = false) {

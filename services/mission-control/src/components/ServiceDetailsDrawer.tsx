@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import { CopyCommandButton } from "./CopyCommandButton";
+import { AtlasComputerConnectionChecks } from "./AtlasComputerConnectionChecks";
 import { ServiceComputerChecks } from "./ServiceComputerChecks";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { healthNextCheck, healthState } from "../utils/healthPresentation";
-import { serviceContainerCheckCommand, serviceReachabilityCommand } from "../utils/serviceReachabilityCommand";
+import { formatServiceCheckAddress } from "../utils/serviceReachabilityCommand";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
 import { safeText } from "../utils/safeText";
@@ -89,8 +89,7 @@ export function ServiceDetailsDrawer({
         };
     }, []);
 
-    const healthCheckAddress = formatHealthCheckAddress(health.details.url);
-    const reachabilityCommand = serviceReachabilityCommand(health.details.url);
+    const healthCheckAddress = formatServiceCheckAddress(health.details.url);
     const technicalDetails = Object.fromEntries(
         Object.entries(health.details).filter(([key]) => key !== "url"),
     );
@@ -172,42 +171,7 @@ export function ServiceDetailsDrawer({
                                 {healthCheckAddress ?? "Not reported"}
                             </dd>
                         </dl>
-                        <details className="mt-2">
-                            <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">Test from the Atlas computer</summary>
-                            <div className="mt-2">
-                                <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
-                                    <li>
-                                        <p>On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.</p>
-                                        <div role="group" aria-label="Atlas container status command" className="mt-1 rounded border border-slate-800 bg-slate-900 p-2">
-                                            <div className="flex flex-wrap items-start gap-2">
-                                                <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-slate-200">{serviceContainerCheckCommand}</pre>
-                                                <CopyCommandButton command={serviceContainerCheckCommand} />
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li>On that same computer, open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}. Running it on the service computer checks a different connection.</li>
-                                </ol>
-                                {reachabilityCommand ? (
-                                    <div role="group" aria-label="Read-only Core connection check command" className="mt-2 rounded border border-slate-800 bg-slate-900 p-3">
-                                        <div className="flex flex-wrap items-start gap-2">
-                                            <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-slate-200">{reachabilityCommand}</pre>
-                                            <CopyCommandButton command={reachabilityCommand} />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="mt-2 text-sm text-slate-400">No HTTP or HTTPS address was reported, so Atlas cannot provide a connection-check command.</p>
-                                )}
-                                {reachabilityCommand && (
-                                    <p className="mt-2 text-sm text-slate-400">
-                                        An HTTP status means a server answered. A timeout or connection error means Atlas Core received no HTTP response. URL credentials and query values are left out.
-                                    </p>
-                                )}
-                                <details className="mt-2">
-                                    <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">If Compose says the file is missing</summary>
-                                    <p className="mt-2 text-sm text-slate-400">“No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas&apos;s Compose folder, or pass the file&apos;s full path with <code>--file</code>.</p>
-                                </details>
-                            </div>
-                        </details>
+                        <AtlasComputerConnectionChecks serviceName={serviceName} address={health.details.url} surface="drawer" />
                         {nextCheck && (
                             <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
                                 <h4 className="text-sm font-semibold text-amber-200">
@@ -298,14 +262,4 @@ export function ServiceDetailsDrawer({
             </aside>
         </div>
     );
-}
-
-function formatHealthCheckAddress(value: unknown): string | null {
-    if (typeof value !== "string" || !value.trim()) return null;
-    try {
-        const url = new URL(value);
-        return `${url.protocol}//${url.host}${url.pathname}${url.search ? "?…" : ""}`;
-    } catch {
-        return null;
-    }
 }

@@ -1,6 +1,19 @@
 /** Show running and stopped service containers, networks, and published ports. */
 export const serviceContainerCheckCommand = "docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'";
 
+/** Show the checked address without exposing credentials or query values. */
+export function formatServiceCheckAddress(value: unknown): string | null {
+    if (typeof value !== "string" || !value.trim()) return null;
+
+    try {
+        const url = new URL(value);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+        return `${url.protocol}//${url.host}${url.pathname}${url.search ? "?…" : ""}`;
+    } catch {
+        return null;
+    }
+}
+
 /** Show whether a Linux host is listening on the port Atlas checks. */
 export function serviceListeningPortCommand(value: unknown): string | null {
     if (typeof value !== "string" || !value.trim()) return null;

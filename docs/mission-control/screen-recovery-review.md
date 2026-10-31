@@ -4255,3 +4255,17 @@ the unavailable and unreported states. The focused MainLayout suite passes 44
 tests, and 15 app-shell browser checks pass at 390px and 1280px in both the
 development app and built assets; Mission Control lint and production build
 pass.
+
+## Shared Atlas Core connection instructions — 2026-10-31
+
+The dashboard and service-detail drawer now use the same shorter Atlas-side
+connection checklist. It identifies which computer to use, explains `Up`,
+`Exited`, and a missing `atlas-core` row, and says the HTTP check must run from
+Atlas's Compose folder. The text also distinguishes that connection from a
+check run on the service computer. Missing-Compose-file help is collapsed and
+consistent on both screens. The commands only inspect container status or send
+a GET request; address credentials and query values remain hidden. The full
+Mission Control unit suite passes 3,094 tests across 188 files. Focused browser
+journeys pass at 320px and 1280px against both the development app and built
+assets; lint and the production build pass. Provider browser checks now use the
+active loading and “Last checked” labels rather than stale copy.

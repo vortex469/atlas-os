@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { serviceListeningPortCommand, serviceReachabilityCommand } from "./serviceReachabilityCommand";
+import { formatServiceCheckAddress, serviceListeningPortCommand, serviceReachabilityCommand } from "./serviceReachabilityCommand";
+
+describe("formatServiceCheckAddress", () => {
+    it("shows the checked address without credentials or query values", () => {
+        expect(formatServiceCheckAddress("http://operator:secret@10.10.60.30:8080/health?token=private"))
+            .toBe("http://10.10.60.30:8080/health?…");
+    });
+
+    it.each([undefined, null, "", "not a URL", "file:///etc/passwd"])(
+        "does not show an invalid or non-HTTP address (%s)",
+        value => expect(formatServiceCheckAddress(value)).toBeNull(),
+    );
+});
 
 describe("serviceListeningPortCommand", () => {
     it("checks the configured HTTP port without exposing URL details", () => {

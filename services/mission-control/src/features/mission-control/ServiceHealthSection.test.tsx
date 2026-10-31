@@ -123,14 +123,15 @@ describe("ServiceHealthSection", () => {
         expect(connectionSteps).not.toBeVisible();
         await user.click(within(dialog).getByText("Test from the Atlas computer"));
         expect(connectionSteps).toBeVisible();
-        expect(connectionSteps).toHaveTextContent("On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for atlas-core in Names and Up in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.");
+        expect(within(dialog).getByRole("group", { name: "Next connection check" })).toHaveTextContent("These commands only check status and send a GET request. They do not change Atlas or the service.");
+        expect(connectionSteps).toHaveTextContent("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
         const atlasCommand = within(dialog).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(connectionSteps).toHaveTextContent("On that same computer, open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach Containers. Running it on the service computer checks a different connection.");
+        expect(connectionSteps).toHaveTextContent("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach Containers. Running it on the service computer tests a different connection.");
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
-        expect(composeHelpText).toHaveTextContent("“No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas's Compose folder, or pass the file's full path with --file.");
+        expect(composeHelpText).toHaveTextContent("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
         expect(composeHelpText).not.toBeVisible();
         await user.click(screen.getByText("If Compose says the file is missing"));
         expect(composeHelpText).toBeVisible();
@@ -267,7 +268,7 @@ describe("ServiceHealthSection", () => {
         expect(dockerChecks).toHaveTextContent("With host networking, a blank value is expected");
         expect(dockerChecks).toHaveTextContent("A mapping starting with 127.0.0.1: works only on that computer.");
         expect(dockerChecks).toHaveTextContent("use HOST_PORT in Atlas's address");
-        expect(within(dialog).getByText(/An HTTP status means a server answered/)).toHaveTextContent("Atlas Core received no HTTP response");
+        expect(within(dialog).getByText(/An HTTP status means the service answered/)).toHaveTextContent("Atlas Core got no HTTP response");
         fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));
         expect(await within(commandGroup).findByRole("status")).toHaveTextContent("Command copied.");
         expect(writeText).toHaveBeenCalledOnce();

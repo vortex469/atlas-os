@@ -109,8 +109,8 @@ for (const width of [320, 390, 1280]) {
         await expect(heading).toBeVisible();
         await expect(page.getByRole("heading", { name: "Diagnostics" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Recommendations" })).toBeVisible();
-        await expect(page.getByText("Last data refresh (local time)")).toBeVisible();
-        await expect(page.getByText("Last data refresh (local time)").locator("xpath=following-sibling::p/time")).toHaveAttribute("datetime", /Z$/);
+        await expect(page.getByText("Last checked (local time)")).toBeVisible();
+        await expect(page.getByText("Last checked (local time)").locator("xpath=following-sibling::p/time")).toHaveAttribute("datetime", /Z$/);
         const spacing = await heading.evaluate((element) => {
             const page = element.closest("main");
             const overview = element.closest("section");
@@ -140,9 +140,8 @@ for (const width of [320, 1280]) {
             await route.fulfill({ json: providers });
         });
         await page.goto("/providers/proxmox");
-        const loadingMessage = page.getByText("Loading provider details...");
+        const loadingMessage = page.getByRole("status").getByText("Loading provider details…", { exact: true });
         await expect(loadingMessage).toBeVisible();
-        await expect(page.getByText("Loading provider data…", { exact: true })).toBeVisible();
         const spacing = await loadingMessage.evaluate((element) => {
             const page = element.closest("main");
             const panel = element.closest("section");
@@ -177,9 +176,8 @@ for (const width of [320, 1280]) {
         });
         await page.goto("/providers/proxmox");
 
-        const loadingMessage = page.getByText("Loading provider details...", { exact: true });
+        const loadingMessage = page.getByRole("status").getByText("Loading provider details…", { exact: true });
         await expect(loadingMessage).toBeVisible();
-        await expect(page.getByText("Loading provider data…", { exact: true })).toBeVisible();
         const spacing = await loadingMessage.evaluate((element) => {
             const page = element.closest("main");
             const panel = element.closest("section");

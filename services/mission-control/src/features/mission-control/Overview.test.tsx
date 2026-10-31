@@ -236,17 +236,21 @@ describe("MC overview evidence", () => {
 
         const instructions = within(nextStep).getByRole("list", { name: "Steps to check the Atlas Core connection" });
         expect(instructions).toBeVisible();
-        expect(instructions).toHaveTextContent("On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for atlas-core in Names and Up in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.");
+        expect(nextStep).toHaveTextContent("These commands only check status and send a GET request. They do not change Atlas or the service.");
+        expect(instructions).toHaveTextContent("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
         const atlasCommand = within(nextStep).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(instructions).toHaveTextContent("On that same computer, open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach iFileshare. Running it on the service computer checks a different connection.");
+        expect(instructions).toHaveTextContent("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach iFileshare. Running it on the service computer tests a different connection.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
         expect(command).toHaveTextContent('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toHaveTextContent(/password|private|token=/);
-        expect(nextStep).toHaveTextContent("An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response.");
-        expect(nextStep).toHaveTextContent("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas's Compose folder, or pass the file's full path with --file.");
+        expect(nextStep).toHaveTextContent("An HTTP status means the service answered. A timeout or connection error means Atlas Core got no HTTP response.");
+        const composeHelp = within(nextStep).getByText("If Compose says the file is missing").closest("details");
+        expect(composeHelp).not.toHaveAttribute("open");
+        fireEvent.click(within(composeHelp as HTMLDetailsElement).getByText("If Compose says the file is missing"));
+        expect(composeHelp).toHaveTextContent("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
         expect(nextStep).not.toHaveTextContent("blank PORTS field");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);

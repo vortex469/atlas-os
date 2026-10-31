@@ -384,8 +384,9 @@ for (const width of [320, 1280]) {
         await expect(nextStep).toBeVisible();
         const connectionSteps = nextStep.getByRole('list', { name: 'Steps to check the Atlas Core connection' });
         await expect(connectionSteps).toBeVisible();
-        await expect(connectionSteps).toContainText("On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for atlas-core in Names and Up in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.");
-        await expect(connectionSteps).toContainText("On that same computer, open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach iFileshare. Running it on the service computer checks a different connection.");
+        await expect(nextStep).toContainText("These commands only check status and send a GET request. They do not change Atlas or the service.");
+        await expect(connectionSteps).toContainText("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
+        await expect(connectionSteps).toContainText("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach iFileshare. Running it on the service computer tests a different connection.");
         const atlasCommand = nextStep.getByRole('group', { name: 'Atlas container status command' });
         await expect(atlasCommand).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await atlasCommand.getByRole('button', { name: 'Copy command' }).click();
@@ -401,8 +402,11 @@ for (const width of [320, 1280]) {
         const copiedCommand = await page.evaluate(() => navigator.clipboard.readText());
         expect(copiedCommand).toContain('http://10.10.60.30:8080/');
         expect(copiedCommand).not.toMatch(/password|private|token=/);
-        await expect(nextStep).toContainText('An HTTP status means a server answered. A timeout or connection error means Core received no HTTP response. URL credentials and query values are left out.');
-        await expect(nextStep).toContainText("File not found? “No such file” means Compose did not run the check; it says nothing about service reachability. The file path is relative to your current folder. Open Atlas's Compose folder, or pass the file's full path with --file.");
+        await expect(nextStep).toContainText('An HTTP status means the service answered. A timeout or connection error means Atlas Core got no HTTP response. Credentials and query values are left out.');
+        const composeHelp = nextStep.getByText("If Compose says the file is missing").locator("xpath=ancestor::details[1]");
+        await expect(composeHelp).not.toHaveAttribute("open", "");
+        await composeHelp.locator("summary").click();
+        await expect(composeHelp).toContainText("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: 'Check the service computer' });
