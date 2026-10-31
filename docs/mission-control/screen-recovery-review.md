@@ -4377,3 +4377,15 @@ identify the right row when checking a service computer. The check makes no
 Docker API request and changes no container. The focused Overview and service
 health suites pass 91 tests, and the responsive service-check browser journey
 passes at 320px and 1280px. Mission Control lint and production build pass.
+
+## Service troubleshooting language — 2026-10-31
+
+The Core connection check now says which computer runs each command, points to
+the Compose file needed for the check, and explains that a command run on the
+service computer tests a different connection. Its result text explains what
+an HTTP response, timeout, or connection error means and says credentials and
+query values are omitted. The service-host instructions also use shorter
+language for local checks and Docker container identification. Focused
+Overview and service-health suites pass 91 tests; the responsive service-check
+journey passes at 320px and 1280px. Mission Control lint and production build
+pass.

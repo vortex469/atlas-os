@@ -45,10 +45,10 @@ export function AtlasComputerConnectionChecks({
         <details className={style.details}>
             <summary className={style.summary}>Test the connection from Atlas Core to {name}</summary>
             <div role="group" aria-label="Next connection check" className={style.group}>
-                <p>These commands only check status and send a GET request. They do not change Atlas or the service.</p>
+                <p>These commands only check status. They do not change Atlas or the service.</p>
                 <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm">
                     <li>
-                        <p>On the computer running Atlas Core, run this command. Find the <code>atlas-core</code> row: <code>Up</code> means running; <code>Exited</code> means stopped. No row means this Docker engine does not manage Atlas Core.</p>
+                        <p>Run this on the computer where Atlas Core runs. Find the <code>atlas-core</code> row: <code>Up</code> means running; <code>Exited</code> means stopped. If no row appears, this Docker engine does not run Atlas Core.</p>
                         <div role="group" aria-label="Atlas container status command" className={style.command}>
                             <div className="flex flex-wrap items-start gap-2">
                                 <pre className={`min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 ${style.code}`}>{serviceContainerCheckCommand}</pre>
@@ -56,7 +56,7 @@ export function AtlasComputerConnectionChecks({
                             </div>
                         </div>
                     </li>
-                    <li>From Atlas&apos;s Compose folder (with <code>compose.production.yaml</code>), run this command to test whether Atlas Core can reach {name}. Running it on the service computer tests a different connection.</li>
+                    <li>Run this command from the folder containing <code>compose.production.yaml</code>. It checks whether Atlas Core can connect to {name}; running it on the service computer checks a different connection.</li>
                 </ol>
                 {surface === "overview" && <p className={checkedAddress ? "mt-1 break-all font-mono" : "mt-1"}>{checkedAddress ?? "Configured service address not reported"}</p>}
                 {command ? (
@@ -67,7 +67,7 @@ export function AtlasComputerConnectionChecks({
                                 <CopyCommandButton command={command} />
                             </div>
                         </div>
-                        <p className={`mt-2 text-sm ${style.note}`}>An HTTP status means the service answered. A timeout or connection error means Atlas Core got no HTTP response. Credentials and query values are left out.</p>
+                        <p className={`mt-2 text-sm ${style.note}`}>Any HTTP status means {name} answered from Atlas Core. A timeout or connection error means Atlas Core got no response. The command omits credentials and query values.</p>
                         <details className="mt-2">
                             <summary className={style.summary}>If Compose says the file is missing</summary>
                             <p className={`mt-2 text-sm ${style.note}`}>“No such file” means Compose did not run the check. Open Atlas&apos;s Compose folder or pass its full path with <code>--file</code>.</p>

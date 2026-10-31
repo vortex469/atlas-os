@@ -262,17 +262,17 @@ describe("MC overview evidence", () => {
 
         const instructions = within(nextStep).getByRole("list", { name: "Steps to check the Atlas Core connection" });
         expect(instructions).toBeVisible();
-        expect(nextStep).toHaveTextContent("These commands only check status and send a GET request. They do not change Atlas or the service.");
-        expect(instructions).toHaveTextContent("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
+        expect(nextStep).toHaveTextContent("These commands only check status. They do not change Atlas or the service.");
+        expect(instructions).toHaveTextContent("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
         const atlasCommand = within(nextStep).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(instructions).toHaveTextContent("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach iFileshare. Running it on the service computer tests a different connection.");
+        expect(instructions).toHaveTextContent("Run this command from the folder containing compose.production.yaml. It checks whether Atlas Core can connect to iFileshare; running it on the service computer checks a different connection.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
         expect(command).toHaveTextContent('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toHaveTextContent(/password|private|token=/);
-        expect(nextStep).toHaveTextContent("An HTTP status means the service answered. A timeout or connection error means Atlas Core got no HTTP response.");
+        expect(nextStep).toHaveTextContent("Any HTTP status means iFileshare answered from Atlas Core. A timeout or connection error means Atlas Core got no response. The command omits credentials and query values.");
         const composeHelp = within(nextStep).getByText("If Compose says the file is missing").closest("details");
         expect(composeHelp).not.toHaveAttribute("open");
         fireEvent.click(within(composeHelp as HTMLDetailsElement).getByText("If Compose says the file is missing"));
@@ -284,11 +284,11 @@ describe("MC overview evidence", () => {
         fireEvent.click(summary);
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
-        expect(disclosure).toHaveTextContent("These checks run on the computer that runs iFileshare. They show whether the app is running locally; they do not test whether Atlas Core can reach it.");
+        expect(disclosure).toHaveTextContent("These checks run on the computer where iFileshare runs. They show whether it is running there, not whether Atlas Core can connect. If it is installed directly on this computer, check that it is running on the port Atlas uses.");
         const localHttpCheck = within(disclosure as HTMLDetailsElement).getByRole("group", { name: "Service computer HTTP check command" });
         expect(localHttpCheck).toHaveTextContent("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
         expect(localHttpCheck).not.toHaveTextContent(/password|private|token=/);
-        expect(disclosure).toHaveTextContent("Any HTTP status means the app answered from this computer. HTTP 000 or a curl error means no response. This check does not test the connection from Atlas Core.");
+        expect(disclosure).toHaveTextContent("Any HTTP status means iFileshare answered from this computer. HTTP 000 or a curl error means it did not answer. This does not test whether Atlas Core can connect.");
         const dockerSummary = within(disclosure as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         const dockerSteps = within(disclosure as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
@@ -301,8 +301,8 @@ describe("MC overview evidence", () => {
         expect(steps).toHaveClass("text-sm");
         expect(steps).not.toHaveTextContent("Run the test on the computer running Atlas Core or inside its atlas-core container.");
         expect(steps).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(steps).toHaveTextContent("Find the app by its container name or image; Docker may use a different name than Atlas.");
-        expect(steps).toHaveTextContent("The list also shows whether each container is running, its network, and published ports.");
+        expect(steps).toHaveTextContent("Use the container name or image to find iFileshare; Docker's name may differ from Atlas's.");
+        expect(steps).toHaveTextContent("The list also shows whether containers are running, their networks, and published ports.");
         expect(steps).toHaveTextContent("Up means it is running; Exited means it stopped.");
         expect(steps).toHaveTextContent("If it is missing, this Docker engine does not manage it.");
         expect(steps).toHaveTextContent("A running container does not prove its web app responds.");

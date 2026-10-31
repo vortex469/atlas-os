@@ -123,11 +123,11 @@ describe("ServiceHealthSection", () => {
         expect(connectionSteps).not.toBeVisible();
         await user.click(within(dialog).getByText("Test the connection from Atlas Core to Containers"));
         expect(connectionSteps).toBeVisible();
-        expect(within(dialog).getByRole("group", { name: "Next connection check" })).toHaveTextContent("These commands only check status and send a GET request. They do not change Atlas or the service.");
-        expect(connectionSteps).toHaveTextContent("On the computer running Atlas Core, run this command. Find the atlas-core row: Up means running; Exited means stopped. No row means this Docker engine does not manage Atlas Core.");
+        expect(within(dialog).getByRole("group", { name: "Next connection check" })).toHaveTextContent("These commands only check status. They do not change Atlas or the service.");
+        expect(connectionSteps).toHaveTextContent("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
         const atlasCommand = within(dialog).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(connectionSteps).toHaveTextContent("From Atlas's Compose folder (with compose.production.yaml), run this command to test whether Atlas Core can reach Containers. Running it on the service computer tests a different connection.");
+        expect(connectionSteps).toHaveTextContent("Run this command from the folder containing compose.production.yaml. It checks whether Atlas Core can connect to Containers; running it on the service computer checks a different connection.");
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
@@ -268,11 +268,11 @@ describe("ServiceHealthSection", () => {
         fireEvent.click(dockerSummary);
         const dockerChecks = within(serviceComputer as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
         expect(dockerChecks).toHaveTextContent("On the computer that runs iFileshare, run docker ps --all");
-        expect(dockerChecks).toHaveTextContent("Find the app by its container name or image; Docker may use a different name than Atlas.");
+        expect(dockerChecks).toHaveTextContent("Use the container name or image to find iFileshare; Docker's name may differ from Atlas's.");
         expect(dockerChecks).toHaveTextContent("With host networking, a blank value is expected");
         expect(dockerChecks).toHaveTextContent("A mapping starting with 127.0.0.1: works only on that computer.");
         expect(dockerChecks).toHaveTextContent("use HOST_PORT in Atlas's address");
-        expect(within(dialog).getByText(/An HTTP status means the service answered/)).toHaveTextContent("Atlas Core got no HTTP response");
+        expect(within(dialog).getByText(/Any HTTP status means iFileshare answered from Atlas Core/)).toHaveTextContent("A timeout or connection error means Atlas Core got no response");
         fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));
         expect(await within(commandGroup).findByRole("status")).toHaveTextContent("Command copied.");
         expect(writeText).toHaveBeenCalledOnce();
