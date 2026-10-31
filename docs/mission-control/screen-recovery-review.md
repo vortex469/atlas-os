@@ -4608,3 +4608,14 @@ read-only display; approval and execution controls are unchanged. The focused
 audit suite passes 34 tests, the repository journey passes 15 browser cases
 across phone and desktop widths, and lint, production build, and
 `git diff --check` pass.
+
+## Provider action history naming — 2026-10-31
+
+The navigation now calls the direct provider-action record list “Provider
+actions,” with matching “Provider action history” and “Provider action
+details” labels on the list and detail screens. Dashboard and recovery links
+use the same name, distinguishing those records from maintenance history.
+Routes, action behavior, approvals, and APIs are unchanged. The focused
+component suite passes 168 tests; the affected browser suite passes 169 cases
+across phone and desktop widths. Lint, production build, and
+`git diff --check` pass.

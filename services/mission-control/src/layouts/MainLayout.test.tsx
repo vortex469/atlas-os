@@ -167,7 +167,7 @@ describe("MainLayout", () => {
                     .filter((link) => link.getAttribute("aria-current") === "page")
                     .map((link) => link.getAttribute("href"));
                 // Only the most specific destination is current. Audit details
-                // still belong to Action history, rather than a separate menu.
+                // still belong to Provider actions, rather than a separate menu.
                 expect(activeHrefs).toEqual(expectedActiveHrefs);
             },
         );
@@ -175,8 +175,8 @@ describe("MainLayout", () => {
 
     describe("current route context", () => {
         it.each([
-            ["/operations", "Action history"],
-            ["/operations/actions/audit-1", "Action details"],
+            ["/operations", "Provider action history"],
+            ["/operations/actions/audit-1", "Provider action details"],
             ["/discovery", "Catalog"],
             ["/discovery/items/item-1", "Catalog item details"],
             ["/forge", "Deployment analysis"],
@@ -369,7 +369,7 @@ describe("MainLayout", () => {
         it("preserves the exact working destination set", () => {
             expect(navigationLabels).toEqual([
                 "Overview",
-                "Action history",
+                "Provider actions",
                 "Maintenance history",
                 "Request a VM restart",
                 "Catalog",

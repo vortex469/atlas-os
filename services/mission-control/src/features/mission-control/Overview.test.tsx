@@ -670,7 +670,7 @@ describe("MC overview evidence", () => {
         show({ providers: { data: [] }, activity: { data: { items: [] } }, workflows: { data: { items: [] } } });
         expect(screen.getByText('No providers configured.')).toBeInTheDocument();
         expect(screen.getByText('No recent provider actions recorded.')).toBeInTheDocument();
-        for (const [name, href] of [['Review workflows →','/workflows'], ['Open action history →','/operations']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
+        for (const [name, href] of [['Review workflows →','/workflows'], ['Open provider action history →','/operations']]) expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
         const health = within(screen.getByRole('region', { name: 'System health' }));
         fireEvent.click(health.getByText('Agent name and version', { exact: true }));
         expect(health.queryByRole('link')).not.toBeInTheDocument();

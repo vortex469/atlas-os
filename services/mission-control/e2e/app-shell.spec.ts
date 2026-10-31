@@ -11,7 +11,7 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page).toHaveTitle("Overview | Atlas Mission Control");
 
     await expect(page.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("href", "/");
-    await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
+    await expect(page.getByRole("link", { name: "Provider actions", exact: true })).toHaveAttribute("href", "/operations");
     await expect(page.getByRole("link", { name: "Maintenance history", exact: true })).toHaveAttribute("href", "/operations/history");
     await expect(page.getByRole("link", { name: "Request a VM restart", exact: true })).toHaveAttribute("href", "/operations/request");
     await expect(page.getByRole("link", { name: "Catalog", exact: true })).toHaveAttribute("href", "/discovery");
@@ -135,7 +135,7 @@ test.describe("Mobile navigation", () => {
         await expect(dialog).toBeVisible();
         for (const label of [
             "Overview",
-            "Action history",
+            "Provider actions",
             "Maintenance history",
             "Request a VM restart",
             "Catalog",

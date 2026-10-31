@@ -5,7 +5,7 @@ for (const width of [320, 390, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/operations");
 
-        const filters = page.getByRole("group", { name: "Filter action history" });
+        const filters = page.getByRole("group", { name: "Filter provider action history" });
         const all = filters.getByRole("button", { name: "All", exact: true });
         const succeeded = filters.getByRole("button", { name: "Succeeded", exact: true });
         const failed = filters.getByRole("button", { name: "Failed", exact: true });
@@ -75,21 +75,21 @@ for (const width of [390, 1280]) {
         await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
         await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
         await page.getByText("More filters").click();
-        await expect(page.getByLabel("Provider")).toHaveValue("ollama");
+        await expect(page.getByLabel("Provider", { exact: true })).toHaveValue("ollama");
         await expect(page.getByLabel("From date (UTC)")).toHaveValue("2026-10-20");
         await expect(page.getByLabel("To date (UTC)")).toHaveValue("2026-10-21");
         await expect(page.getByLabel("Action or request ID")).toHaveValue("request-context");
 
         await page.getByRole("link", { name: "View action details" }).click();
-        await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Provider action details" })).toBeVisible();
         await expect(page).toHaveURL(/\/operations\/actions\/audit-context\?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25$/);
-        await page.getByRole("link", { name: "Back to action history" }).click();
+        await page.getByRole("link", { name: "Back to provider action history" }).click();
 
         await expect(page).toHaveURL(/\/operations\?status=failed&provider=ollama&q=request-context&from=2026-10-20&to=2026-10-21&offset=25$/);
         await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
         await expect(page.getByText("Showing 26–26 of 26")).toBeVisible();
         await page.getByRole("link", { name: "View action details" }).click();
-        await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Provider action details" })).toBeVisible();
         await page.goBack();
         await expect(page.getByRole("button", { name: "Failed", exact: true })).toHaveAttribute("aria-pressed", "true");
         await expect(page.getByLabel("Action or request ID")).toHaveValue("request-context");
@@ -169,7 +169,7 @@ for (const width of [320, 390, 1280]) {
         });
 
         await page.goto("/operations");
-        await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Provider action history", exact: true })).toBeVisible();
         const search = page.getByLabel("Action or request ID");
         const previous = page.getByRole("button", { name: "Previous" });
         const next = page.getByRole("button", { name: "Next" });

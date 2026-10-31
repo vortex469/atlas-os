@@ -117,7 +117,7 @@ describe("ActionHistoryDetailPage", () => {
         mockedGetProviderActionHistoryEntry.mockResolvedValue({ ...auditEntry(), destructive: true });
         renderPage();
 
-        expect(await screen.findByRole("heading", { name: "Action details" })).toBeVisible();
+        expect(await screen.findByRole("heading", { name: "Provider action details" })).toBeVisible();
         expect(
             await screen.findByRole("heading", {
                 name: "Unload Model",
@@ -148,7 +148,7 @@ describe("ActionHistoryDetailPage", () => {
         expect(screen.getByText("request-123")).toBeInTheDocument();
         expect(
             screen.getByRole("link", {
-                name: "← Back to action history",
+                name: "← Back to provider action history",
             }),
         ).toHaveAttribute("href", "/operations");
     });
@@ -206,7 +206,7 @@ describe("ActionHistoryDetailPage", () => {
             window.location.href,
         );
         expect(
-            await screen.findByText("Action history link copied."),
+            await screen.findByText("Provider action details link copied."),
         ).toBeInTheDocument();
     });
 

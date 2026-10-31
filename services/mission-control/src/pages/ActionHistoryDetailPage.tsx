@@ -96,10 +96,10 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
             await navigator.clipboard.writeText(
                 window.location.href,
             );
-            setCopyMessage("Action history link copied.");
+            setCopyMessage("Provider action details link copied.");
         } catch {
             setCopyMessage(
-                "Unable to copy the action history link. Copy it from the address bar.",
+                "Unable to copy the provider action details link. Copy it from the address bar.",
             );
         }
     }, []);
@@ -116,10 +116,10 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
                         to={{ pathname: "/operations", search: location.search }}
                         className="text-sm font-medium text-blue-400 transition hover:text-blue-300"
                     >
-                        ← Back to action history
+                        ← Back to provider action history
                     </Link>
                     <h1 className="mt-3 text-2xl font-bold text-slate-100">
-                        Action details
+                        Provider action details
                     </h1>
                     <p className="mt-1 text-sm text-slate-400">
                         Recorded result of an action. Older results may no longer be available.

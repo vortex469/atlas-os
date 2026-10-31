@@ -390,13 +390,13 @@ test("action history recovers a read without showing another record", async ({ p
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("alert")).toContainText("does not match this link");
     await expect(page.getByRole("alert")).not.toContainText("Try again.");
-    await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
-    await expect(page.getByTestId("mc-context")).toContainText("Current page: Action details");
-    await expect(page).toHaveTitle("Action details | Atlas Mission Control");
+    await expect(page.getByRole("heading", { name: "Provider action details" })).toBeVisible();
+    await expect(page.getByTestId("mc-context")).toContainText("Current page: Provider action details");
+    await expect(page).toHaveTitle("Provider action details | Atlas Mission Control");
     expect(reads).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await page.getByRole("link", { name: "← Back to action history" }).click();
-    await expect(page.getByRole("heading", { name: "Action history", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "← Back to provider action history" }).click();
+    await expect(page.getByRole("heading", { name: "Provider action history", exact: true })).toBeVisible();
 });
 
 for (const width of [320, 1280]) {
@@ -429,7 +429,7 @@ for (const width of [320, 1280]) {
             await page.goto("/operations/actions/loading-entry");
             const loadingMessage = page.getByText("Loading action details…", { exact: true });
             await expect(loadingMessage).toBeVisible();
-            await expectResponsiveMainPadding(page.getByRole("heading", { name: "Action details", exact: true }), width);
+            await expectResponsiveMainPadding(page.getByRole("heading", { name: "Provider action details", exact: true }), width);
             const loadingCardPadding = await loadingMessage.evaluate((element) => {
                 const card = element.parentElement;
                 return card ? getComputedStyle(card).paddingLeft : null;
@@ -1401,7 +1401,7 @@ for (const width of [390, 1280]) {
         await page.goto("/operations");
 
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("Action history unavailable");
+        await expect(alert).toContainText("Provider action history unavailable");
         await expect(alert).toContainText("Mission Control could not load action history.");
         await expect(page.getByRole("heading", { name: "This page could not load" })).toHaveCount(0);
         if (width < 1024) {

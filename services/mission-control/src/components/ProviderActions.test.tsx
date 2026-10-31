@@ -424,11 +424,11 @@ describe("ProviderActions", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("Action result unavailable");
         expect(alert).toHaveTextContent("Direct provider actions are paused here to prevent a duplicate.");
-        expect(alert).toHaveTextContent("Check Action history, then reload this provider page before deciding whether to try again.");
+        expect(alert).toHaveTextContent("Check provider action history, then reload this provider page before deciding whether to try again.");
         expect(screen.getByRole("button", { name: "Run Diagnostics" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Run Healthcheck" })).toBeDisabled();
         expect(screen.getByLabelText(/model/i)).toBeDisabled();
-        expect(screen.getByRole("link", { name: "Open Action history →" })).toHaveAttribute("href", "/operations");
+        expect(screen.getByRole("link", { name: "Open provider action history →" })).toHaveAttribute("href", "/operations");
         expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
         expect(mockedGetProviderActions).toHaveBeenCalledTimes(1);
         expect(onActionCompleted).not.toHaveBeenCalled();

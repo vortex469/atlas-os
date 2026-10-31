@@ -380,7 +380,7 @@ export function OperationsPage() {
                         Operations
                     </p>
                     <h1 className="mt-2 text-3xl font-semibold text-slate-100">
-                        Action history
+                        Provider action history
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
                         Completed actions and their results. Times use your
@@ -402,7 +402,7 @@ export function OperationsPage() {
                 <div
                     className="flex rounded-lg border border-slate-800 bg-slate-900 p-1"
                     role="group"
-                    aria-label="Filter action history"
+                    aria-label="Filter provider action history"
                 >
                     {(
                         [
@@ -641,7 +641,7 @@ export function OperationsPage() {
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">
-                        Action history unavailable
+                        Provider action history unavailable
                     </p>
                     <p className="mt-1 text-sm text-red-200/80">
                         Atlas couldn’t load action history. Refresh history to try again; this won’t run any actions.

@@ -109,7 +109,7 @@ describe("OperationsPage", () => {
     it("distinguishes loading action history from retention details", async () => {
         renderPage();
 
-        expect(screen.getByRole("heading", { name: "Action history" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Provider action history" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Refresh history" })).toBeDisabled();
         expect(screen.getByRole("status")).toHaveTextContent("Loading action history…");
         expect(screen.getByText("Loading retention details…")).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe("OperationsPage", () => {
 
         expect(await screen.findByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Retention details are unavailable.")).toBeInTheDocument();
-        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
         fireEvent.click(screen.getByText("Export or delete history"));
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeDisabled();
@@ -160,7 +160,7 @@ describe("OperationsPage", () => {
         await userEvent.setup().click(screen.getByText("More filters", { exact: true }));
         expect(screen.getByRole("status")).toHaveTextContent("Provider options could not be loaded. Date filters are still available.");
         expect(screen.getByLabelText("From date (UTC)")).toBeVisible();
-        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
         expect(mockedGetProviderActionHistory).toHaveBeenCalledOnce();
     });
 
@@ -266,7 +266,7 @@ describe("OperationsPage", () => {
         renderPage();
 
         await screen.findByText("Unload Model");
-        const filters = screen.getByRole("group", { name: "Filter action history" });
+        const filters = screen.getByRole("group", { name: "Filter provider action history" });
         expect(within(filters).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
         expect(within(filters).getByRole("button", { name: "Succeeded" })).toHaveAttribute("aria-pressed", "false");
         expect(within(filters).getByRole("button", { name: "Failed" })).toHaveAttribute("aria-pressed", "false");
@@ -412,7 +412,7 @@ describe("OperationsPage", () => {
         expect(within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]")).toBeVisible();
         expect(screen.getByText("Unload Model")).toBeInTheDocument();
         expect(screen.getByText("Atlas is keeping 1 of 5000 entries for up to 90 days.")).toBeInTheDocument();
-        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
     });
 
     it("distinguishes export and history read errors when both are visible", async () => {
@@ -428,7 +428,7 @@ describe("OperationsPage", () => {
 
         mockedGetProviderActionHistory.mockRejectedValueOnce(new Error("History refresh failed"));
         await user.click(screen.getByRole("button", { name: "Refresh history" }));
-        const historyTitle = await screen.findByText("Action history unavailable");
+        const historyTitle = await screen.findByText("Provider action history unavailable");
         const historyAlert = historyTitle.closest("[role='alert']");
 
         expect(historyAlert).not.toBeNull();
@@ -494,7 +494,7 @@ describe("OperationsPage", () => {
         expect(screen.getByRole("button", { name: "Delete expired entries" })).toBeEnabled();
         await waitFor(() => expect(mockedGetProviderActionHistory).toHaveBeenCalledTimes(2));
         expect(mockedPruneProviderActionHistory).toHaveBeenCalledOnce();
-        expect(screen.queryByText("Action history unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Provider action history unavailable")).not.toBeInTheDocument();
     });
 
     it("filters by provider and UTC date range", async () => {

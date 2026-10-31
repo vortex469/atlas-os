@@ -51,6 +51,6 @@ export function RecentActivity({ evidence, loading = false }: { evidence?: Evide
             </li>;
         })}</ol>
         {activity.length > 5 && <p>Showing 5 of {activity.length} returned actions.</p>}
-        <Link to="/operations">Open action history →</Link>
+        <Link to="/operations">Open provider action history →</Link>
     </>;
 }

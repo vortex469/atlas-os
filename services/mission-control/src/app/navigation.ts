@@ -32,7 +32,7 @@ export const primaryNavigationItems: NavigationItem[] = [
         end: true,
     },
     {
-        label: "Action history",
+        label: "Provider actions",
         path: "/operations",
     },
     {
@@ -67,7 +67,7 @@ export const primaryNavigationItems: NavigationItem[] = [
  * Returns the most specific destination that owns the given path.
  * Used to surface the current route/page context in the shell header.
  * Longest prefix wins, so `/operations/history` resolves to
- * Maintenance history rather than its Action history parent.
+ * Maintenance history rather than its Provider actions parent.
  */
 export function navigationItemForPath(
     items: NavigationItem[],
@@ -97,10 +97,10 @@ export function routeContextForPath(pathname: string): string | undefined {
     const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
 
     if (path === "/") return undefined;
-    if (path === "/operations") return "Action history";
+    if (path === "/operations") return "Provider action history";
     if (path === "/operations/history") return "Maintenance history";
     if (path === "/operations/request") return "Request a VM restart";
-    if (/^\/operations\/actions\/[^/]+$/.test(path)) return "Action details";
+    if (/^\/operations\/actions\/[^/]+$/.test(path)) return "Provider action details";
     if (path === "/providers") return "Providers";
     if (/^\/providers\/[^/]+$/.test(path)) return "Provider details";
     if (path === "/discovery") return "Catalog";

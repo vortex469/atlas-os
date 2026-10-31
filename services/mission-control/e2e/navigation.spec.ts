@@ -9,10 +9,10 @@ const routes = [
         },
     },
     {
-        label: "Action history",
+        label: "Provider actions",
         path: "/operations",
         assertion: async (page) => {
-            await expect(page.getByRole("heading", { name: "Action History" })).toBeVisible();
+            await expect(page.getByRole("heading", { name: "Provider action history" })).toBeVisible();
         },
     },
     {

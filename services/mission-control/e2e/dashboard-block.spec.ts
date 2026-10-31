@@ -103,9 +103,9 @@ for (const width of [320, 390, 1280]) {
         await activity.getByRole("link", { name: "View action details →" }).click();
         await expect(page).toHaveURL(/\/operations\/actions\/audit%2F1$/);
         await page.goBack();
-        await activity.getByRole("link", { name: "Open action history →" }).click();
+        await activity.getByRole("link", { name: "Open provider action history →" }).click();
         await expect(page).toHaveURL(/\/operations$/);
-        await expect(page.getByRole("heading", { name: "Action history" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Provider action history" })).toBeVisible();
         await expect(page.getByText(label, { exact: true })).toBeVisible();
         expect(rejectedMutationRequests).toEqual([]);
     });
