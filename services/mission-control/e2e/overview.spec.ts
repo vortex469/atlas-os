@@ -384,8 +384,14 @@ for (const width of [320, 1280]) {
         await expect(nextStep).toBeVisible();
         const connectionSteps = nextStep.getByRole('list', { name: 'Steps to check the Atlas Core connection' });
         await expect(connectionSteps).toBeVisible();
-        await expect(connectionSteps).toContainText('On the Atlas computer, run docker ps --all. Continue only if a container name includes atlas-core; otherwise, switch to the computer running Atlas Core.');
+        await expect(connectionSteps).toContainText("On Atlas's Docker host, use this read-only command. Look for atlas-core in Names and Up in Status. If no matching row appears, this host does not show Atlas Core; if the row says Exited, the container is stopped.");
         await expect(connectionSteps).toContainText("Open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach iFileshare; running it on the computer where iFileshare runs does not test this path.");
+        const atlasCommand = nextStep.getByRole('group', { name: 'Atlas container status command' });
+        await expect(atlasCommand).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        await atlasCommand.getByRole('button', { name: 'Copy command' }).click();
+        await expect(atlasCommand.getByRole('status')).toHaveText('Command copied.');
+        const copiedAtlasCommand = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copiedAtlasCommand).toBe("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await expect(nextStep.getByText('http://10.10.60.30:8080/', { exact: true })).toBeVisible();
         const connectionCommand = nextStep.getByRole('group', { name: 'Read-only Core connection check command' });
         await expect(connectionCommand).toContainText('docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c');

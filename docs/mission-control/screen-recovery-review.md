@@ -4169,6 +4169,17 @@ ordinary findings remain readable. Compatibility checks and their results are
 unchanged. The full Mission Control unit suite passes 3,066 tests across 188
 files, including the focused redaction canary; lint and production build pass.
 
+## Atlas Core host identification — 2026-10-31
+
+The Atlas-side connection instructions now provide a copyable, read-only Docker
+status command in both the dashboard and service details. The guidance tells
+operators to look for an `atlas-core` container in the Names column and `Up` in
+Status, distinguishing the wrong Docker host from a stopped Core container
+before they run the network check. The existing service-host command and
+reachability probe are unchanged. The focused Overview and service-health
+suites pass 89 tests; the responsive iFileshare browser journey passes at 320px
+and 1280px. Mission Control lint and production build pass.
+
 ## Atlas Core connection-check guidance — 2026-10-31
 
 The service-check instructions now first ask the operator to confirm that

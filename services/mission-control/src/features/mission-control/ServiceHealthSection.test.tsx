@@ -123,7 +123,9 @@ describe("ServiceHealthSection", () => {
         expect(connectionSteps).not.toBeVisible();
         await user.click(within(dialog).getByText("Test from the Atlas computer"));
         expect(connectionSteps).toBeVisible();
-        expect(connectionSteps).toHaveTextContent("On the Atlas computer, run docker ps --all. Continue only if a container name includes atlas-core; otherwise, switch to the computer running Atlas Core.");
+        expect(connectionSteps).toHaveTextContent("On Atlas's Docker host, use this read-only command. Look for atlas-core in Names and Up in Status. If no matching row appears, this host does not show Atlas Core; if the row says Exited, the container is stopped.");
+        const atlasCommand = within(dialog).getByRole("group", { name: "Atlas container status command" });
+        expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         expect(connectionSteps).toHaveTextContent("Open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach Containers; running it on the computer where Containers runs does not test this path.");
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");

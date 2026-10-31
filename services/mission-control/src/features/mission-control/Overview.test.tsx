@@ -236,7 +236,9 @@ describe("MC overview evidence", () => {
 
         const instructions = within(nextStep).getByRole("list", { name: "Steps to check the Atlas Core connection" });
         expect(instructions).toBeVisible();
-        expect(instructions).toHaveTextContent("On the Atlas computer, run docker ps --all. Continue only if a container name includes atlas-core; otherwise, switch to the computer running Atlas Core.");
+        expect(instructions).toHaveTextContent("On Atlas's Docker host, use this read-only command. Look for atlas-core in Names and Up in Status. If no matching row appears, this host does not show Atlas Core; if the row says Exited, the container is stopped.");
+        const atlasCommand = within(nextStep).getByRole("group", { name: "Atlas container status command" });
+        expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         expect(instructions).toHaveTextContent("Open Atlas's Compose folder—the folder containing compose.production.yaml—and run this read-only command. It checks whether Atlas Core can reach iFileshare; running it on the computer where iFileshare runs does not test this path.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
@@ -304,6 +306,26 @@ describe("MC overview evidence", () => {
         expect(writeText).toHaveBeenCalledTimes(1);
         expect(writeText.mock.calls[0][0]).toContain("http://10.10.60.30:8080/");
         expect(writeText.mock.calls[0][0]).not.toMatch(/password|private|token=/);
+    });
+
+    it("copies the read-only command for finding the Atlas Core container", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        show({ health: { data: { services: { iFileshare: {
+            status: "unavailable",
+            details: { url: "http://10.10.60.30:8080/" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        fireEvent.click(checks.getByText("Test from the Atlas computer"));
+        const command = checks.getByRole("group", { name: "Atlas container status command" });
+
+        fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
+
+        expect(await within(command).findByRole("status")).toHaveTextContent("Command copied.");
+        expect(writeText).toHaveBeenCalledWith("docker ps --all --format 'table {{.Names}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
     });
 
     it("explains how to copy the command when clipboard access is unavailable", async () => {

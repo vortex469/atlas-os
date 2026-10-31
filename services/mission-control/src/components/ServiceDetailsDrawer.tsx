@@ -3,7 +3,7 @@ import { CopyCommandButton } from "./CopyCommandButton";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { healthNextCheck, healthState } from "../utils/healthPresentation";
-import { serviceReachabilityCommand } from "../utils/serviceReachabilityCommand";
+import { serviceContainerCheckCommand, serviceReachabilityCommand } from "../utils/serviceReachabilityCommand";
 import { ProviderActions } from "./ProviderActions";
 import { HealthEvidence } from "./HealthEvidence";
 import { safeText } from "../utils/safeText";
@@ -175,7 +175,15 @@ export function ServiceDetailsDrawer({
                             <summary className="mc-focusable cursor-pointer text-sm text-cyan-300">Test from the Atlas computer</summary>
                             <div className="mt-2">
                                 <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
-                                    <li>On the Atlas computer, run <code>docker ps --all</code>. Continue only if a container name includes <code>atlas-core</code>; otherwise, switch to the computer running Atlas Core.</li>
+                                    <li>
+                                        <p>On Atlas&apos;s Docker host, use this read-only command. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If no matching row appears, this host does not show Atlas Core; if the row says Exited, the container is stopped.</p>
+                                        <div role="group" aria-label="Atlas container status command" className="mt-1 rounded border border-slate-800 bg-slate-900 p-2">
+                                            <div className="flex flex-wrap items-start gap-2">
+                                                <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-slate-200">{serviceContainerCheckCommand}</pre>
+                                                <CopyCommandButton command={serviceContainerCheckCommand} />
+                                            </div>
+                                        </div>
+                                    </li>
                                     <li>Open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}; running it on the computer where {serviceName} runs does not test this path.</li>
                                 </ol>
                                 {reachabilityCommand ? (
