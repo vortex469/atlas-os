@@ -48,6 +48,14 @@ export function ProviderPage() {
     const providerName =
         provider?.name ?? formatProviderId(providerId);
     const policiesUnavailable = failedSources.includes("monitoring policies");
+    const hasOtherUnavailableSource = failedSources.some(
+        (source) => source !== "provider catalog",
+    );
+    const showRefreshAlert = Boolean(error) && !(
+        provider &&
+        providerCatalogUnavailable &&
+        !hasOtherUnavailableSource
+    );
 
     const relatedFindings =
         summary?.findings.filter(
@@ -124,13 +132,13 @@ export function ProviderPage() {
                 </div>
             </div>
 
-            {error && (
+            {showRefreshAlert && (
                 <div
                     role="alert"
                     className="rounded-lg border border-red-500/30 bg-red-500/10 p-5"
                 >
                     <p className="font-semibold text-red-300">Some information could not be refreshed</p>
-                    <p className="mt-1 text-sm text-red-200/80">Provider details may be out of date. Use Refresh above to check again.</p>
+                    <p className="mt-1 text-sm text-red-200/80">Some information may be out of date. Use Refresh above to check again.</p>
                     {(failedSources.length > 0 || error) && <details className="mt-3">
                         <summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
                         <div className="mt-2 space-y-1 text-sm text-slate-400">

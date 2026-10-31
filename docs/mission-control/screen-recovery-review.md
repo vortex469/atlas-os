@@ -4398,3 +4398,9 @@ keeps the stale-data meaning without exposing the catalog implementation
 detail. Provider data and refresh behavior are unchanged.
 The focused ProviderOverview suite passes 13 tests; Mission Control lint and
 the production build pass.
+
+Provider detail refresh failures now show one focused warning when the
+provider catalog is the only unavailable source. Other partial failures still
+show the page-wide refresh notice. The ProviderPage and ProviderOverview
+suites pass 31 tests covering both cases; Mission Control lint and production
+build pass.

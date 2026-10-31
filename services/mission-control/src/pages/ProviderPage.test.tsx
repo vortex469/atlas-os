@@ -115,19 +115,21 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
             summary: null,
             error: "Some provider information could not be refreshed. Existing information may be out of date.",
-            failedSources: ["diagnostics"],
+            failedSources: ["provider catalog", "diagnostics"],
+            providerCatalogUnavailable: true,
             summaryUnavailable: true,
         }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
         expect(screen.getByRole("heading", { name: "Provider overview" })).toBeInTheDocument();
+        expect(screen.getByText("Last known provider status")).toBeInTheDocument();
         expect(screen.getByText("Some information could not be refreshed")).toBeInTheDocument();
-        expect(screen.getByText("Provider details may be out of date. Use Refresh above to check again.")).toBeInTheDocument();
+        expect(screen.getByText("Some information may be out of date. Use Refresh above to check again.")).toBeInTheDocument();
         const technicalDetails = screen.getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
-        expect(screen.getByText("Unavailable: diagnostics.")).not.toBeVisible();
+        expect(screen.getByText("Unavailable: provider catalog, diagnostics.")).not.toBeVisible();
         fireEvent.click(screen.getByText("Technical details"));
-        expect(screen.getByText("Unavailable: diagnostics.")).toBeVisible();
+        expect(screen.getByText("Unavailable: provider catalog, diagnostics.")).toBeVisible();
         expect(screen.getByText("Diagnostics could not be loaded.")).toBeInTheDocument();
         expect(screen.getByText("Recommendations could not be loaded.")).toBeInTheDocument();
         expect(screen.queryByText("No messages about this provider right now.")).not.toBeInTheDocument();
@@ -190,7 +192,7 @@ describe("ProviderPage authority layout", () => {
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
     });
 
-    it("marks cached provider details as last known when the catalog refresh fails", () => {
+    it("shows one provider-specific stale notice when the catalog refresh fails", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
             error: "Some provider information could not be refreshed. Existing information may be out of date.",
             failedSources: ["provider catalog"],
@@ -199,6 +201,7 @@ describe("ProviderPage authority layout", () => {
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
         expect(screen.getByText("Last known provider status")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     it("puts reviewed maintenance before direct actions, connection details, and retained evidence", () => {
