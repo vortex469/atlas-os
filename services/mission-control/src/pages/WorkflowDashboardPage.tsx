@@ -329,7 +329,8 @@ export function WorkflowDashboardPage() {
                             <label className="text-sm text-slate-300">
                                 Started from
                                 <select value={draftFilters.source} onChange={(event) => updateDraftFilter("source", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                                    <option value="">Any starting point</option>
+                                    <option value="">Any source</option>
+                                    <option value="roadmap">Roadmap</option>
                                     <option value="candidate">Candidate</option>
                                     <option value="manual">Manual</option>
                                 </select>
@@ -423,7 +424,7 @@ function readDashboardFilters(
     const operatorStep = params.has(key("step")) ? params.get(key("step")) ?? "" : fallback.operatorStep;
     return {
         state: WORKFLOW_STATES.includes(state as typeof WORKFLOW_STATES[number]) ? state : fallback.state,
-        source: source === "candidate" || source === "manual" ? source : fallback.source,
+        source: source === "roadmap" || source === "candidate" || source === "manual" ? source : fallback.source,
         candidateId: (params.has(key("candidate")) ? params.get(key("candidate")) ?? "" : fallback.candidateId).slice(0, 200),
         workflowId: (params.has(key("workflow")) ? params.get(key("workflow")) ?? "" : fallback.workflowId).slice(0, 200),
         operatorStep: operatorStep === "needed" || operatorStep === "not_needed" || operatorStep === "unknown"

@@ -185,8 +185,9 @@ describe("WorkflowDashboardPage", () => {
     it("restores applied and draft filters plus page position when returning from a workflow", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response(Array.from({ length: 11 }, (_, index) => workflow({
             workflow_id: `workflow-${index}`,
+            workflow_source: "roadmap",
         }))));
-        const search = "?status=awaiting_implementation_approval&source=candidate&candidate=candidate-123&workflow=workflow&step=needed&draftWorkflow=pending&page=2&keep=yes";
+        const search = "?status=awaiting_implementation_approval&source=roadmap&candidate=candidate-123&workflow=workflow&step=needed&draftWorkflow=pending&page=2&keep=yes";
         render(
             <MemoryRouter initialEntries={[{ pathname: "/workflows", search }]}>
                 <Routes>
@@ -200,7 +201,8 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByLabelText("Workflow status")).toHaveValue("awaiting_implementation_approval");
         expect(screen.getByLabelText("Next step")).toHaveValue("needed");
         fireEvent.click(screen.getByText("More filters", { exact: true }));
-        expect(screen.getByLabelText("Started from")).toHaveValue("candidate");
+        expect(screen.getByLabelText("Started from")).toHaveValue("roadmap");
+        expect(screen.getByRole("option", { name: "Roadmap" })).toBeInTheDocument();
         expect(screen.getByLabelText("Candidate ID")).toHaveValue("candidate-123");
         expect(screen.getByLabelText("Workflow ID contains")).toHaveValue("pending");
 
@@ -209,7 +211,7 @@ describe("WorkflowDashboardPage", () => {
         expect(navigation.state).toEqual({ returnTo: "/workflows" });
         const returnedSearch = new URLSearchParams(navigation.search);
         expect(returnedSearch.get("status")).toBe("awaiting_implementation_approval");
-        expect(returnedSearch.get("source")).toBe("candidate");
+        expect(returnedSearch.get("source")).toBe("roadmap");
         expect(returnedSearch.get("candidate")).toBe("candidate-123");
         expect(returnedSearch.get("workflow")).toBe("workflow");
         expect(returnedSearch.get("step")).toBe("needed");

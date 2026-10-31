@@ -4495,3 +4495,12 @@ workflow summary and makes the filter choices describe what they select.
 Filter values and behavior are unchanged. The dashboard suite passes 24 tests,
 its browser journey passes 21 tests at 320px, 390px, and 1280px, and lint and
 the production build pass.
+
+## Roadmap workflow filter — 2026-10-31
+
+The workflow source filter now includes Roadmap. It also preserves
+`source=roadmap` when restoring a saved workflow directory link, so roadmap
+workflows can be reached through the same filter as candidate and manual
+workflows. The focused dashboard tests cover saved-link restoration and the
+visible option (24 unit tests and 21 browser tests across 320px, 390px, and
+1280px); lint and the production build pass.

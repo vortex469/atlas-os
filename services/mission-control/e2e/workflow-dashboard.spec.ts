@@ -53,6 +53,8 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("region", { name: "Workflow summary counts" })).toHaveCount(0);
         await page.getByRole("button", { name: "Clear filters" }).click();
         await expect(page.getByRole("heading", { name: "Update Compose Stack", exact: true })).toBeVisible();
+        await page.getByText("More filters", { exact: true }).click();
+        await expect(page.getByRole("option", { name: "Roadmap" })).toBeAttached();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);
     });
