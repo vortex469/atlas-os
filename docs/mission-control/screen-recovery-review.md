@@ -4081,3 +4081,12 @@ through the shared bounded filter, so credential and URL canaries remain
 withheld in both places. The proposed plan, approval checks, and analysis-only
 boundary are unchanged. The focused Forge suite passes 13 tests; Mission
 Control lint and production build pass.
+
+## Advisory card text filtering — 2026-10-31
+
+Atlas finding and recommendation titles and descriptions now pass through the
+shared bounded text filter before display. Credential and URL canaries remain
+hidden while ordinary advisory text stays visible. Finding severity, health
+effect, and suggestion-only presentation are unchanged. The focused advisory
+card, finding, and overview-attention suites pass 16 tests; Mission Control
+lint and production build pass.

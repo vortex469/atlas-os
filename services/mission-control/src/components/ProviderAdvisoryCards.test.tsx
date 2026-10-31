@@ -68,4 +68,32 @@ describe("provider advisory cards", () => {
         expect(screen.queryByRole("button")).not.toBeInTheDocument();
         expect(screen.queryByText("Recommended Action")).not.toBeInTheDocument();
     });
+
+    it("withholds credential and URL text from reported findings and suggestions", () => {
+        const finding = {
+            id: "finding-sensitive",
+            source: "proxmox",
+            component: "proxmox",
+            category: "provider_unavailable",
+            severity: "warning",
+            title: "Provider at https://operator:canary-password@example.invalid/",
+            message: "Authorization: Bearer canary-token",
+            affects_health: true,
+            score_penalty: 1,
+            details: {},
+        } as AceFinding;
+        const recommendation = {
+            title: "Review provider capacity",
+            reason: "Credential check failed for https://operator:canary-password@example.invalid/?token=canary-token",
+            component: "proxmox",
+            priority: "medium",
+            confidence: 0.9,
+            estimated_effort: "low",
+        } as AceRecommendation;
+
+        render(<><FindingCard finding={finding} /><RecommendationCard recommendation={recommendation} /></>);
+
+        expect(screen.getAllByText("[Sensitive text withheld]")).toHaveLength(3);
+        expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
+    });
 });

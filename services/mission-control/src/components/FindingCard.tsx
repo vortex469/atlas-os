@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { AceFinding } from "../types/ace";
+import { safeText } from "../utils/safeText";
 
 type FindingCardProps = {
     finding: AceFinding;
@@ -104,7 +105,7 @@ export function FindingCard({ finding }: FindingCardProps) {
                     </div>
 
                     <h3 className="mt-2 text-base font-semibold text-slate-100">
-                        {finding.title}
+                        {safeText(finding.title) || "Finding details unavailable."}
                     </h3>
                 </div>
 
@@ -120,7 +121,7 @@ export function FindingCard({ finding }: FindingCardProps) {
             </div>
 
             <p className="mt-4 text-sm leading-6 text-slate-400">
-                {finding.message}
+                {safeText(finding.message) || "No finding details were provided."}
             </p>
 
             <p className="mt-4 text-sm leading-6 text-slate-300">
