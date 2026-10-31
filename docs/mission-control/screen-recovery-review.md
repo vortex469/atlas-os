@@ -4476,3 +4476,13 @@ remain separate, and no API fields or decision rules changed. The focused
 workflow and history suites pass (140 tests); repository and maintenance
 journeys pass (26 tests across 320px, 390px, and 1280px), with lint, production
 build, and `git diff --check` passing.
+
+## Commit approval wording — 2026-10-31
+
+The final commit step now describes the exact local commit, says approval and
+recording are separate actions, and states that recording the commit does not
+push it to GitHub or publish a release. The approval panel no longer shows
+internal request-payload details, and its buttons use sentence case. The
+repository and maintenance journeys still pass (26 tests across 320px, 390px,
+and 1280px); the focused workflow and history suites pass (140 tests), with
+lint, production build, and `git diff --check` passing.

@@ -926,7 +926,7 @@ function CommitSection({
             <div>
                 <h2 id="commit-heading" className="text-lg font-semibold text-white">Commit</h2>
                 <p className="mt-2 text-sm text-slate-400">
-                    Review and approve or reject this exact local commit request. Approval does not record it; choose Record approved commit when you are ready. This does not push or publish a release.
+                    Review this exact local commit request. Approval does not record it; choose Record approved commit separately when you are ready. Recording it does not push it or publish a release.
                 </p>
             </div>
 
@@ -956,12 +956,11 @@ function CommitSection({
             </section>
 
             <section aria-labelledby="commit-approval-heading" className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
-                <h3 id="commit-approval-heading" className="text-base font-semibold text-white">Commit approval</h3>
-                <p className="mt-2 text-sm text-slate-400">These controls submit only the workflow ID and commit approval decision.</p>
+                <h3 id="commit-approval-heading" className="text-base font-semibold text-white">Approval</h3>
                 {canDecideCommit ? (
                     <div className="mt-4 flex flex-wrap gap-3">
-                        <button type="button" onClick={() => void onCommitDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve Commit</button>
-                        <button type="button" onClick={() => void onCommitDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject Commit</button>
+                        <button type="button" onClick={() => void onCommitDecision("approve")} disabled={actionsDisabled} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">Approve commit</button>
+                        <button type="button" onClick={() => void onCommitDecision("reject")} disabled={actionsDisabled} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">Reject commit</button>
                     </div>
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">{workflow.commit_approval_status === "approved"

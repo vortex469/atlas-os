@@ -165,7 +165,12 @@ for (const width of [320, 390, 1280]) {
         expect(fixture.writes).toHaveLength(8);
         await page.getByRole("button", { name: "Run approved checks", exact: true }).click();
 
-        await expect(page.getByRole("button", { name: "Approve Commit", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Approve commit", exact: true })).toBeVisible();
+        const commitWorkflow = page.getByRole("region", { name: "Commit" });
+        await expect(commitWorkflow.getByText(
+            "Review this exact local commit request. Approval does not record it; choose Record approved commit separately when you are ready. Recording it does not push it or publish a release.",
+            { exact: true },
+        )).toBeVisible();
         await expect(page.getByRole("region", { name: "Check results" }).getByText("compose-config: passed", { exact: true })).toBeVisible();
         await expect(page.getByText("Checks approved. Run them when you are ready.", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: /Run approved|Record approved/ })).toHaveCount(0);
@@ -178,7 +183,7 @@ for (const width of [320, 390, 1280]) {
         await expect(commitDetails.getByText("commit-request-browser-journey", { exact: true })).toBeVisible();
         await commitDetails.getByText("Technical details", { exact: true }).click();
         await expect(commitDetails.getByText("commit-request-browser-journey", { exact: true })).toBeHidden();
-        await page.getByRole("button", { name: "Approve Commit", exact: true }).click();
+        await page.getByRole("button", { name: "Approve commit", exact: true }).click();
         await expect(page.getByRole("button", { name: "Record approved commit", exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Record it when you are ready.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(10);
@@ -187,7 +192,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Completed workflow", exact: true })).toBeVisible();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Record it when you are ready.", { exact: true })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve Commit/ })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve commit/ })).toHaveCount(0);
         await fitsViewport(page);
         await page.getByRole("link", { name: "View workflow history", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
@@ -329,10 +334,10 @@ test("rejecting implementation leaves execution and later approvals unavailable 
     await page.goto(`/workflows/${journey.workflow}`);
     await page.getByRole("button", { name: "Reject change", exact: true }).click();
     await expect(page.getByText("Change rejected.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve Commit/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve commit/ })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve Commit/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve checks|Approve commit/ })).toHaveCount(0);
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);
 });

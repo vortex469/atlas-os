@@ -270,7 +270,7 @@ describe("WorkflowPage", () => {
         let resolveRead!: (value: WorkflowDetailResponse) => void;
         mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }));
         renderPage();
-        const name = stage === "implementation" ? "Approve change" : stage === "verification" ? "Approve checks" : "Approve Commit";
+        const name = stage === "implementation" ? "Approve change" : stage === "verification" ? "Approve checks" : "Approve commit";
         const approve = await screen.findByRole("button", { name });
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
@@ -303,7 +303,7 @@ describe("WorkflowPage", () => {
         } else {
             initial = workflowAwaitingCommit();
             decided = workflowAwaitingCommit({ workflow_state: "committing", commit_approval_status: "approved" });
-            buttonName = "Approve Commit";
+            buttonName = "Approve commit";
             expectedFailureMessage = "Mission Control could not confirm the commit approval decision.";
             mockedSubmitWorkflowCommitApproval.mockRejectedValueOnce(new Error("Approval already decided"));
         }
@@ -1442,7 +1442,7 @@ describe("WorkflowPage", () => {
 
         expect(await screen.findByRole("heading", { name: "Commit details" })).toBeInTheDocument();
         expect(screen.getByText("Commit details are unavailable for this workflow.")).toBeVisible();
-        expect(screen.getByRole("heading", { name: "Commit approval" })).toBeVisible();
+        expect(screen.getByRole("heading", { name: "Approval" })).toBeVisible();
     });
 
     it("keeps commit message and files visible with technical references collapsed", async () => {
@@ -1482,7 +1482,7 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve commit" }));
 
         await screen.findByText("Commit approved. Record it when you are ready.");
         expect(mockedSubmitWorkflowCommitApproval).toHaveBeenCalledTimes(1);
@@ -1502,11 +1502,11 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Commit" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve commit" }));
 
         await screen.findByText("Commit approved. Record it when you are ready.");
-        expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Reject Commit" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve commit" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject commit" })).not.toBeInTheDocument();
     });
 
     it("submits commit rejection and blocks duplicate clicks", async () => {
@@ -1517,7 +1517,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        const reject = await screen.findByRole("button", { name: "Reject Commit" });
+        const reject = await screen.findByRole("button", { name: "Reject commit" });
         fireEvent.click(reject);
         fireEvent.click(reject);
 
@@ -1551,7 +1551,7 @@ describe("WorkflowPage", () => {
         expect(screen.getAllByText("feat(compose): update stack").length).toBeGreaterThan(0);
         expect(screen.getAllByText("compose.yaml, services/demo/Dockerfile").length).toBeGreaterThan(0);
         expect(screen.getByText("2026-08-02T18:00:00Z")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Approve Commit" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve commit" })).not.toBeInTheDocument();
     });
 
     it("does not expose push, tag, amend, release, or rollback controls", async () => {

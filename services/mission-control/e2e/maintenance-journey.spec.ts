@@ -147,7 +147,7 @@ for (const width of [320, 390, 1280]) {
         await expect(maintenanceStages.getByText("Review", { exact: true })).toHaveCount(0);
         await expect(maintenanceStages.getByText("Commit", { exact: true })).toHaveCount(0);
         await expect(page.getByText("Maintenance workflow completed. Review the recorded operational outcome.", { exact: true })).toBeVisible();
-        await expect(page.getByRole("button", { name: /Approve checks|Approve Commit|Run approved maintenance/ })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /Approve checks|Approve commit|Run approved maintenance/ })).toHaveCount(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(fixture.repositoryPlanReads).toBe(0);
         expect(fixture.writes).toEqual(fixture.expectedWrites);
