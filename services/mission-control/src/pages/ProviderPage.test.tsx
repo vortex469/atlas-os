@@ -51,23 +51,31 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], {
             isLoading: true,
             lastUpdated: null,
+            providers: [],
         }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
-        expect(screen.getByText("Loading provider data…", { exact: true })).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading provider details…");
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeDisabled();
+        expect(screen.queryByText("Live", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Last checked (local time)", { exact: true })).not.toBeInTheDocument();
         expect(screen.queryByText("Connecting...", { exact: true })).not.toBeInTheDocument();
     });
 
     it.each([
-        { isLoading: true, isRefreshing: false, label: "Loading…", disabled: true },
-        { isLoading: false, isRefreshing: true, label: "Refreshing…", disabled: true },
-        { isLoading: false, isRefreshing: false, label: "Refresh", disabled: false },
-    ])("shows the provider refresh control state: %j", (state) => {
+        { isLoading: true, isRefreshing: false, disabled: true, indicator: null },
+        { isLoading: false, isRefreshing: true, disabled: true, indicator: "Refreshing" },
+        { isLoading: false, isRefreshing: false, disabled: false, indicator: null },
+    ])("shows one clear provider refresh state: %j", (state) => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], state));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
-        const button = screen.getByRole("button", { name: state.label }) as HTMLButtonElement;
+        const button = screen.getByRole("button", { name: "Refresh" }) as HTMLButtonElement;
         expect(button.disabled).toBe(state.disabled);
+        if (state.indicator) expect(screen.getByText(state.indicator, { exact: true })).toBeInTheDocument();
+        else expect(screen.queryByText("Live", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Loading…" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Refreshing…" })).not.toBeInTheDocument();
     });
 
     it("explains an empty provider catalog instead of leaving the detail screen blank", () => {
@@ -96,7 +104,11 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(undefined, { providers: [], ...state }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
         expect(screen.queryByRole("heading", { name: "Provider not found" })).not.toBeInTheDocument();
-        expect(screen.getByText(state.isLoading ? "Loading provider details..." : "Some information could not be refreshed")).toBeInTheDocument();
+        if (state.isLoading) {
+            expect(screen.getByRole("status")).toHaveTextContent("Loading provider details…");
+        } else {
+            expect(screen.getByText("Some information could not be refreshed")).toBeInTheDocument();
+        }
     });
 
     it("keeps provider details visible when the diagnostics source is unavailable", () => {
@@ -231,7 +243,7 @@ describe("ProviderPage authority layout", () => {
         vi.mocked(useMissionControl).mockReturnValue(providerPageState(["resources", "connection"], { lastUpdated }));
         render(<MemoryRouter initialEntries={["/providers/proxmox"]}><Routes><Route path="/providers/:providerId" element={<ProviderPage />} /></Routes></MemoryRouter>);
 
-        expect(screen.getByText("Last data refresh (local time)")).toBeInTheDocument();
+        expect(screen.getByText("Last checked (local time)")).toBeInTheDocument();
         const time = screen.getByText(lastUpdated.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
         expect(time.tagName).toBe("TIME");
         expect(time).toHaveAttribute("datetime", lastUpdated.toISOString());

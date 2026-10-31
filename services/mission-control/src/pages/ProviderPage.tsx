@@ -97,26 +97,21 @@ export function ProviderPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <div className="text-right">
+                    {lastUpdated && <div className="text-right">
                         <p className="text-xs uppercase tracking-wider text-slate-500">
-                            Last data refresh (local time)
+                            Last checked (local time)
                         </p>
-
                         <p className="mt-1 text-sm text-slate-300">
-                            {lastUpdated
-                                ? (
-                                    <time dateTime={lastUpdated.toISOString()}>
-                                        {lastUpdated.toLocaleString(undefined, {
-                                            dateStyle: "medium",
-                                            timeStyle: "short",
-                                        })}
-                                    </time>
-                                )
-                                : isLoading ? "Loading provider data…" : "Not updated yet"}
+                            <time dateTime={lastUpdated.toISOString()}>
+                                {lastUpdated.toLocaleString(undefined, {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                })}
+                            </time>
                         </p>
-                    </div>
+                    </div>}
 
-                    <RefreshIndicator active={isRefreshing} />
+                    {isRefreshing && <RefreshIndicator active />}
 
                     <button
                         type="button"
@@ -124,7 +119,7 @@ export function ProviderPage() {
                         disabled={isLoading || isRefreshing}
                         className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {isLoading ? "Loading…" : isRefreshing ? "Refreshing…" : "Refresh"}
+                        Refresh
                     </button>
                 </div>
             </div>
@@ -148,14 +143,8 @@ export function ProviderPage() {
             )}
 
             {isLoading && providers.length === 0 && (
-                <section className="rounded-lg border border-slate-800 bg-slate-900 p-5 sm:p-8">
-                    <p className="font-medium text-slate-200">
-                        Loading provider details...
-                    </p>
-
-                    <p className="mt-2 text-sm text-slate-500">
-                        Retrieving the provider catalog from Atlas Core.
-                    </p>
+                <section role="status" aria-live="polite" className="rounded-lg border border-slate-800 bg-slate-900 p-5 sm:p-8">
+                    <p className="font-medium text-slate-200">Loading provider details…</p>
                 </section>
             )}
 
