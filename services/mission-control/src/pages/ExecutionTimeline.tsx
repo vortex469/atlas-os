@@ -112,6 +112,8 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
         if (workflow.workflow_state === "completed") return "Maintenance workflow completed. Review the recorded operational outcome.";
         if (workflow.workflow_state === "blocked") return "Maintenance workflow is blocked. Review Maintenance status for details.";
         if (workflow.workflow_state === "executing") return "Maintenance is running.";
+        if (workflow.workflow_state === "patch_applied_pending_verification") return "Maintenance has run. Atlas is preparing to check the result.";
+        if (workflow.workflow_state === "verifying") return "Maintenance has run. Atlas is checking the result.";
         if (workflow.workflow_state === "implementation_rejected" || workflow.implementation_approval_status === "rejected") return "The maintenance request was rejected; it was not run.";
         if (workflow.workflow_state === "planned") return "Maintenance request is ready for review.";
         if (workflow.workflow_state === "awaiting_execution" && workflow.implementation_approval_status !== "approved") {
@@ -128,9 +130,12 @@ function executionStateText(workflow: WorkflowDetailResponse): string {
     if (workflow.worker_reconciliation?.outcome === "unknown" || execution.execution_status === "unknown") {
         return "The change may have finished. Check its result before starting it again.";
     }
-    if (workflow.workflow_state === "executing") return "Execution running...";
-    if (execution.execution_status === "succeeded") return "Execution complete.";
     if (execution.execution_status === "failed" || execution.execution_status === "timed_out" || execution.execution_status === "launch_failed") return "Execution failed.";
+    if (workflow.workflow_state === "executing") return "Atlas is applying the approved change.";
+    if (workflow.workflow_state === "patch_applied_pending_verification") return "The change has been applied. Atlas is preparing verification.";
+    if (workflow.workflow_state === "verifying") return "The change is applied. Atlas is checking it against the approved checks.";
+    if (workflow.workflow_state === "committing") return "Verification passed. Atlas is recording the approved commit.";
+    if (execution.execution_status === "succeeded") return "Execution complete.";
     if (execution.execution_status !== null) return "Atlas Agent reported an execution status Mission Control does not recognize. Refresh before continuing.";
     if (workflow.workflow_state === "implementation_rejected" || workflow.implementation_approval_status === "rejected") return "The change was not applied because implementation approval was rejected.";
     if (workflow.workflow_state === "planned") return "Review the proposed change before continuing.";

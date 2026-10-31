@@ -244,8 +244,30 @@ describe("ExecutionTimeline", () => {
             timeline: workflow().timeline.map((stage) => stage.name === "Execution" ? { ...stage, status: "current" } : stage),
         }));
 
-        expect(screen.getByRole("status")).toHaveTextContent("Execution running...");
-        expect(screen.getAllByText("Execution running...")).toHaveLength(1);
+        expect(screen.getByRole("status")).toHaveTextContent("Atlas is applying the approved change.");
+    });
+
+    it.each([
+        ["patch_applied_pending_verification", "The change has been applied. Atlas is preparing verification."],
+        ["verifying", "The change is applied. Atlas is checking it against the approved checks."],
+        ["committing", "Verification passed. Atlas is recording the approved commit."],
+    ] as const)("explains the active %s phase", (workflowState, message) => {
+        renderTimeline(workflow({
+            workflow_state: workflowState,
+            implementation_approval_status: "approved",
+            execution: { ...workflow().execution, execution_status: "succeeded" },
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent(message);
+    });
+
+    it("explains that maintenance results are being checked", () => {
+        renderTimeline(workflow({
+            effect_kind: "operational_action",
+            workflow_state: "verifying",
+        }));
+
+        expect(screen.getByRole("status")).toHaveTextContent("Maintenance has run. Atlas is checking the result.");
     });
 
     it("renders successful execution result", () => {
