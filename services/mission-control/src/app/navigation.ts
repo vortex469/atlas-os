@@ -41,7 +41,7 @@ export const primaryNavigationItems: NavigationItem[] = [
         shortLabel: "History",
     },
     {
-        label: "Request maintenance",
+        label: "Request a VM restart",
         path: "/operations/request",
     },
     {
@@ -99,7 +99,7 @@ export function routeContextForPath(pathname: string): string | undefined {
     if (path === "/") return undefined;
     if (path === "/operations") return "Action history";
     if (path === "/operations/history") return "Maintenance history";
-    if (path === "/operations/request") return "Request maintenance";
+    if (path === "/operations/request") return "Request a VM restart";
     if (/^\/operations\/actions\/[^/]+$/.test(path)) return "Action details";
     if (path === "/providers") return "Providers";
     if (/^\/providers\/[^/]+$/.test(path)) return "Provider details";

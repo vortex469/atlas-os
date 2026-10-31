@@ -23,7 +23,7 @@ const routes = [
         },
     },
     {
-        label: "Request maintenance",
+        label: "Request a VM restart",
         path: "/operations/request",
         expectedPath: "/operator/login",
         assertion: async (page) => {

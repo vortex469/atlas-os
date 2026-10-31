@@ -13,7 +13,7 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByRole("link", { name: "Overview", exact: true })).toHaveAttribute("href", "/");
     await expect(page.getByRole("link", { name: "Action history", exact: true })).toHaveAttribute("href", "/operations");
     await expect(page.getByRole("link", { name: "Maintenance history", exact: true })).toHaveAttribute("href", "/operations/history");
-    await expect(page.getByRole("link", { name: "Request maintenance", exact: true })).toHaveAttribute("href", "/operations/request");
+    await expect(page.getByRole("link", { name: "Request a VM restart", exact: true })).toHaveAttribute("href", "/operations/request");
     await expect(page.getByRole("link", { name: "Catalog", exact: true })).toHaveAttribute("href", "/discovery");
     await expect(page.getByRole("link", { name: "Change proposals", exact: true })).toHaveAttribute("href", "/execution-candidates");
     await expect(page.getByRole("link", { name: "Workflows", exact: true })).toHaveAttribute("href", "/workflows");
@@ -137,7 +137,7 @@ test.describe("Mobile navigation", () => {
             "Overview",
             "Action history",
             "Maintenance history",
-            "Request maintenance",
+            "Request a VM restart",
             "Catalog",
             "Change proposals",
             "Workflows",

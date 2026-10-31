@@ -4528,3 +4528,13 @@ the maintenance and sign-in browser journeys pass 16 checks against the source
 app and another 16 against its production build across phone and desktop widths.
 Mission Control lint, production build, and `git diff --check` pass. These
 browser journeys use synthetic fixtures and do not exercise a live backend.
+
+## Restart request entry-point labels — 2026-10-31
+
+The navigation menu, maintenance history, and Proxmox provider page now name
+the supported operation as “Request a VM restart.” This keeps the entry points
+consistent with the request form and avoids implying that Atlas currently
+offers every kind of maintenance request. The focused component tests pass
+(110 tests), and the application-shell/navigation browser checks pass (27
+tests); lint, production build, and `git diff --check` pass. Request, review,
+approval, and execution behavior are unchanged.

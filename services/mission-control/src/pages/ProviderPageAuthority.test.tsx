@@ -147,7 +147,7 @@ describe("ProviderPage monitoring and legacy authority", () => {
         expect(screen.getByText(/Advisory finding · Proxmox/)).toBeInTheDocument();
         expect(screen.getByText("Atlas suggestion")).toBeInTheDocument();
         expect(screen.getByRole("heading", { name: "Direct provider actions" })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Request maintenance" })).toHaveAttribute("href", "/operations/request");
+        expect(screen.getByRole("link", { name: "Request a VM restart" })).toHaveAttribute("href", "/operations/request");
         expect(within(legacy!).getByText("110: stopped")).toBeInTheDocument();
         expect(within(legacy!).getByText(/kept for reference/i)).toBeInTheDocument();
         expect(within(legacy!).queryByText(/currently enforced|current monitoring intent/i)).not.toBeInTheDocument();

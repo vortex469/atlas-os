@@ -371,7 +371,7 @@ describe("MainLayout", () => {
                 "Overview",
                 "Action history",
                 "Maintenance history",
-                "Request maintenance",
+                "Request a VM restart",
                 "Catalog",
                 "Change proposals",
                 "Workflows",

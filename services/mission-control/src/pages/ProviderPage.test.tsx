@@ -230,7 +230,7 @@ describe("ProviderPage authority layout", () => {
         expect(screen.getByText(/Monitoring expectations describe monitoring policy/)).toHaveTextContent("do not start, stop, restart, or remediate resources");
         expect(screen.getByText("Submit a request, review the plan, and approve it before Atlas starts maintenance.")).toBeInTheDocument();
         expect(screen.queryByText(/exact action/i)).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Request maintenance" })).toHaveAttribute("href", "/operations/request");
+        expect(screen.getByRole("link", { name: "Request a VM restart" })).toHaveAttribute("href", "/operations/request");
     });
 
     it("explains recommendations are suggestions and shows a plain empty state", () => {
