@@ -267,12 +267,7 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
         }
     };
 
-    const contextLabel = location.pathname === "/"
-        ? undefined
-        : navigationItemForPath(
-            primaryNavigationItems,
-            location.pathname,
-        )?.label ?? routeContextForPath(location.pathname);
+    const contextLabel = routeContextForPath(location.pathname);
 
     useEffect(() => {
         document.title = `${contextLabel ?? "Overview"} | Atlas Mission Control`;

@@ -290,6 +290,8 @@ test("action history recovers a read without showing another record", async ({ p
     await expect(page.getByRole("alert")).toContainText("does not match this link");
     await expect(page.getByRole("alert")).not.toContainText("Try again.");
     await expect(page.getByRole("heading", { name: "Action details" })).toBeVisible();
+    await expect(page.getByTestId("mc-context")).toContainText("Current page: Action details");
+    await expect(page).toHaveTitle("Action details | Atlas Mission Control");
     expect(reads).toBe(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole("link", { name: "← Back to action history" }).click();
@@ -450,6 +452,8 @@ for (const width of [320, 390, 1280]) {
         });
         await page.goto("/discovery/items/missing-item");
 
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Catalog item details");
+        await expect(page).toHaveTitle("Catalog item details | Atlas Mission Control");
         const notFound = page.getByRole("heading", { name: "Catalog item not found" }).locator("xpath=..");
         await expect(notFound.getByText("This catalog item is no longer available. Return to the catalog and choose a current item.", { exact: true })).toBeVisible();
         await expect(notFound.getByText("Catalog item ID: missing-item", { exact: true })).toBeHidden();
@@ -519,6 +523,8 @@ for (const width of [390, 1280]) {
         } }));
         await page.goto("/discovery/items/fixture-app");
 
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Catalog item details");
+        await expect(page).toHaveTitle("Catalog item details | Atlas Mission Control");
         const itemHeader = page.getByRole("heading", { name: "Fixture Application" }).locator("xpath=..");
         await expect(page.getByRole("heading", { name: "What it supports" })).toBeVisible();
         await expect(page.getByText("Read only", { exact: true })).toBeVisible();
@@ -1120,6 +1126,8 @@ for (const width of [390, 1280]) {
         await page.getByRole("link", { name: "Open Proxmox provider", exact: true }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
         await expect(page.getByRole("heading", { name: "Proxmox", exact: true })).toBeVisible();
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Provider details");
+        await expect(page).toHaveTitle("Provider details | Atlas Mission Control");
         await expect(page.getByText("Healthy", { exact: true })).toHaveCount(1);
         await expect(page.getByText("Status", { exact: true })).toHaveCount(0);
         await expect(page.getByText("HTTP response code", { exact: true })).toBeHidden();
@@ -1242,6 +1250,8 @@ for (const width of [390, 1280]) {
             status: 404, json: { detail: "PRIVATE_BACKEND_DETAIL" },
         }));
         await page.goto("/execution-candidates/missing-proposal");
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Proposal details");
+        await expect(page).toHaveTitle("Proposal details | Atlas Mission Control");
         await expect(page.getByRole("heading", { name: "Change proposal not found" })).toBeVisible();
         await expect(page.getByText("This proposal is no longer available. Return to Change proposals and open a current proposal.")).toBeVisible();
         await expect(page.getByText("PRIVATE_BACKEND_DETAIL")).toHaveCount(0);
@@ -1390,6 +1400,8 @@ for (const width of [320, 390, 1280]) {
                 }) });
         });
         await page.goto("/workflows/audit-recovery/audit");
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Workflow audit");
+        await expect(page).toHaveTitle("Workflow audit | Atlas Mission Control");
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow history unavailable");
@@ -1422,6 +1434,8 @@ for (const width of [320, 390, 1280]) {
                 : route.fulfill({ json: workflowDetail({ workflow_id: "detail-recovery" }) });
         });
         await page.goto("/workflows/detail-recovery");
+        await expect(page.getByTestId("mc-context")).toContainText("Current page: Workflow details");
+        await expect(page).toHaveTitle("Workflow details | Atlas Mission Control");
 
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Workflow unavailable");

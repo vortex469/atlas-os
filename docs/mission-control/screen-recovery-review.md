@@ -4149,3 +4149,13 @@ Only presentation labels changed; routes and workflow behavior are unchanged.
 The MainLayout suite passes 36 tests, and four browser cases verify the labels
 on the planning and workflow screens at 320px, 390px, and 1280px. Mission
 Control lint and production build pass.
+
+## Detail screen shell labels — 2026-10-31
+
+The shell header and browser title now use specific labels for action,
+provider, catalog-item, proposal, and workflow detail routes instead of
+repeating their parent destination. Unknown nested URLs remain identified as
+missing pages. These are page labels only; routes, sidebar ownership, and
+backend behavior are unchanged. MainLayout coverage passes 43 tests. Sixteen
+responsive browser cases verify the affected screens at 320px, 390px, and
+1280px. Mission Control lint and production build pass.

@@ -90,13 +90,33 @@ export function navigationItemForPath(
     return best;
 }
 
-// Existing detail and utility routes that are not primary destinations.
-export function routeContextForPath(pathname: string): string {
-    if (pathname === "/providers") return "Providers";
-    if (pathname.startsWith("/providers/")) return "Provider";
-    if (pathname.startsWith("/installation/")) return "Installation readiness review";
-    const planningPath = pathname.match(/^\/candidate-planning\/[^/]+(?:\/(workflow))?\/?$/);
+// Gives every valid route a page-specific shell and browser title. Detail
+// screens take priority over their parent navigation destination so that the
+// shell does not keep saying only "Catalog" or "Workflows" after navigation.
+export function routeContextForPath(pathname: string): string | undefined {
+    const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+
+    if (path === "/") return undefined;
+    if (path === "/operations") return "Action history";
+    if (path === "/operations/history") return "Maintenance history";
+    if (path === "/operations/request") return "Request maintenance";
+    if (/^\/operations\/actions\/[^/]+$/.test(path)) return "Action details";
+    if (path === "/providers") return "Providers";
+    if (/^\/providers\/[^/]+$/.test(path)) return "Provider details";
+    if (path === "/discovery") return "Catalog";
+    if (/^\/discovery\/items\/[^/]+$/.test(path)) return "Catalog item details";
+    if (path === "/execution-candidates") return "Change proposals";
+    if (/^\/execution-candidates\/[^/]+$/.test(path)) return "Proposal details";
+    if (/^\/installation\/candidate-records\/[^/]+\/readiness-review$/.test(path)) {
+        return "Installation readiness review";
+    }
+
+    const planningPath = path.match(/^\/candidate-planning\/[^/]+(?:\/(workflow))?$/);
     if (planningPath) return planningPath[1] ? "Workflow setup" : "Plan a change";
-    if (pathname === "/operator/login") return "Operator login";
+    if (path === "/workflows") return "Workflows";
+    if (/^\/workflows\/[^/]+\/audit$/.test(path)) return "Workflow audit";
+    if (/^\/workflows\/[^/]+$/.test(path)) return "Workflow details";
+    if (path === "/forge") return "Deployment analysis";
+    if (path === "/operator/login") return "Operator login";
     return "Page not found";
 }

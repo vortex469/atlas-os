@@ -165,8 +165,14 @@ describe("MainLayout", () => {
     describe("current route context", () => {
         it.each([
             ["/operations", "Action history"],
+            ["/operations/actions/audit-1", "Action details"],
             ["/discovery", "Catalog"],
+            ["/discovery/items/item-1", "Catalog item details"],
             ["/forge", "Deployment analysis"],
+            ["/providers/proxmox", "Provider details"],
+            ["/execution-candidates/proposal-1", "Proposal details"],
+            ["/workflows/workflow-1", "Workflow details"],
+            ["/workflows/workflow-1/audit", "Workflow audit"],
             ["/candidate-planning/session-1", "Plan a change"],
             ["/candidate-planning/session-1/workflow", "Workflow setup"],
         ])("surfaces the context label for %s", (initialPath, label) => {
@@ -188,6 +194,13 @@ describe("MainLayout", () => {
 
         it("identifies unknown routes as missing pages in the shell and browser title", () => {
             renderAt("/page-that-does-not-exist");
+
+            expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Page not found");
+            expect(document.title).toBe("Page not found | Atlas Mission Control");
+        });
+
+        it("does not mistake an unknown nested route for its parent screen", () => {
+            renderAt("/workflows/workflow-1/unknown");
 
             expect(screen.getByTestId("mc-context")).toHaveTextContent("Current page: Page not found");
             expect(document.title).toBe("Page not found | Atlas Mission Control");
