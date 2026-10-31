@@ -1115,7 +1115,7 @@ for (const width of [320, 390, 1280]) {
         await page.goto("/operations/history");
         const itemHeading = page.getByRole("heading", { name: "Virtual machine 110" });
         await expect(itemHeading).toBeVisible();
-        await expect(page.getByText("Past requests and each request's latest maintenance status. This is not a live service check.", { exact: true })).toBeVisible();
+        await expect(page.getByText("Past requests and their latest maintenance status. Review a request for its recorded result; this is not a live service check.", { exact: true })).toBeVisible();
         await expectResponsiveMainPadding(itemHeading, width);
         await expect(page.getByText("proxmox/qemu/110", { exact: true })).toBeHidden();
         await expect(page.getByRole("combobox", { name: "Latest maintenance status", exact: true })).toBeVisible();

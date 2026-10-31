@@ -4619,3 +4619,13 @@ Routes, action behavior, approvals, and APIs are unchanged. The focused
 component suite passes 168 tests; the affected browser suite passes 169 cases
 across phone and desktop widths. Lint, production build, and
 `git diff --check` pass.
+
+## Maintenance history guidance — 2026-10-31
+
+The page explains that its status is not a live service check and directs
+operators to review a request for its recorded result. The filter note now
+says that filters apply only to the current page and points to Previous or
+Next for other requests. Request status, filtering, and navigation behavior
+are unchanged. The focused history suite passes 45 tests and the maintenance
+history browser checks pass 13 cases at phone and desktop widths. Lint,
+production build, and `git diff --check` pass.

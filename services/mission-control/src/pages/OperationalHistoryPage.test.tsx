@@ -69,7 +69,7 @@ describe("OperationalHistoryPage", () => {
 
         expect(await screen.findByRole("heading", { name: "Virtual machine 110" })).toBeVisible();
         expect(screen.getByRole("region", { name: "Maintenance history filters" })).toBeVisible();
-        expect(screen.getByText("Past requests and each request's latest maintenance status. This is not a live service check.")).toBeVisible();
+        expect(screen.getByText("Past requests and their latest maintenance status. Review a request for its recorded result; this is not a live service check.")).toBeVisible();
         const requested = screen.getByText(/^Requested \(local time\):/);
         expect(requested).toBeVisible();
         expect(requested.querySelector("time")).toHaveAttribute("datetime", "2026-08-16T00:00:00Z");
@@ -227,7 +227,7 @@ describe("OperationalHistoryPage", () => {
         render(<MemoryRouter><OperationalHistoryPage /></MemoryRouter>);
         await screen.findByRole("heading", { name: "Virtual machine 110" });
 
-        expect(screen.getByText("Filters only narrow the requests shown on this page. Use Previous and Next to check other pages.")).toBeVisible();
+        expect(screen.getByText("Filters apply to this page only. Use Previous or Next to check more requests.")).toBeVisible();
         const diagnosticFilter = screen.getByRole("combobox", { name: "Latest maintenance status" });
         const moreFilters = screen.getByText("More filters", { exact: true });
         expect(moreFilters.closest("details")).not.toHaveAttribute("open");
