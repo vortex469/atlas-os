@@ -4596,3 +4596,14 @@ execution disclaimer beneath the plan heading. The page introduction still
 explains that implementation does not run here and requires separate approval.
 Planning and workflow behavior are unchanged. The focused Planning Session
 suite passes 37 tests, and lint, production build, and `git diff --check` pass.
+
+## Workflow audit verification status clarity — 2026-10-31
+
+The verification plan, check approval, and check results now show the status of
+their own records instead of repeating the aggregate verification-stage status.
+For example, a pending approval reads “Needs approval,” and results waiting on
+that approval read “Waiting for approval.” Audit inconsistency warnings still
+come from the authoritative timeline. This changes only the read-only display;
+approval and execution controls are unchanged. The focused audit suite passes
+32 tests, the repository journey passes 15 browser cases across phone and
+desktop widths, and lint, production build, and `git diff --check` pass.

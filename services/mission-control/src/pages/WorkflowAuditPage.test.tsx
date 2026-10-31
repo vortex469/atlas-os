@@ -205,6 +205,17 @@ describe("WorkflowAuditPage", () => {
         const completed = within(verificationStage).getByText("Verification completed (local time)").parentElement?.querySelector("time");
         expect(started).toHaveAttribute("datetime", "2026-08-01T10:01:00Z");
         expect(completed).toHaveAttribute("datetime", "2026-08-01T10:02:00Z");
+        expect(screen.getByRole("region", { name: "Check approval, Approved" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Check results, Passed" })).toBeInTheDocument();
+    });
+
+    it.each(["failed", "timed_out", "launch_failed"])("shows %s check outcomes as failed", async (verification_status) => {
+        mockedGetWorkflowAudit.mockResolvedValue(audit({
+            verification: { ...audit().verification, verification_status },
+        }));
+        renderAuditPage();
+
+        expect(await screen.findByRole("region", { name: "Check results, Failed" })).toBeInTheDocument();
     });
 
     it("marks malformed audit timestamps unavailable instead of exposing raw values", async () => {
@@ -288,6 +299,13 @@ describe("WorkflowAuditPage", () => {
                     ...audit().approvals,
                     verification: { status: "pending", approval_id: null },
                 },
+                timeline: audit().timeline.map((stage) => stage.name === "verification" ? { ...stage, status: "current" } : stage),
+                verification: {
+                    ...audit().verification,
+                    verification_evidence_id: null,
+                    verification_status: null,
+                    verification_completed_at: null,
+                },
                 validation: {
                     valid: true,
                     failure_code: null,
@@ -299,6 +317,8 @@ describe("WorkflowAuditPage", () => {
 
         expect(await screen.findByText("Workflow status")).toBeInTheDocument();
         expect(screen.getByText("Checks need approval.")).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Check approval, Needs approval" })).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Check results, Waiting for approval" })).toBeInTheDocument();
         expect(screen.getByText("Consistent")).toBeInTheDocument();
         expect(screen.getByText("Review the recorded stages and results. Open a stage to inspect its details; this page does not change the workflow.")).toBeInTheDocument();
     });

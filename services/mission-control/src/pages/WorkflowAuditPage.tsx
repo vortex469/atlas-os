@@ -16,6 +16,14 @@ interface AuditStageDefinition {
     stage: WorkflowAuditStageName;
     title: string;
     details: (audit: WorkflowAuditResponse) => { label: string; value: ReactNode }[];
+    summary?: (audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus) => AuditStageSummary;
+}
+
+type AuditStageStatus = "completed" | "current" | "not_reached" | "missing" | "inconsistent";
+
+interface AuditStageSummary {
+    label: string;
+    status: AuditStageStatus | "failed";
 }
 
 const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
@@ -98,6 +106,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "verification",
         title: "Checks to run",
+        summary: (audit, timelineStatus) => verificationPlanSummary(audit, timelineStatus),
         details: (audit) => [
             { label: "Verification plan ID", value: audit.verification.verification_plan_id ?? "Not started" },
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
@@ -111,6 +120,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "verification",
         title: "Check approval",
+        summary: (audit, timelineStatus) => verificationApprovalSummary(audit, timelineStatus),
         details: (audit) => [
             { label: "Check approval status", value: formatStatusLabel(audit.approvals.verification.status) },
             { label: "Check approval ID", value: audit.approvals.verification.approval_id ?? "Not started" },
@@ -120,6 +130,7 @@ const AUDIT_STAGE_ORDER: AuditStageDefinition[] = [
     {
         stage: "verification",
         title: "Check results",
+        summary: (audit, timelineStatus) => verificationResultsSummary(audit, timelineStatus),
         details: (audit) => [
             { label: "Verification status", value: formatStatusLabel(audit.verification.verification_status ?? "not_reached") },
             { label: "Changed files digest", value: audit.verification.changed_files_digest ?? "Not available" },
@@ -286,16 +297,18 @@ function WorkflowAudit({ workflowId }: { workflowId: string }) {
                 </details>
             </section>
 
-            {AUDIT_STAGE_ORDER.map(({ stage, title, details }) => {
+            {AUDIT_STAGE_ORDER.map(({ stage, title, details, summary: getSummary }) => {
                 const status = normalizeStageStatus(findStageStatus(timeline, stage));
+                const summary = getSummary?.(audit, status)
+                    ?? { label: formatStatusLabel(status), status };
                 const isIssue = status === "missing" || status === "inconsistent";
                 const headingId = `audit-stage-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
                 return (
                     <details key={title} role="region" aria-labelledby={headingId} className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
-                        <summary id={headingId} aria-label={`${title}, ${formatStatusLabel(status)}`} className="mc-focusable flex cursor-pointer list-none items-center justify-between gap-3 rounded text-lg font-semibold text-white">
+                        <summary id={headingId} aria-label={`${title}, ${summary.label}`} className="mc-focusable flex cursor-pointer list-none items-center justify-between gap-3 rounded text-lg font-semibold text-white">
                             <span>{title}</span>
-                            <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium ${timelineClass(status)}`}>
-                                {formatStatusLabel(status)}
+                            <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-medium ${timelineClass(summary.status)}`}>
+                                {summary.label}
                             </span>
                         </summary>
                         {isIssue && (
@@ -373,7 +386,7 @@ function MaintenanceAudit({ audit, returnSearch }: { audit: WorkflowAuditRespons
     </main>;
 }
 
-function normalizeStageStatus(status: string | undefined): "completed" | "current" | "not_reached" | "missing" | "inconsistent" {
+function normalizeStageStatus(status: string | undefined): AuditStageStatus {
     if (status === undefined || status === "not_reached") {
         return "not_reached";
     }
@@ -387,6 +400,52 @@ function normalizeStageStatus(status: string | undefined): "completed" | "curren
         return status;
     }
     return "not_reached";
+}
+
+function preserveTimelineIssue(timelineStatus: AuditStageStatus): AuditStageSummary | null {
+    if (timelineStatus === "missing" || timelineStatus === "inconsistent") {
+        return { label: formatStatusLabel(timelineStatus), status: timelineStatus };
+    }
+    return null;
+}
+
+function verificationPlanSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {
+    const issue = preserveTimelineIssue(timelineStatus);
+    if (issue) return issue;
+    if (!audit.verification.verification_plan_id) return { label: formatStatusLabel(timelineStatus), status: timelineStatus };
+    return audit.verification.verification_evidence_id
+        ? { label: "Completed", status: "completed" }
+        : { label: "Plan ready", status: "current" };
+}
+
+function verificationApprovalSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {
+    const issue = preserveTimelineIssue(timelineStatus);
+    if (issue) return issue;
+    switch (audit.approvals.verification.status) {
+        case "approved": return { label: "Approved", status: "completed" };
+        case "pending": return { label: "Needs approval", status: "current" };
+        case "rejected": return { label: "Rejected", status: "failed" };
+        case "not_requested": return { label: "Not requested", status: "not_reached" };
+        default: return { label: "Status unavailable", status: "not_reached" };
+    }
+}
+
+function verificationResultsSummary(audit: WorkflowAuditResponse, timelineStatus: AuditStageStatus): AuditStageSummary {
+    const issue = preserveTimelineIssue(timelineStatus);
+    if (issue) return issue;
+    if (audit.verification.verification_evidence_id) {
+        const result = audit.verification.verification_status;
+        if (result === "passed") return { label: "Passed", status: "completed" };
+        if (result === "failed" || result === "timed_out" || result === "launch_failed") {
+            return { label: "Failed", status: "failed" };
+        }
+        return { label: "Status unavailable", status: "not_reached" };
+    }
+    if (audit.workflow_state === "verifying") return { label: "Running", status: "current" };
+    if (audit.workflow_state === "awaiting_verification_approval" || audit.workflow_state === "patch_applied_pending_verification") {
+        return { label: "Waiting for approval", status: "current" };
+    }
+    return { label: formatStatusLabel(timelineStatus), status: timelineStatus };
 }
 
 function findStageStatus(
@@ -419,9 +478,10 @@ function Detail({ label, value }: { label: string; value: ReactNode }) {
     );
 }
 
-function timelineClass(status: "completed" | "current" | "not_reached" | "missing" | "inconsistent") {
+function timelineClass(status: AuditStageSummary["status"]) {
     if (status === "completed") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
     if (status === "current") return "border-blue-400 bg-blue-500/10 text-blue-200";
+    if (status === "failed") return "border-red-500/30 bg-red-500/10 text-red-100";
     if (status === "inconsistent") return "border-amber-500/30 bg-amber-500/10 text-amber-100";
     if (status === "missing") return "border-red-500/30 bg-red-500/10 text-red-100";
     return "border-slate-800 bg-slate-950/50 text-slate-500";
