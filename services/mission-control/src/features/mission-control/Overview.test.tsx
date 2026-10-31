@@ -193,6 +193,17 @@ describe("MC overview evidence", () => {
         expect(screen.getByRole("region", { name: "Service checks" })).toHaveAttribute("id", "service-checks");
     });
 
+    it("hides the unavailable-service explanation when all configured services are healthy", () => {
+        show({ health: { data: { atlas: "healthy", services: {
+            iFileshare: { status: "healthy" },
+            PhotoShare: { status: "healthy" },
+        } } } });
+
+        expect(within(screen.getByRole("region", { name: "Service checks" })).queryByText(
+            "An unavailable service did not respond to Atlas Core. It might still be running on its own computer.",
+        )).not.toBeInTheDocument();
+    });
+
     it("makes a responding service's unexpected HTTP status clear in the summary", () => {
         show({ health: { data: { services: { iFileshare: {
             provider_id: "ifileshare",

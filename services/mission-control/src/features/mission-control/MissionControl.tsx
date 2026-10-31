@@ -223,6 +223,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     const health = record(evidence.health?.data);
     const services = Object.entries(record(health.services)).sort((a, b) =>
         healthPriority(record(a[1]).status) - healthPriority(record(b[1]).status));
+    const hasUnavailableService = services.some(([, service]) => status(record(service).status) === "unavailable");
     const providers = rows(evidence.providers?.data).sort((a, b) =>
         Number(status(record(a.health).status) === "healthy") - Number(status(record(b.health).status) === "healthy"));
     const workflows = rows(record(evidence.workflows?.data).items);
@@ -324,7 +325,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 </details>
             </Card>
             <Card id="service-checks" title="Service checks" evidence={evidence.health} loading={loading}>
-                <p>An unavailable service did not respond to Atlas Core. It might still be running on its own computer.</p>
+                {hasUnavailableService && <p>An unavailable service did not respond to Atlas Core. It might still be running on its own computer.</p>}
                 {services.length === 0 && loading && evidence.health?.data === undefined && <p>Checking configured services…</p>}
                 {services.length === 0 && evidence.health?.data !== undefined && <ObservedStatus value={null} reason={serviceChecksKnown ? "No configured service checks were reported." : "Service check details are unavailable."} stale={evidence.health.stale} />}
                 {displayedServices.length > 0 && <ul aria-label="Configured service checks" className="space-y-3">{displayedServices.map(([name, raw]) => <li key={name}>

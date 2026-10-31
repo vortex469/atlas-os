@@ -4320,12 +4320,13 @@ empty-versus-failed distinction; Mission Control lint and build pass.
 ## Service reachability explanation — 2026-10-31
 
 The Overview now explains once that an unavailable service did not respond to
-Atlas Core and may still be running on its own computer. Repeating the same
-warning beneath every unavailable service has been removed; the individual
-service checks and troubleshooting steps remain available. The focused
-Overview suite passes 81 tests; Mission Control lint and production build
-pass. This changes presentation only; health probes and status rules are
-unchanged.
+Atlas Core and may still be running on its own computer. That note appears only
+when at least one service is unavailable, so healthy systems do not show an
+irrelevant warning. Repeating the same warning beneath every unavailable
+service has been removed; the individual service checks and troubleshooting
+steps remain available. The focused Overview suite passes 82 tests; Mission
+Control lint and production build pass. This changes presentation only; health
+probes and status rules are unchanged.
 
 ## AI provider model-list wording — 2026-10-31
 
