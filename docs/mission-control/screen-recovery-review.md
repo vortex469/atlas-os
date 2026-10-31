@@ -4438,3 +4438,9 @@ workflows already loaded. Its auto-refresh note explains that loading older
 workflows pauses automatic checks, and that Refresh returns to the newest 200
 so running workflows can update again. This changes presentation only;
 pagination and refresh behavior are unchanged.
+
+## Workflow detail refresh wording — 2026-10-31
+
+The running-work notice now says that the page's buttons are briefly disabled
+during an automatic status check. It no longer suggests that the running work
+itself pauses. Approval and execution behavior are unchanged.

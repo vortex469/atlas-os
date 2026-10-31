@@ -489,7 +489,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                             ? "Review the exact maintenance request below. Approval and running it are separate steps."
                             : "Each change, check and commit needs its own approval. After approval, choose the matching action to continue."}
                     </p>
-                    {autoRefreshEnabled && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.</p>}
+                    {autoRefreshEnabled && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">When work is running, Atlas checks its status every 5 seconds. Buttons are briefly disabled during each check.</p>}
                 </div>
                 {isRepository && <WorkflowRail workflow={workflow} />}
             </header>

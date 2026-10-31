@@ -29,7 +29,7 @@ for (const width of [320, 1280]) {
         await expect(page.getByRole("region", { name: "Change progress" }).getByRole("status"))
             .toHaveText("The change is applied. Atlas is checking it against the approved checks.");
         await expect(page.getByText(
-            "When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.",
+            "When work is running, Atlas checks its status every 5 seconds. Buttons are briefly disabled during each check.",
             { exact: true },
         )).toBeVisible();
         await expect(page.getByText(

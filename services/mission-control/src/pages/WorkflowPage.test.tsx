@@ -351,7 +351,7 @@ describe("WorkflowPage", () => {
             try {
                 await act(async () => {});
                 expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
-                expect(screen.getByText("When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.")).toBeVisible();
+                expect(screen.getByText("When work is running, Atlas checks its status every 5 seconds. Buttons are briefly disabled during each check.")).toBeVisible();
                 await act(async () => vi.advanceTimersByTime(5_000));
                 expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
                 expect(screen.getByText("Checking current workflow status. Approval and action buttons are unavailable until this check finishes.")).toBeVisible();
@@ -361,7 +361,7 @@ describe("WorkflowPage", () => {
                 await act(async () => vi.advanceTimersByTime(5_000));
                 expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(3);
                 expect(screen.getByRole("button", { name: "Approve Verification" })).toBeEnabled();
-                expect(screen.queryByText("When work is running, Atlas checks this workflow every 5 seconds. Workflow actions pause while each check finishes.")).not.toBeInTheDocument();
+                expect(screen.queryByText("When work is running, Atlas checks its status every 5 seconds. Buttons are briefly disabled during each check.")).not.toBeInTheDocument();
                 expect(mockedResumeWorkflow).not.toHaveBeenCalled();
             } finally {
                 view.unmount();
