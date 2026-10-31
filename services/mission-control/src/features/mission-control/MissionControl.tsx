@@ -89,7 +89,7 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
                 <div role="group" aria-label="Next connection check" className="mt-2 rounded-lg border border-mc-border-subtle bg-mc-surface-muted p-3 text-sm text-mc-text-secondary">
                     <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm">
                         <li>
-                            <p>On Atlas&apos;s Docker host, use this read-only command. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If no matching row appears, this host does not show Atlas Core; if the row says Exited, the container is stopped.</p>
+                            <p>On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.</p>
                             <div role="group" aria-label="Atlas container status command" className="mt-1 rounded border border-mc-border-subtle bg-mc-surface p-2">
                                 <div className="flex flex-wrap items-start gap-2">
                                     <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-mc-text-primary">{serviceContainerCheckCommand}</pre>
@@ -97,7 +97,7 @@ function ServiceCheckLocation({ service, name }: { service: unknown; name: unkno
                                 </div>
                             </div>
                         </li>
-                        <li>Open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}; running it on the computer where {serviceName} runs does not test this path.</li>
+                        <li>On that same computer, open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}. Running it on the service computer checks a different connection.</li>
                     </ol>
                     <p className={address ? "mt-1 break-all font-mono text-mc-text-primary" : "mt-1 text-mc-text-primary"}>{address ?? "Configured service address not reported"}</p>
                     {command && <>

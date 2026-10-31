@@ -177,7 +177,7 @@ export function ServiceDetailsDrawer({
                             <div className="mt-2">
                                 <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm text-slate-400">
                                     <li>
-                                        <p>On Atlas&apos;s Docker host, use this read-only command. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If no matching row appears, this host does not show Atlas Core; if the row says Exited, the container is stopped.</p>
+                                        <p>On the computer that runs Atlas Core, use this read-only command. If Atlas and the service are on different computers, use the Atlas computer. Look for <code>atlas-core</code> in Names and <code>Up</code> in Status. If there is no matching row, this computer does not run the container; if it says Exited, the container is stopped.</p>
                                         <div role="group" aria-label="Atlas container status command" className="mt-1 rounded border border-slate-800 bg-slate-900 p-2">
                                             <div className="flex flex-wrap items-start gap-2">
                                                 <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 text-slate-200">{serviceContainerCheckCommand}</pre>
@@ -185,7 +185,7 @@ export function ServiceDetailsDrawer({
                                             </div>
                                         </div>
                                     </li>
-                                    <li>Open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}; running it on the computer where {serviceName} runs does not test this path.</li>
+                                    <li>On that same computer, open Atlas&apos;s Compose folder—the folder containing <code>compose.production.yaml</code>—and run this read-only command. It checks whether Atlas Core can reach {serviceName}. Running it on the service computer checks a different connection.</li>
                                 </ol>
                                 {reachabilityCommand ? (
                                     <div role="group" aria-label="Read-only Core connection check command" className="mt-2 rounded border border-slate-800 bg-slate-900 p-3">
