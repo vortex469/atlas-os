@@ -185,6 +185,19 @@ describe("MC overview evidence", () => {
         expect(screen.getByRole("region", { name: "Service checks" })).toHaveAttribute("id", "service-checks");
     });
 
+    it("makes a responding service's unexpected HTTP status clear in the summary", () => {
+        show({ health: { data: { services: { iFileshare: {
+            provider_id: "ifileshare",
+            status: "degraded",
+            http_status: 503,
+            message: "Service returned an unexpected status.",
+        } } } } });
+
+        const explanation = "The service answered HTTP 503, but Atlas Core does not count that response as healthy.";
+        expect(within(screen.getByRole("region", { name: "Service checks" })).getByText(explanation)).toBeVisible();
+        expect(within(screen.getByRole("region", { name: "Needs attention" })).getByText(explanation)).toBeVisible();
+    });
+
     it("routes service-sourced findings to service checks instead of provider details", () => {
         show({
             health: { data: { services: { iFileshare: {

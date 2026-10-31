@@ -139,6 +139,16 @@ function formatHttpStatus(value: unknown): string | null {
         ? String(value) : null;
 }
 
+function serviceStatusReason(service: unknown): string {
+    const evidence = record(service);
+    const httpStatus = formatHttpStatus(evidence.http_status);
+    if (status(evidence.status) === "degraded" && httpStatus !== null
+        && Number(httpStatus) >= 400) {
+        return `The service answered HTTP ${httpStatus}, but Atlas Core does not count that response as healthy.`;
+    }
+    return safeText(evidence.message);
+}
+
 function formatHealthCheckAddress(value: unknown): string | null {
     if (typeof value !== "string" || !value.trim()) return null;
     try {
@@ -295,7 +305,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
     // One row per authoritative source condition. Do not synthesize alerts from counts.
     const attention: AttentionItem[] = [
         ...services.filter(([, raw]) => ["degraded", "unavailable", "blocked"].includes(status(record(raw).status))).map(([name, raw]) => ({
-            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: safeText(record(raw).message), state: record(raw).status, to: "#service-checks", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
+            key: conditionKey(record(raw).provider_id || name, record(raw).message), label: safeText(name), reason: serviceStatusReason(raw), state: record(raw).status, to: "#service-checks", stale: evidence.health?.stale, unavailableLabel: "Atlas Core could not connect",
         })),
         ...providers.filter(p => ["degraded", "unavailable", "blocked"].includes(status(record(p.health).status))).map(p => ({
             key: conditionKey(p.id, record(p.health).message), label: safeText(p.name), reason: safeText(record(p.health).message), state: record(p.health).status, to: providerDetailPath(p.id) ?? "#providers", stale: evidence.providers?.stale,
@@ -370,7 +380,7 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                     <p>{safeText(name)}</p>
                     <ObservedStatus
                         value={record(raw).status}
-                        reason={record(raw).message}
+                        reason={serviceStatusReason(raw)}
                         stale={evidence.health?.stale}
                         unavailableLabel="Atlas Core could not connect"
                     />

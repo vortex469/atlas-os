@@ -4119,3 +4119,12 @@ pass 87 tests, and the full Mission Control unit suite passes 3,055 tests
 across 188 files. The iFileshare browser journey passes at 320px and 1280px.
 Mission Control lint and build pass. This is guidance-only; it does not alter
 health probes, backend behavior, or production acceptance.
+
+## Service check HTTP response clarity — 2026-10-31
+
+When a service answers with an unexpected HTTP 4xx or 5xx response, the Overview
+now says that the service answered and shows the response code. This
+distinguishes a reachable service with an unhealthy response from a failed
+connection. Health probing and status rules are unchanged. The focused Overview
+suite passes 80 tests; the responsive browser check passes at 320px and 1280px;
+Mission Control lint and production build pass.
