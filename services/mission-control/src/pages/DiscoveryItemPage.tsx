@@ -688,12 +688,12 @@ function CompatibilityPanel({
                                                     {compatibilityStatusLabel(finding.status)}
                                                 </span>
                                             </div>
-                                            <p className="mt-2 text-sm text-slate-300">{finding.message}</p>
+                                            <p className="mt-2 text-sm text-slate-300">{safeText(finding.message) || "No additional details were returned."}</p>
                                             <details className="mt-3 border-t border-slate-800 pt-2">
                                                 <summary className="mc-focusable cursor-pointer text-xs font-medium text-slate-400">Evidence details</summary>
                                                 <div className="mt-2 space-y-2 text-xs text-slate-400">
-                                                    <p>Finding code: {finding.id}</p>
-                                                    <p>Checked field: {finding.subject}</p>
+                                                    <p>Finding code: {safeText(finding.id) || "Not reported"}</p>
+                                                    <p>Checked field: {safeText(finding.subject) || "Not reported"}</p>
                                                     {finding.evidence_ids.length > 0 ? (
                                                         <ul className="space-y-2">
                                                             {finding.evidence_ids.map((evidenceId) => {
@@ -705,12 +705,12 @@ function CompatibilityPanel({
                                                                     >
                                                                         {evidence ? (
                                                                             <div>
-                                                                                <p>Evidence {evidence.id}</p>
-                                                                                <p>Source: {evidence.source}</p>
-                                                                                <p>Message: {evidence.message}</p>
+                                                                                <p>Evidence {safeText(evidence.id) || "record"}</p>
+                                                                                <p>Source: {safeText(evidence.source) || "Not reported"}</p>
+                                                                                <p>Message: {safeText(evidence.message) || "No additional details were returned."}</p>
                                                                             </div>
                                                                         ) : (
-                                                                            <p>Evidence {evidenceId}</p>
+                                                                            <p>Evidence {safeText(evidenceId) || "record"}</p>
                                                                         )}
                                                                     </li>
                                                                 );

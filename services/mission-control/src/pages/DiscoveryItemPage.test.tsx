@@ -789,6 +789,40 @@ describe("DiscoveryItemPage", () => {
         expect(within(technicalDetails as HTMLDetailsElement).getByText("Checked field: requirements.resources.memory_mb_min")).toBeVisible();
     });
 
+    it("withholds credentials and URLs from findings and expanded evidence", async () => {
+        const base = compatibilityAssessment();
+        mockedGetDiscoveryCompatibility.mockResolvedValue(compatibilityAssessment({
+            findings: [{
+                ...base.findings[0],
+                id: "token=finding-id-secret",
+                subject: "authorization header",
+                message: "Bearer compatibility-finding-secret",
+                evidence_ids: ["secret=evidence-id-secret"],
+            }],
+            evidence: [{
+                ...base.evidence[0],
+                id: "secret=evidence-id-secret",
+                source: "https://operator:secret@example.test/private?token=hidden",
+                message: "password=compatibility-evidence-secret",
+            }],
+        }));
+
+        renderPage();
+
+        const placeholders = await screen.findAllByText("[Sensitive text withheld]", { exact: true });
+        expect(placeholders.length).toBeGreaterThan(0);
+        expect(document.body.textContent).not.toMatch(/compatibility-finding-secret|operator:secret|token=hidden|compatibility-evidence-secret/);
+
+        const technicalDetails = screen.getByText("Evidence details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await userEvent.setup().click(within(technicalDetails as HTMLDetailsElement).getByText("Evidence details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Finding code: [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Checked field: [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Evidence [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Source: [Sensitive text withheld]", { exact: true })).toBeVisible();
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("Message: [Sensitive text withheld]", { exact: true })).toBeVisible();
+    });
+
     it("renders compatibility loading state independently", async () => {
         let compatibilityPromise: Promise<DiscoveryCompatibilityAssessment> | undefined;
         let resolveCompatibility: ((value: DiscoveryCompatibilityAssessment) => void) | undefined;
