@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatServiceCheckAddress, serviceListeningPortCommand, serviceReachabilityCommand } from "./serviceReachabilityCommand";
+import {
+    formatServiceCheckAddress,
+    serviceComputerReachabilityCommand,
+    serviceListeningPortCommand,
+    serviceReachabilityCommand,
+} from "./serviceReachabilityCommand";
 
 describe("formatServiceCheckAddress", () => {
     it("shows the checked address without credentials or query values", () => {
@@ -30,6 +35,33 @@ describe("serviceListeningPortCommand", () => {
     it.each([undefined, null, "", "not a URL", "file:///etc/passwd", "http://example.test:70000/"])(
         "does not produce a command for an invalid or non-HTTP address (%s)",
         value => expect(serviceListeningPortCommand(value)).toBeNull(),
+    );
+});
+
+describe("serviceComputerReachabilityCommand", () => {
+    it("builds a bounded read-only HTTP check for the service computer", () => {
+        expect(serviceComputerReachabilityCommand("http://10.10.60.30:8080/"))
+            .toBe("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
+    });
+
+    it("omits credentials, query values, and fragments", () => {
+        const command = serviceComputerReachabilityCommand(
+            "https://operator:private@example.test:8443/health?token=secret#private",
+        );
+
+        expect(command).toContain("'https://example.test:8443/health'");
+        expect(command).not.toMatch(/operator|private|secret|token=/);
+    });
+
+    it("shell-quotes URLs containing single quotes", () => {
+        const command = serviceComputerReachabilityCommand("http://example.test/owner's-health");
+
+        expect(command).toContain("'http://example.test/owner'\"'\"'s-health'");
+    });
+
+    it.each([undefined, null, "", "not a URL", "file:///etc/passwd", "http://example.test:70000/"])(
+        "does not produce a command for an invalid or non-HTTP address (%s)",
+        value => expect(serviceComputerReachabilityCommand(value)).toBeNull(),
     );
 });
 

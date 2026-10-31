@@ -4360,9 +4360,10 @@ pass. Workflow reads and approval behavior are unchanged.
 
 The Overview and service details now put the local service-computer check before
 the Atlas Core connection check. Each label names the service, and the local
-instructions say that checking its container or listening port does not prove
-Atlas Core can reach it. A connection-refused next step also names the computer
-running the service. The existing checks remain read-only and the probe and
-network behavior are unchanged. Focused Overview and service-details suites
-pass 90 tests; Overview and system-health browser checks pass 35 cases at mobile
+instructions offer a bounded HTTP check of the configured address, then explain
+that a local response does not prove Atlas Core can reach it. The command omits
+credentials and query values. A connection-refused next step also names the
+computer running the service. Existing probes and network behavior are
+unchanged. Focused service-command, Overview, and service-details suites pass
+123 tests; Overview and system-health browser checks pass 35 cases at mobile
 and desktop widths; Mission Control lint and production build pass.

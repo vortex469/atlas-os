@@ -1,12 +1,25 @@
 import { CopyCommandButton } from "./CopyCommandButton";
-import { serviceContainerCheckCommand, serviceListeningPortCommand } from "../utils/serviceReachabilityCommand";
+import {
+    serviceComputerReachabilityCommand,
+    serviceContainerCheckCommand,
+    serviceListeningPortCommand,
+} from "../utils/serviceReachabilityCommand";
 import { safeText } from "../utils/safeText";
 
 export function ServiceComputerChecks({ address, serviceName }: { address: unknown; serviceName: unknown }) {
+    const reachabilityCommand = serviceComputerReachabilityCommand(address);
     const listeningPortCommand = serviceListeningPortCommand(address);
     const name = safeText(serviceName) || "the service";
     return <>
         <p className="text-sm leading-6 text-mc-text-secondary">These checks run on the computer that runs {name}. They show whether the app is running locally; they do not test whether Atlas Core can reach it. If the app runs directly on this computer, check its own status and listening port.</p>
+        {reachabilityCommand && <div className="space-y-1 pt-1 text-sm leading-6 text-mc-text-secondary">
+            <p>Check whether the app answers at the address Atlas uses:</p>
+            <div role="group" aria-label="Service computer HTTP check command" className="flex flex-wrap items-start gap-2 rounded border border-slate-800 bg-slate-900 p-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-xs text-slate-200">{reachabilityCommand}</code>
+                <CopyCommandButton command={reachabilityCommand} />
+            </div>
+            <p>Any HTTP status means the app answered from this computer. HTTP 000 or a curl error means no response. This check does not test the connection from Atlas Core.</p>
+        </div>}
         {listeningPortCommand && <div className="space-y-1 pt-1 text-sm leading-6 text-mc-text-secondary">
             <p>On a Linux computer that runs {name}, run this read-only check for the configured port:</p>
             <div role="group" aria-label="Service computer listening-port command" className="flex flex-wrap items-start gap-2 rounded border border-slate-800 bg-slate-900 p-2">

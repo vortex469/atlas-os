@@ -257,6 +257,9 @@ describe("ServiceHealthSection", () => {
         const serviceComputer = within(dialog).getByText("Check iFileshare on the computer where it runs").closest("details");
         expect(serviceComputer).not.toHaveAttribute("open");
         fireEvent.click(within(serviceComputer as HTMLDetailsElement).getByText("Check iFileshare on the computer where it runs"));
+        const localHttpCheck = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer HTTP check command" });
+        expect(localHttpCheck).toHaveTextContent("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
+        expect(localHttpCheck).not.toHaveTextContent(/operator|password|private|token=/);
         const listeningPortCommand = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
         expect(listeningPortCommand).toHaveTextContent("ss -ltnp 'sport = :8080'");
         expect(listeningPortCommand).not.toHaveTextContent(/operator|password|private|token=/);

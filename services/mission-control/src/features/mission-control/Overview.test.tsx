@@ -285,6 +285,10 @@ describe("MC overview evidence", () => {
 
         expect(disclosure).toHaveTextContent("http://10.10.60.30:8080/?…");
         expect(disclosure).toHaveTextContent("These checks run on the computer that runs iFileshare. They show whether the app is running locally; they do not test whether Atlas Core can reach it.");
+        const localHttpCheck = within(disclosure as HTMLDetailsElement).getByRole("group", { name: "Service computer HTTP check command" });
+        expect(localHttpCheck).toHaveTextContent("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
+        expect(localHttpCheck).not.toHaveTextContent(/password|private|token=/);
+        expect(disclosure).toHaveTextContent("Any HTTP status means the app answered from this computer. HTTP 000 or a curl error means no response. This check does not test the connection from Atlas Core.");
         const dockerSummary = within(disclosure as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         const dockerSteps = within(disclosure as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
@@ -335,6 +339,27 @@ describe("MC overview evidence", () => {
         expect(writeText).toHaveBeenCalledTimes(1);
         expect(writeText.mock.calls[0][0]).toContain("http://10.10.60.30:8080/");
         expect(writeText.mock.calls[0][0]).not.toMatch(/password|private|token=/);
+    });
+
+    it("copies a bounded service-computer HTTP check without credentials or query values", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        show({ health: { data: { services: { iFileshare: {
+            status: "unavailable",
+            details: { url: "http://operator:password@10.10.60.30:8080/health?token=private" },
+        } } } } });
+        const checks = within(screen.getByRole("region", { name: "Service checks" }));
+        fireEvent.click(checks.getByText("Check iFileshare on the computer where it runs"));
+        const command = checks.getByRole("group", { name: "Service computer HTTP check command" });
+
+        fireEvent.click(within(command).getByRole("button", { name: "Copy command" }));
+
+        expect(await within(command).findByRole("status")).toHaveTextContent("Command copied.");
+        expect(writeText).toHaveBeenCalledWith("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/health'");
+        expect(writeText.mock.calls[0][0]).not.toMatch(/operator|password|private|token=/);
     });
 
     it("copies the read-only command for finding the Atlas Core container", async () => {

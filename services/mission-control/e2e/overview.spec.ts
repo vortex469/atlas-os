@@ -416,6 +416,14 @@ for (const width of [320, 1280]) {
         const moreChecks = checks.locator('summary', { hasText: serviceComputerLabel });
         await moreChecks.click();
         await expect(checks.getByText('These checks run on the computer that runs iFileshare. They show whether the app is running locally; they do not test whether Atlas Core can reach it. If the app runs directly on this computer, check its own status and listening port.', { exact: true })).toBeVisible();
+        const serviceComputerHttpCommand = checks.getByRole('group', { name: 'Service computer HTTP check command' });
+        await expect(serviceComputerHttpCommand).toContainText("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
+        await expect(serviceComputerHttpCommand).not.toContainText(/password|private|token=/);
+        await expect(checks).toContainText('Any HTTP status means the app answered from this computer. HTTP 000 or a curl error means no response. This check does not test the connection from Atlas Core.');
+        await serviceComputerHttpCommand.getByRole('button', { name: 'Copy command' }).click();
+        await expect(serviceComputerHttpCommand.getByRole('status')).toHaveText('Command copied.');
+        const copiedServiceComputerHttpCommand = await page.evaluate(() => navigator.clipboard.readText());
+        expect(copiedServiceComputerHttpCommand).toBe("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
         await expect(checks.getByRole('group', { name: 'Service computer listening-port command' })).toContainText("ss -ltnp 'sport = :8080'");
         await expect(checks).toContainText('A LISTEN row means something is listening on that port. No row means nothing is listening on that port on this computer.');
         const dockerHelp = checks.locator('summary', { hasText: 'If the app runs in Docker' }).locator('xpath=ancestor::details[1]');
