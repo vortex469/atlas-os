@@ -116,8 +116,6 @@ describe("WorkflowDashboardPage", () => {
         expect(screen.getByText("Review the commit. If approved, choose Record approved commit.")).toBeVisible();
         expect(screen.getAllByText("Blocked").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Completed").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Progress")[0]).toBeInTheDocument();
-
         const card = screen.getAllByRole("heading", { name: "Update Compose Stack" })[0].closest("article");
         expect(card).not.toBeNull();
         const details = within(card as HTMLElement);
@@ -127,6 +125,12 @@ describe("WorkflowDashboardPage", () => {
         expect(details.getByText("Review the change. If approved, choose Run approved change.")).toBeVisible();
         expect(details.queryByText("Your approval is needed")).not.toBeInTheDocument();
         expect(details.queryByText("Current State")).not.toBeInTheDocument();
+        const progressDisclosure = details.getByText("Progress stages", { exact: true });
+        const progressDetails = progressDisclosure.closest("details");
+        expect(progressDetails).not.toHaveAttribute("open");
+        fireEvent.click(progressDisclosure);
+        expect(progressDetails).toHaveAttribute("open");
+        expect(details.getByRole("list", { name: "Progress" })).toBeVisible();
         const disclosure = details.getByText("Workflow details", { exact: true });
         expect(disclosure.closest("details")).not.toHaveAttribute("open");
         expect(details.getByText("Workflow ID", { exact: true })).not.toBeVisible();

@@ -523,10 +523,13 @@ function WorkflowCard({ workflow, search }: { workflow: WorkflowSummary; search:
                     <Detail label="Repository or target" value={workflow.repository || workflow.target_id || "Not available"} />
                 </dl>
             </details>
-            <div className="mt-4">
-                <h4 id={railId} className="mb-2 text-sm font-semibold text-slate-200">Progress</h4>
-                <WorkflowMiniRail labelledBy={railId} stages={workflowRailStages(workflow)} />
-            </div>
+            <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
+                <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">Progress stages</summary>
+                <div className="mt-3">
+                    <h4 id={railId} className="sr-only">Progress</h4>
+                    <WorkflowMiniRail labelledBy={railId} stages={workflowRailStages(workflow)} />
+                </div>
+            </details>
         </article>
     );
 }

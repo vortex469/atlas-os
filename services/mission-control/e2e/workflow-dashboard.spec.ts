@@ -31,6 +31,13 @@ for (const width of [320, 390, 1280]) {
         await expect(card.getByText("Review the change. If approved, choose Run approved change.", { exact: true })).toBeVisible();
         await expect(card.getByText("Your approval is needed", { exact: true })).toHaveCount(0);
         await expect(card.getByText("Current State", { exact: true })).toHaveCount(0);
+        const progressSummary = card.getByText("Progress stages", { exact: true });
+        const progressDisclosure = progressSummary.locator("xpath=ancestor::details[1]");
+        const progressRail = progressDisclosure.locator("ol");
+        await expect(progressDisclosure).not.toHaveAttribute("open", "");
+        await expect(progressRail).toBeHidden();
+        await progressSummary.click();
+        await expect(progressRail).toBeVisible();
         await expect(card.getByText("Workflow ID", { exact: true })).toBeHidden();
         await expect(card.getByText("workflow-browser-baseline", { exact: true })).toBeHidden();
         await expect(card.getByText("Candidate ID", { exact: true })).toBeHidden();

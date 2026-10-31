@@ -9,7 +9,7 @@ const provider = (id: string, status: unknown) => ({ id, name: id, health: { sta
 function show(evidence: OverviewEvidence, loading = false) {
     return render(<MemoryRouter><Overview evidence={evidence} loading={loading} /></MemoryRouter>);
 }
-const registry = () => within(screen.getByRole("region", { name: "Providers" }));
+const registry = () => within(screen.getByRole("region", { name: "Configured providers" }));
 function openAgentDetails() {
     const health = within(screen.getByRole("region", { name: "System health" }));
     const summary = health.getByText("Agent name and version", { exact: true });

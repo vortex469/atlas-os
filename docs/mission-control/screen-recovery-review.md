@@ -4548,3 +4548,23 @@ details remain visible after opening the disclosure. No API, health, provider,
 approval, or execution behavior changed. All 3,109 Mission Control component
 tests and 51 selected browser checks pass; lint and the production build pass.
 Browser checks use controlled fixtures and do not validate a live backend.
+
+## Dashboard provider card labels — 2026-10-31
+
+The dashboard now labels the AI health card “AI service” and its separate
+registry card “Configured providers,” so the two sources are easy to distinguish.
+Loading and unavailable messages use the same AI service wording. No provider
+status, API, approval, or execution behavior changed. The focused component
+suite passes 124 tests and the overview/app-shell browser checks pass 46 cases;
+lint and production build pass. Browser checks use controlled fixtures.
+
+## Workflow progress disclosure — 2026-10-31
+
+Workflow cards now keep the current stage, latest result, and next step in view
+while the eight-stage progress rail sits in a closed “Progress stages” disclosure.
+The rail remains accessible after opening it. This removes repeated “not
+started” stages from the default card view on phones without removing progress
+details. Approval, execution, and workflow status behavior are unchanged.
+The dashboard unit suite passes 24 tests, the workflow browser suite passes 21
+checks at phone and desktop widths, lint and the production build pass. Browser
+checks use controlled fixtures.

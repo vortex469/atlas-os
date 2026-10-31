@@ -505,7 +505,7 @@ describe("MC overview evidence", () => {
     it.each([['healthy','healthy'], ['online','healthy'], ['warning','degraded'], ['critical','degraded'], ['offline','unavailable'], ['blocked','blocked'], ['idle','unknown'], ['executing','unknown'], [null,'unknown'], [{},'unknown'], [true,'unknown']])("maps %s without granting authority", (input, expected) => expect(status(input)).toBe(expected));
     it("keeps five operational cards and unknown evidence visible", () => {
         show();
-        for (const name of ['System health','Service checks','Work activity','AI provider','Providers','Needs attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
+        for (const name of ['System health','Service checks','Work activity','AI service','Configured providers','Needs attention','Recent provider actions']) expect(screen.getByRole('region', { name })).toBeInTheDocument();
         const health = within(screen.getByRole('region', { name: 'System health' }));
         const agentDetails = health.getByText('Agent name and version', { exact: true });
         expect(agentDetails.parentElement).not.toHaveAttribute('open');
@@ -646,7 +646,7 @@ describe("MC overview evidence", () => {
     });
     it.each(['healthy','unavailable','unknown'])('shows configured AI %s without asserting locality', (value) => {
         show({ ai: { data: { provider: { id: 'runtime', name: 'Runtime' }, health: { status: value } } } });
-        const card = screen.getByRole('region', { name: 'AI provider' });
+        const card = screen.getByRole('region', { name: 'AI service' });
         const label = value === "unknown" ? "Status unknown" : value[0].toUpperCase() + value.slice(1);
         expect(within(card).getAllByText(label).length).toBeGreaterThan(0);
         expect(within(card).getByText(/Atlas doesn’t report where this provider runs/)).toBeInTheDocument();
@@ -742,7 +742,7 @@ describe('overview fail-closed regressions', () => {
     });
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
-        const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
+        const runtime = within(screen.getByRole('region', { name: 'AI service' }));
         expect(runtime.getByText('Atlas doesn’t report where this provider runs. Its model list doesn’t show which model Atlas will use or whether it can answer requests.')).toBeVisible();
         expect(runtime.getByText('Configured provider: Not reported')).toBeInTheDocument();
     });
@@ -786,8 +786,8 @@ it('routes provider warnings without safe detail ids to their overview cards', (
     const attention = within(screen.getByRole('region', { name: 'Needs attention' }));
     expect(attention.getByRole('link', { name: 'Legacy provider' })).toHaveAttribute('href', '#providers');
     expect(attention.getByRole('link', { name: 'Configured AI' })).toHaveAttribute('href', '#ai-provider');
-    expect(screen.getByRole('region', { name: 'Providers' })).toHaveAttribute('id', 'providers');
-    expect(screen.getByRole('region', { name: 'AI provider' })).toHaveAttribute('id', 'ai-provider');
+    expect(screen.getByRole('region', { name: 'Configured providers' })).toHaveAttribute('id', 'providers');
+    expect(screen.getByRole('region', { name: 'AI service' })).toHaveAttribute('id', 'ai-provider');
 });
 
 it('deduplicates configured AI and provider evidence and preserves freshness', () => {
@@ -823,7 +823,7 @@ it('surfaces incomplete attention evidence and rejects uninspectable activity', 
 
 it('keeps a troubled provider visible ahead of routine healthy providers', () => {
     show({ providers: { data: [...Array.from({ length: 4 }, (_, i) => ({ id: String(i), name: `Healthy ${i}`, health: { status: 'healthy' } })), { id: 'offline', name: 'Offline provider', health: { status: 'offline', message: 'Connection failed' } }] } });
-    const card = within(screen.getByRole('region', { name: 'Providers' }));
+    const card = within(screen.getByRole('region', { name: 'Configured providers' }));
     expect(card.getByRole('link', { name: 'View Offline provider →' })).toBeInTheDocument();
     expect(card.getByText('Connection failed')).toBeInTheDocument();
 });

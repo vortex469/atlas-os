@@ -13,7 +13,7 @@ const data = (status = "online") => ({
 });
 function show(ai?: Evidence, loading = false) {
     render(<MemoryRouter><Overview evidence={{ ai }} loading={loading} /></MemoryRouter>);
-    return within(screen.getByRole("region", { name: "AI provider" }));
+    return within(screen.getByRole("region", { name: "AI service" }));
 }
 
 describe("integrated Local AI runtime observations", () => {
@@ -37,7 +37,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("shows a clear empty state when no provider report is available", () => {
         const card = show({ data: undefined });
-        expect(card.getByText("AI provider status is not available.")).toBeInTheDocument();
+        expect(card.getByText("AI service status is not available.")).toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
     });
     it.each([null, [], {}, { provider: { online: true } }, { health: [], models: { installed: [null], running: {} } }])("keeps malformed provider evidence unknown: %j", value => {
@@ -73,7 +73,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("distinguishes observation failure from runtime offline", () => {
         const card = show({ unavailable: true });
-        expect(card.getByText("Atlas couldn't load AI provider status.")).toBeInTheDocument();
+        expect(card.getByText("Atlas couldn't load AI service status.")).toBeInTheDocument();
         expect(card.queryByText("Use Refresh to try again.")).not.toBeInTheDocument();
         expect(card.queryByText("Current information could not be loaded.")).not.toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
@@ -82,7 +82,7 @@ describe("integrated Local AI runtime observations", () => {
     });
     it("shows only a loading message before the first provider report", () => {
         const card = show(undefined, true);
-        expect(card.getByText("Loading AI provider information…")).toBeInTheDocument();
+        expect(card.getByText("Loading AI service information…")).toBeInTheDocument();
         expect(card.queryByText("Unknown", { exact: true })).not.toBeInTheDocument();
         expect(card.queryByText("Configured provider: Not reported")).not.toBeInTheDocument();
     });

@@ -36,7 +36,7 @@ test('overview separates initial loading from unavailable data across dashboard 
     const agentDisclosure = health.getByText('Agent name and version', { exact: true });
     await expect(agentDisclosure.locator('xpath=..')).not.toHaveAttribute('open', '');
     await agentDisclosure.click();
-    const providers = page.getByRole('region', { name: 'Providers' });
+    const providers = page.getByRole('region', { name: 'Configured providers' });
     const healthReports = page.getByRole('region', { name: 'Health reports' });
     try {
         await expect(health.getByText('Loading Agent details…')).toBeVisible();
@@ -79,7 +79,7 @@ test('provider preview summarizes issues and keeps status details collapsed unti
     ] }));
     await page.goto('/');
 
-    const providers = page.getByRole('region', { name: 'Providers', exact: true });
+    const providers = page.getByRole('region', { name: 'Configured providers', exact: true });
     await expect(providers.getByText('Atlas Core reports 5 providers. 3 need attention. 1 status is unknown.')).toBeVisible();
     await expect(providers.getByRole('article', { name: 'Blocked' })).toHaveCount(0);
     await expect(providers.getByText('Show provider status (5)')).toBeVisible();
@@ -104,7 +104,7 @@ test('empty stale provider preview identifies the last Atlas Core report', async
     });
     await page.goto('/');
 
-    const providers = page.getByRole('region', { name: 'Providers', exact: true });
+    const providers = page.getByRole('region', { name: 'Configured providers', exact: true });
     await expect(providers.getByText('No providers configured.')).toBeVisible();
     await page.getByRole('button', { name: 'Refresh', exact: true }).click();
     await expect(providers.getByText('No providers were in the last Atlas Core report; the current list is unknown.')).toBeVisible();
@@ -144,7 +144,7 @@ for (const width of [320, 768, 1440]) {
         await page.getByRole('link', { name: 'Review workflows →' }).click();
         await expect(page).toHaveURL(/\/workflows$/);
         await page.goBack();
-        const providers = page.getByRole('region', { name: 'Providers' });
+        const providers = page.getByRole('region', { name: 'Configured providers' });
         await providers.getByText('Show provider status (1)').click();
         await page.getByRole('link', { name: 'View Proxmox →' }).click();
         await expect(page).toHaveURL(/\/providers\/proxmox$/);
@@ -593,14 +593,14 @@ test('overview puts decisions first and keeps secondary observations keyboard ac
     await expect(workflowId).toBeVisible();
     await attention.getByText('Technical details', { exact: true }).click();
     await expect(attention.getByText('Degraded', { exact: true })).toHaveCount(0);
-    const runtime = page.getByRole('region', { name: 'AI provider' });
-    await expect(runtime.getByText("Atlas couldn't load AI provider status.")).toBeVisible();
+    const runtime = page.getByRole('region', { name: 'AI service' });
+    await expect(runtime.getByText("Atlas couldn't load AI service status.")).toBeVisible();
     await expect(runtime.getByText('Use Refresh to try again.')).toHaveCount(0);
     await expect(runtime.getByText('Current information could not be loaded.', { exact: true })).toHaveCount(0);
     await expect(runtime.getByText('Unknown', { exact: true })).toHaveCount(0);
     await expect(runtime.locator('summary', { hasText: 'Technical details' })).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('dashboard-default.png'), fullPage: true });
-    const providers = page.getByRole('region', { name: 'Providers' });
+    const providers = page.getByRole('region', { name: 'Configured providers' });
     await expect(providers.getByText('Atlas Core reports 1 provider. No providers need attention.')).toBeVisible();
     await expect(providers.getByText(/does not allow provider actions/)).toBeHidden();
     await expect(providers.getByText(/which model an Agent uses/)).toHaveCount(0);

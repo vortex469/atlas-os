@@ -249,8 +249,8 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
         sourceIssue(evidence.summary, "System findings", loading, findingsKnown ? undefined : "finding details are incomplete."),
         sourceIssue(evidence.workflows, "Workflows", loading, workflowKnown ? undefined : "workflow results are incomplete."),
         sourceIssue(evidence.health, "System health", loading, healthStatusesKnown ? undefined : "health details are incomplete."),
-        sourceIssue(evidence.providers, "Providers", loading, providersKnown ? undefined : "provider status details are incomplete."),
-        sourceIssue(evidence.ai, "AI provider", loading, status(aiHealth.status) === "unknown" ? "provider status is unknown." : undefined),
+        sourceIssue(evidence.providers, "Configured providers", loading, providersKnown ? undefined : "provider status details are incomplete."),
+        sourceIssue(evidence.ai, "AI service", loading, status(aiHealth.status) === "unknown" ? "service status is unknown." : undefined),
     ].filter((issue): issue is string => issue !== null);
     const initialAttentionLoad = loading && !attentionSources.some(source =>
         source?.data !== undefined || source?.unavailable === true);
@@ -353,10 +353,10 @@ export function Overview({ evidence, loading = false }: { evidence: OverviewEvid
                 </details>
             </Card>
             <WorkerExecutionSection evidence={evidence.workflows} loading={loading} />
-            <Card id="ai-provider" title="AI provider" evidence={evidence.ai} showSourceNote={evidence.ai?.data !== undefined} loading={loading}>
+            <Card id="ai-provider" title="AI service" evidence={evidence.ai} showSourceNote={evidence.ai?.data !== undefined} loading={loading}>
                 <LocalAiContent evidence={evidence.ai} loading={loading} />
             </Card>
-            <Card id="providers" title="Providers" showSourceNote={false}>
+            <Card id="providers" title="Configured providers" showSourceNote={false}>
                 <ProviderOverviewContent evidence={evidence.providers} loading={loading} />
             </Card>
         </div>
