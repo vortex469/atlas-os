@@ -26,7 +26,7 @@ export function ServiceComputerChecks({ address, serviceName }: { address: unkno
                 <code className="min-w-0 flex-1 break-all font-mono text-xs text-slate-200">{listeningPortCommand}</code>
                 <CopyCommandButton command={listeningPortCommand} />
             </div>
-            <p>A <code>LISTEN</code> row means something is using this port. No row means nothing is using the port. If {name} runs in Docker, also check its published ports below.</p>
+            <p>Read the <code>Local Address:Port</code> column. <code>127.0.0.1:PORT</code> accepts connections only from this computer. <code>0.0.0.0:PORT</code> or this computer&apos;s LAN address can accept connections from other computers if the firewall allows them. A <code>LISTEN</code> row means a program is listening; it does not prove the app responds. No row means nothing is listening on this port. If {name} runs in Docker, also check its published ports below.</p>
         </div>}
         <details className="pt-1">
             <summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">If the app runs in Docker</summary>

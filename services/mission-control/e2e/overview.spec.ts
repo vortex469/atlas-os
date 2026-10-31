@@ -425,7 +425,7 @@ for (const width of [320, 1280]) {
         const copiedServiceComputerHttpCommand = await page.evaluate(() => navigator.clipboard.readText());
         expect(copiedServiceComputerHttpCommand).toBe("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
         await expect(checks.getByRole('group', { name: 'Service computer listening-port command' })).toContainText("ss -ltnp 'sport = :8080'");
-        await expect(checks).toContainText('A LISTEN row means something is using this port. No row means nothing is using the port. If iFileshare runs in Docker, also check its published ports below.');
+        await expect(checks).toContainText('Read the Local Address:Port column. 127.0.0.1:PORT accepts connections only from this computer. 0.0.0.0:PORT or this computer\'s LAN address can accept connections from other computers if the firewall allows them. A LISTEN row means a program is listening; it does not prove the app responds. No row means nothing is listening on this port. If iFileshare runs in Docker, also check its published ports below.');
         const dockerHelp = checks.locator('summary', { hasText: 'If the app runs in Docker' }).locator('xpath=ancestor::details[1]');
         await expect(dockerHelp).not.toHaveAttribute('open', '');
         await dockerHelp.locator('summary').click();

@@ -4504,3 +4504,13 @@ workflows can be reached through the same filter as candidate and manual
 workflows. The focused dashboard tests cover saved-link restoration and the
 visible option (24 unit tests and 21 browser tests across 320px, 390px, and
 1280px); lint and the production build pass.
+
+## Service listener address explanation — 2026-10-31
+
+The service-computer check now explains how to read the listening address:
+`127.0.0.1` accepts connections only from that computer, while a LAN address
+or `0.0.0.0` can accept network connections when routing and the firewall allow
+them. It also clarifies that a listening port does not prove the app responds.
+The configured HTTP check and Docker port instructions remain available. The
+focused service and Overview suites pass 91 tests; the Overview browser suite
+passes all 31 cases, and Mission Control lint and production build pass.

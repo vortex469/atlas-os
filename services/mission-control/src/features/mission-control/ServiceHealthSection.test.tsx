@@ -263,6 +263,8 @@ describe("ServiceHealthSection", () => {
         const listeningPortCommand = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
         expect(listeningPortCommand).toHaveTextContent("ss -ltnp 'sport = :8080'");
         expect(listeningPortCommand).not.toHaveTextContent(/operator|password|private|token=/);
+        expect(serviceComputer).toHaveTextContent("127.0.0.1:PORT accepts connections only from this computer.");
+        expect(serviceComputer).toHaveTextContent("A LISTEN row means a program is listening; it does not prove the app responds.");
         const dockerSummary = within(serviceComputer as HTMLDetailsElement).getByText("If the app runs in Docker");
         expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
         fireEvent.click(dockerSummary);
