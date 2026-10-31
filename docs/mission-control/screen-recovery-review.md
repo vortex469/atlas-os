@@ -4287,3 +4287,12 @@ even when the socket mount is read-only. Connection settings, test behavior,
 and permissions are unchanged. The full Mission Control suite passes 3,094
 tests across 188 files, including the warning and read-only settings case; lint
 and build pass.
+
+## Catalog readiness summary order — 2026-10-31
+
+The catalog item page now shows the compatibility result and item requirements
+directly after the item summary, before installation-plan and release/image
+supporting details. This brings the suitability check forward without changing
+any check, API request, permission, or installation boundary. The focused item
+suite passes 40 tests; responsive browser checks verify the ordering at 390px
+and 1280px. Lint and build pass.

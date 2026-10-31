@@ -500,19 +500,15 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 </InfoPanel>
             </section>
 
-            <DiscoveryEvidencePanel
-                evidence={evidence}
-                isLoading={evidenceLoading}
-                error={evidenceError}
-                onRetry={retrySourceEvidence}
+            <CompatibilityPanel
+                compatibility={compatibility}
+                compatibilityLoading={compatibilityLoading}
+                compatibilityError={compatibilityError}
+                targetItemId={itemId}
+                onRetry={loadCompatibility}
             />
 
-            <DiscoveryImageGroundingPanel
-                projection={imageGrounding}
-                isLoading={imageGroundingLoading}
-                errorKind={imageGroundingError}
-                onRetry={retryImageGrounding}
-            />
+            <RequirementsPanel requirements={item.requirements} />
 
             <InstallationPlanReview
                 plan={currentInstallationPlan.plan}
@@ -521,14 +517,6 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 notFound={currentInstallationPlan.notFound}
                 onRetry={retryInstallationPlan}
                 csrfToken={operatorSession?.csrfToken ?? null}
-            />
-
-            <CompatibilityPanel
-                compatibility={compatibility}
-                compatibilityLoading={compatibilityLoading}
-                compatibilityError={compatibilityError}
-                targetItemId={itemId}
-                onRetry={loadCompatibility}
             />
 
             <section aria-labelledby="discovery-proposals-heading" className="space-y-4">
@@ -542,7 +530,19 @@ function DiscoveryItem({ itemId }: { itemId: string }) {
                 {proposals.map((proposal) => <DiscoveryProposalCard key={proposal.proposal_id} proposal={proposal} returnSearch={location.search} />)}
             </section>
 
-            <RequirementsPanel requirements={item.requirements} />
+            <DiscoveryEvidencePanel
+                evidence={evidence}
+                isLoading={evidenceLoading}
+                error={evidenceError}
+                onRetry={retrySourceEvidence}
+            />
+
+            <DiscoveryImageGroundingPanel
+                projection={imageGrounding}
+                isLoading={imageGroundingLoading}
+                errorKind={imageGroundingError}
+                onRetry={retryImageGrounding}
+            />
 
             <section aria-label="Catalog relationships">
                 {relationshipsLoading && <p role="status" className="text-sm text-slate-400">Loading catalog relationships…</p>}

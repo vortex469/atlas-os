@@ -467,8 +467,16 @@ for (const width of [320, 390, 1280]) {
 
 for (const width of [390, 1280]) {
     test(`compatibility findings use clear labels and keep references optional at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        const baseEntry = discoveryItemsPage.entries[0];
         const entry = {
-            ...discoveryItemsPage.entries[0],
+            ...baseEntry,
+            item: {
+                ...baseEntry.item,
+                requirements: {
+                    ...baseEntry.item.requirements,
+                    resources: { ...baseEntry.item.requirements.resources, memory_mb_min: 4096 },
+                },
+            },
             metadata: { reviewed_for_d5: true, catalog_notes: ["Hardware acceleration is optional."] },
         };
         const checkedAt = "2026-10-28T12:00:00.000Z";
@@ -528,6 +536,7 @@ for (const width of [390, 1280]) {
         await expect(page).toHaveTitle("Catalog item details | Atlas Mission Control");
         const itemHeader = page.getByRole("heading", { name: "Fixture Application" }).locator("xpath=..");
         await expect(page.getByRole("heading", { name: "What it supports" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "What this item needs" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "Catalog notes" })).toBeVisible();
         await expect(page.getByText("Hardware acceleration is optional.", { exact: true })).toBeVisible();
         await expect(page.getByText(/Reviewed for D5/)).toHaveCount(0);
@@ -543,6 +552,14 @@ for (const width of [390, 1280]) {
 
         const summary = page.getByRole("heading", { name: "Compatibility summary" }).locator("xpath=..");
         const findings = page.getByRole("heading", { name: "What Atlas found" }).locator("xpath=..");
+        const compatibilityY = await summary.evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+        const requirementsY = await page.getByRole("heading", { name: "What this item needs" }).evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+        const installationPlanY = await page.getByRole("heading", { name: "Installation plan review" }).evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+        const releaseEvidenceY = await page.getByRole("heading", { name: "Release evidence" }).evaluate((element) => element.getBoundingClientRect().top + window.scrollY);
+        expect(compatibilityY).toBeLessThan(requirementsY);
+        expect(requirementsY).toBeLessThan(installationPlanY);
+        expect(compatibilityY).toBeLessThan(installationPlanY);
+        expect(installationPlanY).toBeLessThan(releaseEvidenceY);
         await expect(summary.getByText("Compatible with warnings", { exact: true })).toBeVisible();
         await expect(summary.getByText("Findings", { exact: true }).locator("xpath=..").locator("dd")).toHaveText("1");
         await expect(summary.getByText("Results", { exact: true })).toHaveCount(0);
