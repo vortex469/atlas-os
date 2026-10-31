@@ -4235,3 +4235,12 @@ URL credentials and query values are never included. Health probes and status
 rules are unchanged. Unit tests cover custom and default ports and unsafe
 addresses. The Overview and system-health browser journeys pass at mobile and
 desktop widths; Mission Control lint and build pass.
+
+## Workflow empty list with saved filters — 2026-10-31
+
+When no workflows are loaded, the empty message now reflects any filters
+already saved in the URL. An unfiltered empty list still says “No workflows
+yet”; a filtered empty list says no workflows match the current filters. This
+changes only the explanation, not list loading or filter behavior. The focused
+workflow page and responsive browser checks cover both states; Mission Control
+lint and production build pass.

@@ -359,7 +359,11 @@ export function WorkflowDashboardPage() {
                 </div>
 
                 {workflows.length === 0 ? (
-                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">No workflows yet.</p>
+                    <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
+                        {dashboardFiltersEqual(filters, EMPTY_FILTERS)
+                            ? "No workflows yet."
+                            : "No workflows match the current filters."}
+                    </p>
                 ) : visibleWorkflows.length === 0 ? (
                     <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 text-sm text-slate-300">
                         {hasMoreWorkflows

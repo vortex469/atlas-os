@@ -209,6 +209,19 @@ for (const width of [320, 390, 1280]) {
     });
 }
 
+test("workflow empty state stays clear when a saved filter has no matches", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.route("**/agent-api/api/v1/agent/workflows**", route => route.fulfill({ json: {
+        items: [], total: 0, limit: 200, offset: 0,
+    } }));
+    await page.goto("/workflows?workflow=missing");
+
+    await expect(page.getByText("No workflows match the current filters.", { exact: true })).toBeVisible();
+    await expect(page.getByText("No workflows yet.", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Additional filters are applied")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 for (const width of [320, 390, 1280]) {
     test(`malformed workflow data offers a read-only retry at ${width}px`, async ({ page, rejectedMutationRequests }) => {
         let reads = 0;

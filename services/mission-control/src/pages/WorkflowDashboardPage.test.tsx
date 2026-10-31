@@ -529,6 +529,14 @@ describe("WorkflowDashboardPage", () => {
         expect(within(unavailableAlert).queryByText(/workflow-list-canary-secret/)).not.toBeInTheDocument();
     });
 
+    it("keeps an empty list message specific to filters already in the URL", async () => {
+        vi.mocked(listWorkflows).mockResolvedValueOnce(response([]));
+        renderDashboard("/workflows?workflow=missing");
+
+        expect(await screen.findByText("No workflows match the current filters.")).toBeInTheDocument();
+        expect(screen.queryByText("No workflows yet.")).not.toBeInTheDocument();
+    });
+
     it("clarifies when filtered older workflows have not been loaded yet", async () => {
         vi.mocked(listWorkflows).mockResolvedValue(response([workflow()], 201));
         renderDashboard();
