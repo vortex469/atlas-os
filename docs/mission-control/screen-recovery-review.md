@@ -4211,3 +4211,15 @@ failed network probe. The focused Overview and service-health suites pass 88
 tests, and both development and built-app iFileshare browser journeys pass at
 320px and 1280px. Mission Control lint and production build pass. Health
 probing and status rules are unchanged.
+
+## Service Docker troubleshooting steps — 2026-10-31
+
+The service-computer Docker guidance now separates container state, port
+interpretation, and port publishing into shorter steps. It still explains
+stopped or missing containers, host networking, unpublished ports,
+localhost-only bindings, and how the published host port relates to the app's
+container port. The same collapsed guidance is available from both the
+Overview and service-detail drawer. Health probing and status rules are
+unchanged. The focused Overview and service-health suites pass 89 tests;
+four built-app browser cases pass at 320px, 390px, 1280px, and 1440px; Mission
+Control lint and production build pass.

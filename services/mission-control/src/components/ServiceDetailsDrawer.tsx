@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { CopyCommandButton } from "./CopyCommandButton";
+import { ServiceComputerChecks } from "./ServiceComputerChecks";
 import type { ServiceHealth } from "../types/health";
 import type { Provider } from "../types/provider";
 import { healthNextCheck, healthState } from "../utils/healthPresentation";
@@ -217,6 +218,10 @@ export function ServiceDetailsDrawer({
                                 </p>
                             </div>
                         )}
+                        <details className="mt-3 text-sm text-mc-text-secondary">
+                            <summary className="mc-focusable cursor-pointer text-cyan-300">Check the service computer</summary>
+                            <div className="mt-2 space-y-2"><ServiceComputerChecks /></div>
+                        </details>
                     </section>
 
                     {provider ? (

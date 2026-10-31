@@ -253,6 +253,17 @@ describe("ServiceHealthSection", () => {
         const command = commandGroup.textContent ?? "";
         expect(command).toContain('httpx.get("http://10.10.60.30:8080/"');
         expect(command).not.toMatch(/operator|password|private|token=/);
+        const serviceComputer = within(dialog).getByText("Check the service computer").closest("details");
+        expect(serviceComputer).not.toHaveAttribute("open");
+        fireEvent.click(within(serviceComputer as HTMLDetailsElement).getByText("Check the service computer"));
+        const dockerSummary = within(serviceComputer as HTMLDetailsElement).getByText("If the app runs in Docker");
+        expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(dockerSummary);
+        const dockerChecks = within(serviceComputer as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
+        expect(dockerChecks).toHaveTextContent("On the service computer, run docker ps --all");
+        expect(dockerChecks).toHaveTextContent("With host networking, a blank value is expected");
+        expect(dockerChecks).toHaveTextContent("A mapping starting with 127.0.0.1: works only on that computer.");
+        expect(dockerChecks).toHaveTextContent("use HOST_PORT in Atlas's address");
         expect(within(dialog).getByText(/An HTTP status means a server answered/)).toHaveTextContent("Atlas Core received no HTTP response");
         fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));
         expect(await within(commandGroup).findByRole("status")).toHaveTextContent("Command copied.");
