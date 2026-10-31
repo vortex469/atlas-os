@@ -144,7 +144,7 @@ function ActionHistoryDetail({ auditId }: { auditId: string }) {
             )}
 
             {isLoading && (
-                <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
+                <div role="status" aria-live="polite" className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400 sm:p-8">
                     Loading action details…
                 </div>
             )}

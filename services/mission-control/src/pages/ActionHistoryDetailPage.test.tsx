@@ -102,7 +102,7 @@ describe("ActionHistoryDetailPage", () => {
         await screen.findByText("Model unloaded.");
         await act(() => router.navigate("/operations/actions/audit-2"));
         expect(screen.queryByText("Model unloaded.")).not.toBeInTheDocument();
-        expect(screen.getByText("Loading action details…")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading action details…");
         await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-2"));
         await act(() => router.navigate("/operations/actions/audit-3"));
         await waitFor(() => expect(mockedGetProviderActionHistoryEntry).toHaveBeenCalledWith("audit-3"));
