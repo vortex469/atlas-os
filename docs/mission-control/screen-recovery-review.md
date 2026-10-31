@@ -4326,3 +4326,12 @@ service checks and troubleshooting steps remain available. The focused
 Overview suite passes 81 tests; Mission Control lint and production build
 pass. This changes presentation only; health probes and status rules are
 unchanged.
+
+## AI provider model-list wording — 2026-10-31
+
+The Overview now explains that model names do not show which model Atlas will
+use or whether the provider can answer requests. The location of the provider
+remains explicitly unreported. This keeps the visible health summary from
+implying that a running-model entry is ready for operator work. Focused
+Overview and AI-provider tests, Mission Control lint, and the production build
+pass. No provider settings or requests change.

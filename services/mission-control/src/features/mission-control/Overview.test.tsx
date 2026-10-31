@@ -602,7 +602,7 @@ describe("MC overview evidence", () => {
         const card = screen.getByRole('region', { name: 'AI provider' });
         const label = value === "unknown" ? "Status unknown" : value[0].toUpperCase() + value.slice(1);
         expect(within(card).getAllByText(label).length).toBeGreaterThan(0);
-        expect(within(card).getByText(/Atlas does not report where this provider runs/)).toBeInTheDocument();
+        expect(within(card).getByText(/Atlas doesn’t report where this provider runs/)).toBeInTheDocument();
     });
     it("marks failed refresh evidence stale and never displays cached health as current", () => {
         show({ health: { data: { atlas: 'healthy' }, stale: true, unavailable: true }, activity: { stale: true, data: { items: [{ id:'a', action_label:'Restart', completed_at:'2020-01-01T00:00:00Z', status:'succeeded' }] } } });
@@ -694,7 +694,7 @@ describe('overview fail-closed regressions', () => {
     it('does not equate configured provider health with local runtime availability', () => {
         show({ ai: { data: { health: { status: 'healthy' } } } });
         const runtime = within(screen.getByRole('region', { name: 'AI provider' }));
-        expect(runtime.getByText('Atlas does not report where this provider runs or which model is selected or ready to use.')).toBeVisible();
+        expect(runtime.getByText('Atlas doesn’t report where this provider runs. Its model list doesn’t show which model Atlas will use or whether it can answer requests.')).toBeVisible();
         expect(runtime.getByText('Configured provider: Not reported')).toBeInTheDocument();
     });
 });
@@ -722,7 +722,7 @@ it('includes configured AI failures in attention without asserting local availab
     expect(attention.getByText('Unavailable')).toBeInTheDocument();
     expect(attention.getByRole('link', { name: 'Runtime' })).toHaveAttribute('href', '/providers/runtime');
     expect(attention.getByText('Endpoint unavailable')).toBeInTheDocument();
-    expect(screen.getByText(/Atlas does not report where this provider runs/)).toBeInTheDocument();
+    expect(screen.getByText(/Atlas doesn’t report where this provider runs/)).toBeInTheDocument();
 });
 
 it('routes provider warnings without safe detail ids to their overview cards', () => {

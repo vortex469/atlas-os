@@ -21,7 +21,7 @@ describe("integrated Local AI runtime observations", () => {
         const user = userEvent.setup();
         const card = show({ data: data(status) });
         expect(card.getAllByText(label).length).toBeGreaterThan(0);
-        expect(card.getByText("Atlas does not report where this provider runs or which model is selected or ready to use.")).toBeInTheDocument();
+        expect(card.getByText("Atlas doesn’t report where this provider runs. Its model list doesn’t show which model Atlas will use or whether it can answer requests.")).toBeInTheDocument();
         expect(card.getByText("1.2")).toBeInTheDocument();
         expect(card.getByText("12 ms")).toBeInTheDocument();
         expect(card.getByText("Installed models: model:latest")).toBeInTheDocument();

@@ -58,7 +58,7 @@ export function LocalAiContent({ evidence, loading = false }: { evidence?: Evide
     return <>
         <p>Configured provider: {publicLabel(provider.name) ?? publicLabel(provider.id) ?? "Not reported"}</p>
         <HealthEvidence compact status={safeText(health.status)} reason={safeText(health.message)} stale={lastKnown} />
-        <p>Atlas does not report where this provider runs or which model is selected or ready to use.</p>
+        <p>Atlas doesn’t report where this provider runs. Its model list doesn’t show which model Atlas will use or whether it can answer requests.</p>
         {lastKnown && <p>Details below are from the last available report. Atlas could not confirm the current version, response time, or model list.</p>}
         <details>
             <summary className="mc-focusable cursor-pointer text-mc-primary">Technical details</summary>
