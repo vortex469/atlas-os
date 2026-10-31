@@ -22,7 +22,7 @@ import { StatusBadge } from "../components/StatusBadge";
  *   two surfaces cannot drift apart.
  *
  * Presentation-only: no authority, admission, or execution semantics are
- * decided here. API discovery supplies the configured release label. A
+ * decided here. API discovery supplies the configured Core build label. A
  * successful response means the API is responding, not that GitHub published
  * a release.
  */
@@ -140,8 +140,8 @@ function CoreApiFooter({ availability, releaseLabel }: { availability: ApiAvaila
                 </span>
                 <ApiStatusBadge availability={availability} />
             </div>
-            <p className="mt-2 truncate text-xs text-mc-text-secondary">
-                Release label: {releaseText}
+            <p className="mt-2 break-words text-xs text-mc-text-secondary" title={releaseLabel ?? undefined}>
+                Core build: {releaseText}
             </p>
         </div>
     );

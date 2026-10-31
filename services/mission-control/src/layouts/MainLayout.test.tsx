@@ -63,7 +63,7 @@ describe("MainLayout", () => {
         it("lets keyboard users skip navigation without changing the route", async () => {
             const user = userEvent.setup();
             renderAt();
-            await screen.findByText("Release label: Foundry");
+            await screen.findByText("Core build: Foundry");
             await user.tab();
             const skip = screen.getByRole("link", { name: "Skip to page content" });
             expect(skip).toHaveFocus();
@@ -71,7 +71,7 @@ describe("MainLayout", () => {
             expect(screen.getByText("Dashboard content").closest("#mc-page-content")).toHaveFocus();
         });
 
-        it("renders branding, Core status, and its configured release label", async () => {
+        it("renders branding, Core status, and its configured build label", async () => {
             renderAt();
 
             expect(screen.getAllByText("ATLAS").length).toBeGreaterThan(0);
@@ -79,8 +79,19 @@ describe("MainLayout", () => {
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
             expect(await screen.findByText("Atlas Core API connected")).toBeInTheDocument();
             expect(screen.getByText("Atlas Core API", { exact: true })).toBeInTheDocument();
-            expect(screen.getByText("Release label: Foundry")).toBeInTheDocument();
+            expect(screen.getByText("Core build: Foundry")).toBeInTheDocument();
             expect(atlas.get).toHaveBeenCalledWith("");
+        });
+
+        it("shows the full Core build identifier instead of clipping it", async () => {
+            const build = "browser-regression-build-2026-10-31-0123456789abcdef";
+            vi.mocked(atlas.get).mockResolvedValueOnce({ data: { release: build } });
+            renderAt();
+
+            const label = await screen.findByText(`Core build: ${build}`);
+            expect(label).toHaveClass("break-words");
+            expect(label).not.toHaveClass("truncate");
+            expect(label).toHaveAttribute("title", build);
         });
 
         it("uses the MC 2.0 shared shell and navigation primitives", async () => {
@@ -92,7 +103,7 @@ describe("MainLayout", () => {
             expect(
                 container.querySelector(".mc-focusable"),
             ).not.toBeNull();
-            await screen.findByText("Release label: Foundry");
+            await screen.findByText("Core build: Foundry");
             // The shared status primitive shows API availability.
             expect(container.querySelector(".mc-status-badge")).not.toBeNull();
             expect(
@@ -340,7 +351,7 @@ describe("MainLayout", () => {
             renderAt();
 
             expect(await screen.findByText("Atlas Core API unavailable")).toBeInTheDocument();
-            expect(screen.getByText("Release label: Unavailable")).toBeInTheDocument();
+            expect(screen.getByText("Core build: Unavailable")).toBeInTheDocument();
             const badges = document.querySelectorAll(".mc-status-badge");
             expect(Array.from(badges).some((badge) => badge.getAttribute("data-mc-status") === "disabled")).toBe(true);
         });
@@ -350,7 +361,7 @@ describe("MainLayout", () => {
             renderAt();
 
             expect(await screen.findByText("Atlas Core API connected")).toBeInTheDocument();
-            expect(screen.getByText("Release label: Not reported")).toBeInTheDocument();
+            expect(screen.getByText("Core build: Not reported")).toBeInTheDocument();
         });
     });
 

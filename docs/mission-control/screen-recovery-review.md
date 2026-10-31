@@ -4244,3 +4244,14 @@ yet”; a filtered empty list says no workflows match the current filters. This
 changes only the explanation, not list loading or filter behavior. The focused
 workflow page and responsive browser checks cover both states; Mission Control
 lint and production build pass.
+
+## Core build label clarity — 2026-10-31
+
+The sidebar now labels the configured Core identifier as “Core build” and
+wraps long identifiers instead of clipping them. The API availability badge
+remains the source of connection status; the build label does not claim that a
+GitHub release was published. Layout tests cover the full visible value and
+the unavailable and unreported states. The focused MainLayout suite passes 44
+tests, and 15 app-shell browser checks pass at 390px and 1280px in both the
+development app and built assets; Mission Control lint and production build
+pass.

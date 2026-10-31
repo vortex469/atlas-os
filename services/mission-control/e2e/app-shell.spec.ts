@@ -6,7 +6,7 @@ test("Mission Control application shell renders with primary navigation", async 
     await expect(page.getByText("Mission Control", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Mission Control 2.0", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("main", { name: "Overview" })).toBeVisible();
-    await expect(page.getByText("browser-regression-baseline")).toBeVisible();
+    await expect(page.getByText("Core build: browser-regression-baseline", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
     await expect(page).toHaveTitle("Overview | Atlas Mission Control");
 
@@ -24,6 +24,24 @@ test("Mission Control application shell renders with primary navigation", async 
         await expect(navigation.getByText(unavailable)).toHaveCount(0);
     }
 });
+
+for (const width of [390, 1280]) {
+    test(`long Core build identifiers wrap instead of disappearing at ${width}px`, async ({ page }) => {
+        const build = "browser-regression-build-2026-10-31-0123456789abcdef";
+        await page.setViewportSize({ width, height: 800 });
+        await page.route("**/api/v1", (route) => route.fulfill({ json: { release: build } }));
+        await page.goto("/");
+
+        const label = width < 1024
+            ? page.getByRole("dialog", { name: "Mission Control navigation" }).getByText(`Core build: ${build}`, { exact: true })
+            : page.getByText(`Core build: ${build}`, { exact: true });
+        if (width < 1024) await page.getByRole("button", { name: "Open navigation" }).click();
+        await expect(label).toBeVisible();
+        await expect(label).toHaveCSS("overflow-wrap", "break-word");
+        await expect(label).toHaveAttribute("title", build);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}
 
 test("Mission Control dashboard loads from controlled Core and Agent responses", async ({ page }) => {
     await page.goto("/");
@@ -196,7 +214,7 @@ test.describe("Atlas Core unavailable", () => {
         await expect(systemHealth).not.toContainText("Healthy");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
         await expect(page.getByText("Atlas Core API unavailable", { exact: true })).toBeVisible();
-        await expect(page.getByText("Release label: Unavailable", { exact: true })).toBeVisible();
+        await expect(page.getByText("Core build: Unavailable", { exact: true })).toBeVisible();
     });
 });
 
