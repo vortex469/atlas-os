@@ -4486,3 +4486,12 @@ internal request-payload details, and its buttons use sentence case. The
 repository and maintenance journeys still pass (26 tests across 320px, 390px,
 and 1280px); the focused workflow and history suites pass (140 tests), with
 lint, production build, and `git diff --check` passing.
+
+## Workflow filter labels — 2026-10-31
+
+The next-step filter now uses “Any next step” for its unfiltered choice and
+“Needs your input” for workflows awaiting an operator. This matches the
+workflow summary and makes the filter choices describe what they select.
+Filter values and behavior are unchanged. The dashboard suite passes 24 tests,
+its browser journey passes 21 tests at 320px, 390px, and 1280px, and lint and
+the production build pass.

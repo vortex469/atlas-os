@@ -18,6 +18,8 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("option", { name: "Review checks, then run if approved" })).toBeAttached();
         await expect(page.getByRole("option", { name: "Review commit, then record if approved" })).toBeAttached();
         await expect(page.getByLabel("Next step")).toBeVisible();
+        await expect(page.getByRole("option", { name: "Any next step" })).toBeAttached();
+        await expect(page.getByRole("option", { name: "Needs your input" })).toBeAttached();
         await expect(page.getByLabel("Workflow ID contains")).toBeHidden();
         await page.getByText("More filters", { exact: true }).click();
         await expect(page.getByLabel("Workflow ID contains")).toBeVisible();

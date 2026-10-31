@@ -313,8 +313,8 @@ export function WorkflowDashboardPage() {
                         <label className="text-sm text-slate-300">
                             Next step
                             <select value={draftFilters.operatorStep} onChange={(event) => updateDraftFilter("operatorStep", event.target.value)} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100">
-                                <option value="">Any workflow</option>
-                                <option value="needed">Needs an operator step</option>
+                                <option value="">Any next step</option>
+                                <option value="needed">Needs your input</option>
                                 <option value="not_needed">No action needed right now</option>
                                 <option value="unknown">Status unavailable</option>
                             </select>

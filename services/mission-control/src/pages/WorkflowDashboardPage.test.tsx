@@ -305,6 +305,8 @@ describe("WorkflowDashboardPage", () => {
         renderDashboard();
 
         await screen.findAllByRole("heading", { name: "Update Compose Stack" });
+        expect(screen.getByRole("option", { name: "Any next step" })).toBeInTheDocument();
+        expect(screen.getByRole("option", { name: "Needs your input" })).toBeInTheDocument();
         expect(screen.getByRole("option", { name: "No action needed right now" })).toBeInTheDocument();
         expect(screen.getByRole("option", { name: "Status unavailable" })).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText("Next step"), { target: { value: "needed" } });
