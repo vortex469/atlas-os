@@ -192,8 +192,9 @@ describe("ProviderResources Provider Intent flow", () => {
 
         render(<ProviderResources provider={provider} />);
 
-        expect(screen.getByRole("button", { name: "Loading resources…" })).toBeDisabled();
-        expect(screen.getByRole("status")).toHaveTextContent("Loading observed resources and monitoring state...");
+        expect(screen.getByRole("button", { name: "Refresh resources" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Loading resources…" })).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("Loading observed resources and monitoring settings...");
 
         await act(async () => {
             resolveInventory(inventory);
@@ -210,6 +211,25 @@ describe("ProviderResources Provider Intent flow", () => {
         expect(time.tagName).toBe("TIME");
         expect(time).toHaveAttribute("datetime", inventory.refreshed_at);
         expect(time.parentElement).toHaveTextContent("Observed inventory refreshed (local time):");
+    });
+
+    it("keeps the refresh label stable and announces when resources are updating", async () => {
+        const user = userEvent.setup();
+        await renderResources();
+        let resolveRefresh!: (value: ProviderResourceCollection) => void;
+        vi.mocked(refreshProviderResources).mockReturnValueOnce(new Promise((resolve) => { resolveRefresh = resolve; }));
+
+        await user.click(screen.getByRole("button", { name: "Refresh resources" }));
+
+        const refreshButton = screen.getByRole("button", { name: "Refresh resources" });
+        expect(refreshButton).toBeDisabled();
+        expect(screen.getByText("Refreshing observed resources and monitoring settings...", { exact: true })).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Refreshing resources…" })).not.toBeInTheDocument();
+
+        await act(async () => resolveRefresh(inventory));
+
+        await waitFor(() => expect(refreshButton).toBeEnabled());
+        expect(screen.queryByText("Refreshing observed resources and monitoring settings...", { exact: true })).not.toBeInTheDocument();
     });
 
     it("explains provider-verified identity in plain language", async () => {

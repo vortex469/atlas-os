@@ -45,6 +45,7 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
     const supported = provider.capabilities.includes("resources");
     const [inventory, setInventory] = useState<ProviderResourceCollection | null>(null);
     const [management, setManagement] = useState<ProviderManagementV2 | null>(null);
+    const [initialResourceReadComplete, setInitialResourceReadComplete] = useState(false);
     const [operator, setOperator] = useState<ProviderManagementV3 | null>(null);
     const [suggestions, setSuggestions] = useState<ProviderMonitoringIntentSuggestionV1[]>([]);
     const [inventoryLoading, setInventoryLoading] = useState(supported);
@@ -112,7 +113,13 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         }
     }, [provider.id, session]);
 
-    useEffect(() => { if (supported) void Promise.resolve().then(() => Promise.all([loadInventory(), loadManagement()])); }, [loadInventory, loadManagement, supported]);
+    useEffect(() => {
+        if (!supported) return;
+        void Promise.resolve().then(async () => {
+            await Promise.all([loadInventory(), loadManagement()]);
+            setInitialResourceReadComplete(true);
+        });
+    }, [loadInventory, loadManagement, supported]);
     useEffect(() => { if (supported) void Promise.resolve().then(loadOperator); }, [loadOperator, supported]);
     useEffect(() => { if (supported) void Promise.resolve().then(loadSuggestions); }, [loadSuggestions, supported]);
 
@@ -214,10 +221,12 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         && !composition.error
         && composition.resources.length === 0;
     const showResources = !composition.error && composition.resources.length > 0;
-    const loadingResources = inventoryLoading
-        && inventory === null
-        && managementLoading
-        && management === null;
+    const resourceReadsPending = inventoryLoading || managementLoading;
+    const resourceProgressMessage = resourceReadsPending
+        ? initialResourceReadComplete
+            ? "Refreshing observed resources and monitoring settings..."
+            : "Loading observed resources and monitoring settings..."
+        : null;
     const inventoryErrorMessage = inventoryError && inventory !== null
         ? "Atlas couldn’t refresh observed resources. Showing the last loaded inventory; its status may have changed."
         : inventoryError;
@@ -229,17 +238,18 @@ function ProviderResourcePanel({ provider }: ProviderResourcesProps) {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg shadow-slate-950/30">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div><SectionHeader title="Resources and monitoring" description="See what Atlas observes, whether it can identify each resource, and what monitoring expects." /><p className="mt-2 text-xs text-slate-500">Observed inventory refreshed (local time): {refreshedAt && !Number.isNaN(refreshedAt.getTime()) ? <time dateTime={inventory!.refreshed_at}>{refreshedAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time> : inventory ? "Time unavailable" : "Not refreshed yet"}</p></div>
-                <button type="button" onClick={() => void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()])} disabled={inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">{inventoryLoading || managementLoading || operatorLoading ? loadingResources ? "Loading resources…" : "Refreshing resources…" : "Refresh resources"}</button>
+                <button type="button" onClick={() => void Promise.all([loadInventory(true), loadManagement(), loadOperator(), loadSuggestions()])} disabled={inventoryLoading || managementLoading || operatorLoading} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Refresh resources</button>
             </div>
             <div className="mt-4 space-y-2">
                 {inventoryErrorMessage && <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200"><p>{inventoryErrorMessage}</p>{inventoryErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why observed resources couldn&apos;t load</summary><p className="mt-1 break-words text-slate-400">{inventoryErrorDetails}</p></details>}</div>}
                 {managementErrorMessage && <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200"><p>{managementErrorMessage}</p>{managementErrorDetails && <details className="mt-2"><summary className="cursor-pointer text-sm font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Why monitoring settings couldn&apos;t load</summary><p className="mt-1 break-words text-slate-400">{managementErrorDetails}</p></details>}</div>}
                 {operatorError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{operatorError}</p>}
-                {operatorState === "loading" && !loadingResources && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-300">Checking monitoring settings and edit access...</p>}
+                {operatorState === "loading" && !(resourceReadsPending && !initialResourceReadComplete) && <p role="status" className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-sm text-slate-300">Checking monitoring settings and edit access...</p>}
                 {suggestionError && <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">{suggestionError}</p>}
                 {composition.error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">Atlas found conflicting resource records. Monitoring and editing are unavailable until it can match them safely.</p>}
             </div>
-            {loadingResources ? <p role="status" className="mt-6 text-sm text-slate-400">Loading observed resources and monitoring state...</p> : showEmptyInventory ? <p className="mt-6 text-sm text-slate-400">No provider resources are available.</p> : showResources ? (
+            {resourceProgressMessage && <p role="status" className="mt-6 text-sm text-slate-400">{resourceProgressMessage}</p>}
+            {!initialResourceReadComplete && resourceReadsPending ? null : showEmptyInventory ? <p className="mt-6 text-sm text-slate-400">No provider resources are available.</p> : showResources ? (
                 <div className="mt-6 space-y-4" aria-label="Provider resources">{composition.resources.map((resource) => <ResourceCard key={resource.coordinate} resource={resource} suggestion={suggestionsByCoordinate.get(resource.coordinate) ?? null} reviewedSuggestion={reviewedSuggestions[resource.coordinate] ?? null} reviewInvalidated={invalidatedReviews[resource.coordinate] ?? false} onReview={(suggestion) => { setReviewedSuggestions((current) => ({ ...current, [resource.coordinate]: suggestion })); setInvalidatedReviews((current) => ({ ...current, [resource.coordinate]: false })); revise(resource.coordinate); }} metadataColumns={metadataColumns} managementUnavailable={management === null} operatorState={operatorState} saving={updatingCoordinate === resource.coordinate} decisionRevision={decisionRevisions[resource.coordinate] ?? 0} error={rowErrors[resource.coordinate] || null} status={rowStatuses[resource.coordinate] || null} onSave={saveProviderIntent} />)}</div>
             ) : null}
         </section>
