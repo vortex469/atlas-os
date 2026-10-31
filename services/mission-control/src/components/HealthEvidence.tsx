@@ -29,7 +29,9 @@ export function HealthEvidence({ status, reason, checkedAt, unavailableLabel, st
     const raw = safeText(status).trim() || null;
     const rawState = raw?.trim().toLowerCase();
     const rawAddsMeaning = ["warning", "critical", "error", "failed"].includes(rawState ?? "");
-    const showReportedStatus = Boolean(raw && rawState !== state.toLowerCase() && (!compact || rawAddsMeaning));
+    const showReportedStatus = Boolean(
+        raw && rawState !== state.toLowerCase() && (rawAddsMeaning || (!compact && state === "Unknown")),
+    );
     const showUnavailableTime = !compact || (checkedAt !== undefined && checkedAt !== null);
 
     return (

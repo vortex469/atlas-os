@@ -48,6 +48,14 @@ describe("authoritative health presentation", () => {
         expect(document.querySelector("script")).toBeNull();
     });
 
+    it.each(["online", "healthy", "offline", "unavailable", "degraded", "unknown"])(
+        "does not repeat the translated health status %s",
+        (status) => {
+            render(<HealthEvidence status={status} />);
+            expect(screen.queryByText(`Reported status: ${status}`)).not.toBeInTheDocument();
+        },
+    );
+
     it("withholds credential and URL text in reported health details", () => {
         render(<HealthEvidence status="Bearer canary-token" reason="Request to https://operator:canary-password@example.invalid/?token=canary-token failed" />);
         expect(screen.getByText("Reported status: [Sensitive text withheld]")).toBeInTheDocument();

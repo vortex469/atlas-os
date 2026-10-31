@@ -4430,3 +4430,13 @@ shows one alert with the refresh instruction. The duplicate status message was
 removed. Deletion remains disabled until a successful history refresh; the
 focused OperationsPage suite passes 18 tests, and Mission Control lint and
 production build pass.
+
+## Health status alias clarity — 2026-10-31
+
+Detailed health views no longer repeat known aliases such as `online` and
+`offline` after already presenting them as “Healthy” and “Unavailable.” More
+specific severity values such as `critical` remain visible, as do unfamiliar
+source statuses that need investigation. Health mapping, freshness rules, and
+Core decisions are unchanged. The focused HealthEvidence suite passes 64 tests;
+four responsive system-health browser checks pass at 390px and 1440px, along
+with Mission Control lint and production build.
