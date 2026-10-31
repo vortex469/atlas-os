@@ -4343,4 +4343,6 @@ navigation and proposal screens instead of exposing the old internal route
 name “execution candidates.” A missing audit now returns to “All workflows,”
 matching the workflow directory instead of calling it a dashboard. Destination
 selection and preserved filters are unchanged. The focused workflow and audit
-page suites, Mission Control lint, and build pass.
+page suites, Mission Control lint, and build pass. The workflow directory also
+explains that refreshing after loading older records resumes automatic checks
+only while a workflow in the refreshed list is running.
