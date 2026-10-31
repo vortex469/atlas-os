@@ -91,7 +91,7 @@ for (const width of [320, 390, 1280]) {
         await expectResponsiveMainPadding(page, "Review workflow", width);
 
         await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Back to execution candidates" })).toHaveAttribute(
+        await expect(page.getByRole("link", { name: "← Change proposals", exact: true })).toHaveAttribute(
             "href",
             `/execution-candidates${proposalSearch}`,
         );
@@ -207,11 +207,11 @@ for (const width of [320, 390, 1280]) {
         await fitsViewport(page);
         await page.getByRole("link", { name: "← Back to Workflow", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
-        await expect(page.getByRole("link", { name: "Back to execution candidates", exact: true })).toHaveAttribute(
+        await expect(page.getByRole("link", { name: "← Change proposals", exact: true })).toHaveAttribute(
             "href",
             `/execution-candidates${proposalSearch}`,
         );
-        await page.getByRole("link", { name: "Back to execution candidates", exact: true }).click();
+        await page.getByRole("link", { name: "← Change proposals", exact: true }).click();
         await expect(page).toHaveURL(`/execution-candidates${proposalSearch}`);
         const proposalFilters = page.getByRole("form", { name: "Filter change proposals" });
         await expect(proposalFilters.getByRole("combobox", { name: "Eligibility" })).toHaveValue("eligible");
