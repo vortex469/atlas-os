@@ -13,8 +13,17 @@ from atlas_execution_worker.process import run_command
 def alive(pid):
     try:
         return Path(f'/proc/{pid}/stat').read_text().split()[2] != 'Z'
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
         return False
+
+
+@pytest.mark.parametrize('disappearing_error', [FileNotFoundError, ProcessLookupError])
+def test_process_disappearing_during_procfs_read_is_not_alive(monkeypatch, disappearing_error):
+    def read_text(self):
+        raise disappearing_error()
+
+    monkeypatch.setattr(Path, 'read_text', read_text)
+    assert not alive(12345)
 
 
 @pytest.mark.parametrize('parent_exits', [False, True])
