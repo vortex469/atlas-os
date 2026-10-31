@@ -47,7 +47,10 @@ def test_deadline_kills_child_holding_output_pipe(tmp_path, parent_exits):
         assert time.monotonic() - started < 3
     finally:
         if marker.exists() and alive(int(marker.read_text())):
-            os.kill(int(marker.read_text()), signal.SIGKILL)
+            try:
+                os.kill(int(marker.read_text()), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
 
 
 def test_success_also_stops_background_child_without_output_pipes(tmp_path):
