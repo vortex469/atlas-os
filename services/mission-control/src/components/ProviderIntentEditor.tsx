@@ -88,7 +88,7 @@ export function ProviderIntentEditor({
             : readOnlyReasons[mutationResource?.mutation_readiness ?? "authority_unavailable"];
 
     return (
-        <div className="min-w-64 space-y-2">
+        <div className="min-w-0 space-y-2">
             {resource.replacement_detected && (
                 <p role="alert" className="text-xs text-amber-300">
                     This VM was replaced. Its previous monitoring expectation does not apply to this instance. Choose a new value.

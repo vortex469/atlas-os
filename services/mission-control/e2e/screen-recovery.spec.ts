@@ -131,6 +131,95 @@ for (const width of [320, 390, 1280]) {
 }
 
 for (const width of [320, 1280]) {
+    test(`provider resource monitoring fits the screen at ${width}px`, async ({ page, rejectedMutationRequests }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.route("**/api/v1/providers", (route) => route.fulfill({
+            json: providers.map((provider) => ({ ...provider, capabilities: ["resources"] })),
+        }));
+        await page.route("**/api/v1/providers/proxmox/resources", (route) => route.fulfill({ json: {
+            provider_id: "proxmox",
+            provider_name: "Proxmox",
+            refreshed_at: "2026-10-31T10:00:00Z",
+            resources: [{
+                provider_id: "proxmox",
+                resource_id: "110",
+                display_name: "Frigate",
+                resource_type: "qemu",
+                current_state: "running",
+                expectation: { value: null, label: "Needs review", state: "needs_review", allowed_values: [] },
+                configured: false,
+                missing: false,
+                needs_review: true,
+                metadata: {},
+            }],
+            summary: { total: 1, configured: 0, needs_review: 1, missing: 0, ignored: 0, by_type: { qemu: 1 }, by_state: { running: 1 } },
+            metadata: {},
+        } }));
+        await page.route("**/api/v1/providers/proxmox/management", (route) => route.fulfill({ json: {
+            schema_version: "provider-management-v2",
+            provider_id: "proxmox",
+            provider_name: "Proxmox",
+            sections: ["connection", "discovery", "resources", "monitoring", "diagnostics", "actions"].map((section) => ({
+                section,
+                availability: "available",
+                read_only_descriptor: true,
+                grants_permission: false,
+                grants_execution: false,
+            })),
+            resource_types: [{
+                provider_id: "proxmox",
+                resource_type: "qemu",
+                resource_readable: true,
+                authoritative_identity_supported: true,
+                provider_intent_capability_supported: true,
+                provider_intent_mutation_available: false,
+                supported_expectations: ["running", "stopped", "ignored"],
+                operationally_requestable: false,
+                grants_permission: false,
+                grants_execution: false,
+            }],
+            resources: [{
+                provider_id: "proxmox",
+                resource_id: "110",
+                resource_type: "qemu",
+                display_name: "Frigate",
+                current_state: "running",
+                missing: false,
+                identity_assurance: "authoritative",
+                management_fingerprint: `provider-management-fingerprint-v1:${"a".repeat(64)}`,
+                intent_authority: "provider_intent",
+                intent_status: "needs_review",
+                intent_reason: "no_active_intent",
+                expectation: null,
+                record_version: null,
+                legacy_review_available: false,
+                legacy_expectation: null,
+                replacement_detected: false,
+                mutation_available: false,
+                operationally_requestable: false,
+                grants_execution: false,
+            }],
+            provider_intent_activation: "activated",
+            provider_intent_authority_status: "available",
+            grants_permission: false,
+            grants_execution: false,
+        } }));
+
+        await page.goto("/providers/proxmox");
+        await expect(page.getByRole("heading", { name: "Resources and monitoring" })).toBeVisible();
+        await expect(page.getByText("Sign in with permission to edit monitoring expectations.")).toBeVisible();
+        const resourceCard = page.getByTestId("resource-row-qemu-110");
+        const resourceCardWidth = await resourceCard.evaluate((element) => ({
+            client: element.clientWidth,
+            content: element.scrollWidth,
+        }));
+        expect(resourceCardWidth.content).toBeLessThanOrEqual(resourceCardWidth.client);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        expect(rejectedMutationRequests).toEqual([]);
+    });
+}
+
+for (const width of [320, 1280]) {
     test(`provider loading state keeps compact phone spacing at ${width}px`, async ({ page }) => {
         let releaseProviderRead!: () => void;
         const providerRead = new Promise<void>((resolve) => { releaseProviderRead = resolve; });

@@ -4296,3 +4296,13 @@ supporting details. This brings the suitability check forward without changing
 any check, API request, permission, or installation boundary. The focused item
 suite passes 40 tests; responsive browser checks verify the ordering at 390px
 and 1280px. Lint and build pass.
+
+## Provider resource editor phone-width layout — 2026-10-31
+
+The monitoring editor no longer forces a 256px minimum width inside a nested
+resource card. A read-only browser fixture with a real resource card now checks
+both the card's content width and the page width at 320px and 1280px; the old
+layout overflowed its 236px card by 40px at 320px. The two responsive browser
+checks pass, as do the focused Provider Resources and Intent Editor suites (77
+tests), Mission Control lint, and production build. The fixture has no operator
+session and makes no settings changes.
