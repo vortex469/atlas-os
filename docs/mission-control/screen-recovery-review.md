@@ -4579,3 +4579,12 @@ read-only; no health status or network behavior changed.
 The focused health and Overview suites pass 91 tests, and the Overview and
 System health browser checks pass 35 cases at phone and desktop widths. Lint
 and the production build pass. Browser checks use controlled fixtures.
+
+## Workflow detail progress clarity — 2026-10-31
+
+Repository workflow details now show the current stage in the summary and keep
+the detailed change timeline as the single progress list. The duplicate rail
+under the page title is removed, while the approval and run controls remain
+separate. The focused workflow and timeline suites pass 138 tests, and the
+repository journey browser checks pass 15 cases at phone and desktop widths.
+Lint and production build pass; browser checks use controlled fixtures.

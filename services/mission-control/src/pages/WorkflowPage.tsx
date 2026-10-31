@@ -13,7 +13,6 @@ import {
     submitWorkflowVerificationApproval,
     resumeWorkflow,
 } from "../api/atlas-agent";
-import { WorkflowMiniRail } from "../components/WorkflowMiniRail";
 import { OperationalLifecyclePanel } from "../components/OperationalLifecyclePanel";
 import { OperationalRecoverySummary } from "../components/OperationalRecoverySummary";
 import { ExecutionTimeline } from "./ExecutionTimeline";
@@ -32,7 +31,7 @@ import { operationalRequest } from "../utils/operationalRequest";
 import { formatResourceReference, formatResourceTargetLabel } from "../utils/resourceLabels";
 import { evidenceTimestamp } from "../utils/healthPresentation";
 import { safeText } from "../utils/safeText";
-import { isActiveWorkflowState, workflowRailStages } from "../utils/workflowState";
+import { isActiveWorkflowState, workflowStageLabel } from "../utils/workflowState";
 
 type LoadMode = "initial" | "refresh";
 
@@ -491,11 +490,11 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     </p>
                     {autoRefreshEnabled && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">When work is running, Atlas checks its status every 5 seconds. Buttons are briefly disabled during each check.</p>}
                 </div>
-                {isRepository && <WorkflowRail workflow={workflow} />}
             </header>
 
             <section aria-labelledby="workflow-summary-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="workflow-summary-heading" className="text-lg font-semibold text-white">{isOperational ? "Maintenance summary" : "Workflow summary"}</h2>
+                {isRepository && <p className="mt-1 text-sm text-blue-200">Stage: {workflowStageLabel(workflow.workflow_state, workflow.effect_kind)}</p>}
                 <p className="mt-1 text-sm text-slate-300">{workflowStatusMessage(workflow)}</p>
                 <details className="mt-4 rounded-lg border border-slate-800 px-4 py-3">
                     <summary className="mc-focusable cursor-pointer text-sm font-semibold text-blue-200">{isOperational ? "Technical details" : "Workflow details"}</summary>
@@ -986,15 +985,6 @@ function CommitSection({
                     </dl>
                 </section>
             )}
-        </section>
-    );
-}
-
-function WorkflowRail({ workflow }: { workflow: WorkflowDetailResponse }) {
-    const stages = workflowRailStages(workflow);
-    return (
-        <section aria-label="Read-only workflow rail" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-            <WorkflowMiniRail stages={stages} />
         </section>
     );
 }

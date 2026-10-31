@@ -1030,19 +1030,19 @@ describe("WorkflowPage", () => {
         expect(screen.queryByRole("button", { name: "Reject change" })).not.toBeInTheDocument();
     });
 
-    it("renders workflow rail and no execution, verification, or commit controls", async () => {
+    it("shows the current stage once and keeps detailed progress without execution controls", async () => {
         renderPage();
 
-        const rail = await screen.findByRole("region", { name: "Read-only workflow rail" });
-        expect(within(rail).getByText("Change approval")).toBeInTheDocument();
-        expect(within(rail).getByText("Apply change")).toBeInTheDocument();
-        expect(within(rail).getByText("Verify change")).toBeInTheDocument();
-        expect(within(rail).getByText("Commit")).toBeInTheDocument();
-        expect(within(rail).getByText("Current step")).toBeInTheDocument();
-        expect(within(rail).getAllByText("Not started").length).toBeGreaterThan(0);
-        const stages = within(screen.getByRole("region", { name: "Change progress" })).getByRole("list", { name: "Change stages" });
+        const summary = within(await screen.findByRole("region", { name: "Workflow summary" }));
+        expect(summary.getByText("Stage: Change approval")).toBeVisible();
+        expect(screen.queryByRole("region", { name: "Read-only workflow rail" })).not.toBeInTheDocument();
+        const progress = within(screen.getByRole("region", { name: "Change progress" }));
+        const stages = progress.getByRole("list", { name: "Change stages" });
+        expect(progress.getByRole("status")).toHaveTextContent("Waiting for implementation approval.");
         expect(within(stages).getByText("Change proposal")).toBeInTheDocument();
         expect(within(stages).getByText("Apply change")).toBeInTheDocument();
+        expect(within(stages).getByText("Current step")).toBeInTheDocument();
+        expect(within(stages).getAllByText("Not started").length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /execute/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /verify/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /commit/i })).not.toBeInTheDocument();
