@@ -839,7 +839,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("alert")).toContainText("does not match this page");
         await expect(page.getByRole("alert")).not.toContainText("Try loading it again.");
         expect(reads).toBe(2);
-        await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Approve change" })).toHaveCount(0);
         await expectResponsiveMainPadding(page.getByRole("alert"), width);
         expect(await page.evaluate((maxWidth) => document.documentElement.scrollWidth <= maxWidth, width)).toBe(true);
         await page.getByRole("link", { name: "← All workflows" }).click();
@@ -1569,13 +1569,13 @@ for (const width of [320, 390, 1280]) {
         await expect(technicalDetails).not.toHaveAttribute("open");
         await expect(technicalDetails).toContainText("Malformed workflow detail payload.");
         await expect(technicalDetails.getByText("Malformed workflow detail payload.", { exact: true })).toBeHidden();
-        await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Approve change" })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Run approved change" })).toHaveCount(0);
 
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
         await expectResponsiveMainPadding(page.getByRole("heading", { name: "Review workflow", exact: true }), width);
-        await expect(page.getByRole("button", { name: "Approve Implementation" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Approve change" })).toBeVisible();
         expect(reads).toBe(2);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         expect(rejectedMutationRequests).toEqual([]);

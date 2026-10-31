@@ -269,7 +269,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 error,
                 workflow.effect_kind === "operational_action"
                     ? "Mission Control could not confirm the maintenance approval decision. The workflow status was refreshed; check its current status before taking another step."
-                    : "Mission Control could not confirm the implementation approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+                    : "Mission Control could not confirm the change approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
             ));
             await loadWorkflow("refresh");
         } finally {
@@ -502,7 +502,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     <dl className="mt-3 grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
                         <Detail label="Workflow ID" value={workflow.workflow_id} />
                         <Detail label="Workflow state" value={formatLabel(workflow.workflow_state)} />
-                        <Detail label={isOperational ? "Maintenance request approval" : "Implementation approval"} value={formatLabel(workflow.implementation_approval_status)} />
+                        <Detail label={isOperational ? "Maintenance request approval" : "Change approval"} value={formatLabel(workflow.implementation_approval_status)} />
                         <Detail label="Workflow source" value={workflow.workflow_source} />
                         <Detail label="Planning session" value={workflow.planning_session_id ?? "Not available"} />
                         <Detail label="Candidate ID" value={workflow.candidate_id ?? "Not available"} />
@@ -623,41 +623,41 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
 
             <section aria-labelledby="approval-controls-heading" className="rounded-xl border border-slate-800 bg-slate-900/70 p-5">
                 <h2 id="approval-controls-heading" className="text-lg font-semibold text-white">
-                    {isOperational ? "Maintenance request approval" : "Implementation approval"}
+                    {isOperational ? "Maintenance request approval" : "Change approval"}
                 </h2>
                 <p className="mt-2 text-sm text-slate-400">
                     {isOperational
                         ? "Approve or reject this exact maintenance request. Approval does not run it; choose Run approved maintenance separately when you are ready."
-                        : "Approve or reject the exact implementation request shown above. Approval does not run the change; choose Run approved change when you are ready."}
+                        : "Approve or reject the exact change request shown above. Approval does not apply it; choose Run approved change separately when you are ready."}
                 </p>
                 {canDecide ? (
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button type="button" onClick={() => void submitDecision("approve")} disabled={controlsBusy} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">
-                            {isOperational ? "Approve maintenance request" : "Approve Implementation"}
+                            {isOperational ? "Approve maintenance request" : "Approve change"}
                         </button>
                         <button type="button" onClick={() => void submitDecision("reject")} disabled={controlsBusy} className="rounded-lg border border-red-400 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60">
-                            {isOperational ? "Reject maintenance request" : "Reject implementation"}
+                            {isOperational ? "Reject maintenance request" : "Reject change"}
                         </button>
                     </div>
                 ) : (
                     <p className="mt-4 text-sm text-slate-300">{isOperational && workflow.implementation_approval_status === "approved"
                         ? "Maintenance request approval is recorded."
                         : workflow.implementation_approval_status === "approved"
-                        ? "Implementation approval is recorded."
+                        ? "Change approval is recorded."
                         : workflow.implementation_approval_status === "rejected"
                         ? isOperational
                             ? "Maintenance request approval was rejected. No further decision is available."
-                            : "Implementation approval was rejected. No further decision is available."
+                            : "Change approval was rejected. No further decision is available."
                         : isOperational && workflow.workflow_state === "awaiting_implementation_approval" && !operationalApprovalReady
                         ? "Maintenance request approval is unavailable. Refresh to check the request and its approval status."
-                        : "Implementation approval is not available at this step."}</p>
+                        : "Change approval is not available at this step."}</p>
                 )}
-                {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting maintenance approval..." : "Submitting implementation approval..."}</p>}
+                {isSubmitting && <p role="status" className="mt-3 text-sm text-blue-200">{isOperational ? "Submitting maintenance approval..." : "Submitting change approval..."}</p>}
                 {approvalResult && approvalResult.implementation_approval_status === "approved" && canResumeImplementation && !controlsBusy && (
                     <p role="status" className="mt-3 text-sm text-emerald-200">{isOperational ? "Maintenance request approved. Run it when you are ready." : "Change approved. Run it when you are ready."}</p>
                 )}
                 {approvalResult && approvalResult.implementation_approval_status === "rejected" && (
-                    <p role="status" className="mt-3 text-sm text-red-100">{isOperational ? "Maintenance request rejected." : "Implementation request rejected."}</p>
+                    <p role="status" className="mt-3 text-sm text-red-100">{isOperational ? "Maintenance request rejected." : "Change rejected."}</p>
                 )}
                 {approvalError && <WorkflowActionError failure={approvalError} />}
             </section>
@@ -1011,24 +1011,26 @@ function Detail({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
-    const action = workflow.effect_kind === "operational_action" ? "Maintenance request" : "Implementation";
+    const isMaintenance = workflow.effect_kind === "operational_action";
+    const action = isMaintenance ? "Maintenance request" : "Change";
+    const actionSubject = isMaintenance ? "The maintenance request" : "The change";
     switch (workflow.workflow_state) {
         case "planned":
             return "Workflow is ready for review.";
         case "awaiting_approval":
             return "Prepare the change for review.";
         case "awaiting_implementation_approval":
-            if (workflow.implementation_approval_status === "approved") return `${action} is approved. Run it when ready.`;
+            if (workflow.implementation_approval_status === "approved") return `${actionSubject} is approved. Run it when you're ready.`;
             if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;
             return `${action} needs approval.`;
         case "awaiting_execution":
-            if (workflow.implementation_approval_status === "approved") return `${action} is approved and ready to run.`;
+            if (workflow.implementation_approval_status === "approved") return `${actionSubject} is approved and ready to run.`;
             if (workflow.implementation_approval_status === "rejected") return `${action} approval was rejected.`;
             return `${action} approval is not confirmed. Refresh before running it.`;
         case "executing":
-            return `${action} is running.`;
+            return `${actionSubject} is running.`;
         case "patch_applied_pending_verification":
-            return "Implementation is complete. Verification is next.";
+            return "The change is applied. Review and approve the checks before they run.";
         case "awaiting_verification_approval":
             if (workflow.verification_approval_status === "approved") return "Checks are approved. Run them when you are ready.";
             if (workflow.verification_approval_status === "rejected") return "Verification approval was rejected.";
@@ -1046,11 +1048,11 @@ function workflowStatusMessage(workflow: WorkflowDetailResponse): string {
                 ? "Atlas couldn't confirm whether the change finished. Check its result before starting the change again."
                 : "Workflow is blocked. Review the request and latest result below.";
         case "implementation_rejected":
-            return "Implementation approval was rejected.";
+            return "Change approval was rejected.";
         case "completed":
             return "Workflow completed.";
         default:
-            return "Current workflow status is unavailable. Review Workflow details.";
+            return "Current status is unavailable. Open Workflow details.";
     }
 }
 

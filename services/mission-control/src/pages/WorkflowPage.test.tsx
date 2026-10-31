@@ -91,12 +91,13 @@ function renderPage(path = "/workflows/workflow-123", state?: unknown) {
 describe("WorkflowPage", () => {
     it.each([
         ["preparation", workflow({ workflow_state: "awaiting_approval" }), "Prepare the change for review."],
-        ["executing", workflow({ workflow_state: "executing" }), "Implementation is running."],
-        ["approved and ready", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" }), "Implementation is approved and ready to run."],
-        ["unconfirmed approval", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "pending" }), "Implementation approval is not confirmed. Refresh before running it."],
+        ["executing", workflow({ workflow_state: "executing" }), "The change is running."],
+        ["approved and ready", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" }), "The change is approved and ready to run."],
+        ["unconfirmed approval", workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "pending" }), "Change approval is not confirmed. Refresh before running it."],
+        ["applied and awaiting checks", workflow({ workflow_state: "patch_applied_pending_verification" }), "The change is applied. Review and approve the checks before they run."],
         ["commit approval", workflow({ workflow_state: "awaiting_commit_approval" }), "Commit needs approval."],
         ["completed", workflow({ workflow_state: "completed" }), "Workflow completed."],
-        ["unknown", workflow({ workflow_state: "unexpected_state" }), "Current workflow status is unavailable. Review Workflow details."],
+        ["unknown", workflow({ workflow_state: "unexpected_state" }), "Current status is unavailable. Open Workflow details."],
     ])("summarizes the %s state in plain language", async (_name, fixture, message) => {
         mockedGetWorkflowDetail.mockResolvedValue(fixture);
         renderPage();
@@ -115,7 +116,7 @@ describe("WorkflowPage", () => {
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         expect(within(technicalDetails as HTMLElement).getByText("Malformed workflow detail payload.")).not.toBeVisible();
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
@@ -136,7 +137,7 @@ describe("WorkflowPage", () => {
         expect(within(alert).getByRole("button", { name: "Try again" })).toBeVisible();
         expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
         expect(screen.queryByRole("region", { name: "Read-only workflow rail" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
     });
 
     it("shows the exact maintenance request before offering action approval", async () => {
@@ -268,7 +269,7 @@ describe("WorkflowPage", () => {
         let resolveRead!: (value: WorkflowDetailResponse) => void;
         mockedGetWorkflowDetail.mockResolvedValueOnce(initial).mockImplementationOnce(() => new Promise((resolve) => { resolveRead = resolve; }));
         renderPage();
-        const name = stage === "implementation" ? "Approve Implementation" : stage === "verification" ? "Approve Verification" : "Approve Commit";
+        const name = stage === "implementation" ? "Approve change" : stage === "verification" ? "Approve Verification" : "Approve Commit";
         const approve = await screen.findByRole("button", { name });
         fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
@@ -289,8 +290,8 @@ describe("WorkflowPage", () => {
         if (stage === "implementation") {
             initial = workflow();
             decided = workflow({ workflow_state: "awaiting_execution", implementation_approval_status: "approved" });
-            buttonName = "Approve Implementation";
-            expectedFailureMessage = "Mission Control could not confirm the implementation approval decision.";
+            buttonName = "Approve change";
+            expectedFailureMessage = "Mission Control could not confirm the change approval decision.";
             mockedSubmitWorkflowImplementationApproval.mockRejectedValueOnce(new Error("Approval already decided"));
         } else if (stage === "verification") {
             initial = workflowAwaitingVerification({ verification_approval_status: "pending" });
@@ -376,7 +377,7 @@ describe("WorkflowPage", () => {
             implementation_approval_status: "approved", message: null,
         });
         renderPage();
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve change" }));
         await waitFor(() => expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2));
         expect(screen.queryByText("Change approved. Run it when you are ready.")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
@@ -387,7 +388,7 @@ describe("WorkflowPage", () => {
         render(<StrictMode><MemoryRouter initialEntries={["/workflows/workflow-123"]}><Routes>
             <Route path="/workflows/:workflowId" element={<WorkflowPage />} />
         </Routes></MemoryRouter></StrictMode>);
-        await screen.findByRole("button", { name: "Approve Implementation" });
+        await screen.findByRole("button", { name: "Approve change" });
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(1);
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
@@ -398,12 +399,12 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValueOnce(workflow()).mockImplementationOnce(() => new Promise((resolve) => { resolveNext = resolve; }));
         const router = createMemoryRouter([{ path: "/workflows/:workflowId", element: <WorkflowPage /> }], { initialEntries: ["/workflows/workflow-123"] });
         render(<RouterProvider router={router} />);
-        await screen.findByRole("button", { name: "Approve Implementation" });
+        await screen.findByRole("button", { name: "Approve change" });
         await act(() => router.navigate("/workflows/next-workflow"));
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
         expect(screen.getByRole("status")).toHaveTextContent("Loading workflow");
         await act(async () => resolveNext(workflow({ workflow_id: "next-workflow", workflow_state: "completed" })));
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
     });
 
@@ -413,7 +414,7 @@ describe("WorkflowPage", () => {
         const alert = await screen.findByRole("alert");
         expect(alert).toHaveTextContent("The returned workflow does not match this page.");
         expect(alert).not.toHaveTextContent("Try loading it again.");
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "← All workflows" })).toHaveAttribute("href", "/workflows");
     });
 
@@ -428,14 +429,14 @@ describe("WorkflowPage", () => {
         expect(await screen.findByRole("link", { name: "View workflow history" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
         await act(async () => resolveOld(workflow()));
         expect(screen.getByRole("link", { name: "View workflow history" })).toHaveAttribute("href", "/workflows/next-workflow/audit");
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
     });
 
     it("retries a failed read without submitting a workflow action", async () => {
         mockedGetWorkflowDetail.mockRejectedValueOnce(new Error("Unavailable")).mockResolvedValue(workflow());
         renderPage();
         fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
-        await screen.findByRole("button", { name: "Approve Implementation" });
+        await screen.findByRole("button", { name: "Approve change" });
         expect(mockedGetWorkflowDetail).toHaveBeenCalledTimes(2);
         expect(mockedSubmitWorkflowImplementationApproval).not.toHaveBeenCalled();
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
@@ -548,13 +549,27 @@ describe("WorkflowPage", () => {
         renderPage();
 
         expect(await screen.findByRole("button", { name: "Run approved change" })).toBeInTheDocument();
-        expect(screen.getByText("Implementation approval is recorded.", { exact: true })).toBeVisible();
+        expect(screen.getByText("Change approval is recorded.", { exact: true })).toBeVisible();
+    });
+
+    it("uses change language while keeping approval separate from running it", async () => {
+        mockedGetWorkflowDetail.mockResolvedValue(workflow());
+        renderPage();
+
+        const approval = within(await screen.findByRole("region", { name: "Change approval" }));
+        expect(approval.getByText(
+            "Approve or reject the exact change request shown above. Approval does not apply it; choose Run approved change separately when you are ready.",
+            { exact: true },
+        )).toBeVisible();
+        expect(approval.getByRole("button", { name: /^Approve change$/ })).toBeEnabled();
+        expect(approval.getByRole("button", { name: /^Reject change$/ })).toBeEnabled();
+        expect(approval.queryByRole("button", { name: /^Run approved change$/ })).not.toBeInTheDocument();
     });
 
     it("does not show resume action when implementation is pending", async () => {
         renderPage();
 
-        expect(await screen.findByText("Implementation needs approval.", { exact: true })).toBeVisible();
+        expect(await screen.findByText("Change needs approval.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
     });
 
@@ -565,7 +580,7 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect(await screen.findByText("Implementation approval was rejected.", { exact: true })).toBeVisible();
+        expect(await screen.findByText("Change approval was rejected.", { exact: true })).toBeVisible();
         expect(screen.queryByRole("button", { name: "Run approved change" })).not.toBeInTheDocument();
     });
 
@@ -581,7 +596,7 @@ describe("WorkflowPage", () => {
 
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve change" }));
         await screen.findByText("Change approved. Run it when you are ready.");
 
         expect(mockedResumeWorkflow).not.toHaveBeenCalled();
@@ -715,7 +730,7 @@ describe("WorkflowPage", () => {
 
         expect(await screen.findByRole("heading", { name: "Review workflow" })).toBeInTheDocument();
         const summary = within(screen.getByRole("region", { name: "Workflow summary" }));
-        expect(summary.getByText("Implementation needs approval.", { exact: true })).toBeVisible();
+        expect(summary.getByText("Change needs approval.", { exact: true })).toBeVisible();
         const details = summary.getByText("Workflow details", { exact: true });
         expect(details.closest("details")).not.toHaveAttribute("open");
         expect(summary.getByText("workflow-123")).not.toBeVisible();
@@ -920,7 +935,7 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve change" }));
 
         await screen.findByText("Change approved. Run it when you are ready.");
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledTimes(1);
@@ -937,9 +952,9 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Reject implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Reject change" }));
 
-        await screen.findByText("Implementation request rejected.");
+        await screen.findByText("Change rejected.");
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledWith("workflow-123", "reject");
     });
 
@@ -952,11 +967,11 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        const approve = await screen.findByRole("button", { name: "Approve Implementation" });
+        const approve = await screen.findByRole("button", { name: "Approve change" });
         fireEvent.click(approve);
         fireEvent.click(approve);
 
-        expect(await screen.findByText("Submitting implementation approval...")).toBeInTheDocument();
+        expect(await screen.findByText("Submitting change approval...")).toBeInTheDocument();
         expect(mockedSubmitWorkflowImplementationApproval).toHaveBeenCalledTimes(1);
         resolveApproval({
             workflow_id: "workflow-123",
@@ -974,9 +989,9 @@ describe("WorkflowPage", () => {
         }));
         renderPage();
 
-        expect(await screen.findByText("Implementation approval is recorded.", { exact: true })).toBeVisible();
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Reject implementation" })).not.toBeInTheDocument();
+        expect(await screen.findByText("Change approval is recorded.", { exact: true })).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject change" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Run approved change" })).toBeVisible();
     });
 
@@ -1007,11 +1022,11 @@ describe("WorkflowPage", () => {
         });
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve change" }));
 
         await screen.findByText("Change approved. Run it when you are ready.");
-        expect(screen.queryByRole("button", { name: "Approve Implementation" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "Reject implementation" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Approve change" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Reject change" })).not.toBeInTheDocument();
     });
 
     it("renders workflow rail and no execution, verification, or commit controls", async () => {
@@ -1069,7 +1084,7 @@ describe("WorkflowPage", () => {
 
         const detailsContent = within(details);
         expect(detailsContent.getByText("Maintenance request approval", { exact: true })).toBeVisible();
-        expect(detailsContent.queryByText("Implementation approval", { exact: true })).not.toBeInTheDocument();
+        expect(detailsContent.queryByText("Change approval", { exact: true })).not.toBeInTheDocument();
         expect(detailsContent.queryByText("Verification approval", { exact: true })).not.toBeInTheDocument();
         expect(detailsContent.queryByText("Commit approval", { exact: true })).not.toBeInTheDocument();
         expect(detailsContent.queryByText("Repository", { exact: true })).not.toBeInTheDocument();
@@ -1178,7 +1193,7 @@ describe("WorkflowPage", () => {
     it("never loads operational lifecycle for a repository workflow", async () => {
         renderPage();
 
-        await screen.findByRole("heading", { name: "Implementation approval" });
+        await screen.findByRole("heading", { name: "Change approval" });
         expect(mockedGetWorkflowOperationalLifecycle).not.toHaveBeenCalled();
         expect(mockedGetWorkflowRecoveryDiagnostic).not.toHaveBeenCalled();
         expect(mockedGetWorkflowSupportBundle).not.toHaveBeenCalled();
@@ -1414,7 +1429,7 @@ describe("WorkflowPage", () => {
         mockedGetWorkflowDetail.mockResolvedValue(workflow());
         renderPage();
 
-        await screen.findByRole("heading", { name: "Implementation approval" });
+        await screen.findByRole("heading", { name: "Change approval" });
 
         expect(screen.queryByRole("heading", { name: "Commit details" })).not.toBeInTheDocument();
         expect(screen.queryByText("Commit details are unavailable for this workflow.")).not.toBeInTheDocument();
@@ -1554,10 +1569,10 @@ describe("WorkflowPage", () => {
         mockedSubmitWorkflowImplementationApproval.mockRejectedValue(new Error("approval failed: Bearer canary-secret-value"));
         renderPage();
 
-        fireEvent.click(await screen.findByRole("button", { name: "Approve Implementation" }));
+        fireEvent.click(await screen.findByRole("button", { name: "Approve change" }));
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Mission Control could not confirm the implementation approval decision.");
+        expect(alert).toHaveTextContent("Mission Control could not confirm the change approval decision.");
         const technicalDetails = within(alert).getByText("Technical details").closest("details");
         expect(technicalDetails).not.toHaveAttribute("open");
         const sensitiveDetails = within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]");

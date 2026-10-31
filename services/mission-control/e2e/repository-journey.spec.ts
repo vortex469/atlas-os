@@ -29,16 +29,16 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Create Workflow", exact: true }).click();
         await page.getByRole("link", { name: "Open Workflow", exact: true }).click();
         await page.getByRole("button", { name: "Prepare change for review", exact: true }).click();
-        await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();
+        await page.getByRole("button", { name: "Approve change", exact: true }).click();
 
         const alert = page.getByRole("alert");
-        await expect(alert).toContainText("Mission Control could not confirm the implementation approval decision.");
+        await expect(alert).toContainText("Mission Control could not confirm the change approval decision.");
         await expect(alert).toContainText("The workflow status was refreshed; check its current approval status before taking another step.");
         const technicalDetails = alert.locator("details");
         await expect(technicalDetails).not.toHaveAttribute("open");
         await expect(technicalDetails).toContainText("Approval may have been recorded. Check the current workflow status before trying again.");
-        await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: "Reject implementation", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Approve change", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Reject change", exact: true })).toHaveCount(0);
         await expect(page.getByRole("button", { name: "Run approved change", exact: true })).toBeVisible();
         expect(fixture.writes).toEqual(fixture.expectedWrites.slice(0, 6));
         expect(fixture.unexpected).toEqual([]);
@@ -90,13 +90,13 @@ for (const width of [320, 390, 1280]) {
         await page.getByRole("button", { name: "Prepare change for review", exact: true }).click();
         await expectResponsiveMainPadding(page, "Review workflow", width);
 
-        await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Approve change", exact: true })).toBeVisible();
         await expect(page.getByRole("link", { name: "← Change proposals", exact: true })).toHaveAttribute(
             "href",
             `/execution-candidates${proposalSearch}`,
         );
         const workflowSummary = page.getByRole("region", { name: "Workflow summary" });
-        await expect(workflowSummary.getByText("Implementation needs approval.", { exact: true })).toBeVisible();
+        await expect(workflowSummary.getByText("Change needs approval.", { exact: true })).toBeVisible();
         await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeHidden();
         await workflowSummary.getByText("Workflow details", { exact: true }).click();
         await expect(workflowSummary.getByText("Candidate fingerprint", { exact: true })).toBeVisible();
@@ -119,7 +119,7 @@ for (const width of [320, 390, 1280]) {
         await expect(changeDetails.getByText("implementation-browser-journey", { exact: true })).toBeVisible();
         await changeDetails.getByText("Technical details", { exact: true }).click();
         await expect(changeDetails.getByText("implementation-browser-journey", { exact: true })).toBeHidden();
-        await page.getByRole("button", { name: "Approve Implementation", exact: true }).click();
+        await page.getByRole("button", { name: "Approve change", exact: true }).click();
         await expect(page.getByRole("button", { name: "Run approved change", exact: true })).toBeVisible();
         await expect(page.getByText("Change approved. Run it when you are ready.", { exact: true })).toBeVisible();
         expect(fixture.writes).toHaveLength(6);
@@ -187,7 +187,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.getByRole("heading", { name: "Completed workflow", exact: true })).toBeVisible();
         await expect(page.getByText(journey.commit, { exact: true })).toBeVisible();
         await expect(page.getByText("Commit approved. Record it when you are ready.", { exact: true })).toHaveCount(0);
-        await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve Verification|Approve Commit/ })).toHaveCount(0);
         await fitsViewport(page);
         await page.getByRole("link", { name: "View workflow history", exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`/workflows/${journey.workflow}/audit\\?eligibility=eligible&change=update-compose-stack&offset=25&returnTo=%2Fexecution-candidates$`));
@@ -314,7 +314,7 @@ for (const width of [390, 1280]) {
         const alert = page.getByRole("alert");
         await expect(alert).toContainText("Atlas couldn’t read this workflow’s details. Try again to reload them.");
         await expect(alert.locator("details")).not.toHaveAttribute("open");
-        await expect(page.getByRole("button", { name: "Approve Implementation" })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "Approve change" })).toHaveCount(0);
         await page.getByRole("button", { name: "Try again" }).click();
         await expect(page.getByRole("region", { name: "Workflow summary" })).toBeVisible();
         expect(detailReads).toBe(2);
@@ -327,12 +327,12 @@ for (const width of [390, 1280]) {
 test("rejecting implementation leaves execution and later approvals unavailable after reload", async ({ page, baseURL }) => {
     const fixture = await installRepositoryJourney(page, true, { baseURL });
     await page.goto(`/workflows/${journey.workflow}`);
-    await page.getByRole("button", { name: "Reject implementation", exact: true }).click();
-    await expect(page.getByText("Implementation request rejected.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
+    await page.getByRole("button", { name: "Reject change", exact: true }).click();
+    await expect(page.getByText("Change rejected.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve Verification|Approve Commit/ })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("heading", { name: "Review workflow", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve Implementation|Approve Verification|Approve Commit/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Run approved|Record approved|Approve change|Approve Verification|Approve Commit/ })).toHaveCount(0);
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);
 });
@@ -341,18 +341,18 @@ test("a pending workflow refresh disables decisions without submitting a request
     const fixture = await installRepositoryJourney(page, true, { baseURL });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/workflows/${journey.workflow}`);
-    await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Approve change", exact: true })).toBeEnabled();
     const read = fixture.holdNextWorkflowRead();
     await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await read.requested;
     await expect(page.getByText("Checking current workflow status. Approval and action buttons are unavailable until this check finishes.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Approve Implementation", exact: true })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "Reject implementation", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Approve change", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Reject change", exact: true })).toBeDisabled();
     expect(fixture.writes).toEqual([]);
     read.release();
-    await expect(page.getByRole("button", { name: "Reject implementation", exact: true })).toBeEnabled();
-    await page.getByRole("button", { name: "Reject implementation", exact: true }).click();
-    await expect(page.getByText("Implementation request rejected.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reject change", exact: true })).toBeEnabled();
+    await page.getByRole("button", { name: "Reject change", exact: true }).click();
+    await expect(page.getByText("Change rejected.", { exact: true })).toBeVisible();
     expect(fixture.writes).toEqual(fixture.expectedWrites);
     expect(fixture.unexpected).toEqual([]);
     await fitsViewport(page);

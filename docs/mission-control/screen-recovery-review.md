@@ -4452,3 +4452,15 @@ maintenance counterpart is called “Maintenance record.” The record check and
 inconsistent-stage messages use plain language; technical failure codes stay
 under Technical details. Links still open the same read-only records, and
 approval and execution behavior are unchanged.
+
+## Repository change approval wording — 2026-10-31
+
+The repository workflow now describes implementation approval as change
+approval. The status summary says when the change needs approval, is approved,
+or has been applied; the operator-facing buttons say “Approve change” and
+“Reject change.” The page still names the exact request being approved and
+keeps running the approved change as a separate action. API fields, approval
+decisions, and execution controls are unchanged. The WorkflowPage suite passes
+(110 tests), the repository journey passes at 320px, 390px, and 1280px (15
+tests), the workflow recovery checks pass at those widths (6 tests), and lint,
+production build, and `git diff --check` pass.
