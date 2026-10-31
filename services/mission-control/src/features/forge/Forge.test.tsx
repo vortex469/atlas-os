@@ -108,7 +108,7 @@ describe("Forge analysis freshness", () => {
         expect(screen.queryByText("Deployment Blocked")).not.toBeInTheDocument();
     });
 
-    it("keeps higher analysis risk visible and distinguishes the planner flag from permission", async () => {
+    it("keeps higher analysis risk visible and explains that the plan flag is not approval", async () => {
         const result = analysis("Risk review");
         result.result.analysis.plan.risk = "critical";
         result.result.planning.proposal.approval_required = false;
@@ -116,11 +116,21 @@ describe("Forge analysis freshness", () => {
         render(<Forge />);
         submit();
         await screen.findByText("Highest reported risk: critical");
-        expect(screen.getByText("Planner does not request approval")).toBeInTheDocument();
-        expect(screen.getByText("This is a proposed plan. Workflow permissions and exact approvals are checked separately.")).toBeInTheDocument();
+        expect(screen.getByText("This plan does not say approval is required")).toBeInTheDocument();
+        expect(screen.getByText("This plan is only a suggestion. Atlas checks who may act and any required approval before a change.")).toBeInTheDocument();
         expect(screen.getAllByText("Not estimated").length).toBeGreaterThan(0);
         expect(screen.queryByText("0 minutes")).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|deploy now/i })).not.toBeInTheDocument();
+    });
+
+    it("describes approval requested by a plan without presenting it as Atlas approval", async () => {
+        const result = analysis("Approval wording");
+        result.result.planning.proposal.approval_required = true;
+        analyze.mockResolvedValue(result);
+        render(<Forge />);
+        submit();
+        expect(await screen.findByText("This plan says approval is required")).toBeInTheDocument();
+        expect(screen.getByText("This plan is only a suggestion. Atlas checks who may act and any required approval before a change.")).toBeInTheDocument();
     });
 
     it("limits the empty findings message to what the analysis reported", async () => {
@@ -151,7 +161,7 @@ describe("Forge analysis freshness", () => {
         expect(technicalDetails).toHaveAttribute("open");
         expect(technicalDetails).toHaveTextContent("[Sensitive text withheld]");
         expect(screen.queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
-        expect(screen.getByText("This is a proposed plan. Workflow permissions and exact approvals are checked separately.")).toBeInTheDocument();
+        expect(screen.getByText("This plan is only a suggestion. Atlas checks who may act and any required approval before a change.")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /approve|execute|deploy now/i })).not.toBeInTheDocument();
     });
 

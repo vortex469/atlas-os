@@ -63,7 +63,8 @@ for (const width of [390, 1280]) {
         await page.getByRole("button", { name: "Analyze Compose file" }).click();
         await expect(page.getByText("current-analysis", { exact: true }).first()).toBeVisible();
         await expect(page.getByText("Highest reported risk: critical", { exact: true })).toBeVisible();
-        await expect(page.getByText("Planner does not request approval", { exact: true })).toBeVisible();
+        await expect(page.getByText("This plan does not say approval is required", { exact: true })).toBeVisible();
+        await expect(page.getByText("This plan is only a suggestion. Atlas checks who may act and any required approval before a change.", { exact: true })).toBeVisible();
         await expect(page.getByText("Not estimated", { exact: true }).first()).toBeVisible();
         await expect(page.getByText("0 minutes", { exact: true })).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "Network ports" })).toBeVisible();

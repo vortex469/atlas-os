@@ -4629,3 +4629,13 @@ Next for other requests. Request status, filtering, and navigation behavior
 are unchanged. The focused history suite passes 45 tests and the maintenance
 history browser checks pass 13 cases at phone and desktop widths. Lint,
 production build, and `git diff --check` pass.
+
+## Deployment plan approval wording — 2026-10-31
+
+Forge now says whether the suggested plan itself asks for approval. The
+accompanying note explains that Atlas checks operator permissions and any
+required approval before a change, so a planner's flag cannot be mistaken for
+Atlas authorization. This is display-only; analysis, permission, and approval
+behavior are unchanged. The focused Forge component suite passes 14 tests and
+the browser journey passes at 390px and 1280px. Lint, production build, and
+git diff check pass.
