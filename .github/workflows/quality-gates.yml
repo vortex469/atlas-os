@@ -116,7 +116,8 @@ jobs:
 
   mission-control:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Covers dependency installation, component tests, browser setup, and both browser suites.
+    timeout-minutes: 20
 
     steps:
       - name: Check out Atlas
