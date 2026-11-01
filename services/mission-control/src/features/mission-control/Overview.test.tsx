@@ -314,9 +314,9 @@ describe("MC overview evidence", () => {
         expect(steps).toHaveTextContent("If it is missing, this Docker engine does not manage it.");
         expect(steps).toHaveTextContent("A running container does not prove its web app responds.");
         expect(steps).toHaveTextContent("Exited means it stopped.");
-        expect(steps).toHaveTextContent("Check PORTS. With host networking, a blank value is expected because the app listens on the service computer's port.");
-        expect(steps).toHaveTextContent("Otherwise, blank means no host port is published.");
-        expect(steps).toHaveTextContent("A mapping starting with 127.0.0.1: works only on that computer.");
+        expect(steps).toHaveTextContent("Check NETWORKS and PORTS. If NETWORKS says host, a blank PORTS value is normal because the app uses the service computer's ports directly.");
+        expect(steps).toHaveTextContent("Otherwise, blank means Docker has not published a port.");
+        expect(steps).toHaveTextContent("A value starting with 127.0.0.1: works only on that computer.");
         expect(steps).toHaveTextContent("To publish a port, use Compose's ports: or docker run -p.");
         expect(steps).toHaveTextContent("use HOST_PORT in Atlas's address and match CONTAINER_PORT to the app's listening port.");
         expect(steps).toHaveTextContent("Recreate the container after changing the ports.");

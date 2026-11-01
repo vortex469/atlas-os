@@ -45,7 +45,7 @@ for (const width of [390, 1440]) {
         await expect(dockerHelp).not.toHaveAttribute("open", "");
         await dockerHelp.locator("summary").click();
         await expect(down.getByRole("list", { name: "Docker and Compose checks" })).toContainText(
-            "A mapping starting with 127.0.0.1: works only on that computer",
+            "A value starting with 127.0.0.1: works only on that computer",
         );
         await expect(summary.getByText("Last known report (out of date): Healthy.")).toBeVisible();
         await page.route("**/api/v1/health", route => route.fulfill({ status: 503, json: { detail: "Unavailable" } }));

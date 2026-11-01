@@ -454,9 +454,9 @@ for (const width of [320, 1280]) {
         await expect(steps).toContainText('Up means it is running; Exited means it stopped');
         await expect(steps).toContainText('If it is missing, this Docker engine does not manage it');
         await expect(steps).toContainText('A running container does not prove its web app responds');
-        await expect(steps).toContainText('Check PORTS. With host networking, a blank value is expected because the app listens on the service computer\'s port');
-        await expect(steps).toContainText('Otherwise, blank means no host port is published');
-        await expect(steps).toContainText('A mapping starting with 127.0.0.1: works only on that computer');
+        await expect(steps).toContainText('Check NETWORKS and PORTS. If NETWORKS says host, a blank PORTS value is normal because the app uses the service computer\'s ports directly');
+        await expect(steps).toContainText('Otherwise, blank means Docker has not published a port');
+        await expect(steps).toContainText('A value starting with 127.0.0.1: works only on that computer');
         await expect(steps).toContainText("To publish a port, use Compose's ports: or docker run -p");
         await expect(steps).toContainText("use HOST_PORT in Atlas's address and match CONTAINER_PORT to the app's listening port");
         await expect(steps).toContainText('Recreate the container after changing the ports');

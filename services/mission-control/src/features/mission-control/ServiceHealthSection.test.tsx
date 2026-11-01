@@ -295,8 +295,8 @@ describe("ServiceHealthSection", () => {
         const dockerChecks = within(serviceComputer as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
         expect(dockerChecks).toHaveTextContent("On the computer that runs iFileshare, run docker ps --all");
         expect(dockerChecks).toHaveTextContent("Use the container name or image to find iFileshare; Docker's name may differ from Atlas's.");
-        expect(dockerChecks).toHaveTextContent("With host networking, a blank value is expected");
-        expect(dockerChecks).toHaveTextContent("A mapping starting with 127.0.0.1: works only on that computer.");
+        expect(dockerChecks).toHaveTextContent("If NETWORKS says host, a blank PORTS value is normal because the app uses the service computer's ports directly.");
+        expect(dockerChecks).toHaveTextContent("A value starting with 127.0.0.1: works only on that computer.");
         expect(dockerChecks).toHaveTextContent("use HOST_PORT in Atlas's address");
         expect(within(dialog).getByText(/Any HTTP status means iFileshare answered from Atlas Core/)).toHaveTextContent("A timeout or connection error means Atlas Core got no response");
         fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));

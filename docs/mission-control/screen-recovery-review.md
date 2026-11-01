@@ -11,7 +11,7 @@ runtime, tag, or publish a release.
 | --- | --- | --- |
 | Shared navigation | Plain menu labels distinguish action history, maintenance history, request creation and proposals; only working destinations appear; only the owning destination is highlighted; links, mobile drawer, focus, skip link and missing-page recovery work | `e2e/navigation.spec.ts`, `e2e/app-shell.spec.ts`, `e2e/screen-recovery.spec.ts`; `src/layouts/MainLayout.test.tsx` includes maintenance/action-detail ownership and omitted future placeholders |
 | Screen loading | Secondary screens load on demand; pending navigation pauses the old page's controls while keeping navigation available; module failure offers reload and home recovery | `e2e/page-loading.spec.ts` covers delayed modules, leaving a pending screen, and direct-link failure/reload at phone and desktop widths |
-| Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` runs 76 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
+| Generated frontend assets | Built pages preserve the supported operator journeys, navigation and responsive shell | `playwright.built.config.ts` runs 170 compatible browser cases against the generated build; API requests remain bound to the configured origin and exact isolated fixtures |
 | Development API routing | Core paths are preserved; the Agent prefix is removed; session/CSRF/origin headers are preserved and caller identity headers are stripped | `src/server/devProxy.test.ts` uses the actual Vite server with isolated HTTP stubs; no Atlas backend or mutation is involved |
 | Dashboard | Attention and health remain distinct; optional detail does not crowd the main screen | `e2e/overview.spec.ts`, `e2e/dashboard-block.spec.ts`, `e2e/system-health.spec.ts`; overview and worker component tests |
 | Workflow directory | Each card shows its current stage and latest result, then a plain-language next step; IDs and target references are optional details without a duplicate status field | `src/pages/WorkflowDashboardPage.test.tsx`, `e2e/workflow-dashboard.spec.ts` |
@@ -4690,3 +4690,12 @@ The full component suite passes 3,117 tests across 188 files. The development
 browser suite passes 266 cases, and the built-app browser suite passes 170
 cases. Lint and the production build pass. Browser checks use local fixtures;
 they do not evaluate production behavior.
+
+## Docker network and port guidance — 2026-11-01
+
+The service-computer check now tells operators to read the Docker `NETWORKS`
+and `PORTS` columns together. It explains that `host` networking makes a blank
+`PORTS` value normal; otherwise, blank means Docker has not published a port.
+The focused Overview and service-health suites pass 92 tests, the related
+development and built-app browser checks pass at 320px, 390px, 1280px, and
+1440px, and lint, production build, and `git diff --check` pass.

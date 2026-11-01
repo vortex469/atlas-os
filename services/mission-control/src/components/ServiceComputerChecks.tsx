@@ -44,7 +44,7 @@ export function ServiceComputerChecks({ address, serviceName }: { address: unkno
                             Find the app&apos;s container. <code>Up</code> means it is running; <code>Exited</code> means it stopped. If it is missing, this Docker engine does not manage it. Check another engine or VM, or whether the app runs directly on the computer. A running container does not prove its web app responds.
                         </li>
                         <li>
-                            Check <code>PORTS</code>. With host networking, a blank value is expected because the app listens on the service computer&apos;s port. Otherwise, blank means no host port is published. A mapping starting with <code>127.0.0.1:</code> works only on that computer.
+                            Check <code>NETWORKS</code> and <code>PORTS</code>. If <code>NETWORKS</code> says <code>host</code>, a blank <code>PORTS</code> value is normal because the app uses the service computer&apos;s ports directly. Otherwise, blank means Docker has not published a port. A value starting with <code>127.0.0.1:</code> works only on that computer.
                         </li>
                         <li>
                             To publish a port, use Compose&apos;s <code>ports:</code> or <code>docker run -p</code>. For <code>HOST_PORT:CONTAINER_PORT</code>, use <code>HOST_PORT</code> in Atlas&apos;s address and match <code>CONTAINER_PORT</code> to the app&apos;s listening port. Recreate the container after changing the ports.
