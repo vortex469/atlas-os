@@ -4666,3 +4666,13 @@ service can be running on its own computer while Atlas still reports it
 unreachable. This is display-only; probes and health status are unchanged. The
 focused service-health and visual-foundation suites pass 15 tests, and lint,
 production build, and `git diff --check` pass.
+
+## Service check command location — 2026-11-01
+
+The connection instructions now say to run the Atlas Core check on the same
+computer as Atlas, from the folder containing `compose.production.yaml`. The
+“No such file” help names Atlas's computer and Compose folder, explaining why
+the command fails when run from the service computer. The checks remain
+read-only. The focused Mission Control suites pass 98 tests, the connection
+guidance passes at 320px and 1280px, and lint, production build, and
+`git diff --check` pass.

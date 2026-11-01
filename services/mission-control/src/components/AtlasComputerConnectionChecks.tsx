@@ -56,7 +56,7 @@ export function AtlasComputerConnectionChecks({
                             </div>
                         </div>
                     </li>
-                    <li>Run this command from the folder containing <code>compose.production.yaml</code>. It checks whether Atlas Core can connect to {name}; running it on the service computer checks a different connection.</li>
+                    <li>On that same computer, open the folder containing <code>compose.production.yaml</code> and run this command. Running it on the service computer checks a different connection.</li>
                 </ol>
                 {surface === "overview" && <p className={checkedAddress ? "mt-1 break-all font-mono" : "mt-1"}>{checkedAddress ?? "Configured service address not reported"}</p>}
                 {command ? (
@@ -70,7 +70,7 @@ export function AtlasComputerConnectionChecks({
                         <p className={`mt-2 text-sm ${style.note}`}>Any HTTP status means {name} answered from Atlas Core. A timeout or connection error means Atlas Core got no response. The command omits credentials and query values.</p>
                         <details className="mt-2">
                             <summary className={style.summary}>If Compose says the file is missing</summary>
-                            <p className={`mt-2 text-sm ${style.note}`}>“No such file” means Compose did not run the check. Open Atlas&apos;s Compose folder or pass its full path with <code>--file</code>.</p>
+                            <p className={`mt-2 text-sm ${style.note}`}>“No such file” means Compose could not find the stack file. On the Atlas Core computer, move to Atlas&apos;s Compose folder or give Compose the full file path after <code>--file</code>.</p>
                         </details>
                     </>
                 ) : (

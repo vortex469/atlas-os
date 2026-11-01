@@ -396,7 +396,7 @@ for (const width of [320, 1280]) {
         await expect(connectionSteps).toBeVisible();
         await expect(nextStep).toContainText("These commands only check status. They do not change Atlas or the service.");
         await expect(connectionSteps).toContainText("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
-        await expect(connectionSteps).toContainText("Run this command from the folder containing compose.production.yaml. It checks whether Atlas Core can connect to iFileshare; running it on the service computer checks a different connection.");
+        await expect(connectionSteps).toContainText("On that same computer, open the folder containing compose.production.yaml and run this command. Running it on the service computer checks a different connection.");
         const atlasCommand = nextStep.getByRole('group', { name: 'Atlas container status command' });
         await expect(atlasCommand).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await atlasCommand.getByRole('button', { name: 'Copy command' }).click();
@@ -416,7 +416,7 @@ for (const width of [320, 1280]) {
         const composeHelp = nextStep.getByText("If Compose says the file is missing").locator("xpath=ancestor::details[1]");
         await expect(composeHelp).not.toHaveAttribute("open", "");
         await composeHelp.locator("summary").click();
-        await expect(composeHelp).toContainText("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
+        await expect(composeHelp).toContainText("“No such file” means Compose could not find the stack file. On the Atlas Core computer, move to Atlas's Compose folder or give Compose the full file path after --file.");
         await expect(nextStep).not.toContainText('blank PORTS field');
         await expect(nextStep).not.toContainText('With port mappings');
         const moreChecks = checks.locator('summary', { hasText: serviceComputerLabel });

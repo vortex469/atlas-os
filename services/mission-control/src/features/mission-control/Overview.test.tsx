@@ -266,7 +266,7 @@ describe("MC overview evidence", () => {
         expect(instructions).toHaveTextContent("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
         const atlasCommand = within(nextStep).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(instructions).toHaveTextContent("Run this command from the folder containing compose.production.yaml. It checks whether Atlas Core can connect to iFileshare; running it on the service computer checks a different connection.");
+        expect(instructions).toHaveTextContent("On that same computer, open the folder containing compose.production.yaml and run this command. Running it on the service computer checks a different connection.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");
@@ -276,7 +276,7 @@ describe("MC overview evidence", () => {
         const composeHelp = within(nextStep).getByText("If Compose says the file is missing").closest("details");
         expect(composeHelp).not.toHaveAttribute("open");
         fireEvent.click(within(composeHelp as HTMLDetailsElement).getByText("If Compose says the file is missing"));
-        expect(composeHelp).toHaveTextContent("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
+        expect(composeHelp).toHaveTextContent("“No such file” means Compose could not find the stack file. On the Atlas Core computer, move to Atlas's Compose folder or give Compose the full file path after --file.");
         expect(nextStep).not.toHaveTextContent("blank PORTS field");
         expect(nextStep).not.toHaveTextContent("With host networking");
         expect(nextStep).not.toHaveTextContent(/password|private/);

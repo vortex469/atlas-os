@@ -127,11 +127,11 @@ describe("ServiceHealthSection", () => {
         expect(connectionSteps).toHaveTextContent("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
         const atlasCommand = within(dialog).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(connectionSteps).toHaveTextContent("Run this command from the folder containing compose.production.yaml. It checks whether Atlas Core can connect to Containers; running it on the service computer checks a different connection.");
+        expect(connectionSteps).toHaveTextContent("On that same computer, open the folder containing compose.production.yaml and run this command. Running it on the service computer checks a different connection.");
         const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
         const composeHelpText = composeHelp!.querySelector("p");
         expect(composeHelp).not.toHaveAttribute("open");
-        expect(composeHelpText).toHaveTextContent("“No such file” means Compose did not run the check. Open Atlas's Compose folder or pass its full path with --file.");
+        expect(composeHelpText).toHaveTextContent("“No such file” means Compose could not find the stack file. On the Atlas Core computer, move to Atlas's Compose folder or give Compose the full file path after --file.");
         expect(composeHelpText).not.toBeVisible();
         await user.click(screen.getByText("If Compose says the file is missing"));
         expect(composeHelpText).toBeVisible();
