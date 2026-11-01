@@ -73,7 +73,7 @@ export function ServiceHealthSection({
             <section>
                 <SectionHeader
                     title="Service reachability"
-                    description="Shows whether Atlas Core can reach each service address. A service can be running on its computer and still be unreachable from Core. Select one to see the address Atlas checked."
+                    description="Each card shows whether Atlas Core can reach the service’s configured address. The service may be running on its own computer but unreachable from Atlas Core. Open a card to see the address Atlas checked and what to try next."
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -18,7 +18,7 @@ export function ServiceHealthCard({
             onClick={(event) => onSelect(event.currentTarget)}
             aria-haspopup="dialog"
             className="mc-panel-interactive mc-focusable w-full p-5 text-left"
-            aria-label={`View details for ${name}`}
+            aria-label={`View connection details for ${name}`}
         >
             <div className="flex flex-col items-start gap-4">
                 <div>
@@ -39,7 +39,7 @@ export function ServiceHealthCard({
             </div>
 
             <div className="mc-divider mt-5 flex items-center justify-between border-t pt-4 text-xs font-semibold text-mc-primary-strong">
-                <span>View details</span>
+                <span>View connection details</span>
                 <span aria-hidden="true">→</span>
             </div>
         </button>

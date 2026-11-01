@@ -4656,3 +4656,13 @@ The summary label matches the list of details Atlas could not confirm.
 Compatibility status and installation decisions are unchanged. The Discovery
 item suite passes 41 tests; lint, production build, and the whitespace check
 pass.
+
+## Service reachability guidance — 2026-11-01
+
+The service cards now say “View connection details,” and the section explains
+that it reports whether Atlas Core can reach the configured address. It also
+directs operators to the checked address and next steps, clarifying why a
+service can be running on its own computer while Atlas still reports it
+unreachable. This is display-only; probes and health status are unchanged. The
+focused service-health and visual-foundation suites pass 15 tests, and lint,
+production build, and `git diff --check` pass.

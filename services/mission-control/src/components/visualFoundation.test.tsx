@@ -61,7 +61,7 @@ describe("Mission Control visual foundation", () => {
         );
         expect(
             screen.getByRole("button", {
-                name: "View details for Atlas Core",
+                name: "View connection details for Atlas Core",
             }),
         ).toHaveClass("mc-panel-interactive", "mc-focusable");
         expect(screen.getByText("Policy cache is warm.")).toHaveClass(

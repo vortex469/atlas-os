@@ -92,19 +92,19 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        const card = screen.getByRole("button", { name: "View details for Containers" });
-        expect(within(card).getByText("View details")).toBeVisible();
+        const card = screen.getByRole("button", { name: "View connection details for Containers" });
+        expect(within(card).getByText("View connection details")).toBeVisible();
         expect(within(card).queryByText("Response time")).not.toBeInTheDocument();
         expect(within(card).queryByText("HTTP")).not.toBeInTheDocument();
         expect(
             screen.getByText(
-                "Shows whether Atlas Core can reach each service address. A service can be running on its computer and still be unreachable from Core. Select one to see the address Atlas checked.",
+                "Each card shows whether Atlas Core can reach the service’s configured address. The service may be running on its own computer but unreachable from Atlas Core. Open a card to see the address Atlas checked and what to try next.",
             ),
         ).toBeInTheDocument();
 
         await user.click(
             screen.getByRole("button", {
-                name: "View details for Containers",
+                name: "View connection details for Containers",
             }),
         );
         const dialog = screen.getByRole("dialog", { name: "Containers" });
@@ -202,7 +202,7 @@ describe("ServiceHealthSection", () => {
         );
 
         await user.click(
-            screen.getByRole("button", { name: "View details for iFileshare" }),
+            screen.getByRole("button", { name: "View connection details for iFileshare" }),
         );
 
         expect(
@@ -247,7 +247,7 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "View details for iFileshare" }));
+        fireEvent.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
         const dialog = screen.getByRole("dialog", { name: "iFileshare" });
         fireEvent.click(within(dialog).getByText("Test the connection from Atlas Core to iFileshare"));
         const commandGroup = within(dialog).getByRole("group", { name: "Read-only Core connection check command" });
@@ -291,7 +291,7 @@ describe("ServiceHealthSection", () => {
         const user = userEvent.setup();
         const props = { providers, isRefreshing: false, onRefresh: vi.fn() };
         const { rerender } = render(<ServiceHealthSection {...props} services={{ Containers: service("docker", 8) }} />);
-        await user.click(screen.getByRole("button", { name: "View details for Containers" }));
+        await user.click(screen.getByRole("button", { name: "View connection details for Containers" }));
         rerender(<ServiceHealthSection {...props} services={{ Other: service("podman", 10) }} />);
         expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.getByText("This service is absent from the latest health response.")).toBeInTheDocument();
@@ -313,7 +313,7 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        await user.click(screen.getByRole("button", { name: "View details for iFileshare" }));
+        await user.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
 
         expect(screen.getByText("http://10.10.60.30:8080/health?…")).toBeInTheDocument();
         expect(screen.queryByText(/password|private/)).not.toBeInTheDocument();
@@ -330,7 +330,7 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        const trigger = screen.getByRole("button", { name: "View details for Containers" });
+        const trigger = screen.getByRole("button", { name: "View connection details for Containers" });
         const openDrawer = () => user.click(trigger);
 
         await openDrawer();
@@ -381,7 +381,7 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "View details for iFileshare" }));
+        fireEvent.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
         const dialog = screen.getByRole("dialog", { name: "iFileshare" });
         expect(within(dialog).getAllByText("[Sensitive text withheld]").length).toBeGreaterThan(0);
         fireEvent.click(within(dialog).getByText("Technical details"));
