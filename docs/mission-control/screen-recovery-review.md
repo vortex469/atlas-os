@@ -4699,3 +4699,13 @@ and `PORTS` columns together. It explains that `host` networking makes a blank
 The focused Overview and service-health suites pass 92 tests, the related
 development and built-app browser checks pass at 320px, 390px, 1280px, and
 1440px, and lint, production build, and `git diff --check` pass.
+
+## Health report scope — 2026-11-01
+
+The collapsed “How to read health” explanation now distinguishes system
+findings from service reachability and points operators to Service checks. It
+describes last-known results as out of date without implying that every source
+exposes its own check time. This is display-only; health reports, status rules,
+and refresh behavior are unchanged. The focused Overview suite passes 83 tests,
+the health explanation browser checks pass at 390px and 1280px, and lint,
+production build, and `git diff --check` pass locally.
