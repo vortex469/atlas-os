@@ -4709,3 +4709,13 @@ exposes its own check time. This is display-only; health reports, status rules,
 and refresh behavior are unchanged. The focused Overview suite passes 83 tests,
 the health explanation browser checks pass at 390px and 1280px, and lint,
 production build, and `git diff --check` pass locally.
+
+## Core connection status de-duplication — 2026-11-01
+
+The shell now shows one Core connection status at a time: in the header on
+tablet widths, in the sidebar on desktop, and in the navigation drawer on
+phones. The label is “Online” across these views. This removes the duplicate
+desktop status without changing API checks or the reported Core build. The
+focused shell suite passes 44 tests; responsive browser checks pass at 390px,
+768px, and 1280px, and the iFileshare guidance checks pass at 320px and
+1280px. Lint, production build, and `git diff --check` pass locally.

@@ -77,7 +77,7 @@ describe("MainLayout", () => {
             expect(screen.getAllByText("ATLAS").length).toBeGreaterThan(0);
             expect(screen.getAllByText("Mission Control", { exact: true }).length).toBeGreaterThan(0);
             expect(screen.getByText("Dashboard content")).toBeInTheDocument();
-            expect(await screen.findByText("Atlas Core API connected")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core API online")).toBeInTheDocument();
             expect(screen.getByText("Atlas Core API", { exact: true })).toBeInTheDocument();
             expect(screen.getByText("Core build: Foundry")).toBeInTheDocument();
             expect(atlas.get).toHaveBeenCalledWith("");
@@ -360,7 +360,7 @@ describe("MainLayout", () => {
             vi.mocked(atlas.get).mockResolvedValue({ data: { release } });
             renderAt();
 
-            expect(await screen.findByText("Atlas Core API connected")).toBeInTheDocument();
+            expect(await screen.findByText("Atlas Core API online")).toBeInTheDocument();
             expect(screen.getByText("Core build: Not reported")).toBeInTheDocument();
         });
     });

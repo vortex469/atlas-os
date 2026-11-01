@@ -25,6 +25,28 @@ test("Mission Control application shell renders with primary navigation", async 
     }
 });
 
+for (const width of [390, 768, 1280]) {
+    test(`shows one Core connection status in the navigation shell at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 });
+        await page.goto("/");
+
+        const headerStatus = page.getByText("Atlas Core API online", { exact: true });
+        const sidebarStatus = page.locator('[aria-label="Primary sidebar"]').getByText("Online", { exact: true });
+        if (width >= 1024) {
+            await expect(headerStatus).toBeHidden();
+            await expect(sidebarStatus).toBeVisible();
+        } else if (width >= 640) {
+            await expect(headerStatus).toBeVisible();
+            await expect(sidebarStatus).toBeHidden();
+        } else {
+            await expect(headerStatus).toBeHidden();
+            await expect(sidebarStatus).toBeHidden();
+            await page.getByRole("button", { name: "Open navigation" }).click();
+            await expect(page.getByRole("dialog", { name: "Mission Control navigation" }).getByText("Online", { exact: true })).toBeVisible();
+        }
+    });
+}
+
 for (const width of [390, 1280]) {
     test(`long Core build identifiers wrap instead of disappearing at ${width}px`, async ({ page }) => {
         const build = "browser-regression-build-2026-10-31-0123456789abcdef";

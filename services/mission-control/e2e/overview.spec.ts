@@ -367,8 +367,11 @@ for (const width of [320, 1280]) {
         } }));
         await page.goto('/');
 
-        if (width >= 640) {
-            await expect(page.getByText('Atlas Core API connected', { exact: true })).toBeVisible();
+        if (width >= 1024) {
+            await expect(page.getByText('Atlas Core API online', { exact: true })).toBeHidden();
+            await expect(page.locator('[aria-label="Primary sidebar"]').getByText('Online', { exact: true })).toBeVisible();
+        } else if (width >= 640) {
+            await expect(page.getByText('Atlas Core API online', { exact: true })).toBeVisible();
         }
         const systemHealth = page.getByRole('region', { name: 'System health', exact: true });
         await expect(systemHealth.getByRole('article', { name: 'Atlas Core health' }).getByText('Degraded', { exact: true })).toBeVisible();

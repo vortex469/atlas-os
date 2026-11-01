@@ -116,7 +116,7 @@ const API_STATUS_KEY: Record<ApiAvailability, string> = {
 };
 const API_HEADER_TEXT: Record<ApiAvailability, string> = {
     checking: "Checking Atlas Core API",
-    online: "Atlas Core API connected",
+    online: "Atlas Core API online",
     unavailable: "Atlas Core API unavailable",
 };
 
@@ -318,7 +318,7 @@ export function MainLayout({ navigationPending = false }: { navigationPending?: 
                         </span>
                     )}
 
-                    <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex sm:gap-3">
+                    <div className="ml-auto hidden shrink-0 items-center gap-2 sm:flex sm:gap-3 lg:hidden">
                         <ApiStatusBadge availability={apiAvailability} header />
                     </div>
                 </div>
