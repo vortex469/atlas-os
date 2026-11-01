@@ -80,6 +80,24 @@ const providers: Provider[] = [
 ];
 
 describe("ServiceHealthSection", () => {
+    it("uses plain language when no service actions are available", async () => {
+        const user = userEvent.setup();
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: service("unknown-provider", 0) }}
+                providers={[]}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
+
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        expect(within(dialog).getByRole("heading", { name: "Actions" })).toBeVisible();
+        expect(within(dialog).getByText("No actions are available for this service.")).toBeVisible();
+    });
+
     it("shows Atlas Core reachability, the checked address, and provider operations", async () => {
         const user = userEvent.setup();
         const onRefresh = vi.fn();

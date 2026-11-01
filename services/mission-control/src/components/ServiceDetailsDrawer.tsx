@@ -197,10 +197,10 @@ export function ServiceDetailsDrawer({
                     ) : (
                         <section>
                             <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                                Operations
+                                Actions
                             </h3>
                             <div className="mt-3 rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
-                                No provider operations are available for this service.
+                                No actions are available for this service.
                             </div>
                         </section>
                     )}

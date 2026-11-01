@@ -4676,3 +4676,10 @@ the command fails when run from the service computer. The checks remain
 read-only. The focused Mission Control suites pass 98 tests, the connection
 guidance passes at 320px and 1280px, and lint, production build, and
 `git diff --check` pass.
+
+## Service action empty state — 2026-11-01
+
+The service drawer now calls the section “Actions” and says when none are
+available, replacing the internal phrase “provider operations.” The focused
+service-health suite passes 9 tests, and lint, production build, and
+`git diff --check` pass.
