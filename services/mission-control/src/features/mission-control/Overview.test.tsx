@@ -262,11 +262,11 @@ describe("MC overview evidence", () => {
 
         const instructions = within(nextStep).getByRole("list", { name: "Steps to check the Atlas Core connection" });
         expect(instructions).toBeVisible();
-        expect(nextStep).toHaveTextContent("These commands only check status. They do not change Atlas or the service.");
-        expect(instructions).toHaveTextContent("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
+        expect(nextStep).toHaveTextContent("Run these checks on the computer where Atlas Core runs, not on the computer hosting iFileshare. They only read status; the HTTP check follows the same path Atlas checks.");
+        expect(instructions).toHaveTextContent("Find a container with atlas-core in its name. Up means running; Exited means stopped. If none appears, stop: this computer does not show Atlas Core, so the next check will not work here.");
         const atlasCommand = within(nextStep).getByRole("group", { name: "Atlas container status command" });
         expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
-        expect(instructions).toHaveTextContent("On that same computer, open the folder containing compose.production.yaml and run this command. Running it on the service computer checks a different connection.");
+        expect(instructions).toHaveTextContent("On this computer, open the folder containing compose.production.yaml and run the connection check below.");
         expect(nextStep).toHaveTextContent("http://10.10.60.30:8080/?…");
         const command = within(nextStep).getByRole("group", { name: "Read-only Core connection check command" });
         expect(command).toHaveTextContent("docker compose --file compose.production.yaml exec --no-TTY atlas-core python -c");

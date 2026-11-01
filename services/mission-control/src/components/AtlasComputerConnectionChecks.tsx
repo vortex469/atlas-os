@@ -45,10 +45,10 @@ export function AtlasComputerConnectionChecks({
         <details className={style.details}>
             <summary className={style.summary}>Test the connection from Atlas Core to {name}</summary>
             <div role="group" aria-label="Next connection check" className={style.group}>
-                <p>These commands only check status. They do not change Atlas or the service.</p>
+                <p>Run these checks on the computer where Atlas Core runs, not on the computer hosting {name}. They only read status; the HTTP check follows the same path Atlas checks.</p>
                 <ol aria-label="Steps to check the Atlas Core connection" className="list-decimal space-y-2 pl-5 text-sm">
                     <li>
-                        <p>Run this on the computer where Atlas Core runs. Find the <code>atlas-core</code> row: <code>Up</code> means running; <code>Exited</code> means stopped. If no row appears, this Docker engine does not run Atlas Core.</p>
+                        <p>Find a container with <code>atlas-core</code> in its name. <code>Up</code> means running; <code>Exited</code> means stopped. If none appears, stop: this computer does not show Atlas Core, so the next check will not work here.</p>
                         <div role="group" aria-label="Atlas container status command" className={style.command}>
                             <div className="flex flex-wrap items-start gap-2">
                                 <pre className={`min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-xs leading-5 ${style.code}`}>{serviceContainerCheckCommand}</pre>
@@ -56,7 +56,7 @@ export function AtlasComputerConnectionChecks({
                             </div>
                         </div>
                     </li>
-                    <li>On that same computer, open the folder containing <code>compose.production.yaml</code> and run this command. Running it on the service computer checks a different connection.</li>
+                    <li>On this computer, open the folder containing <code>compose.production.yaml</code> and run the connection check below.</li>
                 </ol>
                 {surface === "overview" && <p className={checkedAddress ? "mt-1 break-all font-mono" : "mt-1"}>{checkedAddress ?? "Configured service address not reported"}</p>}
                 {command ? (

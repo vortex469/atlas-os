@@ -397,9 +397,9 @@ for (const width of [320, 1280]) {
         await expect(nextStep).toBeVisible();
         const connectionSteps = nextStep.getByRole('list', { name: 'Steps to check the Atlas Core connection' });
         await expect(connectionSteps).toBeVisible();
-        await expect(nextStep).toContainText("These commands only check status. They do not change Atlas or the service.");
-        await expect(connectionSteps).toContainText("Run this on the computer where Atlas Core runs. Find the atlas-core row: Up means running; Exited means stopped. If no row appears, this Docker engine does not run Atlas Core.");
-        await expect(connectionSteps).toContainText("On that same computer, open the folder containing compose.production.yaml and run this command. Running it on the service computer checks a different connection.");
+        await expect(nextStep).toContainText("Run these checks on the computer where Atlas Core runs, not on the computer hosting iFileshare. They only read status; the HTTP check follows the same path Atlas checks.");
+        await expect(connectionSteps).toContainText("Find a container with atlas-core in its name. Up means running; Exited means stopped. If none appears, stop: this computer does not show Atlas Core, so the next check will not work here.");
+        await expect(connectionSteps).toContainText("On this computer, open the folder containing compose.production.yaml and run the connection check below.");
         const atlasCommand = nextStep.getByRole('group', { name: 'Atlas container status command' });
         await expect(atlasCommand).toContainText("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
         await atlasCommand.getByRole('button', { name: 'Copy command' }).click();

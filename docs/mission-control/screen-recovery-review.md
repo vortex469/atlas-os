@@ -4719,3 +4719,15 @@ desktop status without changing API checks or the reported Core build. The
 focused shell suite passes 44 tests; responsive browser checks pass at 390px,
 768px, and 1280px, and the iFileshare guidance checks pass at 320px and
 1280px. Lint, production build, and `git diff --check` pass locally.
+
+## Atlas connection check computer clarity — 2026-11-01
+
+The Atlas-to-service check now says at the start to run it on the computer
+where Atlas Core runs, not on the service computer. The first step tells the
+operator to look for `atlas-core` within a container name (including Compose's
+project prefix), and to stop if Atlas Core is absent before trying the next
+command. The HTTP check is identified as following the same path Atlas checks.
+The commands remain read-only and do not change reachability behavior. The
+focused Overview and service-health suites pass 92 tests, the unavailable
+service browser journey passes, and lint, production build, and
+`git diff --check` pass locally.
