@@ -40,7 +40,7 @@ export function SystemHealthSummary({ evidence, loading = false }: { evidence: O
                 );
             })}
             <details><summary className="mc-focusable cursor-pointer text-sm text-mc-primary-strong">How to read health</summary>
-                <p>Atlas shows each report separately and doesn't combine them into one score. Each report updates on its own, so check times may differ. Reports more than a minute old are marked out of date.</p>
+                <p>These are separate reports; Atlas doesn't combine them into one score. System findings describe reported findings, not whether every configured service is reachable. Use Service checks for those connections. Reports refresh separately, and last-known results are labeled out of date.</p>
             </details>
         </section>
     );

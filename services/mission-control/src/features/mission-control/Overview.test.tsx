@@ -528,11 +528,12 @@ describe("MC overview evidence", () => {
         const guidance = health.getByText('How to read health');
         expect(report).toBeVisible();
         expect(report.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(health.queryByText(/Each report updates on its own/)).not.toBeVisible();
+        expect(health.queryByText(/System findings describe reported findings/)).not.toBeVisible();
         fireEvent.click(health.getByText('How to read health'));
-        expect(health.getByText(/Each report updates on its own, so check times may differ/)).toBeVisible();
+        expect(health.getByText(/System findings describe reported findings, not whether every configured service is reachable/)).toBeVisible();
         expect(health.getByText(/doesn't combine them into one score/)).toBeVisible();
-        expect(health.getByText(/Reports more than a minute old are marked out of date/)).toBeVisible();
+        expect(health.getByText(/Use Service checks for those connections/)).toBeVisible();
+        expect(health.getByText(/last-known results are labeled out of date/)).toBeVisible();
 
         const checks = within(screen.getByRole('region', { name: 'Service checks' }));
         const explanation = checks.getByText("These checks cover the listed services. For Atlas Core's own health, use the System health card.");
