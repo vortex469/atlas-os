@@ -2,6 +2,7 @@ import {
     fireEvent,
     render,
     screen,
+    within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -37,7 +38,7 @@ function service(
         latency_ms: latency,
         http_status: 200,
         message: "Service ready.",
-        details: { version: "1.0.0" },
+        details: { url: "http://10.10.60.30:8080/", version: "1.0.0" },
     };
 }
 
@@ -79,7 +80,25 @@ const providers: Provider[] = [
 ];
 
 describe("ServiceHealthSection", () => {
-    it("shows refreshed service details and provider operations", async () => {
+    it("uses plain language when no service actions are available", async () => {
+        const user = userEvent.setup();
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: service("unknown-provider", 0) }}
+                providers={[]}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
+
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        expect(within(dialog).getByRole("heading", { name: "Actions" })).toBeVisible();
+        expect(within(dialog).getByText("No actions are available for this service.")).toBeVisible();
+    });
+
+    it("shows Atlas Core reachability, the checked address, and provider operations", async () => {
         const user = userEvent.setup();
         const onRefresh = vi.fn();
         const { rerender } = render(
@@ -91,18 +110,55 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
+        const card = screen.getByRole("button", { name: "View connection details for Containers" });
+        expect(within(card).getByText("View connection details")).toBeVisible();
+        expect(within(card).queryByText("Response time")).not.toBeInTheDocument();
+        expect(within(card).queryByText("HTTP")).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "Each card shows whether Atlas Core can reach the service’s configured address. The service may be running on its own computer but unreachable from Atlas Core. Open a card to see the address Atlas checked and what to try next.",
+            ),
+        ).toBeInTheDocument();
+
         await user.click(
             screen.getByRole("button", {
-                name: "View details for Containers",
+                name: "View connection details for Containers",
             }),
         );
-        expect(
-            screen.getByRole("dialog", { name: "Containers" }),
-        ).toBeInTheDocument();
+        const dialog = screen.getByRole("dialog", { name: "Containers" });
+        expect(dialog).toBeInTheDocument();
+        expect(within(dialog).getByText("Reachability from Atlas Core")).toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
         expect(
             screen.getByText("Operations for Docker"),
         ).toBeInTheDocument();
-        expect(screen.getAllByText("8 ms")).toHaveLength(2);
+        expect(screen.getByText("Address Atlas checked")).toBeInTheDocument();
+        expect(screen.getByText("http://10.10.60.30:8080/")).toBeInTheDocument();
+        const technicalDetails = within(dialog).getByText("Technical details");
+        expect(within(dialog).getByText("Response time")).not.toBeVisible();
+        expect(within(dialog).getByText("HTTP status")).not.toBeVisible();
+        const connectionSteps = within(dialog).getByRole("list", { name: "Steps to check the Atlas Core connection" });
+        expect(connectionSteps).not.toBeVisible();
+        await user.click(within(dialog).getByText("Test the connection from Atlas Core to Containers"));
+        expect(connectionSteps).toBeVisible();
+        expect(within(dialog).getByRole("group", { name: "Next connection check" })).toHaveTextContent("Run these checks on the computer where Atlas Core runs, not on the computer hosting Containers. They only read status; the HTTP check follows the same path Atlas checks.");
+        expect(connectionSteps).toHaveTextContent("Find a container with atlas-core in its name. Up means running; Exited means stopped. If none appears, stop: this computer does not show Atlas Core, so the next check will not work here.");
+        const atlasCommand = within(dialog).getByRole("group", { name: "Atlas container status command" });
+        expect(atlasCommand).toHaveTextContent("docker ps --all --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}\\t{{.Networks}}\\t{{.Ports}}'");
+        expect(connectionSteps).toHaveTextContent("On this computer, open the folder containing compose.production.yaml and run the connection check below.");
+        const composeHelp = screen.getByText("If Compose says the file is missing").closest("details");
+        const composeHelpText = composeHelp!.querySelector("p");
+        expect(composeHelp).not.toHaveAttribute("open");
+        expect(composeHelpText).toHaveTextContent("“No such file” means Compose could not find the stack file. On the Atlas Core computer, move to Atlas's Compose folder or give Compose the full file path after --file.");
+        expect(composeHelpText).not.toBeVisible();
+        await user.click(screen.getByText("If Compose says the file is missing"));
+        expect(composeHelpText).toBeVisible();
+        expect(screen.getByText(/"version"/)).not.toBeVisible();
+        await user.click(technicalDetails);
+        expect(within(dialog).getByText("Response time")).toBeVisible();
+        expect(within(dialog).getByText("HTTP status")).toBeVisible();
+        expect(screen.getByText(/"version"/)).toBeVisible();
+        expect(screen.getByText("8 ms")).toBeVisible();
 
         rerender(
             <ServiceHealthSection
@@ -116,7 +172,7 @@ describe("ServiceHealthSection", () => {
         expect(
             screen.getByText("Operations for Podman"),
         ).toBeInTheDocument();
-        expect(screen.getAllByText("14 ms")).toHaveLength(2);
+        expect(screen.getByText("14 ms")).toBeVisible();
         expect(
             screen.getByRole("button", {
                 name: "Refreshing health...",
@@ -131,18 +187,157 @@ describe("ServiceHealthSection", () => {
         expect(onRefresh).toHaveBeenCalledOnce();
     });
 
+    it("labels a failed probe as unreachable from Atlas Core rather than offline", () => {
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: { ...service("ifileshare", 0), latency_ms: null, status: "offline", message: "Connection refused" } }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText("Unreachable from Atlas Core")).toBeInTheDocument();
+        expect(screen.queryByText("Offline")).not.toBeInTheDocument();
+        expect(screen.queryByText("Check time unavailable.")).not.toBeInTheDocument();
+    });
+
+    it("shows a plain next step for a refused service connection", async () => {
+        const user = userEvent.setup();
+        render(
+            <ServiceHealthSection
+                services={{
+                    iFileshare: {
+                        ...service("ifileshare", 0),
+                        status: "offline",
+                        message: "[Errno 111] Connection refused",
+                    },
+                }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: "View connection details for iFileshare" }),
+        );
+
+        expect(
+            within(screen.getByRole("dialog", { name: "iFileshare" })).getByText(
+                "Atlas Core's connection to this address was refused.",
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: "What to check next" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "On the computer that runs iFileshare, confirm the app is listening. If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.",
+            ),
+        ).toBeInTheDocument();
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        expect(within(dialog).getByText("Atlas Core's connection to this address was refused.")).toBeInTheDocument();
+        const reportedMessage = within(dialog).getByText("[Errno 111] Connection refused");
+        expect(reportedMessage).not.toBeVisible();
+        await user.click(within(dialog).getByText("Technical details"));
+        expect(reportedMessage).toBeVisible();
+    });
+
+    it("shows and copies the same sanitized read-only Core connection check", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined);
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText },
+        });
+        const health = {
+            ...service("ifileshare", 0),
+            status: "offline",
+            message: "Connection refused",
+            details: { url: "http://operator:password@10.10.60.30:8080/?token=private" },
+        };
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: health }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        fireEvent.click(within(dialog).getByText("Test the connection from Atlas Core to iFileshare"));
+        const commandGroup = within(dialog).getByRole("group", { name: "Read-only Core connection check command" });
+        const command = commandGroup.textContent ?? "";
+        expect(command).toContain('httpx.get("http://10.10.60.30:8080/"');
+        expect(command).not.toMatch(/operator|password|private|token=/);
+        const serviceComputer = within(dialog).getByText("Check iFileshare on the computer where it runs").closest("details");
+        expect(serviceComputer).not.toHaveAttribute("open");
+        fireEvent.click(within(serviceComputer as HTMLDetailsElement).getByText("Check iFileshare on the computer where it runs"));
+        const localHttpCheck = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer HTTP check command" });
+        expect(localHttpCheck).toHaveTextContent("curl --silent --show-error --output /dev/null --write-out 'HTTP %{http_code}\\n' --connect-timeout 2 --max-time 5 -- 'http://10.10.60.30:8080/'");
+        expect(localHttpCheck).not.toHaveTextContent(/operator|password|private|token=/);
+        const moreChecksSummary = within(serviceComputer as HTMLDetailsElement).getByText("More checks on this computer");
+        const moreChecks = moreChecksSummary.closest("details");
+        expect(moreChecks).not.toHaveAttribute("open");
+        const listeningPortCommand = within(serviceComputer as HTMLDetailsElement).getByRole("group", { name: "Service computer listening-port command" });
+        expect(listeningPortCommand).not.toBeVisible();
+        fireEvent.click(moreChecksSummary);
+        expect(listeningPortCommand).toBeVisible();
+        expect(listeningPortCommand).toHaveTextContent("ss -ltnp 'sport = :8080'");
+        expect(listeningPortCommand).not.toHaveTextContent(/operator|password|private|token=/);
+        expect(serviceComputer).toHaveTextContent("127.0.0.1:PORT accepts connections only from this computer.");
+        expect(serviceComputer).toHaveTextContent("A LISTEN row means a program is listening, not that the app responds.");
+        const dockerSummary = within(serviceComputer as HTMLDetailsElement).getByText("If the app runs in Docker");
+        expect(dockerSummary.closest("details")).not.toHaveAttribute("open");
+        fireEvent.click(dockerSummary);
+        const dockerChecks = within(serviceComputer as HTMLDetailsElement).getByRole("list", { name: "Docker and Compose checks" });
+        expect(dockerChecks).toHaveTextContent("On the computer that runs iFileshare, run docker ps --all");
+        expect(dockerChecks).toHaveTextContent("Use the container name or image to find iFileshare; Docker's name may differ from Atlas's.");
+        expect(dockerChecks).toHaveTextContent("If NETWORKS says host, a blank PORTS value is normal because the app uses the service computer's ports directly.");
+        expect(dockerChecks).toHaveTextContent("A value starting with 127.0.0.1: works only on that computer.");
+        expect(dockerChecks).toHaveTextContent("use HOST_PORT in Atlas's address");
+        expect(within(dialog).getByText(/Any HTTP status means iFileshare answered from Atlas Core/)).toHaveTextContent("A timeout or connection error means Atlas Core got no response");
+        fireEvent.click(within(commandGroup).getByRole("button", { name: "Copy command" }));
+        expect(await within(commandGroup).findByRole("status")).toHaveTextContent("Command copied.");
+        expect(writeText).toHaveBeenCalledOnce();
+        expect(writeText.mock.calls[0][0]).toBe(commandGroup.querySelector("pre")?.textContent);
+    });
+
     it("does not retain successful health or provider operations for a removed service", async () => {
         const user = userEvent.setup();
         const props = { providers, isRefreshing: false, onRefresh: vi.fn() };
         const { rerender } = render(<ServiceHealthSection {...props} services={{ Containers: service("docker", 8) }} />);
-        await user.click(screen.getByRole("button", { name: "View details for Containers" }));
+        await user.click(screen.getByRole("button", { name: "View connection details for Containers" }));
         rerender(<ServiceHealthSection {...props} services={{ Other: service("podman", 10) }} />);
-        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(screen.getByText("This service is absent from the latest health response.")).toBeInTheDocument();
         expect(screen.queryByText("Operations for Docker")).not.toBeInTheDocument();
     });
 
-    it("closes the details drawer with Escape and the backdrop", async () => {
+    it("shows the checked host and path without URL credentials or query values", async () => {
+        const user = userEvent.setup();
+        const fileShare = {
+            ...service("ifileshare", 7),
+            details: { url: "http://operator:password@10.10.60.30:8080/health?token=private" },
+        };
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: fileShare }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
+
+        expect(screen.getByText("http://10.10.60.30:8080/health?…")).toBeInTheDocument();
+        expect(screen.queryByText(/password|private/)).not.toBeInTheDocument();
+    });
+
+    it("keeps keyboard focus in the details drawer and restores it when closed", async () => {
         const user = userEvent.setup();
         render(
             <ServiceHealthSection
@@ -153,24 +348,62 @@ describe("ServiceHealthSection", () => {
             />,
         );
 
-        const openDrawer = () =>
-            user.click(
-                screen.getByRole("button", {
-                    name: "View details for Containers",
-                }),
-            );
+        const trigger = screen.getByRole("button", { name: "View connection details for Containers" });
+        const openDrawer = () => user.click(trigger);
 
         await openDrawer();
-        fireEvent.keyDown(window, { key: "Escape" });
+        const dialog = screen.getByRole("dialog", { name: "Containers" });
+        const close = within(dialog).getByRole("button", { name: "Close" });
+        const lastControl = within(dialog).getByText("Technical details");
+        expect(close).toHaveFocus();
+        expect(document.body.style.overflow).toBe("hidden");
+
+        await user.tab({ shift: true });
+        expect(lastControl).toHaveFocus();
+        await user.tab();
+        expect(close).toHaveFocus();
+
+        await user.keyboard("{Escape}");
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
+        expect(document.body.style.overflow).toBe("");
 
         await openDrawer();
-        const dialog = screen.getByRole("dialog");
-        fireEvent.mouseDown(dialog.parentElement!);
+        const reopenedDialog = screen.getByRole("dialog", { name: "Containers" });
+        fireEvent.mouseDown(reopenedDialog.parentElement!);
         expect(
             screen.queryByRole("dialog"),
         ).not.toBeInTheDocument();
+        expect(trigger).toHaveFocus();
+        expect(document.body.style.overflow).toBe("");
+    });
+
+    it("withholds credential and URL text from expanded service diagnostics", async () => {
+        const health = {
+            ...service("ifileshare", 0),
+            status: "offline",
+            message: "Request to https://operator:canary-password@example.invalid/?token=canary-token failed",
+            details: {
+                url: "http://operator:canary-password@10.10.60.30:8080/?token=canary-token",
+                diagnostic: "Authorization: Bearer canary-token",
+            },
+        };
+        render(
+            <ServiceHealthSection
+                services={{ iFileshare: health }}
+                providers={providers}
+                isRefreshing={false}
+                onRefresh={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "View connection details for iFileshare" }));
+        const dialog = screen.getByRole("dialog", { name: "iFileshare" });
+        expect(within(dialog).getAllByText("[Sensitive text withheld]").length).toBeGreaterThan(0);
+        fireEvent.click(within(dialog).getByText("Technical details"));
+        expect(within(dialog).getAllByText("[Sensitive text withheld]").length).toBeGreaterThan(1);
+        expect(within(dialog).queryByText(/canary-token|canary-password|operator|example\.invalid/)).not.toBeInTheDocument();
     });
 });

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -112,9 +112,15 @@ function searchPage(entries: DiscoveryCatalogEntry[]): DiscoverySearchPage {
     };
 }
 
-function renderPage() {
+function deferred<T>() {
+    let resolve!: (value: T) => void;
+    const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise; });
+    return { promise, resolve };
+}
+
+function renderPage(initialEntry = "/discovery") {
     return render(
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[initialEntry]}>
             <DiscoveryPage />
         </MemoryRouter>,
     );
@@ -128,20 +134,51 @@ describe("DiscoveryPage", () => {
         mockedSearchDiscoveryItems.mockResolvedValue(searchPage([entry()]));
     });
 
-    it("renders catalog status, disclaimer, and read-only item cards", async () => {
+    it("renders catalog status, plain-language scope, and read-only item cards", async () => {
+        const user = userEvent.setup();
         renderPage();
 
         expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
         expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
-        expect(screen.getByText("2")).toBeInTheDocument();
-        expect(
-            screen.getByText(/does not mean compatibility, support, installability/i),
-        ).toBeInTheDocument();
-        expect(screen.getAllByText("home-automation").length).toBeGreaterThan(0);
+        expect(screen.getByText("Catalog total").nextElementSibling).toHaveTextContent("2");
+        expect(screen.getByText("1 item listed")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Browse the catalog" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+        expect(screen.getByText("Browse software, services, models, devices, integrations, and deployment options. This catalog is for reference. Atlas checks compatibility and your permission separately; browsing it doesn’t approve or apply changes.")).toBeInTheDocument();
+        const itemCard = screen.getByRole("link", { name: "Home Assistant" }).closest("article");
+        expect(within(itemCard as HTMLElement).getByText("Catalog item ID: home-assistant")).not.toBeVisible();
+        expect(within(itemCard as HTMLElement).getAllByText("Home automation")).toHaveLength(2);
+        expect(within(itemCard as HTMLElement).getByText("Device integration")).toBeInTheDocument();
+        expect(within(itemCard as HTMLElement).queryByText("home-automation", { exact: true })).not.toBeInTheDocument();
+        await user.click(within(itemCard as HTMLElement).getByText("Technical details"));
+        expect(within(itemCard as HTMLElement).getByText("Catalog item ID: home-assistant")).toBeVisible();
+        const metadataDetails = screen.getByText("Catalog format version: v1").closest("details");
+        expect(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format version: v1")).not.toBeVisible();
+        await user.click(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format information"));
+        expect(within(metadataDetails as HTMLDetailsElement).getByText("Catalog format version: v1")).toBeVisible();
         expect(screen.queryByRole("button", { name: /install/i })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
             "href",
             "/discovery/items/home-assistant",
+        );
+    });
+
+    it("restores submitted and draft filters from the URL and keeps them on item links", async () => {
+        const user = userEvent.setup();
+        renderPage("/discovery?q=frigate&type=application&draft_q=frigates&draft_tag=local%20only");
+
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.getByRole("searchbox", { name: "Keyword search" })).toHaveValue("frigates");
+        expect(screen.getByRole("combobox", { name: "Item type" })).toHaveValue("application");
+        await user.click(screen.getByText("More filters"));
+        expect(screen.getByRole("textbox", { name: "Tag" })).toHaveValue("local only");
+        expect(mockedSearchDiscoveryItems).toHaveBeenCalledWith(expect.objectContaining({
+            q: "frigate",
+            type: "application",
+        }));
+        expect(screen.getByRole("link", { name: "Home Assistant" })).toHaveAttribute(
+            "href",
+            "/discovery/items/home-assistant?q=frigate&type=application&draft_q=frigates&draft_tag=local+only",
         );
     });
 
@@ -153,9 +190,17 @@ describe("DiscoveryPage", () => {
         await user.type(screen.getByLabelText("Keyword search"), "ollama");
         await user.selectOptions(screen.getByLabelText("Item type"), "service");
         await user.selectOptions(screen.getByLabelText("Status"), "active");
+        expect(screen.getByLabelText("Tag")).not.toBeVisible();
+        await user.click(screen.getByText("More filters"));
         await user.type(screen.getByLabelText("Tag"), "ai");
         await user.type(screen.getByLabelText("Capability"), "llm-inference");
+        expect(screen.getByRole("status", { name: "Unapplied catalog filters" })).toHaveTextContent("These filter changes haven't been searched yet. Select Search to update the results.");
         await user.click(screen.getByRole("button", { name: "Search" }));
+        expect(screen.queryByText("These filter changes haven't been searched yet. Select Search to update the results.")).not.toBeInTheDocument();
+        expect(screen.getByText("More filters · active")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+        expect(screen.getByText("1 matching item found")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
 
         await waitFor(() =>
             expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith({
@@ -169,6 +214,39 @@ describe("DiscoveryPage", () => {
             }),
         );
         expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+        const itemLink = screen.getByRole("link", { name: "Home Assistant" });
+        await waitFor(() => expect(itemLink).toHaveAttribute(
+            "href",
+            "/discovery/items/home-assistant?q=ollama&type=service&status=active&tag=ai&capability=llm-inference",
+        ));
+        await user.type(screen.getByLabelText("Keyword search"), " draft");
+        await waitFor(() => expect(itemLink).toHaveAttribute(
+            "href",
+            "/discovery/items/home-assistant?q=ollama&type=service&status=active&tag=ai&capability=llm-inference&draft_q=ollama+draft",
+        ));
+    });
+
+    it("pauses paging while draft filters differ from the displayed results", async () => {
+        const firstPage = { ...page([entry()]), total: 26, has_more: true };
+        const matchingPage = { ...searchPage([entry()]), total: 26, has_more: true };
+        mockedListDiscoveryItems.mockResolvedValueOnce(firstPage);
+        mockedSearchDiscoveryItems.mockResolvedValueOnce(matchingPage);
+        const user = userEvent.setup();
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        const next = screen.getByRole("button", { name: "Next page" });
+        expect(next).toBeEnabled();
+        await user.type(screen.getByLabelText("Keyword search"), "ollama");
+        expect(screen.getByText("These filter changes haven't been searched yet. Select Search to update the results.")).toBeVisible();
+        expect(next).toBeDisabled();
+
+        await user.click(screen.getByRole("button", { name: "Search" }));
+        await waitFor(() => expect(mockedSearchDiscoveryItems).toHaveBeenCalledWith({
+            q: "ollama", limit: 25, offset: 0, type: undefined, status: undefined, tag: undefined, capability: undefined,
+        }));
+        expect(screen.queryByText("These filter changes haven't been searched yet. Select Search to update the results.")).not.toBeInTheDocument();
+        await waitFor(() => expect(next).toBeEnabled());
     });
 
     it("uses item listing when submitted query is empty", async () => {
@@ -189,10 +267,79 @@ describe("DiscoveryPage", () => {
                 capability: undefined,
             }),
         );
+        expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+        expect(screen.getByText("1 matching item found")).toBeInTheDocument();
         expect(mockedSearchDiscoveryItems).not.toHaveBeenCalled();
     });
 
-    it("resets offset when filters are cleared and respects pagination buttons", async () => {
+    it("shows clear only while draft or submitted filters need clearing", async () => {
+        const user = userEvent.setup();
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        const query = screen.getByLabelText("Keyword search");
+        await user.type(query, "ollama");
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Search" }));
+        await screen.findByRole("heading", { name: "Search results" });
+        await user.click(screen.getByRole("button", { name: "Clear filters" }));
+
+        expect(query).toHaveValue("");
+        expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+        await waitFor(() => expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
+            limit: 25,
+            offset: 0,
+            type: undefined,
+            status: undefined,
+            tag: undefined,
+            capability: undefined,
+        }));
+    });
+
+    it("keeps the latest search results when an older request finishes later", async () => {
+        const user = userEvent.setup();
+        const olderSearch = deferred<DiscoverySearchPage>();
+        const latestSearch = deferred<DiscoverySearchPage>();
+        mockedSearchDiscoveryItems
+            .mockReset()
+            .mockReturnValueOnce(olderSearch.promise)
+            .mockReturnValueOnce(latestSearch.promise);
+
+        renderPage();
+        await screen.findByText("Home Assistant");
+        const query = screen.getByLabelText("Keyword search");
+        const form = screen.getByRole("form", { name: "Search catalog" });
+        await user.type(query, "redis");
+        fireEvent.submit(form);
+        await waitFor(() => expect(mockedSearchDiscoveryItems).toHaveBeenCalledTimes(1));
+
+        await user.clear(query);
+        await user.type(query, "postgres");
+        fireEvent.submit(form);
+        await waitFor(() => expect(mockedSearchDiscoveryItems).toHaveBeenCalledTimes(2));
+
+        await act(async () => olderSearch.resolve(searchPage([entry({
+            item: { ...entry().item, id: "redis", name: "Redis" },
+        })])));
+        expect(screen.getByRole("status")).toHaveTextContent("Loading catalog…");
+        const results = screen.getByRole("heading", { name: "Search results" }).closest("section");
+        expect(results).not.toHaveAttribute("aria-live");
+        expect(screen.queryByText("Loading items…")).not.toBeInTheDocument();
+        expect(screen.queryByText("Redis")).not.toBeInTheDocument();
+
+        await act(async () => latestSearch.resolve(searchPage([entry({
+            item: { ...entry().item, id: "postgres", name: "PostgreSQL" },
+        })])));
+
+        expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+        expect(screen.queryByText("Loading catalog…")).not.toBeInTheDocument();
+        expect(screen.getByRole("status", { name: "Catalog result count" })).toHaveTextContent("1 matching item found");
+        expect(screen.queryByText("Redis")).not.toBeInTheDocument();
+        expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(1, expect.objectContaining({ q: "redis" }));
+        expect(mockedSearchDiscoveryItems).toHaveBeenNthCalledWith(2, expect.objectContaining({ q: "postgres" }));
+    });
+
+    it("supports previous-page navigation and respects pagination buttons", async () => {
         const user = userEvent.setup();
         mockedListDiscoveryItems
             .mockResolvedValueOnce({
@@ -211,7 +358,7 @@ describe("DiscoveryPage", () => {
 
         renderPage();
         await screen.findByText("Home Assistant");
-        await user.click(screen.getByRole("button", { name: "Next Discovery results page" }));
+        await user.click(screen.getByRole("button", { name: "Next page" }));
 
         await waitFor(() =>
             expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
@@ -224,7 +371,7 @@ describe("DiscoveryPage", () => {
             }),
         );
 
-        await user.click(screen.getByRole("button", { name: "Clear Discovery filters" }));
+        await user.click(screen.getByRole("button", { name: "Previous page" }));
         await waitFor(() =>
             expect(mockedListDiscoveryItems).toHaveBeenLastCalledWith({
                 limit: 25,
@@ -243,19 +390,172 @@ describe("DiscoveryPage", () => {
 
         renderPage();
 
-        expect(
-            await screen.findByText("The Discovery catalog is loaded but empty."),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("No catalog items are available.")).toBeInTheDocument();
         expect(screen.getByText("Catalog empty")).toBeInTheDocument();
+        expect(screen.queryByText("Catalog total")).not.toBeInTheDocument();
+        expect(screen.queryByText("0 items listed", { exact: true })).not.toBeInTheDocument();
+        expect(screen.queryByText("Clear filters or broaden your search.")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
     });
 
-    it("shows a recoverable unavailable state", async () => {
-        mockedGetDiscoveryMetadata.mockRejectedValue(new Error("Catalog unavailable"));
+    it("explains when the catalog reports items but the list is empty", async () => {
+        mockedGetDiscoveryMetadata.mockResolvedValue(metadata({ entry_count: 2 }));
+        mockedListDiscoveryItems.mockResolvedValue(page([]));
+
+        renderPage();
+
+        expect(await screen.findByText("The catalog says it has 2 items, but none are shown here.")).toBeInTheDocument();
+        expect(screen.getByText("Catalog total").nextElementSibling).toHaveTextContent("2");
+        expect(screen.getByText("Use Search to check the catalog again.")).toBeInTheDocument();
+        expect(screen.queryByText("No catalog items were returned.")).not.toBeInTheDocument();
+    });
+
+    it("offers filter recovery when a search has no matches", async () => {
+        const user = userEvent.setup();
+        mockedSearchDiscoveryItems.mockResolvedValue(searchPage([]));
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        await user.type(screen.getByLabelText("Keyword search"), "not-in-catalog");
+        await user.click(screen.getByRole("button", { name: "Search" }));
+
+        expect(await screen.findByText("No items matched these filters.")).toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("No items matched these filters.");
+        expect(screen.queryByText("0 matching items found", { exact: true })).not.toBeInTheDocument();
+        expect(screen.getByText("Clear filters or broaden your search.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeInTheDocument();
+    });
+
+    it("points an empty later page back to earlier results", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryItems
+            .mockResolvedValueOnce({ ...page([entry()]), total: 30, offset: 0, has_more: true })
+            .mockResolvedValueOnce({ ...page([]), total: 30, offset: 25, has_more: false });
+        renderPage();
+
+        await screen.findByText("Home Assistant");
+        await user.click(screen.getByRole("button", { name: "Next page" }));
+
+        expect(await screen.findByText("No items are on this page.")).toBeInTheDocument();
+        expect(screen.getByText("Use Previous to check earlier results.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
+    });
+
+    it("retries the initial catalog load and keeps technical errors collapsed", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryItems.mockRejectedValueOnce(new Error("Catalog unavailable"));
 
         renderPage();
 
         const alert = await screen.findByRole("alert");
-        expect(within(alert).getByText("Discovery catalog unavailable")).toBeInTheDocument();
-        expect(within(alert).getByText("Catalog unavailable")).toBeInTheDocument();
+        expect(alert).toHaveTextContent("Catalog could not be loaded");
+        expect(alert).toHaveTextContent("Atlas couldn't load these results. Your search filters are still selected.");
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
+        const loadErrorDetails = within(alert).getByText("Why the results couldn't load").closest("details");
+        expect(loadErrorDetails).not.toHaveAttribute("open");
+        expect(within(loadErrorDetails as HTMLDetailsElement).getByText("Catalog unavailable")).not.toBeVisible();
+        await user.click(within(loadErrorDetails as HTMLDetailsElement).getByText("Why the results couldn't load"));
+        expect(within(loadErrorDetails as HTMLDetailsElement).getByText("Catalog unavailable")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.getByText("Catalog loaded")).toBeInTheDocument();
+        expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows a retryable result state when the catalog contains an unreadable item", async () => {
+        const user = userEvent.setup();
+        mockedListDiscoveryItems
+            .mockResolvedValueOnce({ ...page([]), entries: [null as unknown as DiscoveryCatalogEntry], total: 1 })
+            .mockResolvedValueOnce(page([entry()]));
+
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Catalog could not be loaded");
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        const loadErrorDetails = within(alert).getByText("Why the results couldn't load").closest("details");
+        expect(loadErrorDetails).not.toHaveAttribute("open");
+
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
+
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps catalog results available when status fails and retries status alone", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryMetadata
+            .mockRejectedValueOnce(new Error("Status endpoint unavailable"))
+            .mockResolvedValueOnce(metadata());
+
+        renderPage();
+
+        expect(await screen.findByText("Home Assistant")).toBeInTheDocument();
+        expect(await screen.findByText("Atlas couldn't check the catalog status.")).toBeInTheDocument();
+        expect(screen.getByText("Catalog status unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Catalog total")).not.toBeInTheDocument();
+        expect(screen.getByText("1 item listed")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry status check" }));
+
+        expect(await screen.findByText("Catalog loaded")).toBeInTheDocument();
+        expect(screen.getByText("Home Assistant")).toBeInTheDocument();
+        expect(mockedGetDiscoveryMetadata).toHaveBeenCalledTimes(2);
+        expect(mockedListDiscoveryItems).toHaveBeenCalledTimes(1);
+    });
+
+    it("labels catalog load, status, and format details separately when both reads fail", async () => {
+        const user = userEvent.setup();
+        mockedGetDiscoveryMetadata.mockRejectedValueOnce(new Error("Bearer metadata-canary-secret"));
+        mockedListDiscoveryItems.mockRejectedValueOnce(new Error("Bearer catalog-canary-secret"));
+
+        renderPage();
+
+        const catalogAlert = await screen.findByRole("alert");
+        expect(await screen.findByText("Atlas couldn't check the catalog status.")).toBeVisible();
+        expect(within(catalogAlert).getByText("Why the results couldn't load")).toBeInTheDocument();
+        expect(screen.getByText("Why the status check failed")).toBeInTheDocument();
+        expect(screen.queryByText("Catalog format information")).not.toBeInTheDocument();
+        expect(screen.queryByText("Catalog items remain available.")).not.toBeInTheDocument();
+        expect(screen.queryByText("Technical details", { exact: true })).not.toBeInTheDocument();
+
+        await user.click(within(catalogAlert).getByText("Why the results couldn't load"));
+        expect(within(catalogAlert).getByText("[Sensitive text withheld]")).toBeVisible();
+        expect(screen.queryByText(/metadata-canary-secret|catalog-canary-secret/)).not.toBeInTheDocument();
+        const statusErrorDetails = screen.getByText("Why the status check failed").closest("details");
+        expect(statusErrorDetails).not.toHaveAttribute("open");
+        await user.click(screen.getByText("Why the status check failed"));
+        expect(within(statusErrorDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
+        expect(screen.queryByText(/metadata-canary-secret|catalog-canary-secret/)).not.toBeInTheDocument();
+    });
+
+    it("clears previous results and retries the exact failed search", async () => {
+        const user = userEvent.setup();
+        mockedSearchDiscoveryItems.mockRejectedValueOnce(new Error("Search unavailable"))
+            .mockResolvedValueOnce(searchPage([entry({
+                item: { ...entry().item, id: "ollama", name: "Ollama" },
+            })]));
+
+        renderPage();
+        await screen.findByText("Home Assistant");
+        await user.type(screen.getByLabelText("Keyword search"), "ollama");
+        await user.click(screen.getByRole("button", { name: "Search" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Your search filters are still selected.");
+        expect(screen.queryByText("Home Assistant")).not.toBeInTheDocument();
+        expect(screen.queryByText("Ollama")).not.toBeInTheDocument();
+        expect(screen.getByText("Results unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("Items unavailable")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Retry search" }));
+        expect(await screen.findByText("Ollama")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(mockedSearchDiscoveryItems).toHaveBeenLastCalledWith(expect.objectContaining({ q: "ollama", offset: 0 }));
     });
 });

@@ -334,5 +334,17 @@ def test_home_assistant_blocked_golden_has_no_record_or_deployment_artifact(
         / "installation"
         / "WorkerIntakeAdmissions.tsx"
     ).read_text(encoding="utf-8")
-    assert "For Home Assistant, worker intake admission remains blocked" in component
-    assert "non-installable and non-executable" in component
+    assert "homeAssistantBlocked={homeAssistantBlocked}" in component
+    shared_guidance = (
+        REPOSITORY_ROOT
+        / "services"
+        / "mission-control"
+        / "src"
+        / "features"
+        / "installation"
+        / "LiveEnqueueAdmissions.tsx"
+    ).read_text(encoding="utf-8")
+    assert (
+        "Home Assistant installation is unsupported and remains blocked."
+        in shared_guidance
+    )

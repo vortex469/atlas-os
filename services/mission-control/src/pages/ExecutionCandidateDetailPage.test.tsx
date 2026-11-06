@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createCandidatePlanningSession } from "../api/atlas-agent";
@@ -29,6 +29,7 @@ const mockedCreateCandidatePlanningSession = vi.mocked(createCandidatePlanningSe
 
 function candidate(overrides: Partial<ExecutionCandidate> = {}): ExecutionCandidate {
     return {
+        effect_kind: "repository_change",
         id: "candidate-1",
         source_recommendation_id: "finding-1",
         source_subsystem: "orion",
@@ -85,35 +86,68 @@ describe("ExecutionCandidateDetailPage", () => {
         mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse());
     });
 
-    it("renders all public candidate fields and boundary wording", async () => {
-        renderPage();
-
-        expect(await screen.findByRole("heading", { name: "candidate-1" })).toBeInTheDocument();
-        expect(screen.getByText("finding-1")).toBeInTheDocument();
-        expect(screen.getByText("orion")).toBeInTheDocument();
-        expect(screen.getByText("update-compose-stack")).toBeInTheDocument();
-        expect(screen.getByText("catalog-home-assistant")).toBeInTheDocument();
-        expect(screen.getByText("stack-home-assistant")).toBeInTheDocument();
-        expect(screen.getByText("compose_stack")).toBeInTheDocument();
-        expect(screen.getAllByText("Update Compose Stack").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("Eligible for planning consideration").length).toBeGreaterThan(0);
-        expect(screen.getByText("Standard")).toBeInTheDocument();
-        expect(screen.getByText("Update the compose stack after review.")).toBeInTheDocument();
-        expect(screen.getByText("service_disruption")).toBeInTheDocument();
-        expect(screen.getByText("evidence-1")).toBeInTheDocument();
-        expect(screen.getByText("compat-1")).toBeInTheDocument();
-        expect(screen.getByText("Compatible With Warnings")).toBeInTheDocument();
-        expect(screen.getByText("relationship-1")).toBeInTheDocument();
-        expect(screen.getByText(/Eligibility means Atlas Agent may consider this candidate for planning/i)).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
-    });
-
-    it("submits only candidate_id and displays planning session success", async () => {
+    it("leads with the proposal summary and keeps technical references collapsed", async () => {
         const user = userEvent.setup();
         renderPage();
 
-        await screen.findByRole("heading", { name: "candidate-1" });
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(screen.getByText("Target: stack-home-assistant · Type: Compose Stack")).toBeInTheDocument();
+        expect(screen.getAllByText("Eligible for planning").length).toBeGreaterThan(0);
+        expect(screen.getByText("Standard")).toBeInTheDocument();
+        expect(screen.getByText("Expires (local time)")).toBeInTheDocument();
+        const expiryTime = screen.getByText("Expires (local time)").parentElement?.querySelector("time");
+        const expiresAt = candidate().expires_at!;
+        expect(expiryTime).toHaveAttribute("datetime", expiresAt);
+        expect(expiryTime).toHaveTextContent(new Date(expiresAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(screen.getByText("Update the compose stack after review.")).toBeInTheDocument();
+        expect(screen.getByText("May interrupt service")).toBeInTheDocument();
+        expect(screen.getByText("Compatible with warnings")).toBeInTheDocument();
+        expect(screen.getByText(/Planning does not approve or apply a change/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /execute|install|apply|approve|run now/i })).not.toBeInTheDocument();
+
+        expect(screen.getByText("candidate-1")).not.toBeVisible();
+        expect(screen.getByText("finding-1")).not.toBeVisible();
+        expect(screen.getByText("orion")).not.toBeVisible();
+        expect(screen.getByText("catalog-home-assistant")).not.toBeVisible();
+        expect(screen.getByText("compat-1")).not.toBeVisible();
+        expect(screen.getByText("evidence-1")).not.toBeVisible();
+        expect(screen.getByText("relationship-1")).not.toBeVisible();
+
+        await user.click(screen.getByText("Technical references"));
+        expect(screen.getByText("candidate-1")).toBeVisible();
+        expect(screen.getByText("Created (local time)")).toBeVisible();
+        const createdTime = screen.getByText("Created (local time)").parentElement?.querySelector("time");
+        expect(createdTime).toHaveAttribute("datetime", candidate().created_at);
+        expect(createdTime).toHaveTextContent(new Date(candidate().created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }));
+        expect(screen.getByText("finding-1")).toBeVisible();
+        expect(screen.getByText("orion")).toBeVisible();
+        expect(screen.getByText("catalog-home-assistant")).toBeVisible();
+        expect(screen.getByText("compat-1")).toBeVisible();
+        expect(screen.getByText("evidence-1")).toBeVisible();
+        expect(screen.getByText("relationship-1")).toBeVisible();
+    });
+
+    it("does not present invalid candidate timestamps as verified times", async () => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({
+            created_at: "2026-02-30T12:00:00Z",
+            expires_at: "2026-02-30T12:00:00Z",
+        }));
+        renderPage();
+
+        expect(await screen.findByText("Unverified expiry")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+
+        await userEvent.setup().click(screen.getByText("Technical references"));
+        expect(screen.getByText("Time unavailable")).toBeVisible();
+    });
+
+    it("submits only candidate_id and keeps planning response details optional", async () => {
+        const user = userEvent.setup();
+        const search = "?eligibility=eligible&change=update-compose-stack&target=stack-home-assistant&offset=25";
+        renderPage(`/execution-candidates/candidate-1${search}`);
+
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
 
         await waitFor(() =>
             expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledWith({
@@ -121,8 +155,56 @@ describe("ExecutionCandidateDetailPage", () => {
             }),
         );
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
-        expect(await screen.findByText("Planning session created. Next step: generate a candidate plan.")).toBeInTheDocument();
-        expect(screen.getByText("Planning session ID: candidate-plan-1")).toBeInTheDocument();
+        expect(await screen.findByText("Planning is ready. Continue to review the proposal plan. No approval or change has been made.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Continue planning" })).toHaveAttribute("href", `/candidate-planning/candidate-plan-1${search}`);
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toBeNull();
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-1")).not.toBeVisible();
+        await user.click(screen.getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("candidate-plan-1")).toBeVisible();
+    });
+
+    it("labels a denied planning session as review-only", async () => {
+        const user = userEvent.setup();
+        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({
+            status: "intake_rejected",
+            planning_allowed: false,
+            intake_status: "policy_denied",
+            intake_reason_codes: ["policy_denied"],
+        }));
+        renderPage();
+
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+
+        expect(await screen.findByText("Atlas did not accept this proposal for planning. Review the recorded reason in technical details.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Open planning session" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-1");
+        expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
+    });
+
+    it("refreshes the proposal after a stale planning result without resubmitting planning", async () => {
+        const user = userEvent.setup();
+        let resolveRefresh!: (value: ExecutionCandidate) => void;
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate()).mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({
+            session_id: null,
+            status: "stale_before_planning",
+            planning_allowed: false,
+            intake_status: "stale",
+        }));
+        renderPage();
+
+        await user.click(await screen.findByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("This proposal is out of date. Refresh it before continuing.")).toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
+        await user.click(screen.getByRole("button", { name: "Refresh proposal" }));
+        expect(screen.getByRole("status")).toHaveTextContent("Loading proposal details…");
+        await act(async () => resolveRefresh(candidate({ rationale: "Latest proposal from Atlas Core." })));
+        expect(await screen.findByText("Latest proposal from Atlas Core.")).toBeInTheDocument();
+        expect(screen.queryByText("This proposal is out of date. Refresh it before continuing.")).not.toBeInTheDocument();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
     });
 
     it("prevents duplicate planning submissions", async () => {
@@ -135,14 +217,14 @@ describe("ExecutionCandidateDetailPage", () => {
         );
 
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
-        const button = screen.getByRole("button", { name: "Ask Atlas Agent to plan" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        const button = screen.getByRole("button", { name: "Start planning" });
         await user.dblClick(button);
 
         expect(mockedCreateCandidatePlanningSession).toHaveBeenCalledTimes(1);
         expect(screen.getByText("Planning request is already pending.")).toBeInTheDocument();
         resolveRequest(planningResponse());
-        expect(await screen.findByText("Planning session ID: candidate-plan-1")).toBeInTheDocument();
+        expect(await screen.findByRole("link", { name: "Continue planning" })).toBeInTheDocument();
     });
 
     it("disables planning for not eligible and expired candidates with visible reasons", async () => {
@@ -150,19 +232,37 @@ describe("ExecutionCandidateDetailPage", () => {
         renderPage();
 
         expect(await screen.findByText("Candidate is not eligible for planning.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Ask Atlas Agent to plan" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
 
-        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ expires_at: "2000-01-01T00:00:00Z" }));
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ id: "candidate-expired", expires_at: "2000-01-01T00:00:00Z" }));
         renderPage("/execution-candidates/candidate-expired");
 
         expect(await screen.findByText("Candidate has expired.")).toBeInTheDocument();
-        expect(screen.getAllByRole("button", { name: "Ask Atlas Agent to plan" }).at(-1)).toBeDisabled();
+        expect(screen.getByText("Expired", { exact: true })).toBeVisible();
+        expect(screen.queryByText("Eligible for planning", { exact: true })).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: "Start planning" }).at(-1)).toBeDisabled();
+    });
+
+    it("fails closed on unknown eligibility and offers a read-only refresh", async () => {
+        mockedGetExecutionCandidate.mockResolvedValueOnce(candidate({ status: "future_state", expires_at: null }))
+            .mockResolvedValueOnce(candidate({ expires_at: null }));
+        renderPage();
+
+        expect(await screen.findByText("Eligibility unavailable", { exact: true })).toBeVisible();
+        expect(screen.getByText("Planning eligibility could not be confirmed. Refresh the proposal before continuing.")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+        await userEvent.click(screen.getByRole("button", { name: "Refresh proposal" }));
+
+        expect(await screen.findByText("Eligible for planning", { exact: true })).toBeVisible();
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
     });
 
     it("handles unsupported, rejected, stale, Core unavailable, Agent unavailable, and persistence failures", async () => {
         const user = userEvent.setup();
         renderPage();
-        await screen.findByRole("heading", { name: "candidate-1" });
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({
             session_id: null,
@@ -171,27 +271,184 @@ describe("ExecutionCandidateDetailPage", () => {
             intake_status: "accepted_for_planning",
             unsupported_reason: "Only update-compose-stack is supported.",
         }));
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
-        expect(await screen.findByText("Unsupported intent. Atlas Agent cannot plan this candidate yet.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("Atlas cannot plan this type of change yet.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "policy_denied", intake_reason_codes: ["policy_denied"] }));
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
-        expect(await screen.findByText("Planning intake rejected by Atlas Core.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("Atlas did not accept this proposal for planning. Review the recorded reason in technical details.")).toBeInTheDocument();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "stale_before_planning", planning_allowed: false, intake_status: "stale" }));
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
-        expect(await screen.findByText("Candidate is stale. Refresh the candidate and try again.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("This proposal is out of date. Refresh it before continuing.")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh proposal" })).toBeInTheDocument();
 
-        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Core unavailable" } }));
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
-        expect(await screen.findByText("Atlas Core unavailable during authoritative revalidation.")).toBeInTheDocument();
+        mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "atlas_core_unavailable", message: "Bearer candidate-plan-canary-secret" } }));
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("Atlas could not check whether the proposal is current because Core is unavailable.")).toBeInTheDocument();
+        const coreFailureAlert = screen.getByRole("alert");
+        const coreFailureDetails = within(coreFailureAlert).getByText("Technical details").closest("details");
+        expect(within(coreFailureDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(coreFailureAlert).queryByText(/candidate-plan-canary-secret/)).not.toBeInTheDocument();
+        await user.click(within(coreFailureDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(coreFailureDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
 
         mockedCreateCandidatePlanningSession.mockResolvedValueOnce(planningResponse({ session_id: null, status: "intake_rejected", planning_allowed: false, intake_status: "rejected", planning_failure: { code: "persistence_failed", message: "Persistence failed" } }));
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
-        expect(await screen.findByText("Planning session could not be persisted.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        expect(await screen.findByText("Atlas could not save the planning session. No session is ready to continue.")).toBeInTheDocument();
 
-        mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable"));
-        await user.click(screen.getByRole("button", { name: "Ask Atlas Agent to plan" }));
-        expect(await screen.findByText("Agent unavailable")).toBeInTheDocument();
+        mockedCreateCandidatePlanningSession.mockRejectedValueOnce(new Error("Agent unavailable: Bearer canary-secret-value"));
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        const planningAlert = await screen.findByRole("alert");
+        expect(planningAlert).toHaveTextContent("Planning status not confirmed");
+        expect(planningAlert).toHaveTextContent("Atlas may have started a planning session but couldn’t confirm it.");
+        expect(planningAlert).toHaveTextContent("Select Start planning again to reopen or reuse the session.");
+        expect(planningAlert).toHaveTextContent("No approval or infrastructure change was made.");
+        const technicalDetails = within(planningAlert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).not.toBeVisible();
+        expect(within(planningAlert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
+    it("does not show a previous proposal or its planning action while the next loads", async () => {
+        let resolveNext!: (value: ExecutionCandidate) => void;
+        mockedGetExecutionCandidate.mockImplementation((id) => id === "candidate-1"
+            ? Promise.resolve(candidate()) : new Promise((resolve) => { resolveNext = resolve; }));
+        const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/candidate-1"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        await act(() => router.navigate("/execution-candidates/candidate-2"));
+        expect(screen.getByRole("status")).toHaveTextContent("Loading proposal details…");
+        expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
+        resolveNext(candidate({ id: "candidate-2" }));
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("Technical references"));
+        expect(screen.getByText("candidate-2")).toBeVisible();
+    });
+
+    it("recovers when navigating from a missing proposal to a valid one", async () => {
+        mockedGetExecutionCandidate.mockRejectedValueOnce(Object.assign(new Error("not found"), { isAxiosError: true, response: { status: 404 } }))
+            .mockResolvedValueOnce(candidate({ id: "candidate-2" }));
+        const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/missing"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Change proposal not found" });
+        expect(screen.getByText("This proposal is no longer available. Return to Change proposals and open a current proposal.")).toBeVisible();
+        expect(screen.getByText("Proposal ID: missing")).not.toBeVisible();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(screen.getByText("Proposal ID: missing")).toBeVisible();
+        await act(() => router.navigate("/execution-candidates/candidate-2"));
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("Technical references"));
+        expect(screen.getByText("candidate-2")).toBeVisible();
+    });
+
+    it("does not apply a late planning response to a different proposal", async () => {
+        const user = userEvent.setup();
+        let resolvePlanning!: (value: CandidatePlanningResponse) => void;
+        mockedGetExecutionCandidate.mockImplementation(async (id) => candidate({ id }));
+        mockedCreateCandidatePlanningSession.mockImplementationOnce(() => new Promise((resolve) => { resolvePlanning = resolve; }))
+            .mockResolvedValueOnce(planningResponse({ candidate_id: "candidate-2", session_id: "candidate-plan-2" }));
+        const router = createMemoryRouter([{ path: "/execution-candidates/:candidateId", element: <ExecutionCandidateDetailPage /> }], { initialEntries: ["/execution-candidates/candidate-1"] });
+        render(<RouterProvider router={router} />);
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        await act(() => router.navigate("/execution-candidates/candidate-2"));
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        await act(async () => resolvePlanning(planningResponse()));
+        expect(screen.queryByText("Planning session ID: candidate-plan-1")).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        expect(await screen.findByRole("link", { name: "Continue planning" })).toHaveAttribute("href", "/candidate-planning/candidate-plan-2");
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(mockedCreateCandidatePlanningSession).toHaveBeenLastCalledWith({ candidate_id: "candidate-2" });
+    });
+
+    it("refuses candidate details whose identity does not match the URL", async () => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({ id: "different-candidate" }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Start planning" })).not.toBeInTheDocument();
+        expect(mockedCreateCandidatePlanningSession).not.toHaveBeenCalled();
+    });
+
+    it("does not link a planning response for a different proposal", async () => {
+        const user = userEvent.setup();
+        mockedCreateCandidatePlanningSession.mockResolvedValue(planningResponse({ candidate_id: "different-candidate" }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        await user.click(screen.getByRole("button", { name: "Start planning" }));
+        const planningAlert = await screen.findByRole("alert");
+        expect(planningAlert).toHaveTextContent("Planning result not opened");
+        expect(planningAlert).toHaveTextContent("Atlas returned a result for a different proposal. Mission Control refused to open it.");
+        expect(planningAlert).toHaveTextContent("Refresh this proposal before trying again.");
+        expect(planningAlert).toHaveTextContent("No approval or infrastructure change was made.");
+        const technicalDetails = within(planningAlert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        expect(within(technicalDetails as HTMLDetailsElement).getByText("The planning response did not match this proposal.")).not.toBeVisible();
+        expect(screen.queryByRole("link", { name: "Continue planning" })).not.toBeInTheDocument();
+    });
+
+    it.each(["not-a-time", "2999-02-30T00:00:00Z", "2999-01-01T00:00:00", ""])("keeps planning disabled for an unverified expiry: %j", async (expires_at) => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({ expires_at }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeDisabled();
+        expect(screen.getByText("Unverified expiry")).toBeInTheDocument();
+    });
+
+    it.each([null, undefined])("preserves planning eligibility when expiry is optional: %j", async (expires_at) => {
+        mockedGetExecutionCandidate.mockResolvedValue(candidate({ expires_at }));
+        renderPage();
+        await screen.findByRole("heading", { name: "Update Compose Stack" });
+        expect(screen.getByRole("button", { name: "Start planning" })).toBeEnabled();
+    });
+
+    it("uses HTTP status instead of error wording to classify a missing proposal", async () => {
+        mockedGetExecutionCandidate.mockRejectedValue(Object.assign(new Error("A dependency was not found"), {
+            isAxiosError: true, response: { status: 503 },
+        }));
+        renderPage();
+        expect(await screen.findByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Change proposal not found" })).not.toBeInTheDocument();
+    });
+
+    it("retries a temporary proposal read failure", async () => {
+        const user = userEvent.setup();
+        mockedGetExecutionCandidate.mockRejectedValueOnce(new Error("Core unavailable: Bearer canary-secret-value"))
+            .mockResolvedValueOnce(candidate());
+
+        renderPage();
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Change proposal unavailable");
+        expect(alert).toHaveTextContent("Atlas couldn’t load this change proposal. Try again to check its details.");
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        const readError = within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]");
+        expect(readError).not.toBeVisible();
+        expect(within(alert).queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
+        expect(readError).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Try again" }));
+
+        expect(await screen.findByRole("heading", { name: "Update Compose Stack" })).toBeInTheDocument();
+        expect(mockedGetExecutionCandidate).toHaveBeenCalledTimes(2);
+    });
+
+    it("clears old read details when a retry returns a mismatched proposal", async () => {
+        const user = userEvent.setup();
+        mockedGetExecutionCandidate.mockRejectedValueOnce(new Error("Previous read failed"))
+            .mockResolvedValueOnce(candidate({ id: "different-candidate" }));
+        renderPage();
+
+        await screen.findByRole("alert");
+        await user.click(screen.getByRole("button", { name: "Try again" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("The returned proposal does not match this page.");
+        expect(within(alert).queryByText("Previous read failed")).not.toBeInTheDocument();
+        expect(within(alert).queryByText("Technical details")).not.toBeInTheDocument();
+    });
+
 });

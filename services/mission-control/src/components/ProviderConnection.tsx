@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getAtlasErrorMessage } from "../api/atlas";
 import {
@@ -23,6 +23,10 @@ type FormValues = Record<string, string | number | boolean>;
 type BusyMode = "loading" | "testing" | "saving" | null;
 
 export function ProviderConnection({ provider }: ProviderConnectionProps) {
+    return <ProviderConnectionPanel key={provider.id} provider={provider} />;
+}
+
+function ProviderConnectionPanel({ provider }: ProviderConnectionProps) {
     const hasConnectionCapability = provider.capabilities.includes("connection");
     const [schema, setSchema] = useState<ProviderConnectionSchema | null>(null);
     const [formValues, setFormValues] = useState<FormValues>({});
@@ -31,6 +35,8 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
         hasConnectionCapability ? "loading" : null,
     );
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
+    const [settingsReadFailed, setSettingsReadFailed] = useState(false);
     const [testResult, setTestResult] =
         useState<TestProviderConnectionResult | null>(null);
 
@@ -41,27 +47,31 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
 
         setBusyMode("loading");
         setError(null);
+        setErrorDetails(null);
+        setTestResult(null);
 
         try {
             const nextSchema = await getProviderConnection(provider.id);
             setSchema(nextSchema);
             setFormValues(initialFormValues(nextSchema));
             setSecretValues({});
+            setSettingsReadFailed(false);
         } catch (requestError) {
+            setSettingsReadFailed(true);
             console.error(
                 `Unable to load connection for ${provider.id}:`,
                 requestError,
             );
-            setError(
-                getAtlasErrorMessage(
-                    requestError,
-                    `Mission Control could not load the connection schema for ${provider.name}.`,
-                ),
-            );
+            const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
+            const details = getAtlasErrorMessage(requestError, fallback);
+            setError(schema
+                ? "Atlas couldn’t refresh these connection settings. Refresh to try again."
+                : "Atlas couldn’t load these connection settings. Refresh to try again.");
+            setErrorDetails(details === fallback ? null : details);
         } finally {
             setBusyMode(null);
         }
-    }, [hasConnectionCapability, provider.id, provider.name]);
+    }, [hasConnectionCapability, provider.id, provider.name, schema]);
 
     useEffect(() => {
         if (!hasConnectionCapability) {
@@ -70,35 +80,40 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
 
         let cancelled = false;
 
-        getProviderConnection(provider.id)
-            .then((nextSchema) => {
-                if (cancelled) {
-                    return;
-                }
-                setSchema(nextSchema);
-                setFormValues(initialFormValues(nextSchema));
-                setSecretValues({});
-            })
-            .catch((requestError: unknown) => {
-                if (cancelled) {
-                    return;
-                }
-                console.error(
-                    `Unable to load connection for ${provider.id}:`,
-                    requestError,
-                );
-                setError(
-                    getAtlasErrorMessage(
+        void Promise.resolve().then(() => {
+            if (cancelled) return;
+            return getProviderConnection(provider.id)
+                .then((nextSchema) => {
+                    if (cancelled) {
+                        return;
+                    }
+                    setSchema(nextSchema);
+                    setFormValues(initialFormValues(nextSchema));
+                    setSecretValues({});
+                    setError(null);
+                    setErrorDetails(null);
+                    setSettingsReadFailed(false);
+                })
+                .catch((requestError: unknown) => {
+                    if (cancelled) {
+                        return;
+                    }
+                    setSettingsReadFailed(true);
+                    console.error(
+                        `Unable to load connection for ${provider.id}:`,
                         requestError,
-                        `Mission Control could not load the connection schema for ${provider.name}.`,
-                    ),
-                );
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setBusyMode(null);
-                }
-            });
+                    );
+                    const fallback = `Mission Control could not load connection settings for ${provider.name}.`;
+                    const details = getAtlasErrorMessage(requestError, fallback);
+                    setError("Atlas couldn’t load these connection settings. Refresh to try again.");
+                    setErrorDetails(details === fallback ? null : details);
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setBusyMode(null);
+                    }
+                });
+        });
 
         return () => {
             cancelled = true;
@@ -121,6 +136,9 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
         field: ProviderConnectionField,
         value: string | number | boolean,
     ): void {
+        setTestResult(null);
+        setError(null);
+        setErrorDetails(null);
         if (field.secret) {
             setSecretValues((current) => ({
                 ...current,
@@ -149,6 +167,7 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
 
         setBusyMode("testing");
         setError(null);
+        setErrorDetails(null);
         setTestResult(null);
 
         try {
@@ -189,6 +208,7 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
 
         setBusyMode("saving");
         setError(null);
+        setErrorDetails(null);
 
         try {
             const result = await updateProviderConnection(provider.id, {
@@ -227,12 +247,14 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
             <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <span className={statusClass(statusLabel)}>
-                            {statusLabel}
-                        </span>
+                        {schema && (
+                            <span className={statusClass(statusLabel)}>
+                                {settingsReadFailed ? "Last loaded settings" : "Saved settings"}: {statusLabel}
+                            </span>
+                        )}
                         {schema?.updated_at && (
                             <p className="mt-2 text-xs text-slate-500">
-                                Last updated {formatTimestamp(schema.updated_at)}
+                                Connection settings updated (local time): {formatTimestamp(schema.updated_at)}
                             </p>
                         )}
                         {schema?.metadata.reload_required === true && (
@@ -242,7 +264,7 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
                         )}
                         {schema?.metadata.privileged_local_runtime === true && (
                             <p className="mt-2 text-sm text-amber-300">
-                                Privileged local runtime connection. A read-only socket mount does not make the Docker API read-only.
+                                Atlas can still send Docker commands that change containers through this connection, even if the socket is mounted read-only.
                             </p>
                         )}
                     </div>
@@ -253,13 +275,13 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
                         disabled={isBusy}
                         className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Reload Schema
+                        Refresh settings
                     </button>
                 </div>
 
                 {busyMode === "loading" && (
                     <p className="mt-6 text-sm text-slate-400">
-                        Loading connection schema...
+                        Loading connection settings...
                     </p>
                 )}
 
@@ -268,7 +290,12 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
                         role="alert"
                         className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
                     >
-                        {error}
+                        <p>{error}</p>
+                        {errorDetails && <details className="mt-3">
+                            <summary className="cursor-pointer font-medium text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-300">Technical details</summary>
+                            <p className="mt-2 break-words text-slate-400">{errorDetails}</p>
+                        </details>}
+                        {settingsReadFailed && schema && <p className="mt-2">These values are from the last successful read and may be out of date. Testing and saving are disabled until a refresh succeeds.</p>}
                     </div>
                 )}
 
@@ -281,7 +308,7 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
                                     field={field}
                                     value={formValues[field.key]}
                                     secretValue={secretValues[field.key] ?? ""}
-                                    disabled={isBusy || !field.editable}
+                                    disabled={isBusy || settingsReadFailed || !field.editable}
                                     onChange={(value) => updateFormField(field, value)}
                                 />
                             ))}
@@ -299,7 +326,7 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => void runTest()}
-                                    disabled={isBusy}
+                                    disabled={isBusy || settingsReadFailed}
                                     className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-200 transition hover:border-blue-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busyMode === "testing" ? "Testing..." : "Test Connection"}
@@ -310,7 +337,7 @@ export function ProviderConnection({ provider }: ProviderConnectionProps) {
                                 <button
                                     type="button"
                                     onClick={() => void saveConnection()}
-                                    disabled={isBusy}
+                                    disabled={isBusy || settingsReadFailed}
                                     className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:border-emerald-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {busyMode === "saving" ? "Saving..." : "Save Connection"}
@@ -355,7 +382,7 @@ function ConnectionField({
                     {field.required && <span className="text-amber-300"> *</span>}
                 </span>
                 <span className="text-xs text-slate-500">
-                    {field.source ? `Source: ${field.source}` : "No source"}
+                    {connectionFieldSourceLabel(field.source)}
                 </span>
             </span>
 
@@ -383,6 +410,30 @@ function ConnectionField({
             )}
         </label>
     );
+}
+
+function connectionFieldSourceLabel(source: string | null): string {
+    switch (source) {
+        case "atlas_yaml":
+            return "From Atlas configuration";
+        case "runtime":
+            return "From saved connection settings";
+        case "environment":
+            return "From an environment variable";
+        case "missing":
+            return "Not configured";
+        case "default":
+        case "defaults":
+            return "From Atlas defaults";
+        case "inventory":
+            return "From provider inventory";
+        case "settings":
+            return "From Atlas settings";
+        case null:
+            return "Source unavailable";
+        default:
+            return `From ${source.replaceAll("_", " ")}`;
+    }
 }
 
 function renderFieldControl({
@@ -478,14 +529,19 @@ function TestResult({
                 </p>
             )}
             {Object.keys(result.diagnostics).length > 0 && (
-                <dl className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
-                    {Object.entries(result.diagnostics).map(([key, value]) => (
-                        <div key={key}>
-                            <dt className="font-semibold text-slate-400">{key}</dt>
-                            <dd>{formatDiagnosticValue(value, redactedValues)}</dd>
-                        </div>
-                    ))}
-                </dl>
+                <details className="mt-3">
+                    <summary className="cursor-pointer text-sm font-medium text-slate-400 hover:text-slate-200">
+                        Technical details
+                    </summary>
+                    <dl className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                        {Object.entries(result.diagnostics).map(([key, value]) => (
+                            <div key={key}>
+                                <dt className="font-semibold text-slate-400">{sanitizeText(key, redactedValues)}</dt>
+                                <dd>{formatDiagnosticValue(value, redactedValues)}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </details>
             )}
         </div>
     );
@@ -571,12 +627,12 @@ function statusClass(status: string): string {
     return `${base} bg-amber-500/10 text-amber-300`;
 }
 
-function formatTimestamp(value: string): string {
+function formatTimestamp(value: string): ReactNode {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return value;
+        return "Time unavailable";
     }
-    return date.toLocaleString();
+    return <time dateTime={value}>{date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>;
 }
 
 function formatDiagnosticValue(value: unknown, redactedValues: string[]): string {

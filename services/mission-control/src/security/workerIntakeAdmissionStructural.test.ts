@@ -21,16 +21,17 @@ describe("v0.40 worker intake admission Mission Control boundary", () => {
         expect(router).not.toMatch(/worker-intake-admissions|WorkerIntakeAdmission/i);
         expect(navigation).not.toMatch(/worker intake admission|worker_intake_admission/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(start|enqueue|dequeue|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).toMatch(/>Retry<\/button>/);
+        expect(component).not.toMatch(/>\s*(start|enqueue|dequeue|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("keeps operator status simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/Mission Control shows the worker intake admission status here in the existing worker flow/i);
+        expect(component).toMatch(/Worker intake review/);
         expect(component).toMatch(/does not send work to a queue or start a worker/i);
-        expect(component).toMatch(/Advanced details/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Worker intake admission fixed-false authority fields/);
-        expect(component).toMatch(/not live enqueue, dequeue, worker contact, worker start, dispatch, execution/i);
+        expect(component).toMatch(/This record has not contacted a worker or put work on a queue/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /worker-intake-admissions|WorkerIntakeAdmission/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([
             "../api/oneShotDequeueWorkerBinding.ts",

@@ -1,5 +1,5 @@
 import { getPendingApprovals } from "../api/approval";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -202,6 +202,31 @@ describe("useAtlasAgent", () => {
         expect(result.current.error).toBe(
             "Atlas Agent unavailable",
         );
+    });
+
+    it("retries the read after Atlas Agent becomes available", async () => {
+        mockedGetRepositoryStatus.mockRejectedValueOnce(unavailableError()).mockResolvedValueOnce({
+            root: "/opt/atlas",
+            branch: "main",
+            head_commit: "abc123",
+            is_clean: true,
+            modified_files: [],
+            staged_files: [],
+            untracked_files: [],
+        });
+        mockedGetSprintStatus.mockResolvedValue(null);
+        mockedGetVerificationReport.mockResolvedValue(null);
+        mockedGetReviewReport.mockResolvedValue(null);
+        mockedGetPendingApprovals.mockResolvedValue([]);
+
+        const { result } = renderHook(() => useAtlasAgent());
+        await waitFor(() => expect(result.current.error).toBe("Atlas Agent unavailable"));
+
+        act(() => result.current.retry());
+        await waitFor(() => expect(result.current.repository?.branch).toBe("main"));
+        expect(result.current.error).toBeNull();
+        expect(mockedGetRepositoryStatus).toHaveBeenCalledTimes(2);
+        expect(mockedGetPendingApprovals).toHaveBeenCalledTimes(2);
     });
 
     it("returns null when an optional summary endpoint responds with 404", async () => {

@@ -1,16 +1,36 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { WorkflowSummary } from "../../types/atlasAgent";
-import { WORKFLOW_STATES } from "../../utils/workflowState";
+import { formatWorkflowLabel, WORKFLOW_STATES } from "../../utils/workflowState";
 
 import { isCompleteWorkflowEvidence } from "./workerExecutionEvidence";
 
 import type { Evidence } from "./useOverviewEvidence";
 import { detailPath, safeText } from "./overviewEvidence";
-import { HealthEvidence } from "../../components/HealthEvidence";
 
 function executionStage(workflow: WorkflowSummary): string | null {
     const stages = workflow.timeline.filter((stage) => stage.name === "Execution");
     return stages.length === 1 ? stages[0].status : null;
+}
+
+function workflowActionLabel(intent: string | null): string {
+    const safeIntent = safeText(intent);
+    return safeIntent && safeIntent !== "[Sensitive text withheld]"
+        ? formatWorkflowLabel(safeIntent)
+        : "Workflow";
+}
+
+function workflowStatusLabel(workflow: WorkflowSummary, outcomes: boolean): string {
+    if (outcomes) {
+        return executionStage(workflow) === "completed"
+            ? "Execution completed"
+            : "Execution failed";
+    }
+    return workflow.workflow_state === "executing"
+        ? "Running"
+        : workflow.workflow_state === "blocked"
+            ? "Blocked"
+            : formatWorkflowLabel(workflow.workflow_state);
 }
 
 export function WorkerExecutionSection({ evidence, loading = false }: {
@@ -27,37 +47,39 @@ export function WorkerExecutionSection({ evidence, loading = false }: {
     const outcomes = items?.filter((item) => ["completed", "failed"].includes(executionStage(item) ?? "")) ?? [];
     const missingStages = items?.some((item) =>
         !["waiting", "current", "completed", "failed", "blocked"].includes(executionStage(item) ?? ""));
-    const fallback = unavailable ? "Unavailable" : "Unknown";
-
     return (
-        <section aria-labelledby="worker-execution-heading" className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
+        <section aria-labelledby="work-activity-heading" className="min-w-0 rounded-xl border border-mc-border-subtle bg-mc-surface p-4 [overflow-wrap:anywhere]">
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 id="worker-execution-heading" className="text-lg font-semibold text-mc-text-primary">Worker / Execution</h2>
-                <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Inspect executions →</Link>
+                <h2 id="work-activity-heading" className="text-lg font-semibold text-mc-text-primary">Work activity</h2>
+                <Link to="/workflows" className="text-sm font-semibold text-mc-primary focus-visible:outline-2">Review workflows →</Link>
             </div>
             <p className="mt-2 text-sm text-mc-text-muted">
-                Read-only observation from persisted Atlas Agent workflows, not execution authority.
-                Admission, reservation and controlled dequeue remain in their existing boundaries.
+                Shows workflow progress and results. It doesn't show whether a worker is free to take more work.
             </p>
-            <HealthEvidence status={null} stale={evidence?.stale} reason="Worker availability and queue depth are not exposed by this evidence." />
-            {evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Stale evidence — last-known workflow observations; current execution state unknown.</p>}
-            {loading && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Refreshing execution evidence; displayed observations may be stale.</p>}
-            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <Metric label="Worker availability / state" value="Unknown — worker heartbeat not exposed" />
-                <Metric label="Active execution" value={items && knownStates ? `${active.length} executing workflows` : fallback} />
-                <Metric label="Queued / admitted work" value="Unknown — aggregate queue and admission evidence not exposed" />
-                <Metric label="Blocked execution / workflow" value={items && knownStates ? `${blocked.length} blocked workflows` : fallback} />
-            </dl>
-            {items && knownStates && active.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No executing workflows observed. Worker idleness is unknown.</p>}
-            {items && !knownStates && <p className="mt-3 text-sm text-amber-200">Unrecognized workflow state; activity totals are unknown.</p>}
+            {loading && items && <p role="status" className="mt-2 text-sm text-mc-text-secondary">Checking for a newer workflow report. The statuses shown may have changed.</p>}
+            {!loading && evidence?.stale && <p role="status" className="mt-2 text-sm text-amber-200">Atlas couldn't load the latest workflow report. The statuses shown may have changed.</p>}
+            {items && knownStates && (active.length > 0 || blocked.length > 0) && (
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <Metric label="Running workflows" value={String(active.length)} />
+                    <Metric label="Blocked workflows" value={String(blocked.length)} />
+                </dl>
+            )}
+            {loading && !items && <p role="status" className="mt-3 text-sm text-mc-text-secondary">Checking workflow status…</p>}
+            {items && !knownStates && <p role="status" className="mt-3 text-sm text-amber-200">Some workflow statuses are not recognized. Execution and blocked counts are hidden.</p>}
+            {items && knownStates && active.length === 0 && blocked.length === 0 && <p className="mt-3 text-sm text-mc-text-muted">No workflows are running or blocked.</p>}
             <div className="mt-4 grid gap-4">
-                <EvidenceList title="Active execution evidence" items={active} available={!!items} empty={knownStates ? "None observed" : "Unknown"} />
-                <EvidenceList title="Blocked workflow evidence" items={blocked} available={!!items} empty={knownStates ? "None observed" : "Unknown"} />
-                <EvidenceList title="Recorded execution outcomes" items={outcomes} available={!!items} empty={missingStages ? "Unknown — execution evidence missing or malformed" : "No execution outcomes recorded"} outcomes />
+                {active.length > 0 && <EvidenceList key="running" title="Running workflows" items={active} available={!!items} empty="Unknown" />}
+                {blocked.length > 0 && <EvidenceList key="blocked" title="Blocked workflows" items={blocked} available={!!items} empty="Unknown" />}
             </div>
-            <p className="mt-3 text-xs text-mc-text-muted">Up to 3 records per group. Execution timestamps are not exposed: outcome recency is unavailable; records are shown in workflow ID order. Workflow blockers may precede execution.</p>
-            {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution evidence is missing or malformed; outcomes are incomplete.</p>}
-            {!items && <p role="status" className="mt-3 text-sm text-amber-200">Execution evidence {unavailable ? "unavailable" : "unknown or incomplete"}. No idle or healthy state inferred.</p>}
+            <details className="mt-4 text-sm text-mc-text-secondary">
+                <summary className="mc-focusable cursor-pointer text-mc-primary">More workflow details</summary>
+                <div className="mt-3 space-y-4">
+                    <EvidenceList key="outcomes" title="Execution results" items={outcomes} available={!!items} empty={missingStages ? "Mission Control could not read an execution result for one or more workflows." : "No execution results recorded"} outcomes />
+                    <p className="text-xs text-mc-text-muted">Finish times aren't available, so results aren't shown newest first. A workflow can be blocked before it starts.</p>
+                </div>
+            </details>
+            {missingStages && outcomes.length > 0 && <p className="mt-2 text-sm text-amber-200">Some execution results are missing or incomplete.</p>}
+            {!items && !loading && <p role="status" className="mt-3 text-sm text-amber-200">{unavailable ? "Workflow status could not be loaded." : "Couldn't load all workflows, so the execution and blocked counts aren't shown."}</p>}
         </section>
     );
 }
@@ -69,14 +91,33 @@ function Metric({ label, value }: { label: string; value: string }) {
 function EvidenceList({ title, items, available, empty, outcomes = false }: {
     title: string; items: WorkflowSummary[]; available: boolean; empty: string; outcomes?: boolean;
 }) {
+    const [showAll, setShowAll] = useState(false);
+    const ordered = [...items].sort((a, b) => {
+        if (outcomes) {
+            const failureOrder = Number(executionStage(a) !== "failed")
+                - Number(executionStage(b) !== "failed");
+            if (failureOrder !== 0) return failureOrder;
+        }
+        return a.workflow_id.localeCompare(b.workflow_id);
+    });
+    const displayed = showAll ? ordered : ordered.slice(0, 3);
     return <div>
         <h3 className="text-sm font-semibold text-mc-text-primary">{title}</h3>
-        {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Unknown"}</p> :
-            <ul className="mt-2 space-y-2 text-sm">
-                {[...items].sort((a, b) => a.workflow_id.localeCompare(b.workflow_id)).slice(0, 3).map((item) => <li key={item.workflow_id}>
-                    <Link to={detailPath("/workflows", item.workflow_id)!} className="break-all text-mc-primary focus-visible:outline-2">{safeText(item.workflow_id)}</Link>
-                    <span className="ml-2 text-mc-text-secondary">{outcomes ? `Execution ${executionStage(item)}` : item.workflow_state}</span>
+        {!available || items.length === 0 ? <p className="mt-2 text-sm text-mc-text-muted">{available ? empty : "Workflow results aren't available."}</p> :
+            <ul aria-label={title} className="mt-2 space-y-2 text-sm">
+                {displayed.map((item) => <li key={item.workflow_id}>
+                    <Link to={detailPath("/workflows", item.workflow_id)!} className="text-mc-primary focus-visible:outline-2">{workflowActionLabel(item.execution_intent)} · {workflowStatusLabel(item, outcomes)}</Link>
+                    <details className="mt-1 text-xs text-mc-text-muted">
+                        <summary className="mc-focusable cursor-pointer text-mc-primary-strong">Technical details</summary>
+                        <p className="mt-1 break-all font-mono">Workflow ID: {safeText(item.workflow_id)}</p>
+                    </details>
                 </li>)}
             </ul>}
+        {available && items.length > 3 && <button
+            type="button"
+            className="mc-control mc-focusable mt-2 rounded-lg border border-mc-border-subtle px-3 py-2 text-sm font-medium text-mc-primary-strong"
+            aria-expanded={showAll}
+            onClick={() => setShowAll(current => !current)}
+        >{showAll ? `Show fewer ${title.toLowerCase()}` : `Show all ${items.length} ${title.toLowerCase()}`}</button>}
     </div>;
 }

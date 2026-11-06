@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGet } = vi.hoisted(() => ({
+const { mockGet, mockPost } = vi.hoisted(() => ({
     mockGet: vi.fn(),
+    mockPost: vi.fn(),
 }));
 
 vi.mock("axios", () => ({
     default: {
-        create: () => ({ get: mockGet }),
+        create: () => ({ get: mockGet, post: mockPost }),
     },
     isAxiosError: (error: unknown): error is { response?: { status?: number } } => {
         return !!error && typeof error === "object" && "isAxiosError" in (error as { isAxiosError?: boolean });
@@ -14,23 +15,91 @@ vi.mock("axios", () => ({
 }));
 
 import {
+    createCandidateImplementationRequest,
+    createCandidateWorkflowShell,
+    generateCandidatePlan,
     getAgentInfo,
+    getAtlasAgentErrorMessage,
+    getCandidatePlan,
+    getCandidatePlanningSession,
     getReviewReport,
     getSprintStatus,
     getVerificationReport,
+    getWorkflowAudit,
+    getWorkflowDetail,
     getWorkflowOperationalLifecycle,
     getWorkflowRecoveryDiagnostic,
     getWorkflowSupportBundle,
+    listWorkflows,
+    submitWorkflowCommitApproval,
+    submitWorkflowImplementationApproval,
+    submitWorkflowVerificationApproval,
 } from "./atlas-agent";
+import { operationalDiagnostic, operationalLifecycle } from "../test/operationalLifecycle";
+import { workflowAudit } from "../test/workflowAudit";
+import { workflowDetail } from "../test/workflowDetail";
 
-function axiosError(status: number): unknown {
+function candidatePlan(overrides: Record<string, unknown> = {}) {
+    return {
+        identifier: "plan-one",
+        session_id: "session-one",
+        candidate_id: "candidate-one",
+        candidate_fingerprint: "fingerprint-one",
+        title: "Update service configuration",
+        objective: "Review a safe configuration change.",
+        assumptions: [], constraints: [], proposed_steps: ["Review the change"],
+        likely_affected_components: [], likely_affected_files: [], verification_strategy: [],
+        rollback_considerations: [], unresolved_questions: [], evidence_ids: [],
+        created_at: "2026-10-28T00:00:00Z", repository_branch: null, repository_head: null,
+        revalidated_candidate_fingerprint: "fingerprint-one",
+        ...overrides,
+    };
+}
+
+function candidatePlanning(overrides: Record<string, unknown> = {}) {
+    return {
+        session_id: "session-one",
+        candidate_id: "candidate-one",
+        status: "ready_for_planning",
+        planning_allowed: true,
+        intake_status: "accepted_for_planning",
+        intake_reason_codes: [],
+        candidate_fingerprint: "fingerprint-one",
+        unsupported_reason: null,
+        plan: null,
+        operational_plan: null,
+        planning_failure: null,
+        predecessor_session_id: null,
+        successor_session_id: null,
+        ...overrides,
+    };
+}
+
+function candidateImplementationTranslation(overrides: Record<string, unknown> = {}) {
+    return {
+        candidate_planning_session_id: "session-one",
+        workflow_session_id: "workflow-one",
+        translation_status: "implementation_ready",
+        implementation_request_id: "implementation-one",
+        exact_approval_request_id: "approval-one",
+        candidate_fingerprint: "fingerprint-one",
+        plan_fingerprint: "plan-fingerprint-one",
+        repository_head: "head-one",
+        translator_version: "translator-v1",
+        reason_codes: [],
+        failure: null,
+        ...overrides,
+    };
+}
+
+function axiosError(status: number, responseData?: unknown): unknown {
     const error = new Error(`Request failed with status code ${status}`) as unknown as {
         isAxiosError: boolean;
-        response: { status: number };
+        response: { status: number; data: unknown };
     };
 
     error.isAxiosError = true;
-    error.response = { status };
+    error.response = { status, data: responseData };
 
     return error;
 }
@@ -38,6 +107,81 @@ function axiosError(status: number): unknown {
 describe("Atlas Agent optional summary endpoints", () => {
     beforeEach(() => {
         mockGet.mockReset();
+        mockPost.mockReset();
+    });
+
+    it("reads a complete planning session before presentation", async () => {
+        const session = candidatePlanning();
+        mockGet.mockResolvedValueOnce({ data: session });
+
+        await expect(getCandidatePlanningSession("session-one")).resolves.toBe(session);
+    });
+
+    it("rejects malformed nested plan data in a planning session", async () => {
+        mockGet.mockResolvedValueOnce({ data: candidatePlanning({
+            status: "plan_ready",
+            plan: candidatePlan({ proposed_steps: null }),
+        }) });
+
+        await expect(getCandidatePlanningSession("session-one")).rejects.toThrow(
+            "Malformed candidate planning response.",
+        );
+    });
+
+    it("rejects malformed standalone plan data", async () => {
+        mockGet.mockResolvedValueOnce({ data: candidatePlan({ assumptions: "none" }) });
+
+        await expect(getCandidatePlan("session-one")).rejects.toThrow(
+            "Malformed candidate plan response.",
+        );
+    });
+
+    it("rejects malformed planning results before exposing plan content", async () => {
+        mockPost.mockResolvedValueOnce({ data: candidatePlanning({
+            status: "plan_ready",
+            plan: candidatePlan({ verification_strategy: null }),
+        }) });
+
+        await expect(generateCandidatePlan("session-one")).rejects.toThrow(
+            "Malformed candidate planning response.",
+        );
+    });
+
+    it("rejects malformed workflow-shell results", async () => {
+        mockPost.mockResolvedValueOnce({ data: {
+            candidate_planning_session_id: "session-one",
+            candidate_id: "candidate-one",
+            candidate_fingerprint: "fingerprint-one",
+            candidate_plan_id: "plan-one",
+            candidate_plan_fingerprint: "plan-fingerprint-one",
+            workflow_session_id: "workflow-one",
+            workflow_status: "approval_pending",
+            implementation_approval_request_id: "approval-one",
+            conversion_status: "workflow_created",
+            core_revalidation_status: "accepted_for_planning",
+            reason_codes: null,
+            failure: null,
+        } });
+
+        await expect(createCandidateWorkflowShell("session-one")).rejects.toThrow(
+            "Malformed candidate workflow response.",
+        );
+    });
+
+    it("reads an exact-request preparation result with separate approval evidence", async () => {
+        const result = candidateImplementationTranslation();
+        mockPost.mockResolvedValueOnce({ data: result });
+
+        await expect(createCandidateImplementationRequest("session-one")).resolves.toBe(result);
+        expect(mockPost).toHaveBeenCalledWith("/candidate-planning/session-one/implementation", undefined);
+    });
+
+    it("rejects a ready preparation response without its exact approval", async () => {
+        mockPost.mockResolvedValueOnce({ data: candidateImplementationTranslation({ exact_approval_request_id: null }) });
+
+        await expect(createCandidateImplementationRequest("session-one")).rejects.toThrow(
+            "Malformed candidate implementation response.",
+        );
     });
 
     it("treats 404 sprint/verification/review as not published", async () => {
@@ -80,6 +224,109 @@ describe("Atlas Agent optional summary endpoints", () => {
         await expect(getSprintStatus()).rejects.toBeInstanceOf(Error);
         await expect(getVerificationReport()).rejects.toBeInstanceOf(Error);
         await expect(getReviewReport()).rejects.toBeInstanceOf(Error);
+    });
+
+    it("reads string and structured messages from Agent API error details", () => {
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: { code: "approval_already_decided", message: "Approval already decided" } }),
+            "Approval failed.",
+        )).toBe("Approval already decided");
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: "Workflow is stale" }),
+            "Approval failed.",
+        )).toBe("Workflow is stale");
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: "Bearer atlas-agent-canary-secret" }),
+            "Approval failed.",
+        )).toBe("[Sensitive text withheld]");
+        expect(getAtlasAgentErrorMessage(
+            new Error("https://private.example/atlas-agent-canary"),
+            "Approval failed.",
+        )).toBe("[Sensitive text withheld]");
+    });
+
+    it("falls back to a readable request error when response details are malformed", () => {
+        expect(getAtlasAgentErrorMessage(
+            axiosError(409, { detail: { code: "approval_already_decided" } }),
+            "Approval failed.",
+        )).toBe("Request failed with status code 409");
+        expect(getAtlasAgentErrorMessage(new Error(""), "Atlas Agent unavailable.")).toBe("Atlas Agent unavailable.");
+    });
+
+    it.each([
+        ["implementation", submitWorkflowImplementationApproval, "implementation_approval_status"],
+        ["verification", submitWorkflowVerificationApproval, "verification_approval_status"],
+        ["commit", submitWorkflowCommitApproval, "commit_approval_status"],
+    ] as const)("checks the %s approval response against its workflow and decision", async (_stage, submit, statusField) => {
+        const approved = {
+            workflow_id: "workflow/one",
+            workflow_state: "awaiting_execution",
+            [statusField]: "approved",
+            message: null,
+        };
+        mockPost.mockResolvedValueOnce({ data: approved });
+        await expect(submit("workflow/one", "approve")).resolves.toEqual(approved);
+
+        const rejected = { ...approved, [statusField]: "rejected" };
+        mockPost.mockResolvedValueOnce({ data: rejected });
+        await expect(submit("workflow/one", "reject")).resolves.toEqual(rejected);
+
+        mockPost.mockResolvedValueOnce({ data: { ...approved, workflow_id: "different-workflow" } });
+        await expect(submit("workflow/one", "approve")).rejects.toThrow("Malformed workflow approval response.");
+
+        mockPost.mockResolvedValueOnce({ data: { ...approved, [statusField]: "rejected" } });
+        await expect(submit("workflow/one", "approve")).rejects.toThrow("Malformed workflow approval response.");
+    });
+
+    it("returns valid workflow list entries with the requested effect kind", async () => {
+        const workflowList = {
+            items: [{
+                workflow_id: "workflow/one",
+                workflow_source: "manual",
+                workflow_state: "completed",
+                effect_kind: "operational_action",
+                execution_intent: "restart-service",
+                candidate_id: null,
+                planning_session_id: null,
+                repository: null,
+                target_id: "qemu/110",
+                last_result_summary: "Completed",
+                timeline: [],
+            }],
+            total: 1,
+            limit: 10,
+            offset: 0,
+        };
+        mockGet.mockResolvedValueOnce({ data: workflowList });
+
+        await expect(listWorkflows({ effect_kind: "operational_action", limit: 10, offset: 0 }))
+            .resolves.toEqual(workflowList);
+        expect(mockGet).toHaveBeenCalledWith("/api/v1/agent/workflows", {
+            params: { effect_kind: "operational_action", limit: 10, offset: 0 },
+        });
+    });
+
+    it("rejects malformed workflow list entries", async () => {
+        mockGet.mockResolvedValueOnce({ data: {
+            items: [null], total: 1, limit: 10, offset: 0,
+        } });
+
+        await expect(listWorkflows()).rejects.toThrow("Malformed workflow list payload.");
+    });
+
+    it("rejects workflow entries outside the requested effect kind", async () => {
+        mockGet.mockResolvedValueOnce({ data: {
+            items: [{
+                workflow_id: "workflow-1", workflow_source: "candidate", workflow_state: "completed",
+                effect_kind: "repository_change", execution_intent: "update-compose-stack",
+                candidate_id: "candidate-1", planning_session_id: "plan-1", repository: "/workspace",
+                target_id: "stack-1", last_result_summary: "Completed", timeline: [],
+            }],
+            total: 1, limit: 10, offset: 0,
+        } });
+
+        await expect(listWorkflows({ effect_kind: "operational_action" }))
+            .rejects.toThrow("Malformed workflow list payload.");
     });
 
     it("throws on malformed sprint success responses", async () => {
@@ -128,7 +375,7 @@ describe("Atlas Agent optional summary endpoints", () => {
     });
 
     it("reads a workflow-scoped operational lifecycle contract", async () => {
-        const lifecycle = { applicable: true, workflow_id: "workflow/one" };
+        const lifecycle = operationalLifecycle({ workflow_id: "workflow/one" });
         mockGet.mockResolvedValueOnce({ data: lifecycle });
 
         await expect(getWorkflowOperationalLifecycle("workflow/one")).resolves.toBe(lifecycle);
@@ -137,13 +384,79 @@ describe("Atlas Agent optional summary endpoints", () => {
         );
     });
 
+    it("reads a complete workflow detail before presentation", async () => {
+        const detail = workflowDetail();
+        mockGet.mockResolvedValueOnce({ data: detail });
+
+        await expect(getWorkflowDetail("workflow/one")).resolves.toBe(detail);
+        expect(mockGet).toHaveBeenCalledWith(
+            "/api/v1/agent/workflows/workflow%2Fone/implementation-request",
+        );
+    });
+
+    it("rejects malformed workflow detail before it can supply stage controls", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...workflowDetail(), timeline: [null] } });
+
+        await expect(getWorkflowDetail("workflow/one")).rejects.toThrow(
+            "Malformed workflow detail payload.",
+        );
+    });
+
+    it("rejects an operational request that claims execution is enabled", async () => {
+        const detail = workflowDetail({ effect_kind: "operational_action" });
+        mockGet.mockResolvedValueOnce({ data: {
+            ...detail,
+            operational_action_request: { ...detail.operational_action_request!, execution_enabled: true },
+        } });
+
+        await expect(getWorkflowDetail("workflow/one")).rejects.toThrow(
+            "Malformed workflow detail payload.",
+        );
+    });
+
+    it("rejects malformed operational lifecycle details", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...operationalLifecycle(), target_label: 42 } });
+
+        await expect(getWorkflowOperationalLifecycle("workflow/one")).rejects.toThrow(
+            "Malformed operational lifecycle payload.",
+        );
+    });
+
     it("reads a workflow-scoped recovery diagnostic contract", async () => {
-        const diagnostic = { applicable: true, diagnostic_status: "healthy" };
+        const diagnostic = operationalDiagnostic({
+            correlation: { ...operationalDiagnostic().correlation, workflow_id: "workflow/one" },
+        });
         mockGet.mockResolvedValueOnce({ data: diagnostic });
 
         await expect(getWorkflowRecoveryDiagnostic("workflow/one")).resolves.toBe(diagnostic);
         expect(mockGet).toHaveBeenCalledWith(
             "/api/v1/agent/workflows/workflow%2Fone/recovery-diagnostic",
+        );
+    });
+
+    it("rejects unknown recovery diagnostic states", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...operationalDiagnostic(), diagnostic_status: "executed" } });
+
+        await expect(getWorkflowRecoveryDiagnostic("workflow/one")).rejects.toThrow(
+            "Malformed workflow recovery diagnostic payload.",
+        );
+    });
+
+    it("reads a complete workflow audit response", async () => {
+        const audit = workflowAudit();
+        mockGet.mockResolvedValueOnce({ data: audit });
+
+        await expect(getWorkflowAudit("workflow/one")).resolves.toBe(audit);
+        expect(mockGet).toHaveBeenCalledWith(
+            "/api/v1/agent/workflows/workflow%2Fone/audit",
+        );
+    });
+
+    it("rejects malformed workflow audit stage data", async () => {
+        mockGet.mockResolvedValueOnce({ data: { ...workflowAudit(), timeline: [null] } });
+
+        await expect(getWorkflowAudit("workflow/one")).rejects.toThrow(
+            "Malformed workflow audit payload.",
         );
     });
 

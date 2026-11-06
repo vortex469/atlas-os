@@ -142,6 +142,8 @@ def filter_candidates(
     candidates: Iterable[ExecutionCandidate],
     *,
     statuses: Iterable[ExecutionCandidateStatus] = (),
+    expired: bool | None = None,
+    now: datetime | None = None,
     categories: Iterable[ExecutionCategory] = (),
     intents: Iterable[ExecutionIntent] = (),
     source_subsystems: Iterable[str] = (),
@@ -150,6 +152,7 @@ def filter_candidates(
     """Apply deterministic AND-combined candidate filters."""
 
     status_filter = set(statuses)
+    filter_time = now or datetime.now(UTC)
     category_filter = set(categories)
     intent_filter = set(intents)
     source_filter = {value.strip().lower() for value in source_subsystems if value.strip()}
@@ -159,6 +162,10 @@ def filter_candidates(
     for candidate in candidates:
         if status_filter and candidate.status not in status_filter:
             continue
+        if expired is not None:
+            is_expired = candidate.expires_at is not None and candidate.expires_at <= filter_time
+            if is_expired is not expired:
+                continue
         if category_filter and candidate.execution_category not in category_filter:
             continue
         if intent_filter and candidate.execution_intent not in intent_filter:

@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:built": "playwright test --config=playwright.built.config.ts",
     "test:e2e:list": "playwright test --list",
     "preview": "vite preview"
   },

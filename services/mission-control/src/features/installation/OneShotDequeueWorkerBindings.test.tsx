@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listOneShotDequeueWorkerBindings } from "../../api/oneShotDequeueWorkerBinding";
@@ -18,23 +18,34 @@ describe("OneShotDequeueWorkerBindings", () => {
         let resolve!: (value: OneShotDequeueWorkerBindingCollectionV1) => void;
         vi.mocked(listOneShotDequeueWorkerBindings).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading one-shot dequeue worker binding evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/checking the worker record/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no one-shot dequeue worker binding evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker record has been saved/i));
         unmount();
 
         vi.mocked(listOneShotDequeueWorkerBindings).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/private system details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
+    });
+
+    it("retries the worker record read without creating or changing records", async () => {
+        vi.mocked(listOneShotDequeueWorkerBindings).mockRejectedValueOnce(new Error("secret /internal/path"));
+        render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(/retry to check its status/i);
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        expect(await screen.findByText(/no worker record has been saved/i)).toBeInTheDocument();
+        expect(listOneShotDequeueWorkerBindings).toHaveBeenCalledTimes(2);
     });
 
     it("renders simple eligible, bound, and blocked state with technical evidence under Advanced details", async () => {
         vi.mocked(listOneShotDequeueWorkerBindings).mockResolvedValue(oneShotDequeueWorkerBindingCollectionFixture);
         render(<OneShotDequeueWorkerBindings candidateId={oneShotControlledDequeueFixture.candidate_record_id} dequeueId={oneShotControlledDequeueFixture.dequeue_id} />);
-        expect(await screen.findByText(/recorded one-shot dequeue worker binding evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/state: eligible; bound: readiness gated; blocked: yes/i)).toHaveTextContent(/store contacted: false; runtime contacted: false; worker started: false; execution started: false/i);
-        const advanced = screen.getByText("Advanced details").closest("details");
+        expect(await screen.findByText(/worker binding saved/i)).toBeInTheDocument();
+        expect(screen.getByText(/the worker has not been contacted or started/i)).toHaveTextContent(/execution is unavailable/i);
+        const advanced = screen.getByText("Technical details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
         expect(screen.getByLabelText(/ordered one-shot dequeue worker binding blockers/i)).toHaveTextContent(/store_contact_not_defined.*runtime_contact_not_defined.*worker_start_not_defined.*execution_start_boundary_not_defined/i);

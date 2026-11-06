@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { analyzeCompose } from "../../api/atlas";
+import { analyzeCompose, getAtlasErrorMessage } from "../../api/atlas";
+import { safeText } from "../../utils/safeText";
 import type { DeploymentAnalysisResponse } from "./types";
 
 const defaultCompose = `services:
@@ -12,7 +13,7 @@ const defaultCompose = `services:
 
 type ComposeEditorProps = {
     onAnalysis: (
-        result: DeploymentAnalysisResponse,
+        result: DeploymentAnalysisResponse | null,
     ) => void;
 };
 
@@ -23,14 +24,35 @@ export function ComposeEditor({
     const [reference, setReference] = useState("nginx-demo");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
+
+    const requestGeneration = useRef(0);
+    useEffect(() => () => { requestGeneration.current += 1; }, []);
+
+    function inputChanged() {
+        requestGeneration.current += 1;
+        setLoading(false);
+        setError(null);
+        setErrorDetails(null);
+        onAnalysis(null);
+    }
 
     async function handleAnalyze() {
+        if (loading) return;
+        const generation = ++requestGeneration.current;
         setError(null);
+        setErrorDetails(null);
+        onAnalysis(null);
 
         const normalizedReference = reference.trim();
 
         if (!normalizedReference) {
             setError("Deployment name is required.");
+            return;
+        }
+
+        if (!compose.trim()) {
+            setError("Add a Docker Compose file to analyze.");
             return;
         }
 
@@ -42,16 +64,18 @@ export function ComposeEditor({
                 normalizedReference,
             );
 
-            onAnalysis(result);
+            if (generation === requestGeneration.current) onAnalysis(result);
         } catch (caughtError) {
-            const message =
-                caughtError instanceof Error
-                    ? caughtError.message
-                    : "Deployment analysis failed.";
-
+            if (generation !== requestGeneration.current) return;
+            const message = getAtlasErrorMessage(
+                caughtError,
+                "Mission Control couldn't complete the analysis. Check the Compose file and Atlas connection, then try again.",
+            );
+            const details = caughtError instanceof Error ? safeText(caughtError.message) : null;
             setError(message);
+            setErrorDetails(details && details !== message ? details : null);
         } finally {
-            setLoading(false);
+            if (generation === requestGeneration.current) setLoading(false);
         }
     }
 
@@ -59,12 +83,11 @@ export function ComposeEditor({
         <section className="rounded-lg border border-slate-800 bg-slate-900 p-6">
             <div className="mb-4">
                 <h2 className="text-lg font-semibold text-slate-100">
-                    Compose Deployment
+                    Docker Compose file
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                    Paste or edit a Docker Compose document for Atlas to
-                    analyze.
+                    Paste or edit a Docker Compose file for review.
                 </p>
             </div>
 
@@ -76,28 +99,37 @@ export function ComposeEditor({
                 <input
                     type="text"
                     value={reference}
-                    onChange={(event) =>
-                        setReference(event.target.value)
-                    }
+                    onChange={(event) => {
+                        inputChanged();
+                        setReference(event.target.value);
+                    }}
                     placeholder="nginx-demo"
                     className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-blue-500"
                 />
             </label>
 
-            <textarea
+            <label htmlFor="forge-compose" className="mb-2 block text-sm font-medium text-slate-300">Docker Compose file</label>
+            <textarea id="forge-compose"
                 value={compose}
-                onChange={(event) =>
-                    setCompose(event.target.value)
-                }
+                onChange={(event) => {
+                    inputChanged();
+                    setCompose(event.target.value);
+                }}
                 spellCheck={false}
                 className="min-h-80 w-full resize-y rounded-lg border border-slate-700 bg-slate-950 p-4 font-mono text-sm leading-6 text-slate-200 outline-none transition focus:border-blue-500"
             />
 
             {error && (
-                <p className="mt-3 text-sm text-red-300">
-                    {error}
-                </p>
+                <div role="alert" className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+                    <p>{error}</p>
+                    {errorDetails && <details className="mt-2">
+                        <summary className="mc-focusable cursor-pointer text-xs font-medium text-red-100">Technical details</summary>
+                        <p className="mt-1 break-words text-xs text-red-100/80">{safeText(errorDetails) || "No additional details were returned."}</p>
+                    </details>}
+                </div>
             )}
+
+            {loading && <p role="status" className="mt-3 text-sm text-blue-200">Analyzing the current document…</p>}
 
             <div className="mt-4 flex justify-end">
                 <button
@@ -108,7 +140,7 @@ export function ComposeEditor({
                 >
                     {loading
                         ? "Analyzing..."
-                        : "Analyze Deployment"}
+                        : "Analyze Compose file"}
                 </button>
             </div>
         </section>

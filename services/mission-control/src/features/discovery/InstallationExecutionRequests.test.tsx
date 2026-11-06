@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executionRequestFixture } from "../../test/installationExecutionRequest";
@@ -17,35 +17,132 @@ const validation = { schema: "agent-install-container-validation-v1", request_id
 
 describe("installation execution request presentation", () => {
     beforeEach(() => { vi.resetAllMocks(); vi.mocked(listInstallationExecutionRequests).mockResolvedValue([]); });
-    it("renders loading, redacted error, empty, default-disabled, and Home Assistant states", async () => {
+    it("renders a retryable list error, empty state, and plain unsupported-capability message", async () => {
         let reject: (error: Error) => void = () => undefined;
         vi.mocked(listInstallationExecutionRequests).mockReturnValueOnce(new Promise((_, fail) => { reject = fail; }));
-        const view = render(<InstallationExecutionRequests intents={[]} csrfToken={null} />);
-        expect(screen.getByText(/loading execution request records/i)).toBeInTheDocument(); reject(new Error("credential /internal/path 10.0.0.1"));
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([]);
+        const user = userEvent.setup();
+        const view = render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        expect(screen.getByText(/checking saved request records/i)).toBeInTheDocument(); reject(new Error("credential /internal/path 10.0.0.1"));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(/could not load the saved request records/i);
+        const details = within(alert).getByText("Technical details").closest("details");
+        expect(details).not.toHaveAttribute("open");
+        expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i);
+        await user.click(within(alert).getByRole("button", { name: "Retry request records" }));
+        expect(await screen.findByText("No saved request records.")).toBeInTheDocument();
+        expect(recordInstallationExecutionRequest).not.toHaveBeenCalled();
         expect(view.container).not.toHaveTextContent(/credential|internal\/path|10\.0\.0\.1/i); view.unmount();
         render(<InstallationExecutionRequests intents={[]} csrfToken={null} />);
-        expect(await screen.findByText(/no installation execution request records/i)).toBeInTheDocument();
-        expect(screen.getByText(/default-disabled and non-authorizing/i)).toBeInTheDocument(); expect(screen.getByText(/Home Assistant remains blocked and non-executable/i)).toBeInTheDocument();
+        expect(await screen.findByText("No saved request records.")).toBeInTheDocument();
+        expect(screen.getByText(/saving a record preserves the exact approved request and validation/i)).toBeInTheDocument();
+        expect(screen.getByText(/Atlas cannot install Home Assistant yet because its deployment package and required evidence are missing/i)).toBeInTheDocument();
     });
-    it("lists and gets lifecycle, expiry, fingerprints, evidence, replay posture, and fixed-false authority", async () => {
+    it("shows request details plainly and keeps identifiers and authority fields collapsed", async () => {
         vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([record]); vi.mocked(getInstallationExecutionRequest).mockResolvedValueOnce({ ...record, lifecycle_state: "expired" });
         const user = userEvent.setup(); render(<InstallationExecutionRequests intents={[]} csrfToken="csrf" />);
-        await user.click(await screen.findByRole("button", { name: /review immutable request record/i }));
-        const detail = screen.getByRole("heading", { name: /immutable non-executing request evidence/i }).parentElement!;
-        expect(within(detail).getByText("expired terminally; no renewal, replay, or work")).toBeInTheDocument();
-        expect(within(detail).getByText("operator_submitted_agent_validation_evidence")).toBeInTheDocument();
-        expect(within(detail).getAllByText("false")).toHaveLength(5); expect(within(detail).getByText(record.linkage.agent_evidence_fingerprint.value)).toBeInTheDocument();
+        await user.click(await screen.findByRole("button", { name: "View request record" }));
+        const detail = screen.getByRole("heading", { name: "Request record details" }).parentElement!;
+        expect(within(detail).getByText(/This preserves the operator-submitted request and validation; it does not start work/i)).toBeInTheDocument();
+        expect(within(detail).getByText(/This record has expired. It cannot be renewed or used to start work./i)).toBeInTheDocument();
+        const technicalDetails = within(detail).getByText("Technical details").closest("details")!;
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await user.click(within(technicalDetails).getByText("Technical details"));
+        expect(within(technicalDetails).getByText("operator_submitted_agent_validation_evidence")).toBeInTheDocument();
+        expect(within(technicalDetails).getAllByText("false")).toHaveLength(5);
+        expect(within(technicalDetails).getByText(record.linkage.agent_evidence_fingerprint.value)).toBeInTheDocument();
     });
-    it("requires exact evidence confirmation and calls only record preservation", async () => {
+    it("uses two-step confirmation and only records the exact non-executing request", async () => {
         vi.mocked(recordInstallationExecutionRequest).mockResolvedValueOnce(record); const user = userEvent.setup();
         const { container } = render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
-        await user.click(await screen.findByRole("button", { name: /preserve non-executing execution request record only/i }));
+        await user.click(await screen.findByRole("button", { name: "Review request details" }));
         expect(recordInstallationExecutionRequest).not.toHaveBeenCalled();
-        const confirm = screen.getByRole("heading", { name: /confirm preservation/i }).parentElement!; expect(within(confirm).getByText(/grants no authority and starts no work/i)).toBeInTheDocument();
-        await user.click(within(confirm).getByRole("button", { name: /confirm record preservation only/i }));
+        const confirm = screen.getByRole("heading", { name: "Confirm saving this request record" }).parentElement!;
+        expect(within(confirm).getByText(/does not contact Agent, send the request, install software, or run work/i)).toBeInTheDocument();
+        const technicalDetails = within(confirm).getByText("Technical details").closest("details")!;
+        expect(technicalDetails).not.toHaveAttribute("open");
+        await user.click(within(confirm).getByRole("button", { name: "Save request record" }));
         expect(recordInstallationExecutionRequest).toHaveBeenCalledWith(expect.objectContaining({ schema: "installation-execution-request-create-v1", candidate_record_id: intent.approved_subject.candidate_record_id, approval_intent_id: intent.approval_intent_id }), "csrf", "execution-key");
         expect(container.querySelectorAll("a, form")).toHaveLength(0);
+        expect(screen.getByRole("heading", { name: "Request record details" })).toBeInTheDocument();
         const labels = Array.from(container.querySelectorAll("button, a")).map((node) => node.textContent).join(" "); expect(labels).not.toMatch(/install now|run|execute|deploy|dispatch|send to agent|start workflow|rollback/i);
+    });
+
+    it("checks saved records after an uncertain write without resending", async () => {
+        const matching = { ...record, linkage: { ...record.linkage, approval_intent_id: intent.approval_intent_id } };
+        vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([]).mockResolvedValueOnce([matching]);
+        vi.mocked(recordInstallationExecutionRequest).mockRejectedValueOnce(new Error("request outcome unknown"));
+        const user = userEvent.setup();
+        render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        await user.click(await screen.findByRole("button", { name: "Review request details" }));
+        await user.click(screen.getByRole("button", { name: "Save request record" }));
+        expect(await screen.findByText(/save result is unknown. Atlas will not send this request again/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review request details" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Check saved records" }));
+        expect(await screen.findByText(/Atlas found the saved request record/i)).toBeInTheDocument();
+        expect(await screen.findByRole("heading", { name: "Request record details" })).toBeInTheDocument();
+        expect(recordInstallationExecutionRequest).toHaveBeenCalledTimes(1);
+        expect(listInstallationExecutionRequests).toHaveBeenCalledTimes(2);
+        expect(getInstallationExecutionRequest).not.toHaveBeenCalled();
+    });
+
+    it("keeps an absent uncertain write locked after a read check and allows read retries", async () => {
+        let rejectList: (error: Error) => void = () => undefined;
+        vi.mocked(listInstallationExecutionRequests).mockReturnValueOnce(new Promise((_, reject) => { rejectList = reject; }));
+        const failedRead = render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        rejectList(new Error("list unavailable"));
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: "Review request details" })).not.toBeInTheDocument();
+        expect(recordInstallationExecutionRequest).not.toHaveBeenCalled();
+        failedRead.unmount();
+
+        vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+        vi.mocked(recordInstallationExecutionRequest).mockRejectedValueOnce(new Error("request outcome unknown"));
+        const user = userEvent.setup();
+        render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        await user.click(await screen.findByRole("button", { name: "Review request details" }));
+        await user.click(screen.getByRole("button", { name: "Save request record" }));
+        await screen.findByRole("alert");
+        await user.click(screen.getByRole("button", { name: "Check saved records" }));
+        expect(await screen.findByText(/No matching request record was found. The previous save is still uncertain/i)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Review request details" })).not.toBeInTheDocument();
+        expect(recordInstallationExecutionRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a failed recovery read safe and hides its technical error until expanded", async () => {
+        const matching = { ...record, linkage: { ...record.linkage, approval_intent_id: intent.approval_intent_id } };
+        vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([]).mockRejectedValueOnce(new Error("temporary list failure")).mockResolvedValueOnce([matching]);
+        vi.mocked(recordInstallationExecutionRequest).mockRejectedValueOnce(new Error("request outcome unknown"));
+        const user = userEvent.setup();
+        const { container } = render(<InstallationExecutionRequests intents={[intent]} csrfToken="csrf" evidenceBundles={[{ agent_request: agentRequest, agent_validation: validation }]} />);
+        await user.click(await screen.findByRole("button", { name: "Review request details" }));
+        await user.click(screen.getByRole("button", { name: "Save request record" }));
+        await screen.findByText(/save result is unknown/i);
+        await user.click(screen.getByRole("button", { name: "Check saved records" }));
+        expect(await screen.findByText(/Atlas could not check whether the request was saved/i)).toBeInTheDocument();
+        const details = screen.getAllByText("Technical details").at(-1)?.closest("details");
+        expect(details).not.toHaveAttribute("open");
+        expect(within(details as HTMLElement).getByText("Saved request records are currently unavailable.")).not.toBeVisible();
+        expect(container).not.toHaveTextContent("temporary list failure");
+        expect(screen.queryByRole("button", { name: "Review request details" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Check saved records" }));
+        expect(await screen.findByText(/Atlas found the saved request record/i)).toBeInTheDocument();
+        expect(recordInstallationExecutionRequest).toHaveBeenCalledTimes(1);
+        expect(listInstallationExecutionRequests).toHaveBeenCalledTimes(3);
+    });
+
+    it("can retry reading a saved request's details", async () => {
+        vi.mocked(listInstallationExecutionRequests).mockResolvedValueOnce([record]);
+        vi.mocked(getInstallationExecutionRequest).mockRejectedValueOnce(new Error("temporary read failure")).mockResolvedValueOnce(record);
+        const user = userEvent.setup();
+        render(<InstallationExecutionRequests intents={[]} csrfToken="csrf" />);
+        await user.click(await screen.findByRole("button", { name: "View request record" }));
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Request details are unavailable. Try again.");
+        expect(within(alert).getByText("Technical details").closest("details")).not.toHaveAttribute("open");
+        await user.click(within(alert).getByRole("button", { name: "Retry request details" }));
+        expect(await screen.findByRole("heading", { name: "Request record details" })).toBeInTheDocument();
+        expect(getInstallationExecutionRequest).toHaveBeenCalledTimes(2);
+        expect(recordInstallationExecutionRequest).not.toHaveBeenCalled();
     });
 });

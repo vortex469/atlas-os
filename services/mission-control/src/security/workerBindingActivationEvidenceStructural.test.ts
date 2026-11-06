@@ -21,18 +21,19 @@ describe("v0.48 worker binding activation evidence Mission Control boundary", ()
         expect(router).not.toMatch(/worker-binding-activation-evidence|WorkerBindingActivationEvidence/i);
         expect(navigation).not.toMatch(/worker binding activation evidence|worker_binding_activation_evidence/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("keeps operator state simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/State: evidence recorded for later activation consideration; activation runtime: not defined; worker-start admission: not defined; blocked: yes/);
-        expect(component).toMatch(/Advanced details/);
+        expect(component).toMatch(/Activation evidence \{status\.toLowerCase\(\)\}/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Worker capability fingerprint/);
         expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
         expect(component).toMatch(/Blockers/);
         expect(component).toMatch(/Worker binding activation evidence fixed-false authority fields/);
-        expect(component).toMatch(/No runtime activation, worker-start admission, store contact, runtime contact, queue claim/);
+        expect(component).toMatch(/This saves the earlier review for a future activation decision\. It does not activate or contact a worker/);
+        expect(component).toMatch(/Activation remains unavailable\. No worker or queue action was taken/);
         expect(component).not.toMatch(/worker selector|payload editor|command editor|endpoint input|credential input|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /workerBindingActivationEvidence|WorkerBindingActivationEvidence|worker-binding-activation-evidence/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([

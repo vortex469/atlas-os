@@ -32,12 +32,12 @@ describe("v0.37 runner binding plan presentation boundary", () => {
         for (const label of ["bind runner", "run now", "start execution", "execute now", "install now", "deploy now", "dispatch now", "retry now", "resend now", "send to agent", "start workflow", "roll back now"]) expect(component.toLowerCase()).not.toContain(label);
     });
     it("locks evidence-only copy, blockers, limits, and Home Assistant closure", () => {
-        expect(component).toMatch(/records a runner binding plan only/i);
-        expect(component).toMatch(/does not bind or contact a runner and does not authorize or start installation or execution/i);
+        expect(component).toMatch(/This review record does not connect a machine or start an installation/i);
+        expect(component).toMatch(/Atlas has no eligible machine to reference here, so it cannot create a setup plan/i);
         expect(component).toContain("runner_not_bound");
         expect(component).toContain("execution_start_boundary_not_defined");
         expect(client).toContain("atlas-installation-confined-v1");
-        expect(component).toMatch(/Home Assistant remains blocked, non-installable, non-executable/i);
+        expect(component).toContain("Atlas cannot install or run Home Assistant yet.");
     });
     it("has no consumer outside the exact client, admission context, types, and presentation", () => {
         const consumers = Object.entries(productionModules).filter(([, source]) => /runner-binding-plans|RunnerBindingPlan/.test(source)).map(([path]) => path).sort();

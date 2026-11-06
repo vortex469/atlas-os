@@ -202,6 +202,4 @@ def test_v037_home_assistant_stays_blocked_without_deployment_artifact() -> None
         REPOSITORY_ROOT / "services" / "mission-control" / "src" / "features"
         / "installation" / "RunnerBindingPlans.tsx"
     ).read_text(encoding="utf-8")
-    assert (
-        "Home Assistant remains blocked, non-installable, non-executable" in component
-    )
+    assert "Atlas cannot install or run Home Assistant yet." in component

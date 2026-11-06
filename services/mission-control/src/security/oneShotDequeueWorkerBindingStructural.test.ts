@@ -21,18 +21,19 @@ describe("v0.46 one-shot dequeue worker binding Mission Control boundary", () =>
         expect(router).not.toMatch(/one-shot-dequeue-worker-bindings|OneShotDequeueWorkerBinding/i);
         expect(navigation).not.toMatch(/one-shot dequeue worker binding|one_shot_dequeue_worker_binding/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).not.toMatch(/>\s*(contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("keeps operator state simple and technical evidence under Advanced details", () => {
-        expect(component).toMatch(/State: eligible; bound: readiness gated; blocked: yes/);
-        expect(component).toMatch(/Advanced details/);
+        expect(component).toMatch(/Worker binding \{status\.toLowerCase\(\)\}/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Worker capability fingerprint/);
         expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
         expect(component).toMatch(/Blockers/);
         expect(component).toMatch(/One-shot dequeue worker binding fixed-false authority fields/);
-        expect(component).toMatch(/No worker-start, Agent invocation, execution, installation, deployment, rollback, retry, resend/);
+        expect(component).toMatch(/This record links the approved queue item to a worker reference\. It does not enable or contact the worker/);
+        expect(component).toMatch(/The worker has not been contacted or started\. Execution is unavailable/);
         expect(component).not.toMatch(/worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /oneShotDequeueWorkerBinding|OneShotDequeueWorkerBinding|one-shot-dequeue-worker-bindings/.test(source)).map(([path]) => path).sort();
         expect(consumers).toEqual([

@@ -1,0 +1,86 @@
+import { expect, test } from "./mission-control-fixtures";
+import { grantResultFixture } from "../src/test/executionPermissionGrant";
+import { fp, readinessGatedFixture, uuid4 } from "../src/test/installationReadinessReview";
+
+for (const width of [390, 1280]) {
+    test(`readiness review loads owner evidence without mutation controls at ${width}px`, async ({ page }) => {
+        let reviewReads = 0;
+        const evidenceReads: string[] = [];
+        await page.route("**/api/v1/operator-auth/session", (route) => route.fulfill({
+            json: { authenticated: true, expires_at: "2999-01-01T00:00:00Z", principal: {
+                operator_id: "operator-a", authenticated_at: "2026-08-27T12:00:00Z", permissions: [], auth_method: "core_session",
+            } }, headers: { "x-atlas-csrf-token": "fixture-only-csrf" },
+        }));
+        await page.route(`**/api/v1/installation/candidate-records/${uuid4}/**`, (route) => {
+            expect(route.request().method()).toBe("GET");
+            const path = new URL(route.request().url()).pathname.split("/").at(-1);
+            if (path === "readiness-review") {
+                reviewReads += 1;
+                return reviewReads === 1
+                    ? route.fulfill({ status: 503, json: { detail: "Temporarily unavailable." } })
+                    : route.fulfill({ json: readinessGatedFixture });
+            }
+            evidenceReads.push(path!);
+            if (path === "execution-permission-grants") return route.fulfill({ json: {
+                grants: [grantResultFixture], evidence_only: true, execution_authorized: false, installation_allowed: false, mutation_allowed: false, replay_allowed: false,
+            } });
+            if (path === "execution-admissions") return route.fulfill({ json: {
+                admissions: [], evidence_only: true, execution_start_allowed: false, runner_binding_allowed: false,
+                execution_authorized: false, installation_allowed: false, dispatch_allowed: false, mutation_allowed: false, replay_allowed: false,
+            } });
+            if (path === "runner-binding-plans") return route.fulfill({ json: {
+                schema: "runner-binding-plan-collection-v1", plans: [], evidence_only: true, execution_authorized: false, mutation_allowed: false,
+            } });
+            return route.fulfill({ status: 404, json: { detail: "No optional evidence in fixture." } });
+        });
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(`/installation/candidate-records/${uuid4}/readiness-review`);
+        await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toBeVisible();
+        await expect(page.getByRole("alert")).toContainText("Atlas couldn't load this review. Try again.");
+        await page.getByRole("button", { name: "Reload review", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Evidence is current, but installation cannot start", exact: true })).toBeVisible();
+        await expect(page.getByText("Atlas has not defined a way to start this installation yet.", { exact: true })).toBeVisible();
+        await expect(page.getByRole("list", { name: "Ordered readiness blockers" })).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: "Evidence reviewed", exact: true })).toBeVisible();
+        const evidenceDetails = page.getByText("View evidence records (14)", { exact: true }).locator("xpath=ancestor::details");
+        await expect(evidenceDetails).not.toHaveAttribute("open");
+        const evidenceChain = page.locator('ol[aria-label="Installation evidence chain"]');
+        await expect(evidenceChain).toBeHidden();
+        await evidenceDetails.getByText("View evidence records (14)", { exact: true }).click();
+        await expect(evidenceChain.getByRole("listitem")).toHaveCount(14);
+        await expect(page.getByText(uuid4, { exact: true }).first()).toBeHidden();
+        await expect(page.getByText(fp.value, { exact: true }).first()).toBeHidden();
+        await expect(page.getByText("execution_admission_not_defined", { exact: true })).toBeHidden();
+        await page.getByText("Review record details", { exact: true }).click();
+        await page.getByText("Blocker codes", { exact: true }).click();
+        await expect(page.getByText("execution_admission_not_defined", { exact: true })).toBeVisible();
+        await expect(page.getByText("Technical review details", { exact: true })).toBeVisible();
+        await page.getByText("Technical review details", { exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Required linkage and fingerprints", exact: true })).toBeVisible();
+        const permissionGrant = page.getByRole("list", { name: "Saved confirmation records" });
+        await expect(permissionGrant.getByRole("heading", { name: "Current confirmation record", exact: true })).toBeVisible();
+        const grantTimes = permissionGrant.getByText(/^Recorded /);
+        await expect(grantTimes).toContainText("UTC; valid until");
+        await expect(grantTimes).not.toContainText("2026-08-27T");
+        const permissionRecord = page.getByRole("heading", { name: "Operator confirmation record", exact: true }).locator("xpath=..");
+        await expect(permissionRecord.getByText("This saves the operator’s confirmation for later review. It does not authorize or start an installation, run code, or change the system.", { exact: true })).toBeVisible();
+        const permissionDetails = permissionRecord.getByText("Technical details", { exact: true }).locator("xpath=ancestor::details");
+        await expect(permissionDetails).not.toHaveAttribute("open");
+        await permissionDetails.getByText("Technical details", { exact: true }).click();
+        await expect(permissionDetails).toContainText("Core binds the authenticated operator and exact v0.20–v0.34 evidence/readiness fingerprints.");
+        const runReview = page.getByRole("heading", { name: "Installation run review", exact: true }).locator("xpath=..");
+        await expect(runReview).toContainText("This records a review step only. It does not pick a machine, install anything, or start work.");
+        const runReviewDetails = runReview.getByText("How this record works", { exact: true }).locator("xpath=ancestor::details");
+        await expect(runReviewDetails).not.toHaveAttribute("open");
+        await runReviewDetails.getByText("How this record works", { exact: true }).click();
+        await expect(runReviewDetails).toContainText("This record is evidence only. It does not connect a machine, start work, or allow system changes.");
+        await expect(page.getByRole("heading", { name: "Review unavailable", exact: true })).toHaveCount(0);
+        await expect(page.getByRole("button", { name: /record|approve|install|execute|start|deploy/i })).toHaveCount(0);
+        await expect(page.getByRole("complementary", { name: "Review and permission boundary" })).toBeVisible();
+        await expect(page.getByLabel("Review and permission boundary")).toContainText("Reviewing evidence is read-only. It does not install or run anything.");
+        await expect(page.getByLabel("Review and permission boundary")).toContainText("An authorized operator can save a permanent record of their confirmation below. It does not allow Atlas to install, run, or change anything.");
+        expect(evidenceReads).toContain("execution-permission-grants");
+        expect(reviewReads).toBe(2);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+}

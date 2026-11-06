@@ -20,14 +20,16 @@ describe("v0.42 one-shot live enqueue Mission Control boundary", () => {
         expect(liveEnqueueComponent).toMatch(/OneShotLiveEnqueues/);
         expect(router).not.toMatch(/one-shot-live-enqueues|OneShotLiveEnqueue/i);
         expect(navigation).not.toMatch(/one-shot live enqueue|one_shot_live_enqueue/i);
-        expect(component.match(/<(button|form|input|select|textarea)\b/gi) ?? []).toHaveLength(0);
+        expect(component.match(/<(button|form|input|select|textarea)\b/gi) ?? []).toHaveLength(1);
+        expect(component).toMatch(/>Retry<\/button>/);
         expect(component).not.toMatch(/payload editor|queue selector|worker selector|editable limit/i);
-        expect(component).not.toMatch(/>\s*(dequeue|claim|lease|poll|start|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(component).not.toMatch(/>\s*(dequeue|claim|lease|poll|start|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("presents only the authorized inert item and denies all downstream authority", () => {
-        expect(component).toMatch(/inert and reference-only/i);
-        expect(component).toMatch(/not dequeue, queue polling, worker contact, worker start, Agent invocation, workflow start, process execution/i);
+        expect(component).toMatch(/Core saved an inert item reference\. It has no payload and cannot be consumed or run/i);
+        expect(component).toMatch(/This reference has no payload and has not contacted a worker/i);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/Permanent one-shot subject reservation: true/);
         expect(component).toMatch(/One-shot live enqueue fixed-false authority fields/);
         expect(component).not.toMatch(/process\.env|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/i);

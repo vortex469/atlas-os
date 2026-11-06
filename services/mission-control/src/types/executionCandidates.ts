@@ -1,4 +1,5 @@
-export type ExecutionCandidateStatus = "eligible" | "not_eligible" | "expired" | "rejected" | string;
+export type ExecutionCandidateStatus = "eligible" | "not_eligible" | (string & {});
+export type ExecutionCandidateStatusFilter = "eligible" | "not_eligible" | "expired";
 
 export type ExecutionCategory = "update" | "restart" | string;
 
@@ -14,6 +15,7 @@ export type ExecutionConstraint = "service_disruption" | "requires_backup" | str
 
 export type ExecutionCandidate = {
     id: string;
+    effect_kind: "repository_change" | "operational_action";
     source_recommendation_id: string;
     source_subsystem: string;
     recommendation_class: string;
@@ -43,7 +45,7 @@ export type ExecutionCandidatePage = {
 };
 
 export type ExecutionCandidateListQuery = {
-    status?: ExecutionCandidateStatus;
+    status?: ExecutionCandidateStatusFilter;
     category?: ExecutionCategory;
     intent?: ExecutionIntent;
     sourceSubsystem?: string;

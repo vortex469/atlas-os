@@ -16,19 +16,20 @@ describe("v0.51 controlled queue claim lease acknowledgement admission Mission C
         expect(component).not.toMatch(/createControlledWorkerQueueClaimLeaseAcknowledgementAdmission|atlas\.|setInterval|setTimeout|refetchInterval|WebSocket|EventSource|localStorage|sessionStorage|document\.cookie|Authorization|Bearer/);
     });
 
-    it("is nested in the existing installation workflow with no route, navigation, or controls", () => {
+    it("is nested in the existing installation workflow with no route, navigation, or runtime action", () => {
         expect(parent).toMatch(/ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions/);
         expect(router).not.toMatch(/controlled-worker-queue-claim-lease-acknowledgement-admissions|ControlledWorkerQueueClaimLeaseAcknowledgementAdmission/i);
         expect(navigation).not.toMatch(/claim lease acknowledgement|controlled_worker_queue_claim_lease_acknowledgement/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).toMatch(/<button\b[\s\S]*?>Retry<\/button>/);
+        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("keeps operator state simple and advanced evidence collapsed", () => {
-        expect(component).toMatch(/v0\.51 state: admission evidence recorded for the completed v0\.50 prerequisite/);
-        expect(component).toMatch(/Operator state: claim\/lease\/ack admission evidence recorded; queue adapter: not defined; queue claim: not defined; queue lease: not defined; queue acknowledgement: not defined; worker-start admission: not defined; blocked: yes/);
-        expect(component).toMatch(/Advanced v0\.51 evidence/);
+        expect(component).toMatch(/This saved review checks the required queue and worker details\. It does not claim queue work or start a worker/);
+        expect(component).toMatch(/Queue and worker review \{status\.toLowerCase\(\)\}/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/v0\.50 prerequisite state/);
         expect(component).toMatch(/Ordered v0\.51 blockers/);
         expect(component).toMatch(/Controlled queue claim lease acknowledgement fixed-false authority fields/);

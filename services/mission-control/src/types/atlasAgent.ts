@@ -176,6 +176,34 @@ export interface CandidatePlanApiResponse {
     revalidated_candidate_fingerprint: string;
 }
 
+export interface OperationalCandidatePlanApiResponse {
+    identifier: string;
+    session_id: string;
+    candidate_id: string;
+    candidate_fingerprint: string;
+    effect_kind: "operational_action";
+    execution_intent: string;
+    provider_id: string;
+    resource_id: string;
+    resource_type: string;
+    target_fingerprint: string;
+    target_version: string | null;
+    expected_pre_state: string;
+    intended_action: string;
+    disruption_scope: string;
+    verification: {
+        pre_state: string;
+        expected_post_state: string;
+        identity_fingerprint: string;
+        health_requirement: string;
+        unknown_outcome_policy: string;
+    };
+    failure_considerations: string[];
+    evidence_ids: string[];
+    created_at: string;
+    revalidated_candidate_fingerprint: string;
+}
+
 export interface CandidatePlanningResponse {
     session_id: string | null;
     candidate_id: string;
@@ -186,6 +214,7 @@ export interface CandidatePlanningResponse {
     candidate_fingerprint: string | null;
     unsupported_reason: string | null;
     plan: CandidatePlanApiResponse | null;
+    operational_plan?: OperationalCandidatePlanApiResponse | null;
     planning_failure: CandidatePlanningFailure | null;
     predecessor_session_id?: string | null;
     successor_session_id?: string | null;
@@ -334,6 +363,7 @@ export interface WorkflowAuditApproval {
 
 export interface WorkflowAuditApprovals {
     status: string;
+    shell: WorkflowAuditApproval;
     implementation: WorkflowAuditApproval;
     verification: WorkflowAuditApproval;
     commit: WorkflowAuditApproval;
@@ -384,6 +414,7 @@ export interface WorkflowAuditCommit {
 
 export interface WorkflowAuditResponse {
     workflow_id: string;
+    effect_kind: "repository_change" | "operational_action";
     workflow_state: string;
     workflow_source: string;
     blocked_reason?: string | null;
@@ -485,7 +516,7 @@ export interface WorkflowDetailResponse {
     affected_files: string[];
     implementation_request: WorkflowImplementationRequestSummary | null;
     effect_kind: "repository_change" | "operational_action";
-    operational_action_request: Record<string, unknown> | null;
+    operational_action_request: WorkflowOperationalActionRequestSummary | null;
     operational_execution: Record<string, unknown> | null;
     approval_presentations: WorkflowApprovalPresentation[];
     timeline: WorkflowTimelineStage[];
@@ -497,6 +528,28 @@ export interface WorkflowDetailResponse {
     commit_request: WorkflowCommitRequestSummary | null;
     commit_result: WorkflowCommitResultSummary;
     commit_approval_status: string;
+}
+
+export interface WorkflowOperationalActionRequestSummary {
+    request_id: string;
+    request_digest: string;
+    provider_id: string;
+    resource_id: string;
+    resource_type: string;
+    target_fingerprint: string;
+    target_version: string | null;
+    expected_pre_state: string;
+    intended_action: string;
+    disruption_scope: string;
+    verification: {
+        pre_state: string;
+        expected_post_state: string;
+        health_requirement: string;
+        unknown_outcome_policy: string;
+    };
+    generated_at: string;
+    expires_at: string;
+    execution_enabled: false;
 }
 
 export interface WorkflowApprovalPresentation {

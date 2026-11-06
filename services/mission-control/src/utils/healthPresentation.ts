@@ -1,4 +1,5 @@
 import type { AtlasHealth, ServiceHealth } from "../types/health";
+import { safeText } from "./safeText";
 
 export type HealthState = "Healthy" | "Degraded" | "Unavailable" | "Blocked" | "Unknown";
 
@@ -17,6 +18,60 @@ export function healthState(value: unknown): HealthState {
 
 export function evidenceText(value: unknown): string | null {
     return typeof value === "string" && value.trim() ? value : null;
+}
+
+export function healthReason(value: unknown): string | null {
+    const text = safeText(value).trim();
+    if (!text) return null;
+    const { errno, message } = parseHealthError(text);
+    switch (message.toLowerCase()) {
+        case "connection refused": return "Atlas Core's connection to this address was refused.";
+        case "no route to host": return "The service could not be reached over the network.";
+        case "network is unreachable": return "Atlas Core has no reachable network path to the service host.";
+        case "name or service not known":
+        case "temporary failure in name resolution":
+        case "getaddrinfo failed": return "Atlas Core could not resolve the service host name.";
+        case "connection timed out":
+        case "timed out": return "Atlas Core got no response before the check timed out.";
+        default: return errno ? message || "The connection failed." : text;
+    }
+}
+
+export function healthNextCheck(value: unknown, serviceName?: unknown): string | null {
+    const text = evidenceText(value);
+    if (!text) return null;
+    const { message } = parseHealthError(text);
+    switch (message.toLowerCase()) {
+        case "connection refused": {
+            const name = safeText(serviceName);
+            const localCheck = name
+                ? `On the computer that runs ${name}, confirm the app is listening.`
+                : "On the service computer, confirm the app is listening.";
+            return `${localCheck} If it runs in Docker, check its network and published ports before changing anything. Then test again from Atlas Core.`;
+        }
+        case "no route to host":
+            return "Check the target address and the network or firewall route from Atlas Core to the service host.";
+        case "network is unreachable":
+            return "Check the target address and routing between Atlas Core and the service host.";
+        case "name or service not known":
+        case "temporary failure in name resolution":
+        case "getaddrinfo failed":
+            return "Check that the host name is correct and resolves from the machine running Atlas Core.";
+        case "connection timed out":
+        case "timed out":
+            return "Check that the service is responding and that network or firewall rules allow access from Atlas Core.";
+        default:
+            return null;
+    }
+}
+
+function parseHealthError(text: string): { errno: boolean; message: string } {
+    const trimmed = text.trim();
+    const errnoMessage = /^\[Errno -?\d+\]\s*(.*)$/i.exec(trimmed);
+    return {
+        errno: errnoMessage !== null,
+        message: errnoMessage ? errnoMessage[1].trim() : trimmed,
+    };
 }
 
 // Require a timezone and a real calendar date. Date.parse alone normalizes

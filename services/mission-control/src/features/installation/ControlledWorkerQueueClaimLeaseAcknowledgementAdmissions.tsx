@@ -27,36 +27,40 @@ export function ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions({ candi
 function AdmissionReader({ candidateId, v049AdmissionId }: { candidateId: string; v049AdmissionId: string }) {
     const [items, setItems] = useState<ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1[] | null>(null);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         let current = true;
         listControlledWorkerQueueClaimLeaseAcknowledgementAdmissions(candidateId)
             .then((value) => {
-                if (current) setItems(value.items.filter((item) => item.controlled_worker_queue_claim_lease_acknowledgement_prerequisite.admission_id === v049AdmissionId));
+                if (current) {
+                    setItems(value.items.filter((item) => item.controlled_worker_queue_claim_lease_acknowledgement_prerequisite.admission_id === v049AdmissionId));
+                    setError(false);
+                }
             })
             .catch(() => { if (current) setError(true); });
         return () => { current = false; };
-    }, [candidateId, v049AdmissionId]);
+    }, [candidateId, v049AdmissionId, readAttempt]);
 
-    return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Controlled worker queue claim lease acknowledgement admission evidence">
-        <h6 className="font-semibold">Controlled queue claim, lease, and acknowledgement admission</h6>
-        <p className="mt-2 text-sm">v0.51 state: admission evidence recorded for the completed v0.50 prerequisite. Queue adapter, claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain not defined.</p>
-        <p className="mt-1 text-sm">Mission Control reads this state from Core and presents it inside the existing installation workflow. No queue, worker, Agent, installation, deployment, rollback, retry, resend, or workflow control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading controlled queue claim lease acknowledgement admission evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Controlled queue claim lease acknowledgement admission evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue selector, claim token, lease token, acknowledgement handle, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No controlled queue claim lease acknowledgement admission evidence has been recorded for this claim admission. Queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
+    return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Queue and worker review status">
+        <h6 className="font-semibold">Queue and worker review</h6>
+        <p className="mt-2 text-sm">This saved review checks the required queue and worker details. It does not claim queue work or start a worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Checking the saved review…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Atlas could not load the saved review. Retry to check its status.</p><p className="text-xs text-slate-400">Private system details are hidden.</p><button type="button" onClick={() => { setItems(null); setError(false); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
+        {items?.length === 0 && !error && <p role="status" className="mt-3">No review has been saved. Queue access and worker start are unavailable.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Controlled queue claim lease acknowledgement admissions">{items.map((item) => <Admission key={item.admission_id} item={item} />)}</ol>}
     </section>;
 }
 
 function Admission({ item }: { item: ControlledWorkerQueueClaimLeaseAcknowledgementAdmissionV1 }) {
     const prerequisite = item.controlled_worker_queue_claim_lease_acknowledgement_prerequisite;
+    const status = isExpired(item.valid_until) ? "Expired" : "Saved";
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded v0.51 admission evidence</p>
-        <p className="mt-1">Operator state: claim/lease/ack admission evidence recorded; queue adapter: not defined; queue claim: not defined; queue lease: not defined; queue acknowledgement: not defined; worker-start admission: not defined; blocked: yes.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never claims work, leases work, acknowledges work, admits worker start, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Queue and worker review {status.toLowerCase()}</p>
+        <p className="mt-1">Queue access and worker start are not available. This record only saves review evidence.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(item.recorded_at)} · Expires {formatUtcTimestamp(item.valid_until)}</p>
         <details className="mt-3">
-            <summary>Advanced v0.51 evidence</summary>
+            <summary>Technical details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="v0.51 admission ID" value={item.admission_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -89,6 +93,16 @@ function Admission({ item }: { item: ControlledWorkerQueueClaimLeaseAcknowledgem
         </details>
         <ControlledWorkerQueueReceipt candidateId={item.candidate_record_id} admissionId={item.admission_id} operatorId={item.operator_id} />
     </li>;
+}
+
+function isExpired(value: string) {
+    const expiry = Date.parse(value);
+    return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
 }
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }

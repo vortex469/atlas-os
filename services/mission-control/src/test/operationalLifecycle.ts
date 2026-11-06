@@ -1,4 +1,4 @@
-import type { WorkflowOperationalLifecycle } from "../types/atlasAgent";
+import type { WorkflowOperationalLifecycle, WorkflowRecoveryDiagnostic } from "../types/atlasAgent";
 
 export function operationalLifecycle(
     overrides: Partial<WorkflowOperationalLifecycle> = {},
@@ -66,6 +66,20 @@ export function operationalLifecycle(
         verification_completed_at: "2026-08-16T00:03:00Z",
         verification_deadline: "2026-08-16T00:10:00Z",
         terminal: true,
+        ...overrides,
+    };
+}
+
+export function operationalDiagnostic(overrides: Partial<WorkflowRecoveryDiagnostic> = {}): WorkflowRecoveryDiagnostic {
+    return {
+        applicable: true,
+        diagnostic_status: "healthy",
+        consistency: "consistent",
+        correlation: { workflow_id: "workflow-1", request_id: "request-1", request_digest_match: true, agent_record_present: true, core_record_present: true },
+        dispatch_evidence: { barrier_crossed: true, provider_operation_captured: true, dispatch_result_known: true, transition_sequence_valid: true },
+        verification_evidence: { status: "succeeded", target_fingerprint_state: "unchanged", observed_state: "running", observed_health: "running", terminal_evidence: true },
+        controlled_reason: null,
+        safe_next_action: "none",
         ...overrides,
     };
 }

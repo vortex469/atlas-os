@@ -21,15 +21,15 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
         expect(router).not.toMatch(/controlled-worker-queue-claim-admissions|ControlledWorkerQueueClaimAdmission/i);
         expect(navigation).not.toMatch(/controlled worker queue claim admission|controlled_worker_queue_claim_admission/i);
         const controls = component.match(/<(button|form|input|select|textarea)\b/gi) ?? [];
-        expect(controls).toHaveLength(0);
-        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(controls).toHaveLength(1);
+        expect(component).not.toMatch(/>\s*(activate|contact|start|poll|claim|lease|ack|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 
     it("keeps readiness and v0.50 prerequisite state simple with technical evidence under Advanced details", () => {
-        expect(component).toMatch(/Readiness\/start-admission state: queue-claim admission evidence recorded; queue claim: not defined; worker-start admission: not defined; blocked: yes/);
-        expect(component).toMatch(/v0\.50 progress: prerequisite frozen, documentation-only/);
-        expect(component).toMatch(/v0\.50 prerequisite state: documentation-only prerequisite frozen/);
-        expect(component).toMatch(/Advanced details/);
+        expect(component).toMatch(/Queue review \{status\.toLowerCase\(\)\}/);
+        expect(component).toMatch(/Technical details/);
+        expect(component).toMatch(/This record links the approved worker and queue references\. It does not claim work or start a worker/);
+        expect(component).toMatch(/Queue access is unavailable\. No work was claimed, and no worker was started/);
         expect(component).toMatch(/v0\.50 prerequisite details/);
         expect(component).toMatch(/one active same-owner v0\.49 controlled worker queue claim admission/);
         expect(component).toMatch(/v0\.50 prerequisite frozen equals queue claimed/);
@@ -37,7 +37,7 @@ describe("v0.49 controlled worker queue claim admission Mission Control boundary
         expect(component).toMatch(/Inherited sandbox, resource, network, and filesystem limits/);
         expect(component).toMatch(/Blockers/);
         expect(component).toMatch(/Controlled worker queue claim admission fixed-false authority fields/);
-        expect(component).toMatch(/No queue claim, queue lease, queue acknowledgement, worker-start admission/);
+        expect(component).toMatch(/The strongest v0\.50 state is documentation-only prerequisite closure/);
         expect(component).not.toMatch(/createControlledWorkerQueueClaim|claim queue|lease queue|acknowledge queue|worker start control|execute control/i);
         expect(component).not.toMatch(/worker selector|queue selector|payload editor|command editor|endpoint input|credential input|raw receipt document|raw queue identity value|claim token|lease token|acknowledgement token|runtime endpoint|store endpoint/i);
         const consumers = Object.entries(productionModules).filter(([, source]) => /controlledWorkerQueueClaimAdmission|ControlledWorkerQueueClaimAdmission|controlled-worker-queue-claim-admissions/.test(source)).map(([path]) => path).sort();

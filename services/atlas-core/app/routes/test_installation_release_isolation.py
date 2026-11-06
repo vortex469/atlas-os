@@ -739,11 +739,16 @@ def test_mission_control_v020_surface_adds_only_review_and_permission_evidence()
             "${encodeURIComponent(record.candidate_record_id)}/readiness-review"
         )
     ]
+    # Keep the narrow saved-record workflow intact while allowing its
+    # read-recovery controls and the exact-request retry label.
     button_labels = set(re.findall(r">([^<>]+)</button>", component_source))
     assert button_labels == {
-        "Delete saved record",
-        "Preserve candidate record",
-        "Review saved record",
+        "Delete review record",
+        "Refresh list",
+        "Retry list",
+        "Retry opening record",
+        "View saved record",
+        '{canRetryPreservation ? "Retry save" : "Save review record"}',
     }
 
 
@@ -762,7 +767,7 @@ def test_home_assistant_v019_result_cannot_cross_v020_preservation_boundary() ->
         validate_preservable_admission(admission, created_at="2026-08-27T12:00:01Z")
 
 
-def test_mission_control_v019_surface_is_get_only_and_has_no_actions() -> None:
+def test_mission_control_v019_surface_is_get_only_and_has_no_mutation_actions() -> None:
     mission_control = APP_ROOT.parents[1] / "mission-control" / "src"
     api_source = (
         mission_control / "api" / "installationCandidateAdmission.ts"
@@ -781,8 +786,12 @@ def test_mission_control_v019_surface_is_get_only_and_has_no_actions() -> None:
     )
     assert not any(
         token in component_source
-        for token in ("<button", "<a ", "<Link", "<form", "navigate(", "href=")
+        for token in ("<a ", "<Link", "<form", "navigate(", "href=")
     )
+    assert component_source.count("<button") == 1
+    assert 'type="button"' in component_source
+    assert "onClick={() => setLoadAttempt((attempt) => attempt + 1)}" in component_source
+    assert ">Retry check</button>" in component_source
     prohibited = (
         "create candidate",
         "start workflow",

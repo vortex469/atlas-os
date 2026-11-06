@@ -36,7 +36,9 @@ describe("v0.44 controlled dequeue admission Mission Control boundary", () => {
     });
 
     it("keeps technical evidence in details and omits prohibited effect controls", () => {
-        expect(component).toMatch(/Readiness: \{admitted \? "Ready for later dequeue consideration" : "Blocked or not yet admitted"\}/);
+        expect(component).toMatch(/This saves a review record only\. It does not remove work from the queue or start a worker/i);
+        expect(component).toMatch(/Queue removal review is current/);
+        expect(component).toMatch(/Technical details/);
         expect(component).toMatch(/<details className="mt-3">/);
         expect(component).toMatch(/Queue observation receipt fingerprint/);
         expect(component).toMatch(/Admission decision fingerprint/);
@@ -44,6 +46,7 @@ describe("v0.44 controlled dequeue admission Mission Control boundary", () => {
         expect(component).toMatch(/Controlled dequeue admission fixed-false authority fields/);
         expect(component).toMatch(/Record controlled dequeue admission evidence only/);
         expect(component).not.toMatch(/queue selector|worker selector|payload editor|editable limit|raw receipt document|raw queue identity value|lease token|acknowledgement token/i);
-        expect(component).not.toMatch(/>\s*(dequeue|poll|claim|lease|ack|consume|remove|start worker|run|execute|install|deploy|dispatch|retry|resend|send to agent|start workflow|rollback)\s*</i);
+        expect(component).toMatch(/>Retry<\/button>/);
+        expect(component).not.toMatch(/>\s*(dequeue|poll|claim|lease|ack|consume|remove|start worker|run|execute|install|deploy|dispatch|resend|send to agent|start workflow|rollback)\s*</i);
     });
 });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { AceFinding } from "../types/ace";
+import { safeText } from "../utils/safeText";
 
 type FindingCardProps = {
     finding: AceFinding;
@@ -13,9 +14,9 @@ type SeverityStyle = {
 };
 
 type UnavailableEntity = {
-    entity_id?: string;
-    name?: string;
-    state?: string;
+    entity_id: string | null;
+    name: string | null;
+    state: string | null;
 };
 
 const severityStyles: Record<string, SeverityStyle> = {
@@ -52,11 +53,19 @@ function getUnavailableEntities(
         return [];
     }
 
-    return value.filter(
-        (entity): entity is UnavailableEntity =>
-            typeof entity === "object" &&
-            entity !== null,
-    );
+    return value
+        .filter((entity): entity is Record<string, unknown> =>
+            typeof entity === "object" && entity !== null && !Array.isArray(entity),
+        )
+        .map((entity) => ({
+            entity_id: readableText(entity.entity_id),
+            name: readableText(entity.name),
+            state: readableText(entity.state),
+        }));
+}
+
+function readableText(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 export function FindingCard({ finding }: FindingCardProps) {
@@ -71,6 +80,9 @@ export function FindingCard({ finding }: FindingCardProps) {
     const visibleEntities = expanded
         ? unavailableEntities
         : unavailableEntities.slice(0, 5);
+    const healthScoreReduction = finding.affects_health
+        ? finding.score_penalty
+        : 0;
 
     return (
         <article
@@ -93,7 +105,7 @@ export function FindingCard({ finding }: FindingCardProps) {
                     </div>
 
                     <h3 className="mt-2 text-base font-semibold text-slate-100">
-                        {finding.title}
+                        {safeText(finding.title) || "Finding details unavailable."}
                     </h3>
                 </div>
 
@@ -109,49 +121,50 @@ export function FindingCard({ finding }: FindingCardProps) {
             </div>
 
             <p className="mt-4 text-sm leading-6 text-slate-400">
-                {finding.message}
+                {safeText(finding.message) || "No finding details were provided."}
             </p>
 
-            <dl className="mt-5 grid grid-cols-3 gap-4 border-t border-slate-800 pt-4">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Category
-                    </dt>
+            <p className="mt-4 text-sm leading-6 text-slate-300">
+                {finding.affects_health
+                    ? "Affects system health"
+                    : "Does not affect system health"}
+            </p>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {formatLabel(finding.category)}
-                    </dd>
-                </div>
+            <details className="mt-5 border-t border-slate-800 pt-4">
+                <summary className="cursor-pointer text-xs font-medium text-slate-400">
+                    Technical details
+                </summary>
+                <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Finding type
+                        </dt>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Health
-                    </dt>
+                        <dd className="mt-1 text-sm font-medium text-slate-200">
+                            {formatLabel(finding.category)}
+                        </dd>
+                    </div>
 
-                    <dd className="mt-1 text-sm font-medium text-slate-200">
-                        {finding.affects_health ? "Affected" : "Unaffected"}
-                    </dd>
-                </div>
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Health score reduction
+                        </dt>
 
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Score Impact
-                    </dt>
-
-                    <dd
-                        className={[
-                            "mt-1 text-sm font-medium",
-                            finding.score_penalty > 0
-                                ? "text-amber-300"
-                                : "text-slate-200",
-                        ].join(" ")}
-                    >
-                        {finding.score_penalty > 0
-                            ? `−${finding.score_penalty}`
-                            : "None"}
-                    </dd>
-                </div>
-            </dl>
+                        <dd
+                            className={[
+                                "mt-1 text-sm font-medium",
+                                healthScoreReduction > 0
+                                    ? "text-amber-300"
+                                    : "text-slate-200",
+                            ].join(" ")}
+                        >
+                            {healthScoreReduction > 0
+                                ? `${healthScoreReduction} points`
+                                : "None"}
+                        </dd>
+                    </div>
+                </dl>
+            </details>
 
             {unavailableEntities.length > 0 && (
                 <div className="mt-5 border-t border-slate-800 pt-4">
@@ -186,10 +199,10 @@ export function FindingCard({ finding }: FindingCardProps) {
                                     <p className="truncate text-sm font-medium text-slate-200">
                                         {entity.name ??
                                             entity.entity_id ??
-                                            "Unknown entity"}
+                                            "Entity not identified"}
                                     </p>
 
-                                    {entity.entity_id && (
+                                    {entity.name && entity.entity_id && (
                                         <p className="truncate text-xs text-slate-500">
                                             {entity.entity_id}
                                         </p>
@@ -197,7 +210,9 @@ export function FindingCard({ finding }: FindingCardProps) {
                                 </div>
 
                                 <span className="shrink-0 rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs uppercase text-slate-400">
-                                    {entity.state ?? "unknown"}
+                                    {entity.state && entity.state.toLowerCase() !== "unknown"
+                                        ? formatLabel(entity.state)
+                                        : "Status unknown"}
                                 </span>
                             </div>
                         ))}

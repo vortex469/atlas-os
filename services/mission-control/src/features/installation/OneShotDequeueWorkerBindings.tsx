@@ -15,22 +15,22 @@ const BLOCKERS: Record<string, string> = {
 export function OneShotDequeueWorkerBindings({ candidateId, dequeueId }: { candidateId: string; dequeueId: string }) {
     const [items, setItems] = useState<OneShotDequeueWorkerBindingV1[] | null>(null);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         let current = true;
         listOneShotDequeueWorkerBindings(candidateId)
-            .then((value) => { if (current) setItems(value.items.filter((item) => item.one_shot_controlled_dequeue.dequeue_id === dequeueId)); })
+            .then((value) => { if (current) { setItems(value.items.filter((item) => item.one_shot_controlled_dequeue.dequeue_id === dequeueId)); setError(false); } })
             .catch(() => { if (current) setError(true); });
         return () => { current = false; };
-    }, [candidateId, dequeueId]);
+    }, [candidateId, dequeueId, readAttempt]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="One-shot dequeue worker binding evidence">
-        <h6 className="font-semibold">One-shot dequeue worker binding</h6>
-        <p className="mt-2 text-sm">Mission Control shows v0.46 binding evidence inside the existing installation workflow. It is evidence only and does not contact a store, runtime, queue, worker, Agent, shell, or process.</p>
-        <p className="mt-1 text-sm">No worker-start, Agent invocation, execution, installation, deployment, rollback, retry, resend, queue mutation, provider mutation, repository mutation, or in-guest mutation control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading one-shot dequeue worker binding evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>One-shot dequeue worker binding evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, worker address, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No one-shot dequeue worker binding evidence has been recorded. Worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Worker binding</h6>
+        <p className="mt-2 text-sm">This record links the approved queue item to a worker reference. It does not enable or contact the worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Checking the worker record…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Atlas could not load the worker record. Retry to check its status.</p><p className="text-xs text-slate-400">Private system details are hidden.</p><button type="button" onClick={() => { setItems(null); setError(false); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
+        {items?.length === 0 && !error && <p role="status" className="mt-3">No worker record has been saved.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="One-shot dequeue worker bindings">{items.map((item) => <Binding key={item.binding_id} item={item} />)}</ol>}
     </section>;
 }
@@ -39,12 +39,13 @@ function Binding({ item }: { item: OneShotDequeueWorkerBindingV1 }) {
     const worker = item.worker_intake_admission.worker_identity;
     const intake = item.worker_intake_admission.worker_intake_reference;
     const limits = item.worker_intake_admission.inherited_limits;
+    const status = isExpired(item.valid_until) ? "Expired" : "Saved";
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded one-shot dequeue worker binding evidence</p>
-        <p className="mt-1">State: eligible; bound: readiness gated; blocked: yes. Store contacted: false; runtime contacted: false; worker started: false; execution started: false.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Worker binding {status.toLowerCase()}</p>
+        <p className="mt-1">The worker has not been contacted or started. Execution is unavailable.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(item.recorded_at)} · Expires {formatUtcTimestamp(item.valid_until)}</p>
         <details className="mt-3">
-            <summary>Advanced details</summary>
+            <summary>Technical details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Binding ID" value={item.binding_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -92,6 +93,16 @@ function Binding({ item }: { item: OneShotDequeueWorkerBindingV1 }) {
         </details>
         <WorkerBindingActivationPreflights candidateId={item.candidate_record_id} bindingId={item.binding_id} />
     </li>;
+}
+
+function isExpired(value: string) {
+    const expiry = Date.parse(value);
+    return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
 }
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }

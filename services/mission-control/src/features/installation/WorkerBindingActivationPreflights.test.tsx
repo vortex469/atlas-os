@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listWorkerBindingActivationPreflights } from "../../api/workerBindingActivationPreflight";
@@ -18,23 +18,34 @@ describe("WorkerBindingActivationPreflights", () => {
         let resolve!: (value: WorkerBindingActivationPreflightCollectionV1) => void;
         vi.mocked(listWorkerBindingActivationPreflights).mockReturnValue(new Promise((done) => { resolve = done; }));
         const { unmount } = render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
-        expect(screen.getByRole("status")).toHaveTextContent(/loading worker binding activation preflight evidence/i);
+        expect(screen.getByRole("status")).toHaveTextContent(/checking the activation review/i);
         resolve(empty);
-        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no worker binding activation preflight evidence/i));
+        await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/no activation review has been saved/i));
         unmount();
 
         vi.mocked(listWorkerBindingActivationPreflights).mockRejectedValue(new Error("secret /internal/path 10.0.0.1"));
         render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(/error is redacted/i);
+        expect(await screen.findByRole("alert")).toHaveTextContent(/private system details are hidden/i);
         expect(screen.queryByText(/10\.0\.0\.1|secret \/internal/i)).not.toBeInTheDocument();
+    });
+
+    it("retries only the activation review read", async () => {
+        vi.mocked(listWorkerBindingActivationPreflights).mockRejectedValueOnce(new Error("secret /internal/path"));
+        render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(/retry to check its status/i);
+        fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+        expect(await screen.findByText(/no activation review has been saved/i)).toBeInTheDocument();
+        expect(listWorkerBindingActivationPreflights).toHaveBeenCalledTimes(2);
     });
 
     it("renders simple preflight state with technical evidence under Advanced details", async () => {
         vi.mocked(listWorkerBindingActivationPreflights).mockResolvedValue(workerBindingActivationPreflightCollectionFixture);
         render(<WorkerBindingActivationPreflights candidateId={oneShotDequeueWorkerBindingFixture.candidate_record_id} bindingId={oneShotDequeueWorkerBindingFixture.binding_id} />);
-        expect(await screen.findByText(/recorded worker binding activation preflight evidence/i)).toBeInTheDocument();
-        expect(screen.getByText(/state: eligible for later activation consideration; activation: not defined; blocked: yes/i)).toHaveTextContent(/store contacted: false; runtime contacted: false; queue claimed: false; worker started: false; Agent invoked: false; execution started: false/i);
-        const advanced = screen.getByText("Advanced details").closest("details");
+        expect(await screen.findByText(/activation review recorded/i)).toBeInTheDocument();
+        expect(screen.getByText(/activation is unavailable/i)).toHaveTextContent(/no worker or queue action was taken/i);
+        const advanced = screen.getByText("Technical details").closest("details");
         expect(advanced).toBeInTheDocument();
         expect(advanced).not.toHaveAttribute("open");
         expect(screen.getByLabelText(/ordered worker binding activation preflight blockers/i)).toHaveTextContent(/worker_binding_activation_not_defined.*store_contact_not_defined.*runtime_contact_not_defined.*queue_claim_not_defined.*queue_lease_not_defined.*queue_ack_not_defined.*worker_start_not_defined.*agent_invocation_not_defined.*execution_start_boundary_not_defined/i);

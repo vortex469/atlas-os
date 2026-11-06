@@ -1,4 +1,4 @@
-import { detailPath, record, status } from "./overviewEvidence";
+import { detailPath, healthPriority, record } from "./overviewEvidence";
 
 // Public identity fields only; diagnostics and configuration are not overview labels.
 export function publicLabel(value: unknown): string | null {
@@ -6,6 +6,11 @@ export function publicLabel(value: unknown): string | null {
         || !/^[\p{L}\p{N} ._()/-]+$/u.test(value)
         || /(?:bearer|token|secret|password|api[_ -]?key|authorization|sk-)/i.test(value)) return null;
     return value.trim();
+}
+
+export function agentDisplayName(value: unknown): string | null {
+    const label = publicLabel(value);
+    return label?.toLowerCase() === "atlas-agent" ? "Atlas Agent" : label;
 }
 
 export function providerDetailPath(id: unknown): string | null {
@@ -31,5 +36,5 @@ export function providerObservations(value: unknown) {
             status: valid ? record(row.health).status : undefined,
             reason: valid ? record(row.health).message : undefined,
         };
-    }).sort((a, b) => Number(status(a.status) === "healthy") - Number(status(b.status) === "healthy"));
+    }).sort((a, b) => healthPriority(a.status) - healthPriority(b.status));
 }

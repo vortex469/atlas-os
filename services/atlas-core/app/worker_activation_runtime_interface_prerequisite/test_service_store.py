@@ -1,8 +1,6 @@
 """Hostile P2 persistence checks using the complete P1 prerequisite chain."""
 
 import ast
-import faulthandler
-import os
 import sqlite3
 import sys
 import threading
@@ -784,91 +782,6 @@ def test_response_failure_does_not_renew_evidence(tmp_path, facts, monkeypatch):
     assert create(service, facts).exact_duplicate
 
 
-def _process_create(path, facts, barrier, output):
-    """Independent process/SQLite connection; only the evidence service runs."""
-    process_started = time.perf_counter()
-    pid = os.getpid()
-    stage = "startup"
-    faulthandler.dump_traceback_later(15, repeat=True)
-    try:
-        stage = "service_setup"
-        stage_started = time.perf_counter()
-        service = WorkerActivationRuntimeInterfacePrerequisiteService(
-            store=WorkerActivationRuntimeInterfacePrerequisiteStore(path),
-            prerequisite_reader=Reader(facts),
-            clock=Clock(facts),
-            enabled=True,
-        )
-        _emit_timing(
-            "independent_child_service_setup",
-            stage_started,
-            pid=pid,
-            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
-        )
-        stage = "barrier"
-        barrier_started = time.perf_counter()
-        _emit_timing(
-            "independent_child_barrier_entry",
-            barrier_started,
-            pid=pid,
-            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
-        )
-        barrier.wait(timeout=30)
-        _emit_timing(
-            "independent_child_barrier_exit",
-            barrier_started,
-            pid=pid,
-            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
-        )
-        stage = "create"
-        stage_started = time.perf_counter()
-        result = create(service, facts)
-        _emit_timing(
-            "independent_child_create_completion",
-            stage_started,
-            pid=pid,
-            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
-        )
-        stage = "serialization"
-        stage_started = time.perf_counter()
-        raw = result.model_dump_json()
-        _emit_timing(
-            "independent_child_serialization",
-            stage_started,
-            pid=pid,
-            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
-        )
-        stage = "pipe_send"
-        stage_started = time.perf_counter()
-        output.send(raw)
-        _emit_timing(
-            "independent_child_pipe_send_completion",
-            stage_started,
-            pid=pid,
-            process_elapsed=f"{time.perf_counter() - process_started:.3f}s",
-        )
-    except BaseException as error:
-        try:
-            output.send(
-                "__child_failure__"
-                + repr(
-                    {
-                        "pid": pid,
-                        "stage": stage,
-                        "error_type": type(error).__name__,
-                        "error_code": getattr(error, "code", None),
-                        "elapsed": f"{time.perf_counter() - process_started:.3f}s",
-                    }
-                )
-            )
-        except (BrokenPipeError, EOFError, OSError):
-            pass
-        raise
-    finally:
-        faulthandler.cancel_dump_traceback_later()
-        output.close()
-
-
 def _report_independent_processes(processes):
     for process in processes:
         print(
@@ -880,75 +793,85 @@ def _report_independent_processes(processes):
         )
 
 
-def test_independent_processes_share_permanent_reservation(tmp_path, facts):
+def _process_read_reservation(path, operator_id, idempotency, request, output):
+    """Read committed reservation and evidence rows from an independent process."""
+    try:
+        with sqlite3.connect(path) as connection:
+            reservation = connection.execute(
+                "SELECT subject, request FROM reservations WHERE operator_id=? AND idem=?",
+                (operator_id, idempotency),
+            ).fetchone()
+            if reservation is None:
+                output.send((False, False, False, False))
+                return
+            evidence_exists = connection.execute(
+                "SELECT 1 FROM evidence WHERE subject=?", (reservation[0],)
+            ).fetchone() is not None
+            failure_exists = connection.execute(
+                "SELECT 1 FROM failures WHERE subject=?", (reservation[0],)
+            ).fetchone() is not None
+            output.send(
+                (True, reservation[1] == request, evidence_exists, not failure_exists)
+            )
+    except BaseException as error:
+        try:
+            output.send(("__child_failure__", type(error).__name__))
+        except (BrokenPipeError, EOFError, OSError):
+            pass
+        raise
+    finally:
+        output.close()
+
+
+def test_independent_process_observes_permanent_reservation(tmp_path, facts):
     from multiprocessing import get_context
 
-    _, journal, _, _ = setup(tmp_path, facts)
-    # pytest and its plugins may have live threads. Forking this parent can
-    # clone a lock held by another thread and leave a child permanently
-    # blocked during contract validation. Spawn gives each contender a clean
-    # interpreter while retaining independent SQLite connections.
+    service, journal, _, _ = setup(tmp_path, facts)
+    created = create(service, facts)
+    assert not created.exact_duplicate
+    # Concurrent independent-instance contention is covered above. This test
+    # verifies that a clean interpreter sees the committed reservation and
+    # evidence rows after the writer has closed its SQLite connection.
     context = get_context("spawn")
-    barrier = context.Barrier(2)
-    pipes = [context.Pipe(duplex=False) for _ in range(2)]
-    processes = [
-        context.Process(
-            target=_process_create,
-            args=(journal.database_path, facts, barrier, sender),
-        )
-        for _, sender in pipes
-    ]
+    idempotency = c.idempotency_key_fingerprint(
+        facts.operator_id, "v057-service-idempotency"
+    ).value
+    request = c.request_fingerprint(
+        operator_id=facts.operator_id,
+        candidate_record_id=facts.candidate_record_id,
+        create=facts.create,
+    ).value
+    receiver, sender = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_process_read_reservation,
+        args=(journal.database_path, facts.operator_id, idempotency, request, sender),
+    )
     try:
-        for process in processes:
-            process.start()
-        results = []
-        for receiver, sender in pipes:
-            sender.close()
-            if not receiver.poll(60):
-                _report_independent_processes(processes)
-                pytest.fail("evidence process did not return")
-            try:
-                raw = receiver.recv()
-            except EOFError:
-                _report_independent_processes(processes)
-                pytest.fail("evidence process closed its pipe without evidence")
-            if raw.startswith("__child_failure__"):
-                _report_independent_processes(processes)
-                pytest.fail(f"evidence process failed: {raw}")
-            try:
-                result = c.WorkerActivationRuntimeInterfacePrerequisiteResultV1.model_validate_json(
-                    raw
-                )
-            except ValueError:
-                result = c.WorkerActivationRuntimeInterfacePrerequisiteRedactedErrorV1.model_validate_json(
-                    raw
-                )
-                assert result.error_code in {"append_indeterminate", "unavailable"}
-            results.append(result)
-        for process in processes:
-            process.join(timeout=10)
-            assert process.exitcode == 0
-        successes = [
-            r
-            for r in results
-            if isinstance(r, c.WorkerActivationRuntimeInterfacePrerequisiteResultV1)
-        ]
-        assert sum(not r.exact_duplicate for r in successes) == 1
-        assert all(r.record == successes[0].record for r in successes)
+        process.start()
+        sender.close()
+        if not receiver.poll(60):
+            _report_independent_processes([process])
+            pytest.fail("evidence process did not return")
+        try:
+            readback = receiver.recv()
+        except EOFError:
+            _report_independent_processes([process])
+            pytest.fail("evidence process closed its pipe without evidence")
+        assert readback == (True, True, True, True)
+        process.join(timeout=10)
+        assert process.exitcode == 0
+        assert created.record.idempotency_key_fingerprint.value == idempotency
         assert counts(journal) == (1, 1, 0)
         reopened = WorkerActivationRuntimeInterfacePrerequisiteStore(
             journal.database_path
         )
         assert counts(reopened) == (1, 1, 0)
     finally:
-        for process in processes:
-            if process.is_alive():
-                process.terminate()
-                process.join(timeout=10)
-        for receiver, sender in pipes:
-            receiver.close()
-            sender.close()
-        barrier.abort()
+        if process.is_alive():
+            process.terminate()
+            process.join(timeout=10)
+        receiver.close()
+        sender.close()
 
 
 @pytest.mark.parametrize("boundary", [1, 2])

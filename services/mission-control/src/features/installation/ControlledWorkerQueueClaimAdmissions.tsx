@@ -35,23 +35,22 @@ const V050_PREREQUISITES = [
 export function ControlledWorkerQueueClaimAdmissions({ candidateId, activationEvidenceId }: { candidateId: string; activationEvidenceId: string }) {
     const [items, setItems] = useState<ControlledWorkerQueueClaimAdmissionV1[] | null>(null);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         let current = true;
         listControlledWorkerQueueClaimAdmissions(candidateId)
-            .then((value) => { if (current) setItems(value.items.filter((item) => item.worker_binding_activation_evidence.activation_evidence_id === activationEvidenceId)); })
+            .then((value) => { if (current) { setItems(value.items.filter((item) => item.worker_binding_activation_evidence.activation_evidence_id === activationEvidenceId)); setError(false); } })
             .catch(() => { if (current) setError(true); });
         return () => { current = false; };
-    }, [candidateId, activationEvidenceId]);
+    }, [candidateId, activationEvidenceId, readAttempt]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Controlled worker queue claim admission evidence">
-        <h6 className="font-semibold">Controlled worker queue claim admission</h6>
-        <p className="mt-2 text-sm">Mission Control shows v0.49 admission evidence inside the existing installation workflow. It records that one exact v0.48 activation evidence record reached readiness for later controlled queue claim consideration only.</p>
-        <p className="mt-1 text-sm">v0.50 prerequisite state: documentation-only prerequisite frozen; claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain not defined.</p>
-        <p className="mt-1 text-sm">No queue claim, queue lease, queue acknowledgement, worker-start admission, worker start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading controlled worker queue claim admission evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Controlled worker queue claim admission evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, claim material, lease material, acknowledgement handle, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No controlled worker queue claim admission evidence has been recorded. v0.50 remains documentation-only prerequisite closure; queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Queue access review</h6>
+        <p className="mt-2 text-sm">This record links the approved worker and queue references. It does not claim work or start a worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Checking the queue review…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Atlas could not load the queue review. Retry to check its status.</p><p className="text-xs text-slate-400">Private system details are hidden.</p><button type="button" onClick={() => { setItems(null); setError(false); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
+        {items?.length === 0 && !error && <p role="status" className="mt-3">No queue review has been saved. Queue access remains unavailable.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Controlled worker queue claim admissions">{items.map((item) => <ClaimAdmission key={item.admission_id} item={item} />)}</ol>}
     </section>;
 }
@@ -62,14 +61,13 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
     const binding = preflight.one_shot_dequeue_worker_binding;
     const worker = binding.worker_intake_admission.worker_identity;
     const limits = binding.worker_intake_admission.inherited_limits;
+    const status = isExpired(item.valid_until) ? "Expired" : "Saved";
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded controlled worker queue claim admission evidence</p>
-        <p className="mt-1">Readiness/start-admission state: queue-claim admission evidence recorded; queue claim: not defined; worker-start admission: not defined; blocked: yes. Queue claimed: false; queue leased: false; queue acknowledged: false; worker started: false; Agent invoked: false; execution started: false.</p>
-        <p className="mt-1">v0.50 progress: prerequisite frozen, documentation-only. Queue claim, lease, acknowledgement, worker-start admission, worker start, Agent invocation, and execution are still unavailable.</p>
-        <p className="mt-1">v0.51 state is shown below when Core has recorded it. It remains read-only evidence and does not create queue, lease, acknowledgement, worker-start, Agent, or execution authority.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never claims work, leases work, acknowledges work, admits worker start, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Queue review {status.toLowerCase()}</p>
+        <p className="mt-1">Queue access is unavailable. No work was claimed, and no worker was started.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(item.recorded_at)} · Expires {formatUtcTimestamp(item.valid_until)}</p>
         <details className="mt-3">
-            <summary>Advanced details</summary>
+            <summary>Technical details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Admission ID" value={item.admission_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -125,6 +123,16 @@ function ClaimAdmission({ item }: { item: ControlledWorkerQueueClaimAdmissionV1 
         </details>
         <ControlledWorkerQueueClaimLeaseAcknowledgementAdmissions candidateId={item.candidate_record_id} v049AdmissionId={item.admission_id} />
     </li>;
+}
+
+function isExpired(value: string) {
+    const expiry = Date.parse(value);
+    return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
 }
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }

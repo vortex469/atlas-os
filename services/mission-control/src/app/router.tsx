@@ -1,29 +1,26 @@
+import type { ComponentType } from "react";
 import { createBrowserRouter } from "react-router-dom";
 
-import { DiscoveryItemPage } from "../pages/DiscoveryItemPage";
-import { DiscoveryPage } from "../pages/DiscoveryPage";
-import { ExecutionCandidateDetailPage } from "../pages/ExecutionCandidateDetailPage";
-import { ExecutionCandidatesPage } from "../pages/ExecutionCandidatesPage";
-import { ForgePage } from "../pages/ForgePage";
-import { MainLayout } from "../layouts/MainLayout";
-import { ActionHistoryDetailPage } from "../pages/ActionHistoryDetailPage";
+import { RouteLayout } from "../layouts/RouteLayout";
 import { MissionControlPage } from "../pages/MissionControlPage";
+import { PageErrorPage } from "../pages/PageErrorPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
-import { OperationsPage } from "../pages/OperationsPage";
-import { OperationalHistoryPage } from "../pages/OperationalHistoryPage";
-import { MaintenanceRequestPage } from "../pages/MaintenanceRequestPage";
-import { InstallationReadinessReviewPage } from "../pages/InstallationReadinessReviewPage";
-import { OperatorLoginPage } from "../pages/OperatorLoginPage";
-import { PlanningSessionPage } from "../pages/PlanningSessionPage";
-import { ProviderPage } from "../pages/ProviderPage";
-import { WorkflowPage } from "../pages/WorkflowPage";
-import { WorkflowDashboardPage } from "../pages/WorkflowDashboardPage";
-import { WorkflowShellPage } from "../pages/WorkflowShellPage";
-import { WorkflowAuditPage } from "../pages/WorkflowAuditPage";
+
+// A rejected lazy import can leave an initial deep link without page content.
+// Keep an eager recovery screen available even when that module never loads.
+async function loadPage(load: () => Promise<{ Component: ComponentType }>) {
+    try {
+        return await load();
+    } catch {
+        return { Component: PageErrorPage };
+    }
+}
+
 export const router = createBrowserRouter([
     {
         path: "/",
-        element: <MainLayout />,
+        element: <RouteLayout />,
+        hydrateFallbackElement: <p role="status" className="p-8 text-slate-300">Loading page...</p>,
         children: [
             {
                 index: true,
@@ -31,76 +28,80 @@ export const router = createBrowserRouter([
             },
             {
                 path: "operations",
-                element: <OperationsPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/OperationsPage")).OperationsPage })),
             },
             {
                 path: "operations/request",
-                element: <MaintenanceRequestPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/MaintenanceRequestPage")).MaintenanceRequestPage })),
             },
             {
                 path: "operations/history",
-                element: <OperationalHistoryPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/OperationalHistoryPage")).OperationalHistoryPage })),
             },
             {
                 path: "operations/actions/:auditId",
-                element: <ActionHistoryDetailPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/ActionHistoryDetailPage")).ActionHistoryDetailPage })),
+            },
+            {
+                path: "providers",
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/ProvidersPage")).ProvidersPage })),
             },
             {
                 path: "providers/:providerId",
-                element: <ProviderPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/ProviderPage")).ProviderPage })),
             },
             {
                 path: "discovery",
-                element: <DiscoveryPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/DiscoveryPage")).DiscoveryPage })),
             },
             {
                 path: "discovery/items/:itemId",
-                element: <DiscoveryItemPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/DiscoveryItemPage")).DiscoveryItemPage })),
             },
             {
                 path: "execution-candidates",
-                element: <ExecutionCandidatesPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/ExecutionCandidatesPage")).ExecutionCandidatesPage })),
             },
             {
                 path: "execution-candidates/:candidateId",
-                element: <ExecutionCandidateDetailPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/ExecutionCandidateDetailPage")).ExecutionCandidateDetailPage })),
             },
             {
                 path: "installation/candidate-records/:candidateRecordId/readiness-review",
-                element: <InstallationReadinessReviewPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/InstallationReadinessReviewPage")).InstallationReadinessReviewPage })),
             },
             {
                 path: "candidate-planning/:sessionId",
-                element: <PlanningSessionPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/PlanningSessionPage")).PlanningSessionPage })),
             },
             {
                 path: "candidate-planning/:sessionId/workflow",
-                element: <WorkflowShellPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/WorkflowShellPage")).WorkflowShellPage })),
             },
             {
                 path: "workflows",
-                element: <WorkflowDashboardPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/WorkflowDashboardPage")).WorkflowDashboardPage })),
             },
             {
                 path: "workflows/:workflowId/audit",
-                element: <WorkflowAuditPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/WorkflowAuditPage")).WorkflowAuditPage })),
             },
             {
                 path: "workflows/:workflowId",
-                element: <WorkflowPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/WorkflowPage")).WorkflowPage })),
             },
             {
                 path: "forge",
-                element: <ForgePage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/ForgePage")).ForgePage })),
             },
             {
                 path: "operator/login",
-                element: <OperatorLoginPage />,
+                lazy: () => loadPage(async () => ({ Component: (await import("../pages/OperatorLoginPage")).OperatorLoginPage })),
             },
-        ],
-    },
-    {
-        path: "*",
-        element: <NotFoundPage />,
+            {
+                path: "*",
+                element: <NotFoundPage />,
+            },
+        ].map((route) => ({ ...route, errorElement: <PageErrorPage /> })),
     },
 ]);

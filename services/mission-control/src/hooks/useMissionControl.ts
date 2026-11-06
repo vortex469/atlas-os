@@ -31,9 +31,13 @@ type MissionControlState = {
     telemetryRetention: IntelligenceTelemetryRetentionSummary | null;
     lastUpdated: Date | null;
     error: string | null;
+    failedSources: string[];
+    providerCatalogUnavailable: boolean;
+    summaryUnavailable: boolean;
+    telemetryHistoryUnavailable: boolean;
     isLoading: boolean;
     isRefreshing: boolean;
-    refresh: () => Promise<void>;
+    refresh: () => Promise<boolean>;
 };
 
 function sortProviders(providers: Provider[]): Provider[] {
@@ -73,19 +77,17 @@ export function useMissionControl(): MissionControlState {
         useState<IntelligenceTelemetryRetentionSummary | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [failedSources, setFailedSources] = useState<string[]>([]);
+    const [providerCatalogUnavailable, setProviderCatalogUnavailable] = useState(false);
+    const [summaryUnavailable, setSummaryUnavailable] = useState(false);
+    const [telemetryHistoryUnavailable, setTelemetryHistoryUnavailable] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const hasLoadedRef = useRef(false);
-    const requestInFlightRef = useRef(false);
+    const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
 
-    const refresh = useCallback(async () => {
-        if (requestInFlightRef.current) {
-            return;
-        }
-
-        requestInFlightRef.current = true;
-
+    const performRefresh = useCallback(async () => {
         if (hasLoadedRef.current) {
             setIsRefreshing(true);
         } else {
@@ -94,59 +96,100 @@ export function useMissionControl(): MissionControlState {
 
         try {
             const [
-                summaryResponse,
-                healthResponse,
-                providersResponse,
-                policiesResponse,
-                policyHealthResponse,
-                telemetryHistoryResponse,
-                telemetryRetentionResponse,
-            ] = await Promise.all([
+                summaryResult,
+                healthResult,
+                providersResult,
+                policiesResult,
+                policyHealthResult,
+                telemetryHistoryResult,
+                telemetryRetentionResult,
+            ] = await Promise.allSettled([
                 atlas.get<AceSummary>("/ace/summary"),
                 atlas.get<AtlasHealth>("/health"),
                 atlas.get<Provider[]>("/providers"),
-                atlas
-                    .get<AtlasPolicies>("/policies")
-                    .catch(() => null),
+                atlas.get<AtlasPolicies>("/policies"),
                 atlas.get<PolicyReloadHealth>("/policies/status"),
-                atlas
-                    .get<IntelligenceTelemetrySnapshot[]>(
-                        "/intelligence/telemetry/history",
-                        { params: { limit: 30 } },
-                    )
-                    .catch(() => null),
-                atlas
-                    .get<IntelligenceTelemetryRetentionSummary>(
-                        "/intelligence/telemetry/history/retention",
-                    )
-                    .catch(() => null),
+                atlas.get<IntelligenceTelemetrySnapshot[]>(
+                    "/intelligence/telemetry/history",
+                    { params: { limit: 30 } },
+                ),
+                atlas.get<IntelligenceTelemetryRetentionSummary>(
+                    "/intelligence/telemetry/history/retention",
+                ),
             ]);
 
-            const nextProviders = sortProviders(providersResponse.data.map((provider) => ({
-                ...provider, health: normalizeServiceHealth(provider.health),
-            })));
+            const failed: string[] = [];
+            let requiredReadFailed = false;
 
-            setSummary(summaryResponse.data);
-            setHealth(normalizeAtlasHealth(healthResponse.data));
-            setProviders(nextProviders);
-            if (policiesResponse !== null) {
-                setPolicies(policiesResponse.data);
+            if (summaryResult.status === "fulfilled") {
+                setSummary(summaryResult.value.data);
+                setSummaryUnavailable(false);
+            } else {
+                failed.push("diagnostics");
+                requiredReadFailed = true;
+                setSummaryUnavailable(true);
             }
-            setPolicyHealth(policyHealthResponse.data);
-            if (telemetryHistoryResponse !== null) {
-                setTelemetryHistory(
-                    telemetryHistoryResponse.data,
-                );
-            }
-            if (telemetryRetentionResponse !== null) {
-                setTelemetryRetention(
-                    telemetryRetentionResponse.data,
-                );
-            }
-            setLastUpdated(new Date());
-            setError(null);
 
+            if (healthResult.status === "fulfilled") {
+                setHealth(normalizeAtlasHealth(healthResult.value.data));
+            } else {
+                failed.push("health status");
+                requiredReadFailed = true;
+            }
+
+            let providerCatalogFailed = false;
+            if (providersResult.status === "fulfilled" && Array.isArray(providersResult.value.data)) {
+                try {
+                    const nextProviders = sortProviders(providersResult.value.data.map((provider) => ({
+                        ...provider, health: normalizeServiceHealth(provider.health),
+                    })));
+                    setProviders(nextProviders);
+                } catch {
+                    providerCatalogFailed = true;
+                }
+            } else {
+                providerCatalogFailed = true;
+            }
+            if (providerCatalogFailed) {
+                failed.push("provider catalog");
+                requiredReadFailed = true;
+            }
+            setProviderCatalogUnavailable(providerCatalogFailed);
+
+            if (policiesResult.status === "fulfilled") {
+                setPolicies(policiesResult.value.data);
+            } else {
+                failed.push("monitoring policies");
+            }
+
+            if (policyHealthResult.status === "fulfilled") {
+                setPolicyHealth(policyHealthResult.value.data);
+            } else {
+                failed.push("policy status");
+                requiredReadFailed = true;
+            }
+
+            if (telemetryHistoryResult.status === "fulfilled") {
+                setTelemetryHistory(telemetryHistoryResult.value.data);
+                setTelemetryHistoryUnavailable(false);
+            } else {
+                failed.push("provider check history");
+                setTelemetryHistoryUnavailable(true);
+            }
+
+            if (telemetryRetentionResult.status === "fulfilled") {
+                setTelemetryRetention(telemetryRetentionResult.value.data);
+            } else {
+                failed.push("history retention details");
+            }
+
+            setFailedSources(failed);
+            setError(failed.length > 0
+                ? "Some provider information could not be refreshed. Existing information may be out of date."
+                : null);
+            if (!requiredReadFailed) setLastUpdated(new Date());
             hasLoadedRef.current = true;
+            return failed.length === 0;
         } catch (requestError) {
             console.error(
                 "Unable to refresh Mission Control:",
@@ -156,12 +199,23 @@ export function useMissionControl(): MissionControlState {
             setError(
                 "Mission Control could not retrieve the latest state from Atlas Core.",
             );
+            return false;
         } finally {
-            requestInFlightRef.current = false;
             setIsLoading(false);
             setIsRefreshing(false);
         }
     }, []);
+
+    const refresh = useCallback((): Promise<boolean> => {
+        if (refreshPromiseRef.current) return refreshPromiseRef.current;
+
+        const request = performRefresh();
+        refreshPromiseRef.current = request;
+        void request.then(() => {
+            if (refreshPromiseRef.current === request) refreshPromiseRef.current = null;
+        });
+        return request;
+    }, [performRefresh]);
 
     useEffect(() => {
         const initialRefreshId = window.setTimeout(() => {
@@ -188,6 +242,10 @@ export function useMissionControl(): MissionControlState {
         telemetryRetention,
         lastUpdated,
         error,
+        failedSources,
+        providerCatalogUnavailable,
+        summaryUnavailable,
+        telemetryHistoryUnavailable,
         isLoading,
         isRefreshing,
         refresh,

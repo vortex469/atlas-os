@@ -6,13 +6,18 @@ import type { WorkerActivationRuntimePlanReview as Evidence } from "../types/wor
 export function useWorkerActivationRuntimePlanReview(plan: WorkerActivationRuntimePlan) {
     // The keyed component remounts this hook for every evidence scope change.
     const [scope] = useState(plan);
-    const [state, setState] = useState<Evidence | "loading" | "missing" | "unavailable">("loading");
+    const [result, setResult] = useState<Evidence | "missing" | "unavailable" | null>(null);
+    const [readAttempt, setReadAttempt] = useState(0);
     useEffect(() => {
         let current = true;
         getWorkerActivationRuntimePlanReview(scope)
-            .then((value) => { if (current) setState(value ?? "missing"); })
-            .catch(() => { if (current) setState("unavailable"); });
+            .then((value) => { if (current) setResult(value ?? "missing"); })
+            .catch(() => { if (current) setResult("unavailable"); });
         return () => { current = false; };
-    }, [scope]);
-    return state;
+    }, [scope, readAttempt]);
+    const retry = () => {
+        setResult(null);
+        setReadAttempt((attempt) => attempt + 1);
+    };
+    return { state: result ?? "loading", retry };
 }

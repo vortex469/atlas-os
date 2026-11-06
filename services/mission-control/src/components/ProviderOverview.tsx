@@ -1,8 +1,10 @@
 import type { Provider } from "../types/provider";
-import { StatusBadge } from "./StatusBadge";
+import { healthReason, healthState } from "../utils/healthPresentation";
+import { HealthEvidence } from "./HealthEvidence";
 
 type ProviderOverviewProps = {
     provider: Provider;
+    stale?: boolean;
 };
 
 function formatLabel(value: string): string {
@@ -17,16 +19,31 @@ function formatLabel(value: string): string {
         .join(" ");
 }
 
+function providerAddress(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:"
+            ? url.origin
+            : null;
+    } catch {
+        return null;
+    }
+}
+
 export function ProviderOverview({
     provider,
+    stale = false,
 }: ProviderOverviewProps) {
-    const endpoint =
-        typeof provider.health.details.url === "string"
-            ? provider.health.details.url
-            : null;
+    const capabilities = Array.isArray(provider.capabilities)
+        ? provider.capabilities
+        : null;
+    const address = providerAddress(provider.health.details.url);
+    const isUnavailable = healthState(provider.health.status) === "Unavailable";
+    const connectionMessage = healthReason(provider.health.message);
 
     return (
-        <section className="rounded-lg border border-slate-800 bg-slate-900 p-8">
+        <section className="rounded-lg border border-slate-800 bg-slate-900 p-5 sm:p-8">
             <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -43,62 +60,34 @@ export function ProviderOverview({
                     </p>
                 </div>
 
-                <StatusBadge status={provider.health.status} />
+                <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                    <HealthEvidence
+                        status={provider.health.status}
+                        stale={stale}
+                        compact
+                    />
+                    {provider.health.latency_ms !== null && (
+                        <p className="text-sm text-slate-400">
+                            {stale ? "Last known response time " : "Response time "}
+                            <span className="font-semibold text-slate-200">
+                                {provider.health.latency_ms} ms
+                            </span>
+                        </p>
+                    )}
+                </div>
             </div>
 
-            <dl className="mt-8 grid gap-4 border-t border-slate-800 pt-6 sm:grid-cols-2 lg:grid-cols-5">
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Status
-                    </dt>
+            {stale && (
+                <p role="status" className="mt-4 text-sm text-amber-200">
+                    Could not update provider details. This information may be out of date.
+                </p>
+            )}
 
-                    <dd className="mt-2 text-base font-semibold capitalize text-slate-100">
-                        {provider.health.status}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Latency
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {provider.health.latency_ms === null
-                            ? "—"
-                            : `${provider.health.latency_ms} ms`}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        HTTP Status
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {provider.health.http_status ?? "—"}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Priority
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {formatLabel(provider.priority)}
-                    </dd>
-                </div>
-
-                <div>
-                    <dt className="text-xs uppercase tracking-wider text-slate-500">
-                        Version
-                    </dt>
-
-                    <dd className="mt-2 text-base font-semibold text-slate-100">
-                        {provider.version}
-                    </dd>
-                </div>
-            </dl>
+            {isUnavailable && !stale && (
+                <p className="mt-4 text-sm text-slate-400">
+                    Atlas Core could not reach this provider. It may still be running on its own computer.
+                </p>
+            )}
 
             <div className="mt-6 grid gap-6 border-t border-slate-800 pt-6 lg:grid-cols-2">
                 <div>
@@ -113,12 +102,16 @@ export function ProviderOverview({
 
                 <div>
                     <p className="text-xs uppercase tracking-wider text-slate-500">
-                        Capabilities
+                        Supported features
                     </p>
 
-                    {provider.capabilities.length > 0 ? (
+                    {capabilities === null ? (
+                        <p role="status" className="mt-2 text-sm text-slate-500">
+                            Atlas couldn't load this provider's supported features. Some sections are hidden.
+                        </p>
+                    ) : capabilities.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {provider.capabilities.map((capability) => (
+                            {capabilities.map((capability) => (
                                 <span
                                     key={capability}
                                     className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs font-medium text-slate-300"
@@ -129,28 +122,62 @@ export function ProviderOverview({
                         </div>
                     ) : (
                         <p className="mt-2 text-sm text-slate-500">
-                            No capabilities advertised.
+                            No supported features are listed.
                         </p>
                     )}
                 </div>
             </div>
 
-            {endpoint && (
-                <div className="mt-6 border-t border-slate-800 pt-6">
-                    <p className="text-xs uppercase tracking-wider text-slate-500">
-                        Health Endpoint
-                    </p>
+            <details className="mt-6 border-t border-slate-800 pt-5">
+                <summary className="cursor-pointer text-sm font-medium text-slate-400 hover:text-slate-200">
+                    Technical details
+                </summary>
 
-                    <p className="mt-2 break-all font-mono text-sm text-slate-300">
-                        {endpoint}
-                    </p>
-                </div>
-            )}
+                <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            {stale ? "Last known HTTP response code" : "HTTP response code"}
+                        </dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-200">
+                            {provider.health.http_status ?? "Not reported"}
+                        </dd>
+                    </div>
 
-            {provider.health.message && (
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Provider priority
+                        </dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-200">
+                            {formatLabel(provider.priority)}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt className="text-xs uppercase tracking-wider text-slate-500">
+                            Version
+                        </dt>
+                        <dd className="mt-2 text-sm font-semibold text-slate-200">
+                            {provider.version}
+                        </dd>
+                    </div>
+
+                    {address && (
+                        <div className="sm:col-span-2 lg:col-span-3">
+                            <dt className="text-xs uppercase tracking-wider text-slate-500">
+                                Provider address
+                            </dt>
+                            <dd className="mt-2 break-all font-mono text-sm text-slate-300">
+                                {address}
+                            </dd>
+                        </div>
+                    )}
+                </dl>
+            </details>
+
+            {connectionMessage && (
                 <div className="mt-6 rounded-lg border border-amber-500/20 bg-amber-500/10 p-4">
                     <p className="text-sm text-amber-200">
-                        {provider.health.message}
+                        {stale ? `Last known connection result: ${connectionMessage}` : connectionMessage}
                     </p>
                 </div>
             )}

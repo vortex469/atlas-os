@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getInstallationCapabilityAssessment } from "../../api/installationCapability";
@@ -37,33 +38,54 @@ function fixture(result: InstallationCapabilityResult = "satisfied"): Installati
 describe("installation capability assessment", () => {
     beforeEach(() => vi.resetAllMocks());
 
-    it.each(["satisfied", "not_satisfied", "unknown", "not_assessable"] as const)("renders the %s comparison state", async (result) => {
+    it.each([
+        ["satisfied", "Checked provider settings meet the requirements Atlas can compare", "Meets requirement"],
+        ["not_satisfied", "Blocked by issues listed below", "Does not meet requirement"],
+        ["unknown", "Some requirements could not be checked", "Could not confirm"],
+        ["not_assessable", "Some requirements could not be checked", "Not assessed here"],
+    ] as const)("summarizes the %s comparison in plain language", async (result, summary, requirementStatus) => {
         vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture(result));
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(new RegExp(`^${result.replaceAll("_", " ")}`, "i"))).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: /sanitized provider configuration facts/i })).toBeInTheDocument();
-        expect(screen.getByText(/does not inspect actual in-guest or runtime capability/i)).toBeInTheDocument();
+        expect(await screen.findByRole("status")).toHaveTextContent(summary);
+        expect(screen.getByText(/does not check software inside the VM or approve an installation/i)).toBeVisible();
+        expect(screen.getByRole("list", { name: "Requirements checked" })).toHaveTextContent(requirementStatus);
     });
 
     it("keeps the Home Assistant golden blocked and reasons in server order", async () => {
         vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture("not_satisfied"));
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(/status: blocked — non-authorizing/i)).toBeInTheDocument();
-        const reasons = screen.getByRole("list", { name: /installation capability reasons/i });
-        expect(reasons.textContent).toMatch(/plan is blocked.*configuration facts are unavailable.*below a stated requirement.*does not support installation execution/i);
+        expect(await screen.findByRole("status")).toHaveTextContent("Blocked by issues listed below");
+        const reasons = screen.getByRole("list", { name: "What needs attention" });
+        expect(reasons.textContent).toMatch(/plan has issues.*provider settings are missing.*do not meet a stated requirement.*cannot prepare this type/i);
     });
 
     it("renders empty, loading, error, and no-response states", async () => {
         const empty = render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId={null} />);
-        expect(screen.getByText(/no prospective destination selection/i)).toBeInTheDocument();
+        expect(screen.getByText("Select a VM to check its provider settings.")).toBeInTheDocument();
         empty.unmount();
 
-        let rejectRequest: (reason: Error) => void = () => undefined;
+        let rejectRequest: (reason: unknown) => void = () => undefined;
         vi.mocked(getInstallationCapabilityAssessment).mockReturnValueOnce(new Promise((_, reject) => { rejectRequest = reject; }));
+        vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(fixture());
         render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        expect(await screen.findByText(/loading installation capability/i)).toBeInTheDocument();
-        rejectRequest(new Error("secret provider address 10.0.0.1"));
-        await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/currently unavailable/i));
+        expect(await screen.findByText("Checking provider settings…")).toBeInTheDocument();
+        rejectRequest({
+            isAxiosError: true,
+            response: { data: { error: { message: "Bearer canary-secret-value" } } },
+        });
+        await waitFor(() => expect(screen.getByRole("alert").querySelector(":scope > p")).toHaveTextContent("Atlas couldn’t check the provider settings."));
+        const technicalDetails = screen.getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toHaveAttribute("open");
+        const safeError = within(technicalDetails as HTMLElement).getByText("[Sensitive text withheld]");
+        expect(safeError).not.toBeVisible();
+        expect(screen.queryByText(/canary-secret-value/)).not.toBeInTheDocument();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(safeError).toBeVisible();
+        await userEvent.setup().click(screen.getByRole("button", { name: "Retry provider check" }));
+        await screen.findByRole("status");
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(screen.getByRole("heading", { name: "Provider settings from Proxmox" })).toBeInTheDocument();
+        expect(getInstallationCapabilityAssessment).toHaveBeenCalledTimes(2);
     });
 
     it("does not render raw provider data or prohibited controls and navigation", async () => {
@@ -71,9 +93,14 @@ describe("installation capability assessment", () => {
         (value as unknown as Record<string, unknown>).raw_provider_payload = { address: "10.0.0.1", credential: "secret" };
         vi.mocked(getInstallationCapabilityAssessment).mockResolvedValueOnce(value);
         const { container } = render(<InstallationCapabilityAssessment itemId="home-assistant" selectionId="selection-1" />);
-        await screen.findByText(/assessment-fingerprint/i);
+        await screen.findByRole("status");
         expect(container).not.toHaveTextContent(/10\.0\.0\.1|secret/);
         expect(container.querySelectorAll("button, a, form")).toHaveLength(0);
         expect(container.textContent).not.toMatch(/create candidate|start workflow|dispatch|retry action|Atlas Agent/i);
+        const assessmentFingerprint = screen.getByText("assessment-fingerprint");
+        expect(assessmentFingerprint).not.toBeVisible();
+        await userEvent.setup().click(screen.getByText("Technical details"));
+        expect(assessmentFingerprint).toBeVisible();
+        expect(screen.getByText("Configured virtual CPU cores")).toBeVisible();
     });
 });

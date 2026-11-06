@@ -21,22 +21,22 @@ const BLOCKERS: Record<string, string> = {
 export function WorkerBindingActivationEvidences({ candidateId, preflightId }: { candidateId: string; preflightId: string }) {
     const [items, setItems] = useState<WorkerBindingActivationEvidenceV1[] | null>(null);
     const [error, setError] = useState(false);
+    const [readAttempt, setReadAttempt] = useState(0);
 
     useEffect(() => {
         let current = true;
         listWorkerBindingActivationEvidences(candidateId)
-            .then((value) => { if (current) setItems(value.items.filter((item) => item.worker_binding_activation_preflight.preflight_id === preflightId)); })
+            .then((value) => { if (current) { setItems(value.items.filter((item) => item.worker_binding_activation_preflight.preflight_id === preflightId)); setError(false); } })
             .catch(() => { if (current) setError(true); });
         return () => { current = false; };
-    }, [candidateId, preflightId]);
+    }, [candidateId, preflightId, readAttempt]);
 
     return <section className="mt-3 rounded border border-slate-800 p-3" aria-label="Worker binding activation evidence">
-        <h6 className="font-semibold">Worker binding activation evidence</h6>
-        <p className="mt-2 text-sm">Mission Control shows v0.48 activation evidence inside the existing installation workflow. It records that one exact v0.47 preflight was accepted as evidence for later activation consideration only.</p>
-        <p className="mt-1 text-sm">No runtime activation, worker-start admission, store contact, runtime contact, queue claim, queue lease, queue acknowledgement, worker start, Agent invocation, execution, installation, deployment, rollback, retry, or resend control is available here.</p>
-        {items === null && !error && <p role="status" className="mt-3">Loading worker binding activation evidence...</p>}
-        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Worker binding activation evidence is unavailable.</p><p className="text-xs text-slate-400">The error is redacted; no credential, endpoint, command, payload, queue detail, worker address, store, runtime, broker, log, or internal path is shown.</p></div>}
-        {items?.length === 0 && <p role="status" className="mt-3">No worker binding activation evidence has been recorded. Runtime activation, worker-start admission, worker start, Agent invocation, and execution remain blocked.</p>}
+        <h6 className="font-semibold">Activation record</h6>
+        <p className="mt-2 text-sm">This saves the earlier review for a future activation decision. It does not activate or contact a worker.</p>
+        {items === null && !error && <p role="status" className="mt-3">Checking the activation record…</p>}
+        {error && <div role="alert" className="mt-3 rounded border border-red-500/40 p-3"><p>Atlas could not load the activation record. Retry to check its status.</p><p className="text-xs text-slate-400">Private system details are hidden.</p><button type="button" onClick={() => { setItems(null); setError(false); setReadAttempt((attempt) => attempt + 1); }} className="mc-control mc-focusable mt-3 px-3 py-2 text-sm font-semibold">Retry</button></div>}
+        {items?.length === 0 && !error && <p role="status" className="mt-3">No activation record has been saved.</p>}
         {items && items.length > 0 && <ol className="mt-3 space-y-3" aria-label="Worker binding activation evidences">{items.map((item) => <ActivationEvidence key={item.activation_evidence_id} item={item} />)}</ol>}
     </section>;
 }
@@ -46,12 +46,13 @@ function ActivationEvidence({ item }: { item: WorkerBindingActivationEvidenceV1 
     const binding = preflight.one_shot_dequeue_worker_binding;
     const worker = binding.worker_intake_admission.worker_identity;
     const limits = binding.worker_intake_admission.inherited_limits;
+    const status = isExpired(item.valid_until) ? "Expired" : "Saved";
     return <li className="rounded border border-slate-800 p-3 text-sm">
-        <p className="font-semibold">Recorded worker binding activation evidence</p>
-        <p className="mt-1">State: evidence recorded for later activation consideration; activation runtime: not defined; worker-start admission: not defined; blocked: yes. Store contacted: false; runtime contacted: false; queue claimed: false; worker started: false; Agent invoked: false; execution started: false.</p>
-        <p className="mt-1">Recorded {item.recorded_at}; valid until {item.valid_until}. Expiry is passive and never activates a binding, admits worker start, claims queue work, contacts a worker, starts execution, or retries delivery.</p>
+        <p className="font-semibold">Activation evidence {status.toLowerCase()}</p>
+        <p className="mt-1">Activation remains unavailable. No worker or queue action was taken.</p>
+        <p className="mt-1">Saved {formatUtcTimestamp(item.recorded_at)} · Expires {formatUtcTimestamp(item.valid_until)}</p>
         <details className="mt-3">
-            <summary>Advanced details</summary>
+            <summary>Technical details</summary>
             <dl className="mt-2 grid gap-2 sm:grid-cols-2">
                 <Value name="Activation evidence ID" value={item.activation_evidence_id} />
                 <Value name="Authenticated operator" value={item.operator_id} />
@@ -99,6 +100,16 @@ function ActivationEvidence({ item }: { item: WorkerBindingActivationEvidenceV1 
         </details>
         <ControlledWorkerQueueClaimAdmissions candidateId={item.candidate_record_id} activationEvidenceId={item.activation_evidence_id} />
     </li>;
+}
+
+function isExpired(value: string) {
+    const expiry = Date.parse(value);
+    return Number.isFinite(expiry) && expiry <= Date.now();
+}
+
+function formatUtcTimestamp(value: string) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : `${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }).format(date)} UTC`;
 }
 
 function display(value: string | FingerprintV1 | undefined) { return typeof value === "object" ? value.value : String(value ?? "Not available"); }

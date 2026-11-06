@@ -18,7 +18,7 @@ describe("LocalAIRuntimeOverviewSection", () => {
 
     it("shows unknown when no evidence available", () => {
         renderWithRouter(<LocalAIRuntimeOverviewSection isAvailable={undefined} />);
-        expect(screen.getByText("Unknown")).toBeInTheDocument();
+        expect(screen.getByText("Status unknown")).toBeInTheDocument();
         expect(
             screen.queryAllByText((_content, element) => {
                 return element?.textContent?.includes("Local AI runtime status is not exposed by Atlas Core") || false;

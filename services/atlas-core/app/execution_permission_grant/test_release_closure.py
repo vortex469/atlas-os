@@ -211,4 +211,7 @@ def test_home_assistant_stays_blocked_without_deployment_artifact() -> None:
         REPOSITORY_ROOT / "services" / "mission-control" / "src" / "pages"
         / "InstallationReadinessReviewPage.tsx"
     ).read_text(encoding="utf-8")
-    assert "Home Assistant remains non-installable and non-executable" in mission_control
+    assert (
+        'homeAssistantBlocked={response.review.readiness === "blocked" && '
+        'response.review.blockers.includes("installation_capability_unsupported")}'
+    ) in mission_control

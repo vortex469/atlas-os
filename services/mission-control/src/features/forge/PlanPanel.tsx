@@ -38,18 +38,18 @@ export function PlanPanel({
 
                 <div className="text-right text-sm">
                     <p className="font-medium text-slate-200">
-                        {proposal.estimated_duration_minutes ?? 0} minutes
+                        {proposal.estimated_duration_minutes === null ? "Not estimated" : `${proposal.estimated_duration_minutes} minutes`}
                     </p>
 
                     <p className="mt-1 text-slate-500">
-                        Approval{" "}
                         {proposal.approval_required
-                            ? "required"
-                            : "not required"}
+                            ? "This plan says approval is required"
+                            : "This plan does not say approval is required"}
                     </p>
                 </div>
             </div>
 
+            <p className="mt-4 text-sm text-slate-400">This plan is only a suggestion. Atlas checks who may act and any required approval before a change.</p>
             <ol className="mt-6 space-y-3">
                 {proposal.steps.map((step) => (
                     <li
