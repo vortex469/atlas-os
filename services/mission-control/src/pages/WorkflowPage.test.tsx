@@ -1582,4 +1582,112 @@ describe("WorkflowPage", () => {
         fireEvent.click(within(technicalDetails as HTMLElement).getByText("Technical details"));
         expect(sensitiveDetails).toBeVisible();
     });
+
+    const actionFailureCases = [
+        {
+            stage: "implementation",
+            initial: workflow(),
+            buttonName: "Approve change",
+            submitMock: mockedSubmitWorkflowImplementationApproval,
+            failureDetails: "Approval already decided",
+            failureMessage: "Mission Control could not confirm the change approval decision.",
+            statusTarget: "approval status",
+            actionVerb: "check",
+        },
+        {
+            stage: "verification",
+            initial: workflowAwaitingVerification({ verification_approval_status: "pending" }),
+            buttonName: "Approve checks",
+            submitMock: mockedSubmitWorkflowVerificationApproval,
+            failureDetails: "Approval already decided",
+            failureMessage: "Mission Control could not confirm the check approval decision.",
+            statusTarget: "approval status",
+            actionVerb: "check",
+        },
+        {
+            stage: "commit",
+            initial: workflowAwaitingCommit(),
+            buttonName: "Approve commit",
+            submitMock: mockedSubmitWorkflowCommitApproval,
+            failureDetails: "Approval already decided",
+            failureMessage: "Mission Control could not confirm the commit approval decision.",
+            statusTarget: "approval status",
+            actionVerb: "check",
+        },
+        {
+            stage: "resume",
+            initial: workflowAwaitingVerification({ verification_approval_status: "approved" }),
+            buttonName: "Run approved checks",
+            submitMock: mockedResumeWorkflow,
+            failureDetails: "Workflow blocked",
+            failureMessage: "Mission Control could not confirm the workflow result.",
+            statusTarget: "stage",
+            actionVerb: "review",
+        },
+    ];
+
+    it.each(actionFailureCases)("hides the $stage action failure behind the generic workflow-unavailable alert when the post-action refresh fails", async (row) => {
+        row.submitMock.mockRejectedValueOnce(new Error(row.failureDetails));
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(row.initial)
+            .mockRejectedValueOnce(new Error("Atlas Agent unavailable"));
+
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: row.buttonName }));
+
+        await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(1));
+
+        const alert = screen.getByRole("alert");
+        expect(within(alert).getByText("Workflow unavailable")).toBeInTheDocument();
+        expect(within(alert).getByText("Atlas couldn’t load this workflow, so its status is unknown.")).toBeInTheDocument();
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toBeNull();
+        expect(within(technicalDetails as HTMLElement).getByText("Atlas Agent unavailable")).toBeInTheDocument();
+
+        expect(screen.queryByText(`${row.failureMessage} The workflow status is unknown; ${row.actionVerb} its current ${row.statusTarget} before taking another step.`)).not.toBeInTheDocument();
+        expect(screen.queryByText(row.failureDetails)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: row.buttonName })).not.toBeInTheDocument();
+    });
+
+    it.each(actionFailureCases)("keeps the $stage action failure visible and claims the status was refreshed when the post-action refresh succeeds", async (row) => {
+        row.submitMock.mockRejectedValueOnce(new Error(row.failureDetails));
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(row.initial)
+            .mockResolvedValueOnce(row.initial);
+
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: row.buttonName }));
+
+        const fullMessage = `${row.failureMessage} The workflow status was refreshed; ${row.actionVerb} its current ${row.statusTarget} before taking another step.`;
+        await waitFor(() => expect(screen.getByText(fullMessage)).toBeInTheDocument());
+
+        const alert = screen.getByRole("alert");
+        expect(alert).toHaveTextContent(fullMessage);
+        const technicalDetails = within(alert).getByText("Technical details").closest("details");
+        expect(technicalDetails).not.toBeNull();
+        expect(within(technicalDetails as HTMLElement).getByText(row.failureDetails)).toBeInTheDocument();
+    });
+
+    it.each(actionFailureCases)("does not report the $stage status as refreshed until the post-action refresh settles", async (row) => {
+        let pendingRead!: (value: WorkflowDetailResponse) => void;
+        row.submitMock.mockRejectedValueOnce(new Error(row.failureDetails));
+        mockedGetWorkflowDetail
+            .mockResolvedValueOnce(row.initial)
+            .mockImplementationOnce(() => new Promise((resolve) => { pendingRead = resolve; }));
+
+        renderPage();
+
+        fireEvent.click(await screen.findByRole("button", { name: row.buttonName }));
+
+        const alert = await screen.findByRole("alert");
+        await waitFor(() => expect(row.submitMock).toHaveBeenCalledOnce());
+        expect(within(alert).queryByText(/status was refreshed/i)).not.toBeInTheDocument();
+        expect(within(alert).getByText(`${row.failureMessage} The workflow status is unknown; ${row.actionVerb} its current ${row.statusTarget} before taking another step.`)).toBeInTheDocument();
+        expect(screen.queryByText("Workflow unavailable")).not.toBeInTheDocument();
+
+        await act(async () => pendingRead(row.initial));
+        await waitFor(() => expect(within(alert).getByText(`${row.failureMessage} The workflow status was refreshed; ${row.actionVerb} its current ${row.statusTarget} before taking another step.`)).toBeInTheDocument());
+    });
 });
