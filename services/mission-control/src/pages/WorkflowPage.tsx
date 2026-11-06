@@ -50,6 +50,16 @@ function workflowActionFailure(error: unknown, message: string): WorkflowActionF
     };
 }
 
+function workflowActionFailureMessage(
+    prefix: string,
+    statusTarget: string,
+    actionVerb: string,
+    refreshed: boolean,
+): string {
+    const refreshState = refreshed ? "was refreshed" : "is unknown";
+    return `${prefix} The workflow status ${refreshState}; ${actionVerb} its current ${statusTarget} before taking another step.`;
+}
+
 function WorkflowActionError({ failure }: { failure: WorkflowActionFailure }) {
     return (
         <div role="alert" className="mt-3 text-sm text-red-100">
@@ -143,12 +153,12 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
         setLoadErrorDetails(null);
         try {
             const detail = await getWorkflowDetail(workflowId);
-            if (sequence !== readSequence.current) return;
+            if (sequence !== readSequence.current) return false;
             if (detail && detail.workflow_id !== workflowId) {
                 setWorkflow(null);
                 setLoadError("The returned workflow does not match this page.");
                 setLoadErrorDetails("The workflow ID in the response differs from the requested workflow.");
-                return;
+                return false;
             }
             let nextLifecycle: WorkflowOperationalLifecycle | null = null;
             let nextDiagnostic: WorkflowRecoveryDiagnostic | null = null;
@@ -158,7 +168,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                 const [lifecycleResult, diagnosticResult] = await Promise.allSettled([
                     getWorkflowOperationalLifecycle(workflowId), getWorkflowRecoveryDiagnostic(workflowId),
                 ]);
-                if (sequence !== readSequence.current) return;
+                if (sequence !== readSequence.current) return false;
                 if (lifecycleResult.status === "rejected") {
                     nextLifecycleError = "Mission Control could not read the operational lifecycle.";
                 } else if (lifecycleResult.value && lifecycleResult.value.workflow_id !== workflowId) {
@@ -180,6 +190,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setRecoveryDiagnostic(nextDiagnostic);
             setLifecycleError(nextLifecycleError);
             setDiagnosticError(nextDiagnosticError);
+            return true;
         } catch (error) {
             if (sequence === readSequence.current) {
                 const malformed = error instanceof Error && error.message === "Malformed workflow detail payload.";
@@ -188,6 +199,7 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
                     : "Atlas couldn’t load this workflow, so its status is unknown.");
                 setLoadErrorDetails(getAtlasAgentErrorMessage(error, "Atlas Agent unavailable."));
             }
+            return false;
         } finally {
             if (sequence === readSequence.current) {
                 readPending.current = false;
@@ -264,13 +276,21 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setApprovalResult(result);
             await loadWorkflow("refresh");
         } catch (error) {
-            setApprovalError(workflowActionFailure(
-                error,
-                workflow.effect_kind === "operational_action"
-                    ? "Mission Control could not confirm the maintenance approval decision. The workflow status was refreshed; check its current status before taking another step."
-                    : "Mission Control could not confirm the change approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
-            ));
-            await loadWorkflow("refresh");
+            const prefix = workflow.effect_kind === "operational_action"
+                ? "Mission Control could not confirm the maintenance approval decision."
+                : "Mission Control could not confirm the change approval decision.";
+            const statusTarget = workflow.effect_kind === "operational_action"
+                ? "status"
+                : "approval status";
+            const failure = workflowActionFailure(error, workflowActionFailureMessage(prefix, statusTarget, "check", false));
+            setApprovalError(failure);
+            const refreshSucceeded = await loadWorkflow("refresh");
+            if (refreshSucceeded) {
+                setApprovalError({
+                    ...failure,
+                    message: workflowActionFailureMessage(prefix, statusTarget, "check", true),
+                });
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -285,11 +305,25 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setVerificationApprovalResult(result);
             await loadWorkflow("refresh");
         } catch (error) {
-            setVerificationApprovalError(workflowActionFailure(
-                error,
-                "Mission Control could not confirm the check approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+            const failure = workflowActionFailure(error, workflowActionFailureMessage(
+                "Mission Control could not confirm the check approval decision.",
+                "approval status",
+                "check",
+                false,
             ));
-            await loadWorkflow("refresh");
+            setVerificationApprovalError(failure);
+            const refreshSucceeded = await loadWorkflow("refresh");
+            if (refreshSucceeded) {
+                setVerificationApprovalError({
+                    ...failure,
+                    message: workflowActionFailureMessage(
+                        "Mission Control could not confirm the check approval decision.",
+                        "approval status",
+                        "check",
+                        true,
+                    ),
+                });
+            }
         } finally {
             setIsSubmittingVerification(false);
         }
@@ -304,11 +338,25 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             setCommitApprovalResult(result);
             await loadWorkflow("refresh");
         } catch (error) {
-            setCommitApprovalError(workflowActionFailure(
-                error,
-                "Mission Control could not confirm the commit approval decision. The workflow status was refreshed; check its current approval status before taking another step.",
+            const failure = workflowActionFailure(error, workflowActionFailureMessage(
+                "Mission Control could not confirm the commit approval decision.",
+                "approval status",
+                "check",
+                false,
             ));
-            await loadWorkflow("refresh");
+            setCommitApprovalError(failure);
+            const refreshSucceeded = await loadWorkflow("refresh");
+            if (refreshSucceeded) {
+                setCommitApprovalError({
+                    ...failure,
+                    message: workflowActionFailureMessage(
+                        "Mission Control could not confirm the commit approval decision.",
+                        "approval status",
+                        "check",
+                        true,
+                    ),
+                });
+            }
         } finally {
             setIsSubmittingCommit(false);
         }
@@ -466,11 +514,25 @@ function WorkflowDetail({ workflowId }: { workflowId: string }) {
             await resumeWorkflow(workflow.workflow_id);
             await loadWorkflow("refresh");
         } catch (error) {
-            setResumeError(workflowActionFailure(
-                error,
-                "Mission Control could not confirm the workflow result. The workflow status was refreshed; review its current stage before taking another step.",
+            const failure = workflowActionFailure(error, workflowActionFailureMessage(
+                "Mission Control could not confirm the workflow result.",
+                "stage",
+                "review",
+                false,
             ));
-            await loadWorkflow("refresh");
+            setResumeError(failure);
+            const refreshSucceeded = await loadWorkflow("refresh");
+            if (refreshSucceeded) {
+                setResumeError({
+                    ...failure,
+                    message: workflowActionFailureMessage(
+                        "Mission Control could not confirm the workflow result.",
+                        "stage",
+                        "review",
+                        true,
+                    ),
+                });
+            }
         } finally {
             setIsResuming(false);
         }

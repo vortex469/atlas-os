@@ -441,4 +441,24 @@ describe("ProviderActions", () => {
         await user.click(within(technicalDetails as HTMLDetailsElement).getByText("Technical details"));
         expect(within(technicalDetails as HTMLDetailsElement).getByText("[Sensitive text withheld]")).toBeVisible();
     });
+
+    it("keeps parameter rendering safe when a nested description is not a string", async () => {
+        const invalidDescriptionAction: ProviderAction = {
+            ...unloadAction,
+            parameters: {
+                model: {
+                    type: "string",
+                    required: true,
+                    description: { nested: { language: "english", text: "Loaded Ollama model name." } },
+                },
+            },
+        };
+        mockedGetProviderActions.mockResolvedValue([invalidDescriptionAction]);
+
+        renderActions();
+
+        const input = await screen.findByLabelText(/model/i);
+        expect(input).toBeInTheDocument();
+        expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+    });
 });

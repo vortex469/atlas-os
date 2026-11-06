@@ -235,7 +235,7 @@ test.describe("Atlas Core unavailable", () => {
         await expect(systemHealth).toContainText("These are separate reports; Atlas doesn't combine them into one score.");
         await expect(systemHealth).not.toContainText("Healthy");
         await expect(page.getByRole("button", { name: "Refresh", exact: true })).toBeVisible();
-        await expect(page.getByText("Atlas Core API unavailable", { exact: true })).toBeVisible();
+        await expect(page.locator('[aria-label="Primary sidebar"]').getByText("Unavailable", { exact: true })).toBeVisible();
         await expect(page.getByText("Core build: Unavailable", { exact: true })).toBeVisible();
     });
 });

@@ -434,6 +434,10 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                                                             schema,
                                                         );
                                                     const inputId = `${provider.id}-${action.id}-${parameterName}`;
+                                                    const parameterDescription =
+                                                        typeof definition.description === "string"
+                                                            ? definition.description
+                                                            : safeText(definition.description);
 
                                                     return (
                                                         <div
@@ -506,11 +510,9 @@ function ProviderActionPanel({ provider, onActionCompleted, compact = false }: P
                                                                 }
                                                                 className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                                                             />
-                                                            {definition.description && (
+                                                            {parameterDescription && (
                                                                 <p className="mt-1 text-xs text-slate-500">
-                                                                    {
-                                                                        definition.description
-                                                                    }
+                                                                    {parameterDescription}
                                                                 </p>
                                                             )}
                                                         </div>
